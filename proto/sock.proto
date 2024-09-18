@@ -1,0 +1,60 @@
+syntax = "proto3";
+package types;
+
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service SockService {
+  rpc GetSocketTicket(GetSocketTicketRequest) returns (GetSocketTicketResponse) {
+    option (google.api.http) = {
+      get: "/v1/sock/ticket"
+    };
+    option (cache) = SKIP;
+  }
+}
+
+enum SocketActions {
+  PING_CHANNEL = 0;
+  START_STREAM = 1;
+  STOP_STREAM = 2;
+  STREAM_INQUIRY = 3;
+  UNSUBSCRIBE_TOPIC = 4;
+  SUBSCRIBE_TOPIC = 5;
+  LOAD_MESSAGES = 6;
+  HAS_MORE_MESSAGES = 7;
+  SUBSCRIBE = 8;
+  UNSUBSCRIBE = 9;
+  LOAD_SUBSCRIBERS = 10;
+  SUBSCRIBERS_PRESENT = 11;
+  TEXT = 12;
+  RTC = 13;
+  SET_POSITION = 14;
+  SET_PAGE = 15;
+  SET_SCALE = 16;
+  SET_STROKE = 17;
+  DRAW_LINES = 18;
+  SHARE_FILE = 19;
+  CHANGE_SETTING = 20;
+  SUBSCRIBE_INIT = 21;
+}
+
+message SocketParticipant {
+  string scid = 1;
+  repeated string cids = 2;
+  string name = 3;
+  string role = 4;
+  string color = 5;
+  bool exists = 6;
+  bool online = 7;
+}
+
+message GetSocketTicketRequest {}
+
+message GetSocketTicketResponse {
+  string ticket = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

@@ -1,0 +1,9 @@
+syntax = "proto3";
+package types;
+
+option go_package = "pkg/types";
+
+message ITimeUnit {
+  string id = 1;
+  string name = 2;
+}

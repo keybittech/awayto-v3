@@ -1,0 +1,252 @@
+syntax = "proto3";
+package types;
+
+import "role.proto";
+import "service.proto";
+import "schedule.proto";
+import "util.proto";
+import "group_user.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupService {
+  rpc PostGroup(PostGroupRequest) returns (PostGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/group"
+      body: "*"
+    };
+    option (load) = true;
+  }
+
+  rpc PatchGroup(PatchGroupRequest) returns (PatchGroupResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group"
+      body: "*"
+    };
+    option (throttle) = 1;
+  }
+
+  rpc PatchGroupAssignments(PatchGroupAssignmentsRequest) returns (PatchGroupAssignmentsResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/assignments"
+      body: "*"
+    };
+    option (throttle) = 60;
+  }
+
+  rpc GetGroupAssignments(GetGroupAssignmentsRequest) returns (GetGroupAssignmentsResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/assignments"
+    };
+  }
+
+  rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group"
+    };
+  }
+
+  rpc CheckGroupName(CheckGroupNameRequest) returns (CheckGroupNameResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/valid/{name}"
+    };
+    option (cache) = STORE; 
+    option (load) = true;
+  }
+
+  rpc InviteGroupUsers(InviteGroupUsersRequest) returns (InviteGroupUsersResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/users/invite"
+      body: "*"
+    };
+  }
+
+  rpc JoinGroup(JoinGroupRequest) returns (JoinGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/join"
+      body: "*"
+    };
+    option (cache) = SKIP;
+  }
+
+  rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/leave"
+      body: "*"
+    };
+    option (cache) = SKIP;
+  }
+
+  rpc AttachUser(AttachUserRequest) returns (AttachUserResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/attach/user"
+      body: "*"
+    };
+    option (cache) = SKIP;
+  }
+
+  rpc CompleteOnboarding(CompleteOnboardingRequest) returns (CompleteOnboardingResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/onboard"
+      body: "*"
+    };
+    option (cache) = SKIP;
+  }
+}
+
+message IGroup {
+  string id = 1;
+  string externalId = 2;
+  string createdSub = 3;
+  string createdOn = 4;
+  string defaultRoleId = 5;
+  string allowedDomains = 6;
+  string displayName = 7;
+  string name = 8;
+  string purpose = 9;
+  bool ldr = 10;
+  string code = 11;
+  int32 usersCount = 12;
+  map<string, IRole> roles = 13;
+  map<string, IGroupUser> users = 14;
+  map<string, IGroupRoleAuthActions> availableGroupAssignments = 15;
+  bool isValid = 16;
+  bool needCheckName = 17;
+  bool checkingName = 18;
+  string checkedName = 19;
+  string error = 20;
+  bool active = 21;
+  int32 row = 22;
+  bool ai = 23;
+}
+
+
+message IGroupRoleAuthAction {
+  string id = 1;
+  string name = 2;
+}
+
+message IGroupRoleAuthActions {
+  string id = 1;
+  bool fetch = 2;
+  repeated IGroupRoleAuthAction actions = 3;
+}
+
+message IGroupRoleActionState {
+  map<string, IGroupRoleAuthActions> assignments = 1;
+}
+
+message IAssignmentAction {
+  string name = 1;
+}
+
+message IAssignmentActions {
+  repeated IAssignmentAction actions = 1;
+}
+
+message IAssignments {
+  map<string, IAssignmentActions> assignments = 1;
+}
+
+message PostGroupRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string displayName = 2 [(google.api.field_behavior) = REQUIRED];
+  string purpose = 3 [(google.api.field_behavior) = REQUIRED];
+  string allowedDomains = 4 [(google.api.field_behavior) = REQUIRED];
+  bool ai = 5 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string displayName = 2 [(google.api.field_behavior) = REQUIRED];
+  string purpose = 3 [(google.api.field_behavior) = REQUIRED];
+  string allowedDomains = 4 [(google.api.field_behavior) = REQUIRED];
+  bool ai = 5 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupAssignmentsRequest {
+  map<string, IAssignmentActions> assignments = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupAssignmentsResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupAssignmentsRequest {}
+
+message GetGroupAssignmentsResponse {
+  map<string, IGroupRoleAuthActions> assignments = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CheckGroupNameRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CheckGroupNameResponse {
+  bool isValid = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UserEmail {
+  string email = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message InviteGroupUsersRequest {
+  repeated UserEmail users = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message InviteGroupUsersResponse {
+  repeated UserEmail users = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message JoinGroupRequest {
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message JoinGroupResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message LeaveGroupRequest {
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message LeaveGroupResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AttachUserRequest {
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message AttachUserResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CompleteOnboardingRequest {
+  IService service = 1 [(google.api.field_behavior) = REQUIRED];
+  ISchedule schedule = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message CompleteOnboardingResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

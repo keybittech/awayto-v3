@@ -1,0 +1,8 @@
+{
+  "schemaFile": "./openapi.yaml",
+  "apiFile": "./src/hooks/api.template.ts",
+  "apiImport": "siteApiTemplate",
+  "outputFile": "./src/hooks/api.ts",
+  "exportName": "siteApi",
+  "hooks": true
+}

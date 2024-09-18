@@ -1,0 +1,28 @@
+syntax = "proto3";
+package types;
+
+// import "google/api/annotations.proto";
+// import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+//
+// service ExchangeService {
+//   rpc GetExchangeActions(GetExchangeActionsRequest) returns (GetExchangeActionsResponse) {
+//     option (google.api.http) = {
+//       get: "/v1/exchange/actions"
+//     };
+//   }
+// }
+
+enum ExchangeActions {
+  EXCHANGE_TEXT = 0;
+  EXCHANGE_CALL = 1;
+  EXCHANGE_WHITEBOARD = 2;
+}
+//
+// message GetExchangeActionsRequest {}
+//
+// message GetExchangeActionsResponse {
+//   ExchangeActions actions = 1 [(google.api.field_behavior) = REQUIRED];
+// }
+//

@@ -1,0 +1,68 @@
+syntax = "proto3";
+package types;
+
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service AssistService {
+  rpc PostPrompt(PostPromptRequest) returns (PostPromptResponse) {
+    option (google.api.http) = {
+      post: "/v1/assist/prompt"
+      body: "*"
+    };
+    option (cache) = STORE; 
+    option (load) = true;
+  }
+
+  rpc GetSuggestion(GetSuggestionRequest) returns (GetSuggestionResponse) {
+    option (google.api.http) = {
+      get: "/v1/assist/suggest/{id}/{prompt}"
+    };
+    option (cache) = STORE; 
+    option (load) = true;
+  }
+}
+
+enum IPrompts {
+  CREATE_API = 0;
+  CREATE_API_BACKEND = 1;
+  CREATE_TYPE = 2;
+  CREATE_GEN_COMPONENT = 3;
+  CREATE_APP_COMPONENT = 4;
+  DERIVE_INSTRUCTION = 5;
+  FILE_EDITOR = 6;
+  GUIDED_EDIT = 7;
+  SUGGEST_ROLE = 8;
+  SUGGEST_SERVICE = 9;
+  SUGGEST_TIER = 10;
+  SUGGEST_FEATURE = 11;
+  CONVERT_PURPOSE = 12;
+}
+
+message IPrompt {
+  string id = 1;
+  string prompt = 2;
+}
+
+message PostPromptRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string prompt = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostPromptResponse {
+  repeated string promptResult = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetSuggestionRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string prompt = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetSuggestionResponse {
+  repeated string promptResult = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

@@ -1,0 +1,89 @@
+syntax = "proto3";
+package types;
+
+import "file.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupFileService {
+  rpc PostGroupFile(PostGroupFileRequest) returns (PostGroupFileResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/files"
+      body: "*"
+    };
+  }
+
+  rpc PatchGroupFile(PatchGroupFileRequest) returns (PatchGroupFileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/files"
+      body: "*"
+    };
+  }
+
+  rpc GetGroupFiles(GetGroupFilesRequest) returns (GetGroupFilesResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/files"
+    };
+  }
+
+  rpc GetGroupFileById(GetGroupFileByIdRequest) returns (GetGroupFileByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/files/{id}"
+    };
+  }
+
+  rpc DeleteGroupFile(DeleteGroupFileRequest) returns (DeleteGroupFileResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/files/{id}"
+    };
+  }
+}
+
+message IGroupFile {
+  string groupId = 1;
+  string fileId = 2;
+  IFile file = 3;
+}
+
+message PostGroupFileRequest {
+  string fileId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupFileResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFileRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string fileId = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFilesRequest {}
+
+message GetGroupFilesResponse {
+  repeated IGroupFile files = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFileByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFileByIdResponse {
+  IGroupFile file = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupFileRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupFileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

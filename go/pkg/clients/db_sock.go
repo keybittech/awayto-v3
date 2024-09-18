@@ -1,0 +1,195 @@
+package clients
+
+import (
+	"av3api/pkg/types"
+	"av3api/pkg/util"
+	"encoding/json"
+	"slices"
+	"time"
+)
+
+func (db *Database) InitDBSocketConnection(userSub string, connId string) (func(), error) {
+	_, err := db.Client().Exec(`
+		INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
+		VALUES ($1::uuid, $2)
+	`, userSub, connId)
+
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return func() {
+		db.Client().Exec(`
+			DELETE FROM dbtable_schema.sock_connections
+			USING dbtable_schema.sock_connections sc
+			LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
+			WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL AND sc.connection_id = $1 
+		`, connId)
+	}, nil
+}
+
+func (db *Database) GetSocketAllowances(userSub string) ([]util.IdStruct, error) {
+	rows, err := db.Client().Query(`
+		SELECT b.id
+		FROM dbtable_schema.bookings b
+		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = b.schedule_bracket_slot_id
+		JOIN dbtable_schema.quotes q ON q.id = b.quote_id
+		WHERE sbs.created_sub = $1 OR q.created_sub = $1
+	`, userSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	ids := []util.IdStruct{}
+
+	for rows.Next() {
+		var r util.IdStruct
+		err := rows.Scan(&r.Id)
+
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		ids = append(ids, r)
+	}
+
+	return ids, nil
+}
+
+func (db *Database) GetTopicMessageParticipants(topic string) SocketParticipants {
+
+	participants := make(SocketParticipants)
+
+	topicRows, err := db.Client().Query(`
+		SELECT
+			created_sub as scid,
+			JSONB_AGG(connection_id) as cids
+		FROM dbtable_schema.topic_messages
+		WHERE topic = $1
+		GROUP BY created_sub
+	`, topic)
+	if err != nil {
+		util.ErrCheck(err)
+		return participants
+	}
+
+	for topicRows.Next() {
+		var scid string
+		var cids []string
+		var cidsBytes []byte
+
+		err = topicRows.Scan(&scid, &cidsBytes)
+		if err != nil {
+			util.ErrCheck(err)
+			continue
+		}
+
+		err = json.Unmarshal(cidsBytes, &cids)
+		if err != nil {
+			util.ErrCheck(err)
+			continue
+		}
+
+		if participant, ok := participants[scid]; ok {
+			for _, cid := range cids {
+				if !slices.Contains(participant.Cids, cid) {
+					participant.Cids = append(participant.Cids, cid)
+				}
+			}
+		} else {
+			participants[scid] = &types.SocketParticipant{
+				Scid: scid,
+				Cids: cids,
+			}
+		}
+	}
+
+	return participants
+}
+
+func (db *Database) GetSocketParticipantDetails(participants SocketParticipants) SocketParticipants {
+
+	for userSub, details := range participants {
+		// Get user anon info
+		err := db.Client().QueryRow(`
+			SELECT
+				LEFT(u.first_name, 1) || LEFT(u.last_name, 1) as name,
+				r.name as role
+			FROM dbtable_schema.users u
+			JOIN dbtable_schema.group_users gu ON gu.user_id = u.id
+			JOIN dbtable_schema.group_roles gr ON gr.external_id = gu.external_id
+			JOIN dbtable_schema.roles r ON r.id = gr.role_id
+			WHERE u.sub = $1
+		`, userSub).Scan(&details.Name, &details.Role)
+		if err != nil {
+			util.ErrCheck(err)
+		}
+	}
+
+	return participants
+}
+
+func (db *Database) StoreTopicMessage(connId, topic string, message SocketMessage) {
+
+	message.Store = false
+	message.Historical = true
+	message.Timestamp = time.Now().Local().UTC().String()
+
+	socketMessage, err := json.Marshal(message)
+	if err != nil {
+		util.ErrCheck(err)
+		return
+	}
+
+	_, err = db.Client().Exec(`
+		INSERT INTO dbtable_schema.topic_messages (created_sub, topic, message, connection_id)
+		SELECT created_sub, $2, $3, $1
+		FROM dbtable_schema.sock_connections
+		WHERE connection_id = $1
+	`, connId, topic, socketMessage)
+
+	if err != nil {
+		util.ErrCheck(err)
+		return
+	}
+}
+
+func (db *Database) GetTopicMessages(topic string, page, pageSize int) [][]byte {
+
+	messages := make([][]byte, pageSize)
+
+	paginatedQuery := util.WithPagination(`
+		SELECT message
+		FROM dbtable_schema.topic_messages
+		WHERE topic = $1
+		ORDER BY created_on DESC 
+	`, page, pageSize)
+
+	rows, err := db.Client().Query(paginatedQuery, topic)
+	if err != nil {
+		util.ErrCheck(err)
+		return nil
+	}
+
+	i := 0
+	for rows.Next() {
+		var smBytes []byte
+		err := rows.Scan(&smBytes)
+		if err != nil {
+			util.ErrCheck(err)
+			break
+		}
+		messages[i] = smBytes
+		i++
+	}
+
+	if messages[pageSize-1] != nil {
+		msgStatusBytes, _ := json.Marshal(&SocketMessage{
+			Topic:  topic,
+			Action: types.SocketActions_HAS_MORE_MESSAGES,
+		})
+		messages = append(messages, msgStatusBytes)
+	}
+
+	return messages
+}

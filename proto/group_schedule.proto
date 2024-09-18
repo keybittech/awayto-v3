@@ -1,0 +1,134 @@
+syntax = "proto3";
+package types;
+
+import "schedule.proto";
+import "util.proto";
+import "group.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupScheduleService {
+  rpc PostGroupSchedule(PostGroupScheduleRequest) returns (PostGroupScheduleResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/schedules"
+      body: "*"
+    };
+  }
+
+  rpc PatchGroupSchedule(PatchGroupScheduleRequest) returns (PatchGroupScheduleResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/schedules"
+      body: "*"
+    };
+  }
+
+  rpc GetGroupSchedules(GetGroupSchedulesRequest) returns (GetGroupSchedulesResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/schedules"
+    };
+  }
+
+  rpc GetGroupKioskSchedules(GetGroupKioskSchedulesRequest) returns (GetGroupKioskSchedulesResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/schedules/kiosk"
+    };
+  }
+
+  rpc GetGroupScheduleMasterById(GetGroupScheduleMasterByIdRequest) returns (GetGroupScheduleMasterByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/schedules/master/{groupScheduleId}"
+    };
+  }
+
+  rpc GetGroupScheduleByDate(GetGroupScheduleByDateRequest) returns (GetGroupScheduleByDateResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/schedules/{groupScheduleId}/datetz/{date}/{timezone}"
+    };
+    option (cache) = SKIP; 
+  }
+
+  rpc DeleteGroupSchedule(DeleteGroupScheduleRequest) returns (DeleteGroupScheduleResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/schedules/{ids}"
+    };
+  }
+}
+
+message IGroupScheduleDateSlots {
+  string weekStart = 1;
+  string startTime = 2;
+  string startDate = 3;
+  string scheduleBracketSlotId = 4;
+  int32 hour = 5;
+  int32 minute = 6;
+  string time = 7;
+}
+
+message IGroupSchedule {
+  string id = 1;
+  string name = 2;
+  bool master = 3;
+  string groupId = 4;
+  string scheduleId = 5;
+  ISchedule schedule = 6;
+}
+
+message PostGroupScheduleRequest {
+  IGroupSchedule groupSchedule = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupScheduleResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupScheduleRequest {
+  IGroupSchedule groupSchedule = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupScheduleResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupKioskSchedulesRequest {}
+
+message GetGroupKioskSchedulesResponse {
+  IGroup group = 1;
+  map<string, ISchedule> groupSchedules = 2;
+  string updatedOn = 3;
+}
+
+message GetGroupSchedulesRequest {}
+
+message GetGroupSchedulesResponse {
+  repeated IGroupSchedule groupSchedules = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupScheduleMasterByIdRequest {
+  string groupScheduleId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupScheduleMasterByIdResponse {
+  IGroupSchedule groupSchedule = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupScheduleByDateRequest {
+  string groupScheduleId = 1 [(google.api.field_behavior) = REQUIRED];
+  string date = 2 [(google.api.field_behavior) = REQUIRED];
+  string timezone = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupScheduleByDateResponse {
+  repeated IGroupScheduleDateSlots groupScheduleDateSlots = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupScheduleRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupScheduleResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

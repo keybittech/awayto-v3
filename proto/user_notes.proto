@@ -1,0 +1,130 @@
+syntax = "proto3";
+package types;
+
+import "google/protobuf/struct.proto";
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service UserNoteService {
+  rpc PostUserNote(PostUserNoteRequest) returns (PostUserNoteResponse) {
+    option (google.api.http) = {
+      post: "/v1/user_notes"
+      body: "*"
+    };
+  }
+
+  rpc PostUserNoteVersion(PostUserNoteVersionRequest) returns (PostUserNoteVersionResponse) {
+    option (google.api.http) = {
+      post: "/v1/user_notes/{formId}/versions"
+      body: "*"
+    };
+  }
+
+  rpc PatchUserNote(PatchUserNoteRequest) returns (PatchUserNoteResponse) {
+    option (google.api.http) = {
+      patch: "/v1/user_notes/{id}"
+    };
+  }
+
+  rpc GetUserNotes(GetUserNotesRequest) returns (GetUserNotesResponse) {
+    option (google.api.http) = {
+      get: "/v1/user_notes"
+    };
+  }
+
+  rpc GetUserNoteById(GetUserNoteByIdRequest) returns (GetUserNoteByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/user_notes/{id}"
+    };
+  }
+
+  rpc DeleteUserNote(DeleteUserNoteRequest) returns (DeleteUserNoteResponse) {
+    option (google.api.http) = {
+      delete: "/v1/user_notes/{id}"
+    };
+  }
+
+  rpc DisableUserNote(DisableUserNoteRequest) returns (DisableUserNoteResponse) {
+    option (google.api.http) = {
+      patch: "/v1/user_notes/{id}/disable"
+    };
+  }
+}
+
+message IProtoUserNoteVersionSubmission {
+  string id = 1;
+  string formVersionId = 2;
+  google.protobuf.Value submission = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message IProtoUserNoteVersion {
+  string id = 1;
+  string formId = 2;
+  google.protobuf.Value form = 3 [(google.api.field_behavior) = REQUIRED];
+  google.protobuf.Value submission = 4 [(google.api.field_behavior) = REQUIRED];
+  string createdOn = 5;
+}
+
+message IProtoUserNote {
+  string id = 1;
+  string name = 2;
+  IProtoUserNoteVersion version = 3 [(google.api.field_behavior) = REQUIRED];
+  string createdOn = 4;
+}
+
+message PostUserNoteRequest {
+  IProtoUserNote form = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostUserNoteResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostUserNoteVersionRequest {
+  IProtoUserNoteVersion version = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostUserNoteVersionResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchUserNoteRequest {
+  IProtoUserNote form = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchUserNoteResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserNotesRequest {}
+
+message GetUserNotesResponse {
+  repeated IProtoUserNote user_notes = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserNoteByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserNoteByIdResponse {
+  IProtoUserNote form = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteUserNoteRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteUserNoteResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableUserNoteRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableUserNoteResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

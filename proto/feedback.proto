@@ -1,0 +1,32 @@
+syntax = "proto3";
+package types;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service FeedbackService {
+  rpc PostSiteFeedback(PostSiteFeedbackRequest) returns (PostSiteFeedbackResponse) {
+    option (google.api.http) = {
+      post: "/v1/feedback"
+      body: "*"
+    };
+  }
+}
+
+message IFeedback {
+  string id = 1;
+  string feedbackMessage = 2;
+  string createdOn = 3;
+}
+
+message PostSiteFeedbackRequest {
+  IFeedback feedback = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostSiteFeedbackResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+

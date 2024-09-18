@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+
+<html lang="{{ site.LanguageCode }}">
+  {{ partial "head.html" . }}
+
+  <body class="not-ready" data-menu="{{ isset site.Menus `main` }}">
+    {{ partial "header.html" . }}
+
+    <main class="main">{{ block "main" . }}{{ end }}</main>
+
+    <script>
+      document.addEventListener("DOMContentLoaded", function() {
+        document.querySelector('#current-year').innerHTML = (new Date()).getFullYear();
+
+        const header = document.querySelector(".header");
+        const menu = document.querySelector(".sidebar ul");
+        const fixedClass = "fixed";
+    
+        function checkHeight() {
+          menu.classList[window.scrollY > header.offsetHeight ? 'add' : 'remove'](fixedClass);
+        }
+  
+        window.addEventListener("scroll", checkHeight);
+
+        checkHeight();
+
+        const allLinks = document.querySelectorAll('.sidebar a');
+  
+        const observer = new IntersectionObserver(entries => {
+          for (const entry of entries) {
+            if (entry.isIntersecting) {
+              const linkNode = document.querySelector('#link-' + entry.target.parentNode.id);
+              if (linkNode) {
+                allLinks.forEach(el => el.removeAttribute('data-onscreen'));
+                linkNode.setAttribute('data-onscreen', 'true');
+                break;
+              }
+            }
+          }
+        });
+  
+        document.querySelectorAll('.section-header').forEach(header => {
+          if (header.childNodes[0]) {
+            observer.observe(header.childNodes[0]);
+          }
+        });
+
+        document.querySelectorAll('.open-section-menu a').forEach(menuItem => {
+          menuItem.addEventListener('click', function() {
+            document.getElementById('_open_section').checked = false;
+          }) 
+        })
+      });
+    </script>
+  </body>
+</html>

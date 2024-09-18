@@ -1,0 +1,102 @@
+syntax = "proto3";
+package types;
+
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service BookingTranscriptService {
+  rpc PostBookingTranscript(PostBookingTranscriptRequest) returns (PostBookingTranscriptResponse) {
+    option (google.api.http) = {
+      post: "/v1/booking_transcripts"
+      body: "*"
+    };
+  }
+
+  rpc PatchBookingTranscript(PatchBookingTranscriptRequest) returns (PatchBookingTranscriptResponse) {
+    option (google.api.http) = {
+      patch: "/v1/booking_transcripts"
+      body: "*"
+    };
+  }
+
+  rpc GetBookingTranscripts(GetBookingTranscriptsRequest) returns (GetBookingTranscriptsResponse) {
+    option (google.api.http) = {
+      get: "/v1/booking_transcripts"
+    };
+    option (cache_duration) = 180;
+  }
+
+  rpc GetBookingTranscriptById(GetBookingTranscriptByIdRequest) returns (GetBookingTranscriptByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/booking_transcripts/{id}"
+    };
+  }
+
+  rpc DeleteBookingTranscript(DeleteBookingTranscriptRequest) returns (DeleteBookingTranscriptResponse) {
+    option (google.api.http) = {
+      delete: "/v1/booking_transcripts/{id}"
+    };
+  }
+
+  rpc DisableBookingTranscript(DisableBookingTranscriptRequest) returns (DisableBookingTranscriptResponse) {
+    option (google.api.http) = {
+      patch: "/v1/booking_transcripts/{id}/disable"
+    };
+  }
+}
+
+message ITranscriptMessage {
+  string words = 1;
+  int32 duration = 2;
+  string timestamp = 3;
+}
+
+message IBookingTranscript {
+  repeated ITranscriptMessage messages = 1;
+}
+
+message PostBookingTranscriptRequest {
+  repeated IBookingTranscript bookingTranscripts = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostBookingTranscriptResponse {}
+
+message PatchBookingTranscriptRequest {
+  IBookingTranscript bookingTranscript = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchBookingTranscriptResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingTranscriptsRequest {}
+
+message GetBookingTranscriptsResponse {
+  repeated IBookingTranscript bookingTranscripts = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingTranscriptByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingTranscriptByIdResponse {
+  IBookingTranscript bookingTranscript = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteBookingTranscriptRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteBookingTranscriptResponse {}
+
+message DisableBookingTranscriptRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableBookingTranscriptResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}

@@ -1,0 +1,14 @@
+[Unit]
+Description=Awayto Version 3
+After=network.target
+
+[Service]
+EnvironmentFile=etc-dir/.env
+ExecStart=/usr/local/bin/start.sh
+Restart=on-failure
+User=host-operator
+Group=host-operator
+WorkingDirectory=work-dir
+
+[Install]
+WantedBy=multi-user.target

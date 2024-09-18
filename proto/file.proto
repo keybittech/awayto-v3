@@ -1,0 +1,166 @@
+syntax = "proto3";
+package types;
+
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service FileService {
+  rpc PostFileContents(PostFileContentsRequest) returns (PostFileContentsResponse) {
+    option (google.api.http) = {
+      post: "/v1/files/content"
+      body: "*"
+    };
+    option (throttle) = 1;
+  }
+  
+  rpc PatchFileContents(PatchFileContentsRequest) returns (PatchFileContentsResponse) {
+    option (google.api.http) = {
+      patch: "/v1/files/content"
+      body: "*"
+    };
+    option (throttle) = 1;
+  }
+  
+  rpc GetFileContents(GetFileContentsRequest) returns (GetFileContentsResponse) {
+    option (google.api.http) = {
+      get: "/v1/files/content/{fileId}"
+    };
+    option (cache) = SKIP; 
+  }
+  
+  rpc PostFile(PostFileRequest) returns (PostFileResponse) {
+    option (google.api.http) = {
+      post: "/v1/files"
+      body: "*"
+    };
+  }
+  
+  rpc PatchFile(PatchFileRequest) returns (PatchFileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/files"
+      body: "*"
+    };
+  }
+  
+  rpc GetFiles(GetFilesRequest) returns (GetFilesResponse) {
+    option (google.api.http) = {
+      get: "/v1/files"
+    };
+  }
+  
+  rpc GetFileById(GetFileByIdRequest) returns (GetFileByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/files/{id}"
+    };
+  }
+  
+  rpc DeleteFile(DeleteFileRequest) returns (DeleteFileResponse) {
+    option (google.api.http) = {
+      delete: "/v1/files/{id}"
+    };
+  }
+  
+  rpc DisableFile(DisableFileRequest) returns (DisableFileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/files/{id}/disable"
+    };
+  }
+}
+
+message IFile {
+  string id = 1;
+  string uuid = 2;
+  string name = 3;
+  string mimeType = 4;
+  string url = 5;
+  BufferResponse bufferResponse = 6;
+}
+
+// FILE CONTENTS, byte array stored somewhere
+
+message FileContent {
+  string name = 1;
+  string mimeType = 2;
+  bytes content = 3;
+}
+
+message PostFileContentsRequest {
+  repeated FileContent contents = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostFileContentsResponse {
+  repeated string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchFileContentsRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  string mimeType = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchFileContentsResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFileContentsRequest {
+  string fileId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFileContentsResponse {
+  bytes content = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+// IFile metadata stored in application
+
+message PostFileRequest {
+  IFile file = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostFileResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string uuid = 2 [(google.api.field_behavior) = REQUIRED];
+  string name = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchFileRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchFileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFilesRequest {}
+
+message GetFilesResponse {
+  repeated IFile files = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFileByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFileByIdResponse {
+  IFile file = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteFileRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteFileResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableFileRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableFileResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}

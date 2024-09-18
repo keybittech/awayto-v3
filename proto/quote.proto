@@ -1,0 +1,118 @@
+syntax = "proto3";
+package types;
+
+import "file.proto";
+import "form.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service QuoteService {
+  rpc PostQuote(PostQuoteRequest) returns (PostQuoteResponse) {
+    option (google.api.http) = {
+      post: "/v1/quotes"
+      body: "*"
+    };
+  }
+
+  rpc PatchQuote(PatchQuoteRequest) returns (PatchQuoteResponse) {
+    option (google.api.http) = {
+      patch: "/v1/quotes/{id}"
+      body: "*"
+    };
+  }
+  
+  rpc GetQuotes(GetQuotesRequest) returns (GetQuotesResponse) {
+    option (google.api.http) = {
+      get: "/v1/quotes"
+    };
+  }
+  
+  rpc GetQuoteById(GetQuoteByIdRequest) returns (GetQuoteByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/quotes/{id}"
+    };
+  }
+  
+  rpc DeleteQuote(DeleteQuoteRequest) returns (DeleteQuoteResponse) {
+    option (google.api.http) = {
+      delete: "/v1/quotes/{id}"
+    };
+  }
+  
+  rpc DisableQuote(DisableQuoteRequest) returns (DisableQuoteResponse) {
+    option (google.api.http) = {
+      patch: "/v1/quotes/disable/{ids}"
+    };
+  }
+}
+
+message IQuote {
+  string id = 1;
+  string slotDate = 2;
+  string startTime = 3;
+  string serviceTierId = 4;
+  string serviceTierName = 5;
+  string serviceName = 6;
+  repeated IFile files = 7;
+  string scheduleBracketSlotId = 8;
+  string serviceFormVersionSubmissionId = 9;
+  string tierFormVersionSubmissionId = 10;
+  IProtoFormVersionSubmission serviceForm = 11;
+  IProtoFormVersionSubmission tierForm = 12;
+  string createdOn = 13;
+}
+
+message PostQuoteRequest {
+  string scheduleBracketSlotId = 1 [(google.api.field_behavior) = REQUIRED];
+  string serviceTierId = 2 [(google.api.field_behavior) = REQUIRED];
+  string slotDate = 3 [(google.api.field_behavior) = REQUIRED];
+  IProtoFormVersionSubmission serviceFormVersionSubmission = 4 [(google.api.field_behavior) = REQUIRED];
+  IProtoFormVersionSubmission tierFormVersionSubmission = 5 [(google.api.field_behavior) = REQUIRED];
+  repeated IFile files = 6 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostQuoteResponse {
+  IQuote quote = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchQuoteRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string serviceTierId = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchQuoteResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetQuotesRequest {}
+
+message GetQuotesResponse {
+  repeated IQuote quotes = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetQuoteByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetQuoteByIdResponse {
+  IQuote quote = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteQuoteRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteQuoteResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableQuoteRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableQuoteResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

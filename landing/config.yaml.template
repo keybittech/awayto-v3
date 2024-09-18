@@ -1,0 +1,14 @@
+title:	project-title
+baseURL: app-host-url
+languageCode: en-us
+enableRobotsTXT: true
+
+Params:
+  docsURL: https://awayto.dev 
+
+menu:
+  main:
+    - identifier: welcome 
+      name: Welcome
+      url: /
+      weight: 10

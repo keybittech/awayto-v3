@@ -1,0 +1,23 @@
+
+{{ $devSection := .Site.GetPage "section" .RelPermalink }}
+
+<nav> 
+  <ul>
+    <li><strong>{{ .Title }}</strong></li>
+    {{ range $devSection.Sections }}
+      {{ if eq .Kind "section" }}
+        <li><a id="link-{{ .Title | urlize }}" href="#{{ .Title | urlize }}">{{ .Title }}</a></li>
+        {{ if ne .Title "Home" }}
+          <ul class="indent">
+            {{ $currentParent := . }}
+            {{ range .Pages }}
+              {{ if and (eq .Parent $currentParent) (ne . $currentParent) (ne .Kind "section") }}
+                <li><a id="link-{{ .Title | urlize }}" href="#{{ .Title | urlize }}">{{ .Title }}</a></li>
+              {{ end }}
+            {{ end }}
+          </ul>
+        {{ end }}
+      {{ end }}
+    {{ end }}
+  </ul>
+</nav>

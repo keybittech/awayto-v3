@@ -1,0 +1,30 @@
+syntax = "proto3";
+package types;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+import "time_unit.proto";
+
+option go_package = "pkg/types";
+
+service LookupService {
+  rpc GetLookups(GetLookupsRequest) returns (GetLookupsResponse) {
+    option (google.api.http) = {
+      get: "/v1/lookup"
+    };
+  }
+}
+
+message ILookup {
+  string id = 1;
+  string name = 2;
+}
+
+message GetLookupsRequest {}
+
+message GetLookupsResponse {
+  repeated ILookup budgets = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated ILookup timelines  = 2 [(google.api.field_behavior) = REQUIRED];
+  repeated ITimeUnit timeUnits = 3 [(google.api.field_behavior) = REQUIRED];
+}

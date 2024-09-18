@@ -1,0 +1,14 @@
+{
+  "name": "landing",
+  "version": "1.0.0",
+  "description": "app landing page",
+  "dependencies": {
+  },
+  "devDependencies": {
+    "hugo-bin": "^0.89.0"
+  },
+  "scripts": {
+    "start": "./server.sh",
+    "build": "hugo --cleanDestinationDir -s . -d ./build"
+  }
+}

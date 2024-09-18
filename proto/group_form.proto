@@ -1,0 +1,102 @@
+syntax = "proto3";
+package types;
+
+import "form.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupFormService {
+  rpc PostGroupForm(PostGroupFormRequest) returns (PostGroupFormResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/forms"
+      body: "*"
+    };
+  };
+  rpc PostGroupFormVersion(PostGroupFormVersionRequest) returns (PostGroupFormVersionResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/forms/version"
+      body: "*"
+    };
+  };
+  rpc PatchGroupForm(PatchGroupFormRequest) returns (PatchGroupFormResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/forms"
+      body: "*"
+    };
+  };
+  rpc GetGroupForms(GetGroupFormsRequest) returns (GetGroupFormsResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/forms"
+    };
+  };
+  rpc GetGroupFormById(GetGroupFormByIdRequest) returns (GetGroupFormByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/forms/{formId}"
+    };
+  };
+  rpc DeleteGroupForm(DeleteGroupFormRequest) returns (DeleteGroupFormResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/forms"
+    };
+  };
+}
+
+message IGroupForm {
+  string id = 1;
+  string groupId = 2;
+  string formId = 3;
+  IProtoForm form = 4;
+}
+
+message PostGroupFormRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  IGroupForm groupForm = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupFormResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupFormVersionRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string formId = 2 [(google.api.field_behavior) = REQUIRED];
+  IProtoFormVersion groupFormVersion = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupFormVersionResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFormRequest {
+  IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFormResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormsRequest {}
+
+message GetGroupFormsResponse {
+  repeated IGroupForm groupForms = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormByIdRequest {
+  string formId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormByIdResponse {
+  IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupFormRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupFormResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

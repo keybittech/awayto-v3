@@ -1,0 +1,73 @@
+syntax = "proto3";
+package types;
+
+import "group.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service ManageGroupsService {
+  rpc PostManageGroups(PostManageGroupsRequest) returns (PostManageGroupsResponse) {
+    option (google.api.http) = {
+      post: "/v1/manage/groups"
+      body: "*"
+    };
+  }
+  rpc PatchManageGroups(PatchManageGroupsRequest) returns (PatchManageGroupsResponse) {
+    option (google.api.http) = {
+      patch: "/v1/manage/groups"
+      body: "*"
+    };
+  }
+  rpc GetManageGroups(GetManageGroupsRequest) returns (GetManageGroupsResponse) {
+    option (google.api.http) = {
+      get: "/v1/manage/groups"
+    };
+  }
+  rpc DeleteManageGroups(DeleteManageGroupsRequest) returns (DeleteManageGroupsResponse) {
+    option (google.api.http) = {
+      delete: "/v1/manage/groups"
+    };
+  }
+}
+
+message IManageGroups {
+  map<string, IGroup> groups = 1;
+}
+
+message PostManageGroupsRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  map<string, bool> roles = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostManageGroupsResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  map<string, bool> roles = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchManageGroupsRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  map<string, bool> roles = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchManageGroupsResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetManageGroupsRequest {}
+
+message GetManageGroupsResponse {
+  repeated IGroup groups = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteManageGroupsRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteManageGroupsResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

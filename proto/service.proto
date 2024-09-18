@@ -1,0 +1,106 @@
+syntax = "proto3";
+package types;
+
+import "service_tier.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service ServiceService {
+  rpc PostService(PostServiceRequest) returns (PostServiceResponse) {
+    option (google.api.http) = {
+      post: "/v1/service"
+      body: "*"
+    };
+  }
+
+  rpc PatchService(PatchServiceRequest) returns (PatchServiceResponse) {
+    option (google.api.http) = {
+      patch: "/v1/service"
+      body: "*"
+    };
+  }
+
+  rpc GetServices(GetServicesRequest) returns (GetServicesResponse) {
+    option (google.api.http) = {
+      get: "/v1/service"
+    };
+  }
+
+  rpc GetServiceById(GetServiceByIdRequest) returns (GetServiceByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/service/{id}"
+    };
+  }
+
+  rpc DeleteService(DeleteServiceRequest) returns (DeleteServiceResponse) {
+    option (google.api.http) = {
+      delete: "/v1/service/{id}"
+    };
+  }
+
+  rpc DisableService(DisableServiceRequest) returns (DisableServiceResponse) {
+    option (google.api.http) = {
+      patch: "/v1/service/{ids}/disable"
+    };
+  }
+}
+
+message IService {
+  string id = 1;
+  string name = 2;
+  int32 cost = 3;
+  map<string, IServiceTier> tiers = 4;
+  string formId = 5;
+  string surveyId = 6;
+  string createdOn = 7;
+}
+
+message PostServiceRequest {
+  IService service = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostServiceResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchServiceRequest {
+  IService service = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchServiceResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServicesRequest {}
+
+message GetServicesResponse {
+  repeated IService services = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceByIdResponse {
+  IService service = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteServiceRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteServiceResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableServiceRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableServiceResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

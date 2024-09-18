@@ -1,0 +1,112 @@
+syntax = "proto3";
+package types;
+
+import "service_addon.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service ServiceTierService {
+  rpc PostServiceTier(PostServiceTierRequest) returns (PostServiceTierResponse) {
+    option (google.api.http) = {
+      post: "/v1/service_tiers"
+      body: "*"
+    };
+  }
+
+  rpc PatchServiceTier(PatchServiceTierRequest) returns (PatchServiceTierResponse) {
+    option (google.api.http) = {
+      patch: "/v1/service_tiers/{id}"
+      body: "*"
+    };
+  }
+
+  rpc GetServiceTiers(GetServiceTiersRequest) returns (GetServiceTiersResponse) {
+    option (google.api.http) = {
+      get: "/v1/service_tiers"
+    };
+  }
+
+  rpc GetServiceTierById(GetServiceTierByIdRequest) returns (GetServiceTierByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/service_tiers/{id}"
+    };
+  }
+
+  rpc DeleteServiceTier(DeleteServiceTierRequest) returns (DeleteServiceTierResponse) {
+    option (google.api.http) = {
+      delete: "/v1/service_tiers/{id}"
+    };
+  }
+
+  rpc DisableServiceTier(DisableServiceTierRequest) returns (DisableServiceTierResponse) {
+    option (google.api.http) = {
+      patch: "/v1/service_tiers/{id}/disable"
+    };
+  }
+}
+
+message IServiceTier {
+  string id = 1;
+  string serviceId = 2;
+  string formId = 3;
+  string surveyId = 4;
+  string name = 5;
+  string multiplier = 6;
+  map<string, IServiceAddon> addons = 7;
+  int32 order = 8;
+  string createdOn = 9;
+}
+
+
+message PostServiceTierRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  string serviceId = 2 [(google.api.field_behavior) = REQUIRED];
+  string multiplier = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostServiceTierResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchServiceTierRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  string multiplier = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchServiceTierResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceTiersRequest {}
+
+message GetServiceTiersResponse {
+  repeated IServiceTier serviceTiers = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceTierByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceTierByIdResponse {
+  IServiceTier serviceTier = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteServiceTierRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteServiceTierResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableServiceTierRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableServiceTierResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

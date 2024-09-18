@@ -1,0 +1,38 @@
+syntax = "proto3";
+package types;
+
+import "feedback.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupFeedbackService {
+  rpc PostGroupFeedback(PostGroupFeedbackRequest) returns (PostGroupFeedbackResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/feedback"
+      body: "*"
+    };
+  } 
+  rpc GetGroupFeedback(GetGroupFeedbackRequest) returns (GetGroupFeedbackResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/feedback"
+    };
+  }
+}
+
+message PostGroupFeedbackRequest {
+  IFeedback feedback = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupFeedbackResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFeedbackRequest {}
+
+message GetGroupFeedbackResponse {
+  repeated IFeedback feedback = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

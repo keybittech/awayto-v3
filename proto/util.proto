@@ -1,0 +1,50 @@
+syntax = "proto3";
+package types;
+
+option go_package = "pkg/types";
+
+import "google/protobuf/descriptor.proto";
+
+extend google.protobuf.MethodOptions {
+  CacheType cache = 50000;
+  int32 cache_duration = 50001;
+  bool load = 50002;
+  int32 throttle = 50003;
+  string contentType = 50004;
+  SiteRoles siteRole = 50005;
+}
+
+extend google.protobuf.MessageOptions {
+  string method = 50000;
+  string url = 50001;
+}
+
+enum CacheType {
+  DEFAULT = 0;
+  SKIP = 1;
+  STORE = 2;
+}
+
+enum SiteRoles {
+  UNRESTRICTED = 0;
+  APP_ROLE_CALL = 1;
+  APP_GROUP_ADMIN = 2;
+  APP_GROUP_ROLES = 3;
+  APP_GROUP_USERS = 4;
+  APP_GROUP_MATRIX = 5;
+  APP_GROUP_SERVICES = 6;
+  APP_GROUP_BOOKINGS = 7;
+  APP_GROUP_FEATURES = 8;
+  APP_GROUP_SCHEDULES = 9;
+}
+
+enum EndpointType {
+  MUTATION = 0;
+  QUERY = 1;
+}
+
+message BufferResponse {
+  string url = 1;
+  string name = 2;
+  bytes buffer = 3;
+}

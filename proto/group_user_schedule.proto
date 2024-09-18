@@ -1,0 +1,138 @@
+syntax = "proto3";
+package types;
+
+import "schedule.proto";
+import "service.proto";
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupUserScheduleService {
+  rpc PostGroupUserSchedule(PostGroupUserScheduleRequest) returns (PostGroupUserScheduleResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/user_schedules"
+      body: "*"
+    };
+  }
+
+  rpc GetGroupUserSchedules(GetGroupUserSchedulesRequest) returns (GetGroupUserSchedulesResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/user_schedules/{groupScheduleId}"
+    };
+    option (cache) = SKIP; 
+  }
+
+  rpc GetGroupUserScheduleStubs(GetGroupUserScheduleStubsRequest) returns (GetGroupUserScheduleStubsResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/user_schedules_stubs"
+    };
+    option (cache) = SKIP; 
+  }
+
+  rpc GetGroupUserScheduleStubReplacement(GetGroupUserScheduleStubReplacementRequest) returns (GetGroupUserScheduleStubReplacementResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/user_schedules/stub_replacement/{userScheduleId}/sd/{slotDate}/st/{startTime}/tn/{tierName}"
+    };
+  }
+
+  rpc PatchGroupUserScheduleStubReplacement(PatchGroupUserScheduleStubReplacementRequest) returns (PatchGroupUserScheduleStubReplacementResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/user_schedules/stub_replacement"
+      body: "*"
+    };
+  }
+
+  rpc DeleteGroupUserScheduleByUserScheduleId(DeleteGroupUserScheduleByUserScheduleIdRequest) returns (DeleteGroupUserScheduleByUserScheduleIdResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/user_schedules/{ids}"
+    };
+  }
+}
+
+message IGroupUserSchedule {
+  string id = 1;
+  string groupScheduleId = 2;
+  string userScheduleId = 3;
+  map<string, IService> services = 4;
+  ISchedule schedule = 5;
+  map<string, IScheduleBracket> brackets = 6;
+}
+
+message IGroupUserScheduleStubReplacement {
+  string username = 1;
+  string slotDate = 2;
+  string startTime = 3;
+  string scheduleBracketSlotId = 4;
+  string serviceTierId = 5;
+  string quoteId = 6;
+}
+
+message IGroupUserScheduleStub {
+  string groupScheduleId = 1;
+  string userScheduleId = 2;
+  string quoteId = 3;
+  string slotDate = 4;
+  string startTime = 5;
+  string serviceName = 6;
+  string tierName = 7;
+  IGroupUserScheduleStubReplacement replacement = 8;
+}
+
+message PostGroupUserScheduleRequest {
+  string groupScheduleId = 1 [(google.api.field_behavior) = REQUIRED];
+  string userScheduleId = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupUserScheduleResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED]; 
+}
+
+message GetGroupUserSchedulesRequest {
+  string groupScheduleId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupUserSchedulesResponse {
+  repeated IGroupUserSchedule groupUserSchedules = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupUserScheduleStubsRequest {}
+
+message GetGroupUserScheduleStubsResponse {
+  repeated IGroupUserScheduleStub groupUserScheduleStubs = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupUserScheduleStubReplacementRequest {
+  string userScheduleId = 1 [(google.api.field_behavior) = REQUIRED];
+  string slotDate = 2 [(google.api.field_behavior) = REQUIRED];
+  string startTime = 3 [(google.api.field_behavior) = REQUIRED];
+  string tierName = 4 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupUserScheduleStubReplacementResponse {
+  repeated IGroupUserScheduleStub groupUserScheduleStubs = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupUserScheduleStubReplacementRequest {
+  string quoteId = 1 [(google.api.field_behavior) = REQUIRED];
+  string scheduleBracketSlotId = 2 [(google.api.field_behavior) = REQUIRED];
+  string serviceTierId = 3 [(google.api.field_behavior) = REQUIRED];
+  string slotDate = 4 [(google.api.field_behavior) = REQUIRED];
+  string startTime = 5 [(google.api.field_behavior) = REQUIRED];
+  string userScheduleId = 6 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupUserScheduleStubReplacementResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupUserScheduleByUserScheduleIdRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupUserScheduleByUserScheduleIdResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

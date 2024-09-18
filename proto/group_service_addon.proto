@@ -1,0 +1,61 @@
+ syntax = "proto3";
+package types;
+
+import "service_addon.proto";
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupServiceAddonsService {
+  rpc PostGroupServiceAddon(PostGroupServiceAddonRequest) returns (PostGroupServiceAddonResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/service_addons/{serviceAddonId}"
+    };
+    option (throttle) = 1;
+  }
+
+  rpc GetGroupServiceAddons(GetGroupServiceAddonsRequest) returns (GetGroupServiceAddonsResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/service_addons"
+    };
+  }
+
+  rpc DeleteGroupServiceAddon(DeleteGroupServiceAddonRequest) returns (DeleteGroupServiceAddonResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/service_addons/{serviceAddonId}"
+    };
+    option (throttle) = 1;
+  }
+}
+
+message IGroupServiceAddon {
+  string id = 1;
+  string groupId = 2;
+  IServiceAddon serviceAddon = 3;
+}
+
+message PostGroupServiceAddonRequest {
+  string serviceAddonId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupServiceAddonResponse {
+  IGroupServiceAddon groupServiceAddon = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupServiceAddonsRequest {}
+
+message GetGroupServiceAddonsResponse {
+  repeated IGroupServiceAddon groupServiceAddons = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupServiceAddonRequest {
+  string groupServiceAddonId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupServiceAddonResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

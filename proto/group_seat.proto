@@ -1,0 +1,54 @@
+syntax = "proto3";
+package types;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupSeatService {
+  rpc PostGroupSeat(PostGroupSeatRequest) returns (PostGroupSeatResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/seats"
+      body: "*"
+    };
+  };
+  rpc GetGroupSeats(GetGroupSeatsRequest) returns (GetGroupSeatsResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/seats"
+    };
+  };
+  rpc DeleteGroupSeat(DeleteGroupSeatRequest) returns (DeleteGroupSeatResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/seats"
+    };
+  };
+}
+
+message IGroupSeat {
+  string id = 1;
+  string groupId = 2;
+  int32 seats = 3;
+}
+
+message PostGroupSeatRequest {
+  int32 seats = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupSeatResponse {
+}
+
+message GetGroupSeatsRequest {}
+
+message GetGroupSeatsResponse {
+  repeated IGroupSeat groupSeats = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupSeatRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupSeatResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+

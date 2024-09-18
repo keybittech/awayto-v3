@@ -1,0 +1,79 @@
+syntax = "proto3";
+package types;
+
+import "role.proto";
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupRoleService {
+  rpc PostGroupRole(PostGroupRoleRequest) returns (PostGroupRoleResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/roles"
+      body: "*"
+    };
+    option (siteRole) = APP_GROUP_ROLES; 
+  }
+
+  rpc PatchGroupRoles(PatchGroupRolesRequest) returns (PatchGroupRolesResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/roles"
+      body: "*"
+    };
+  }
+
+  rpc GetGroupRoles(GetGroupRolesRequest) returns (GetGroupRolesResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/roles"
+    };
+  }
+
+  rpc DeleteGroupRole(DeleteGroupRoleRequest) returns (DeleteGroupRoleResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/roles/{ids}"
+    };
+  }
+}
+
+message IGroupRole {
+  string id = 1;
+  string groupId = 2;
+  string roleId = 3;
+  string externalId = 4;
+  IRole role = 5;
+  string createdOn = 6;
+}
+
+message PostGroupRoleRequest {
+  IRole role = 1 [(google.api.field_behavior) = REQUIRED]; 
+}
+
+message PostGroupRoleResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupRolesRequest {
+  string defaultRoleId = 1 [(google.api.field_behavior) = REQUIRED];
+  map<string, IRole> roles = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupRolesResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupRolesRequest {}
+
+message GetGroupRolesResponse {
+  repeated IGroupRole groupRoles = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupRoleRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupRoleResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

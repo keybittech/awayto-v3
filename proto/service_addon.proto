@@ -1,0 +1,101 @@
+syntax = "proto3";
+package types;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service ServiceAddonService {
+  rpc PostServiceAddon(PostServiceAddonRequest) returns (PostServiceAddonResponse) {
+    option (google.api.http) = {
+      post: "/v1/service_addons"
+      body: "*"
+    };
+  }
+
+  rpc PatchServiceAddon(PatchServiceAddonRequest) returns (PatchServiceAddonResponse) {
+    option (google.api.http) = {
+      patch: "/v1/service_addons"
+      body: "*"
+    };
+  }
+
+  rpc GetServiceAddons(GetServiceAddonsRequest) returns (GetServiceAddonsResponse) {
+    option (google.api.http) = {
+      get: "/v1/service_addons"
+    };
+  }
+
+  rpc GetServiceAddonById(GetServiceAddonByIdRequest) returns (GetServiceAddonByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/service_addons/{id}"
+    };
+  }
+
+  rpc DeleteServiceAddon(DeleteServiceAddonRequest) returns (DeleteServiceAddonResponse) {
+    option (google.api.http) = {
+      delete: "/v1/service_addons/{id}"
+    };
+  }
+
+  rpc DisableServiceAddon(DisableServiceAddonRequest) returns (DisableServiceAddonResponse) {
+    option (google.api.http) = {
+      patch: "/v1/service_addons/{id}/disable"
+    };
+  }
+}
+
+message IServiceAddon {
+  string id = 1;
+  string name = 2;
+  int32 order = 3;
+  string createdOn = 4;
+}
+
+message PostServiceAddonRequest {
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostServiceAddonResponse {
+  IServiceAddon serviceAddon = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchServiceAddonRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchServiceAddonResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceAddonsRequest {}
+
+message GetServiceAddonsResponse {
+  repeated IServiceAddon serviceAddons = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceAddonByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetServiceAddonByIdResponse {
+  IServiceAddon serviceAddon = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteServiceAddonRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteServiceAddonResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableServiceAddonRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableServiceAddonResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

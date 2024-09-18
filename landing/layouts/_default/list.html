@@ -1,0 +1,42 @@
+{{ define "main" }}
+
+  {{ $devSection := .Site.GetPage "section" .RelPermalink }}
+
+  <div class="container">
+
+    <div class="sidebar fixed">
+      <nav>
+        <ul class="site-menu">
+          {{ partial "site_menu.html" . }}
+        </ul>
+      </nav>
+      <hr />
+      {{ partial "list_menu.html" . }}
+    </div>
+    <div class="open-section-menu">
+      <input id="_open_section" type="checkbox" />
+      <label for="_open_section" class="open-section">Sections</label>
+      {{ partial "list_menu.html" . }}
+    </div>
+    <div class="post-content">
+      {{ .Content }}
+
+      {{ range $devSection.Sections }}
+        {{ if eq .Kind "section" }}
+          <div class="section-header" id="{{ .Title | urlize }}">{{ .Content }}</div>
+          {{ if ne .Title "Home" }}
+            {{ $currentParent := . }}
+            {{ range .Pages }}
+              {{ if and (eq .Parent $currentParent) (ne . $currentParent) (ne .Kind "section") }}
+                <div class="section-header" id="{{ .Title | urlize }}">{{ .Content }}</div>
+              {{ end }}
+            {{ end }}
+          {{ end }}
+        {{ end }}
+      {{ end }}
+    </div>
+  </div>
+
+  {{ partial "footer.html" . }}
+{{ end }}
+

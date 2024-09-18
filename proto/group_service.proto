@@ -1,0 +1,60 @@
+ syntax = "proto3";
+package types;
+
+import "service.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupServiceService {
+  rpc PostGroupService(PostGroupServiceRequest) returns (PostGroupServiceResponse) {
+    option (google.api.http) = {
+      post: "/v1/group/services"
+      body: "*"
+    };
+  }
+ 
+  rpc GetGroupServices(GetGroupServicesRequest) returns (GetGroupServicesResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/services"
+    };
+  }
+
+  rpc DeleteGroupService(DeleteGroupServiceRequest) returns (stream DeleteGroupServiceResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/services/{ids}"
+    };
+  }
+}
+
+message IGroupService {
+  string id = 1;
+  string groupId = 2;
+  string serviceId = 3;
+  repeated string ids = 4;
+  IService service = 5;
+}
+
+message PostGroupServiceRequest {
+  string serviceId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostGroupServiceResponse {
+  IGroupService groupService = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupServicesRequest {}
+
+message GetGroupServicesResponse {
+  repeated IGroupService groupServices = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupServiceRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupServiceResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

@@ -1,0 +1,121 @@
+syntax = "proto3";
+package types;
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service GroupUsersService {
+  rpc PatchGroupUser(PatchGroupUserRequest) returns (PatchGroupUserResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/users"
+      body: "*"
+    };
+  }
+  rpc GetGroupUsers(GetGroupUsersRequest) returns (GetGroupUsersResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/users"
+    };
+  }
+  rpc GetGroupUserById(GetGroupUserByIdRequest) returns (GetGroupUserByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/users/{userId}"
+    };
+  }
+  rpc DeleteGroupUser(DeleteGroupUserRequest) returns (DeleteGroupUserResponse) {
+    option (google.api.http) = {
+      delete: "/v1/group/users/{ids}"
+    };
+  }
+  rpc LockGroupUser(LockGroupUserRequest) returns (LockGroupUserResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/users/{ids}/lock"
+    };
+  }
+  rpc UnlockGroupUser(UnlockGroupUserRequest) returns (UnlockGroupUserResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/users/{ids}/unlock"
+    };
+  }
+}
+
+message IGroupUserProfile {
+  string id = 1;
+  string sub = 2;
+  string email = 3;
+  string username = 4;
+  string firstName = 5;
+  string lastName = 6;
+  string image = 7;
+  string createdOn = 8;
+  string updatedOn = 9;
+  bool locked = 10;
+  bool active = 11;
+  bool enabled = 12;
+}
+
+message IGroupUser {
+  string id = 1;
+  string groupId = 2;
+  string userId = 3;
+  string userSub = 4;
+  string externalId = 5;
+  string groupExternalId = 6;
+  string roleId = 7;
+  string roleName = 8;
+  string createdOn = 9;
+  IGroupUserProfile userProfile = 10;
+}
+
+message IGroupUsers {
+  map<string, IGroupUser> groupUsers = 1;
+}
+
+message PatchGroupUserRequest {
+  string userId = 1 [(google.api.field_behavior) = REQUIRED];
+  string roleName = 3 [(google.api.field_behavior) = REQUIRED];
+  string roleId = 4 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupUserResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupUsersRequest {}
+
+message GetGroupUsersResponse {
+  repeated IGroupUser groupUsers = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupUserByIdRequest {
+  string userId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupUserByIdResponse {
+  IGroupUser groupUser = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupUserRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteGroupUserResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message LockGroupUserRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message LockGroupUserResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UnlockGroupUserRequest {
+  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message UnlockGroupUserResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

@@ -1,0 +1,157 @@
+syntax = "proto3";
+package types;
+
+import "quote.proto";
+import "booking.proto";
+import "group.proto";
+import "role.proto";
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+
+service UserProfileService {
+  rpc PostUserProfile(PostUserProfileRequest) returns (PostUserProfileResponse) {
+    option (google.api.http) = {
+      post: "/v1/profile"
+      body: "*"
+    };
+  }
+
+  rpc PatchUserProfile(PatchUserProfileRequest) returns (PatchUserProfileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/profile"
+      body: "*"
+    };
+  }
+
+  rpc GetUserProfileDetails(GetUserProfileDetailsRequest) returns (GetUserProfileDetailsResponse) {
+    option (google.api.http) = {
+      get: "/v1/profile/details"
+    };
+    option (cache) = SKIP;
+  }
+
+  rpc GetUserProfileDetailsBySub(GetUserProfileDetailsBySubRequest) returns (GetUserProfileDetailsBySubResponse) {
+    option (google.api.http) = {
+      get: "/v1/profile/details/sub/{sub}"
+    };
+  }
+
+  rpc GetUserProfileDetailsById(GetUserProfileDetailsByIdRequest) returns (GetUserProfileDetailsByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/profile/details/id/{id}"
+    };
+  }
+
+  rpc DisableUserProfile(DisableUserProfileRequest) returns (DisableUserProfileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/profile/{id}/disable"
+    };
+  }
+
+  rpc ActivateProfile(ActivateProfileRequest) returns (ActivateProfileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/profile/activate"
+    };
+  }
+
+  rpc DeactivateProfile(DeactivateProfileRequest) returns (DeactivateProfileResponse) {
+    option (google.api.http) = {
+      patch: "/v1/profile/deactivate"
+    };
+  }
+}
+
+message IUserProfile {
+  string id = 1;
+  string sub = 2;
+  string email = 3;
+  string username = 4;
+  string firstName = 5;
+  string lastName = 6;
+  string image = 7;
+  string createdOn = 8;
+  string updatedOn = 9;
+  bool locked = 10;
+  bool active = 11;
+  bool enabled = 12;
+  map<string, IQuote> quotes = 13;
+  bool seenQuotes = 14;
+  map<string, IBooking> bookings = 15;
+  bool seenBookings = 16;
+  map<string, IGroup> groups = 17;
+  map<string, IRole> roles = 18;
+  repeated string availableUserGroupRoles = 19;
+  int32 row = 20;
+}
+
+message PostUserProfileRequest {
+  string firstName = 1 [(google.api.field_behavior) = REQUIRED];
+  string lastName = 2 [(google.api.field_behavior) = REQUIRED];
+  string username = 3 [(google.api.field_behavior) = REQUIRED];
+  string email = 4 [(google.api.field_behavior) = REQUIRED];
+  string image = 5 [(google.api.field_behavior) = REQUIRED];
+  string sub = 6 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostUserProfileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchUserProfileRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string firstName = 2 [(google.api.field_behavior) = REQUIRED];
+  string lastName = 3 [(google.api.field_behavior) = REQUIRED];
+  string username = 4 [(google.api.field_behavior) = REQUIRED];
+  string email = 5 [(google.api.field_behavior) = REQUIRED];
+  string image = 6 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchUserProfileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserProfileDetailsRequest {}
+
+message GetUserProfileDetailsResponse {
+  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserProfileDetailsBySubRequest {
+  string sub = 1 [(google.api.field_behavior) = REQUIRED];
+}
+message GetUserProfileDetailsBySubResponse {
+  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserProfileDetailsByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetUserProfileDetailsByIdResponse {
+  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableUserProfileRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableUserProfileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message ActivateProfileRequest {}
+
+message ActivateProfileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeactivateProfileRequest {}
+
+message DeactivateProfileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}

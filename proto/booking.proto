@@ -1,0 +1,147 @@
+syntax = "proto3";
+package types;
+
+import "file.proto";
+import "service.proto";
+import "service_tier.proto";
+import "schedule.proto";
+import "util.proto";
+import "quote.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "pkg/types";
+
+service BookingService {
+  rpc PostBooking(PostBookingRequest) returns (PostBookingResponse) {
+    option (google.api.http) = {
+      post: "/v1/bookings"
+      body: "*"
+    };
+  }
+
+  rpc PatchBooking(PatchBookingRequest) returns (PatchBookingResponse) {
+    option (google.api.http) = {
+      patch: "/v1/bookings"
+      body: "*"
+    };
+  }
+
+  rpc GetBookings(GetBookingsRequest) returns (GetBookingsResponse) {
+    option (google.api.http) = {
+      get: "/v1/bookings"
+    };
+  }
+
+  rpc GetBookingById(GetBookingByIdRequest) returns (GetBookingByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/bookings/{id}"
+    };
+  }
+
+  rpc GetBookingFiles(GetBookingFilesRequest) returns (GetBookingFilesResponse) {
+    option (google.api.http) = {
+      get: "/v1/bookings/{id}/files"
+    };
+  }
+
+  rpc PatchBookingRating(PatchBookingRatingRequest) returns (PatchBookingRatingResponse) {
+    option (google.api.http) = {
+      patch: "/v1/bookings/rating"
+      body: "*"
+    };
+    option (throttle) = 1;
+  }
+
+  rpc DeleteBooking(DeleteBookingRequest) returns (DeleteBookingResponse) {
+    option (google.api.http) = {
+      delete: "/v1/bookings/{id}"
+    };
+  }
+
+  rpc DisableBooking(DisableBookingRequest) returns (DisableBookingResponse) {
+    option (google.api.http) = {
+      patch: "/v1/bookings/{id}/disable"
+    };
+  }
+}
+
+message IBooking {
+  string id = 1;
+  string rating = 2;
+  string slotDate = 3;
+  string quoteId = 4;
+  string scheduleBracketSlotId = 5;
+  string tierSurveyVersionSubmissionId = 6;
+  string serviceSurveyVersionSubmissionId = 7;
+  string createdOn = 8;
+  IQuote quote = 9;
+  IService service = 10;
+  IScheduleBracketSlot scheduleBracketSlot = 11;
+  IServiceTier serviceTier = 12;
+  int32 row = 13;
+}
+
+message PostBookingRequest {
+  repeated IBooking bookings = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PostBookingResponse {
+  repeated IBooking bookings = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchBookingRequest {
+  IBooking booking = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchBookingResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingsRequest {}
+
+message GetBookingsResponse {
+  repeated IBooking bookings = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingByIdRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingByIdResponse {
+  IBooking booking = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteBookingRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteBookingResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableBookingRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DisableBookingResponse {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingFilesRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetBookingFilesResponse {
+  repeated IFile files = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchBookingRatingRequest {
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string rating = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchBookingRatingResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
