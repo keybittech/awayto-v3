@@ -97,4 +97,4 @@ export const authConfig = {
   },
 };
 
-export const newAuthSlice = createSlice(authConfig);
+export const authSlice = createSlice(authConfig);

@@ -2,8 +2,8 @@ import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
 import { configureStore, Middleware } from '@reduxjs/toolkit';
 import { MutationDefinition, QueryDefinition, setupListeners } from '@reduxjs/toolkit/query';
 import { siteApi } from './api';
-import { ConfirmActionProps, encodeVal, IUtil, newUtilSlice } from './util';
-import { newAuthSlice } from './auth';
+import { ConfirmActionProps, encodeVal, IUtil, utilSlice } from './util';
+import { authSlice } from './auth';
 import { CustomBaseQuery } from './api.template';
 import { UseQueryHookResult } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { themeSlice } from './theme';
@@ -35,9 +35,9 @@ const customUtilMiddleware: Middleware = _ => next => (action: { type: string, p
 export const store = configureStore({
   reducer: {
     [siteApi.reducerPath]: siteApi.reducer,
-    util: newUtilSlice.reducer,
+    util: utilSlice.reducer,
 
-    auth: newAuthSlice.reducer,
+    auth: authSlice.reducer,
     theme: themeSlice.reducer
   },
   middleware(getDefaultMiddleware) {

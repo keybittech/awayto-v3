@@ -86,11 +86,11 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 	
-.PHONY: all cert java landing ts_protoc ts go_protoc go go_dev genmocks go_test go_coverage clean docker_up docker_down docker_build docker_start docker_stop db redis host_up host_gen host_ssh host_down host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down host_deploy
+.PHONY: build cert java landing ts_protoc ts go_protoc go go_dev genmocks go_test go_coverage clean docker_up docker_down docker_build docker_start docker_stop db redis host_up host_gen host_ssh host_down host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down host_deploy host_db
 
 ## Builds
 
-all: clean cert java landing ts go
+build: clean cert java landing ts go
 
 cert: $(CERTS_DIR)
 	chmod +x $(DEV_SCRIPTS)/cert.sh && exec $(DEV_SCRIPTS)/cert.sh
@@ -215,6 +215,9 @@ host_down:
 host_ssh:
 	ssh -p ${SSH_PORT} ${HOST_OPERATOR}@$(APP_IP)
 
+host_db:
+	$(SSH) "sudo docker exec -i \$(sudo docker ps -aqf "name=db") psql -U \"${PG_USER}\" \"${PG_DB}\""
+
 host_deploy_env:
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > "$(HOST_LOCAL_DIR)/${BINARY_NAME}.service"
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > "$(HOST_LOCAL_DIR)/start.sh"
@@ -292,7 +295,7 @@ host_deploy_compose_up:
 host_deploy_compose_down:
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_down"
 
-host_deploy: host_predeploy all host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
+host_deploy: host_predeploy build host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
 	$(SSH) " \
 		sudo systemctl enable $(BINARY_SERVICE); \
 		sudo systemctl stop $(BINARY_SERVICE); \
@@ -326,7 +329,7 @@ $(MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LO
 #		-e KC_SPI_TRUSTSTORE_FILE_FILE=/opt/keycloak/conf/KeyStore.jks \
 #		-e KC_SPI_TRUSTSTORE_FILE_PASSWORD=$CA_PASS \
 #
-# host_deploy: all host_deploy_env host_deploy_sync host_deploy_docker host_deploy_db host_deploy_redis host_deploy_auth
+# host_deploy: build host_deploy_env host_deploy_sync host_deploy_docker host_deploy_db host_deploy_redis host_deploy_auth
 # 	$(SSH) "sudo systemctl enable $(BINARY_SERVICE); sudo systemctl restart $(BINARY_SERVICE);"
 #
 # host_deploy_db:

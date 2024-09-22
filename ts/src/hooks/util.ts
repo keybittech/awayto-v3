@@ -86,7 +86,7 @@ export const utilConfig = {
   },
 };
 
-export const newUtilSlice = createSlice(utilConfig);
+export const utilSlice = createSlice(utilConfig);
 
 let arbitraryCounter = 0;
 
