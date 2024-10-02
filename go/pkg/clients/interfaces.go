@@ -104,6 +104,7 @@ type IKeycloak interface {
 	CreateGroup(name string) (*KeycloakGroup, error)
 	GetGroup(id string) (*KeycloakGroup, error)
 	GetGroupByName(name string) (*[]KeycloakGroup, error)
+	GetGroupSubgroups(groupId string) (*[]KeycloakGroup, error)
 	DeleteGroup(id string) error
 	UpdateGroup(id, name string) error
 	AddRolesToGroup(id string, roles []KeycloakRole) error

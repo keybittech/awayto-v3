@@ -90,6 +90,7 @@ type KeycloakGroup struct {
 	Id        string          `json:"id"`
 	Name      string          `json:"name"`
 	Path      string          `json:"path"`
+	ParentId  string          `json:"parentId"`
 	SubGroups []KeycloakGroup `json:"subGroups"`
 }
 
@@ -512,6 +513,29 @@ func (keycloakClient KeycloakClient) CreateSubgroup(groupId, subgroupName string
 	}
 
 	var result KeycloakGroup
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	return &result, nil
+}
+
+func (keycloakClient KeycloakClient) GetGroupSubgroups(groupId string) (*[]KeycloakGroup, error) {
+	queryParams := url.Values{}
+	queryParams.Add("first", "0")
+	queryParams.Add("max", "11")
+
+	resp, err := util.GetWithParams(
+		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId+"/children",
+		keycloakClient.BasicHeaders(),
+		queryParams,
+	)
+
+	if err != nil {
+		return nil, err
+	}
+
+	var result []KeycloakGroup
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}

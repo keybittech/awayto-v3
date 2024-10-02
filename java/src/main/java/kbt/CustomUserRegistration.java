@@ -3,10 +3,6 @@ package kbt;
 import java.util.ArrayList;
 import java.util.List;
 
-import javax.ws.rs.core.MultivaluedHashMap;
-import javax.ws.rs.core.MultivaluedMap;
-import javax.ws.rs.ext.Provider;
-
 import org.json.JSONObject;
 import org.keycloak.Config;
 import org.keycloak.authentication.FormContext;
@@ -18,6 +14,10 @@ import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
 import org.keycloak.utils.RegexUtils;
+
+import jakarta.ws.rs.core.MultivaluedHashMap;
+import jakarta.ws.rs.core.MultivaluedMap;
+import jakarta.ws.rs.ext.Provider;
 
 @Provider
 public class CustomUserRegistration extends RegistrationUserCreation {

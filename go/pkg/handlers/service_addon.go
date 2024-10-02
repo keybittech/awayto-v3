@@ -34,7 +34,9 @@ func (h *Handlers) PostServiceAddon(w http.ResponseWriter, req *http.Request, da
 		return nil, util.ErrCheck(sql.ErrNoRows)
 	}
 
-	return &types.PostServiceAddonResponse{ServiceAddon: serviceAddons[0]}, nil
+	h.Redis.Client().Del(req.Context(), session.UserSub+"group/service_addons")
+
+	return &types.PostServiceAddonResponse{Id: serviceAddons[0].GetId()}, nil
 }
 
 func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PatchServiceAddonRequest) (*types.PatchServiceAddonResponse, error) {
@@ -49,6 +51,8 @@ func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, d
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	h.Redis.Client().Del(req.Context(), session.UserSub+"group/service_addons")
 
 	return &types.PatchServiceAddonResponse{Success: true}, nil
 }
@@ -86,6 +90,7 @@ func (h *Handlers) GetServiceAddonById(w http.ResponseWriter, req *http.Request,
 }
 
 func (h *Handlers) DeleteServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceAddonRequest) (*types.DeleteServiceAddonResponse, error) {
+	session := h.Redis.ReqSession(req)
 	_, err := h.Database.Client().Exec(`
 		DELETE FROM dbtable_schema.service_addons
 		WHERE id = $1
@@ -94,6 +99,8 @@ func (h *Handlers) DeleteServiceAddon(w http.ResponseWriter, req *http.Request, 
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	h.Redis.Client().Del(req.Context(), session.UserSub+"group/service_addons")
 
 	return &types.DeleteServiceAddonResponse{Success: true}, nil
 }

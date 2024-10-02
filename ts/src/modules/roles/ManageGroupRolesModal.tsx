@@ -109,6 +109,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
               invalidValues={['admin']}
               refetchAction={getUserProfileDetails}
               createAction={postRole}
+              createActionBodyKey='postRoleRequest'
               deleteAction={deleteRole}
               deleteActionIdentifier='ids'
               {...props}

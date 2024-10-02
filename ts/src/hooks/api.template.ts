@@ -1,6 +1,6 @@
 import { FetchArgs, BaseQueryFn, createApi, fetchBaseQuery, FetchBaseQueryError } from '@reduxjs/toolkit/query/react'
 
-import { authSlice, refreshToken } from './auth';
+import { keycloak, authSlice, refreshToken } from './auth';
 import { utilSlice } from './util';
 
 const {
@@ -13,13 +13,11 @@ const setSnack = utilSlice.actions.setSnack;
 const baseQuery = fetchBaseQuery({
   baseUrl: REACT_APP_APP_HOST_URL + "/api",
   prepareHeaders(headers) {
-    const token = localStorage.getItem('kc_token') as string;
-
-    if (!token) {
-      throw "no token for api fetch"
+    if (!keycloak.token) {
+      throw 'no token for api fetch';
     }
 
-    headers.set('Authorization', 'Bearer ' + token);
+    headers.set('Authorization', 'Bearer ' + keycloak.token);
     return headers
   },
 })

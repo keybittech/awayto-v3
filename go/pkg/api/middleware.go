@@ -177,26 +177,28 @@ func (a *API) SessionAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 						session.SubGroupName = fmt.Sprint(session.SubGroups[0])
 					}
 
-					session.GroupName = "/" + strings.Split(session.SubGroupName, "/")[1]
-
-					if session.SubGroupName == "" || session.GroupName == "" {
+					if session.SubGroupName == "" {
 						util.ErrCheck(errors.New("no group names found "))
 						http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
 						return
 					}
+
+					session.GroupName = "/" + strings.Split(session.SubGroupName, "/")[1]
 
 					kcGroups, err := a.Handlers.Keycloak.GetGroupByName(session.GroupName)
 
 					for _, gr := range *kcGroups {
 						if gr.Path == session.GroupName {
 							session.GroupExternalId = gr.Id
+							break
+						}
+					}
 
-							for _, sg := range gr.SubGroups {
-								if sg.Path == session.SubGroupName {
-									session.SubGroupExternalId = sg.Id
-									break
-								}
-							}
+					kcSubgroups, err := a.Handlers.Keycloak.GetGroupSubgroups(session.GroupExternalId)
+
+					for _, gr := range *kcSubgroups {
+						if gr.Path == session.SubGroupName {
+							session.SubGroupExternalId = gr.Id
 							break
 						}
 					}

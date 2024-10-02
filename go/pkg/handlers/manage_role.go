@@ -26,7 +26,7 @@ func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, dat
 		return nil, util.ErrCheck(errors.New("failed to create role"))
 	}
 
-	return &types.PostManageRolesResponse{Id: roles[0].GetId()}, nil
+	return &types.PostManageRolesResponse{Id: roles[0].GetId(), Name: roles[0].GetName()}, nil
 }
 
 func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, data *types.PatchManageRolesRequest) (*types.PatchManageRolesResponse, error) {

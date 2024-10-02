@@ -36,6 +36,7 @@ const (
 	UpdateGroupKeycloakCommand
 	GetGroupKeycloakCommand
 	GetGroupByNameKeycloakCommand
+	GetGroupSubgroupsKeycloakCommand
 	GetGroupRoleMappingsKeycloakCommand
 	CreateSubgroupKeycloakCommand
 	DeleteUserFromGroupKeycloakCommand
@@ -203,6 +204,9 @@ func InitKeycloak() IKeycloak {
 				findBytes, err := kc.FindResource("groups", cmd.Params.GroupName)
 				json.Unmarshal(findBytes, &groups)
 				cmd.ReplyChan <- KeycloakResponse{Groups: &groups, Error: err}
+			case GetGroupSubgroupsKeycloakCommand:
+				subgroups, err := kc.GetGroupSubgroups(cmd.Params.GroupId)
+				cmd.ReplyChan <- KeycloakResponse{Groups: subgroups, Error: err}
 			case GetGroupRoleMappingsKeycloakCommand:
 				mappings, err := kc.GetGroupRoleMappings(cmd.Params.GroupId)
 				cmd.ReplyChan <- KeycloakResponse{Mappings: mappings, Error: err}
@@ -366,6 +370,19 @@ func (k *Keycloak) GetGroupByName(name string) (*[]KeycloakGroup, error) {
 	close(groupByNameReplyChan)
 
 	return groupByNameReply.Groups, nil
+}
+
+func (k *Keycloak) GetGroupSubgroups(groupId string) (*[]KeycloakGroup, error) {
+	subgroupsReplyChan := make(chan KeycloakResponse)
+	k.Chan() <- KeycloakCommand{
+		Ty:        GetGroupSubgroupsKeycloakCommand,
+		Params:    KeycloakParams{GroupId: groupId},
+		ReplyChan: subgroupsReplyChan,
+	}
+	subgroupsReply := <-subgroupsReplyChan
+	close(subgroupsReplyChan)
+
+	return subgroupsReply.Groups, nil
 }
 
 func (k *Keycloak) DeleteGroup(id string) error {

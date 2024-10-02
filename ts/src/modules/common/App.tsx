@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 import ThemeProvider from '@mui/material/styles/ThemeProvider';
+import CssBaseline from '@mui/material/CssBaseline';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
 import { siteApi, useAppSelector, useComponents, lightTheme, darkTheme, useContexts, SiteRoles } from 'awayto/hooks';
@@ -21,7 +22,7 @@ export default function App(props: IComponent): React.JSX.Element {
   const { AuthContext } = useContexts();
   const { keycloak, refreshToken } = useContext(AuthContext) as AuthContextType;
 
-  const { Onboard } = useComponents();
+  const { ConfirmAction, SnackAlert, Onboard } = useComponents();
 
   const { variant } = useAppSelector(state => state.theme);
 
@@ -77,6 +78,10 @@ export default function App(props: IComponent): React.JSX.Element {
   return <>
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <ThemeProvider theme={'light' === variant ? lightTheme : darkTheme}>
+        <CssBaseline />
+
+        <SnackAlert />
+        <ConfirmAction />
         {onboarding && <Onboard {...props} reloadProfile={reloadProfile} />}
         {ready && <Layout {...props} />}
 

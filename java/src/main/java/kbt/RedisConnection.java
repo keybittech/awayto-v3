@@ -2,17 +2,17 @@ package kbt;
 
 import org.jboss.logging.Logger;
 
-import redis.clients.jedis.Jedis;
 import redis.clients.jedis.DefaultJedisClientConfig;
+import redis.clients.jedis.Jedis;
 
 public class RedisConnection {
   private static final Logger log = Logger.getLogger(CustomEventListenerProvider.class);
 
   public Jedis connect() {
     DefaultJedisClientConfig clientConfig = DefaultJedisClientConfig
-      .builder()
-      .password(System.getenv("KC_REDIS_PASS"))
-      .build();
+        .builder()
+        .password(System.getenv("KC_REDIS_PASS"))
+        .build();
     return new Jedis(System.getenv("KC_REDIS_HOST"), Integer.valueOf(System.getenv("KC_REDIS_PORT")), clientConfig);
   }
 

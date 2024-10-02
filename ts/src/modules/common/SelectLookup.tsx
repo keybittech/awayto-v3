@@ -11,6 +11,8 @@ import CheckIcon from '@mui/icons-material/Check';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
 import { SiteMutation, useUtil, ILookup } from 'awayto/hooks';
 
+type CreateActionBody = Record<string, string | Record<string, string>>;
+
 declare global {
   interface IComponent {
     multiple?: boolean;
@@ -25,7 +27,8 @@ declare global {
     invalidValues?: string[];
     refetchAction?: (props?: { [prop: string]: string }) => void;
     attachAction?: MutationTrigger<SiteMutation<{ [prop: string]: string }, ILookup>>;
-    createAction?: MutationTrigger<SiteMutation<{ readonly name: string; }, ILookup>>;
+    createAction?: MutationTrigger<SiteMutation<CreateActionBody, ILookup>>;
+    createActionBodyKey?: string;
     deleteAction?: MutationTrigger<SiteMutation<{ [prop: string]: string }, ILookup[]>>;
     deleteComplete?(value: string | string[]): void;
     parentUuidName?: string;
@@ -39,7 +42,7 @@ function isStringArray(str?: string | string[]): str is string[] {
   return (str as string[]).forEach !== undefined;
 }
 
-export function SelectLookup({ lookupChange, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, deleteAction, deleteComplete, deleteActionIdentifier }: IComponent): React.JSX.Element {
+export function SelectLookup({ lookupChange, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, createActionBodyKey, deleteAction, deleteComplete, deleteActionIdentifier }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -66,7 +69,13 @@ export function SelectLookup({ lookupChange, disabled = false, invalidValues = [
 
       setLookupUpdater(newLookup.name);
       if (createAction) {
-        createAction({ name: newLookup.name }).unwrap().then(res => {
+        let actionBody: CreateActionBody = { name: newLookup.name };
+        if (createActionBodyKey) {
+          actionBody = {
+            [createActionBodyKey]: { name: newLookup.name }
+          };
+        }
+        createAction(actionBody).unwrap().then(res => {
           const { id: lookupId } = res;
           if (attachAction && lookupId && attachName) {
             const attachPayload = { [attachName]: lookupId };

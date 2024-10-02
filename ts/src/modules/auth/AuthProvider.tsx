@@ -10,44 +10,31 @@ function AuthProvider(): React.JSX.Element {
   const { App } = useComponents();
 
   const [init, setInit] = useState(false);
-
-  const [_token] = useState(localStorage.getItem('kc_token') as string);
-  const [_refreshToken] = useState(localStorage.getItem('kc_refreshToken') as string);
-
   const { authenticated } = useAppSelector(state => state.auth);
   const { setAuthenticated } = useAuth();
 
   useEffect(() => {
-    if (location.pathname == '/register') {
-      void keycloak.init({}).then(() => {
-        const redirectUri = window.location.toString().replace('/register', '')
-        window.location.href = keycloak.createRegisterUrl({ redirectUri });
-      }).catch(console.error);
-    } else {
-      void keycloak.init({
-        onLoad: 'login-required',
-        checkLoginIframe: false,
-        token: _token,
-        refreshToken: _refreshToken
-      }).then(async (currentAuth) => {
-        if (currentAuth) {
+    async function go() {
+      if (location.pathname == '/register') {
+        void keycloak.init({}).then(() => {
+          const redirectUri = window.location.toString().replace('/register', '')
+          window.location.href = keycloak.createRegisterUrl({ redirectUri });
+        }).catch(console.error);
+      } else {
+        try {
+          const authenticated = await keycloak.init({
+            onLoad: 'login-required',
+          });
+
           setInterval(refreshToken, 55 * 1000);
-
-          await refreshToken();
-          // await fetch('/api/auth/checkin', {
-          //   headers: {
-          //     'Content-Type': 'application/json',
-          //     'Authorization': `Bearer ${keycloak.token as string}`
-          //   }
-          // });
+          setAuthenticated({ authenticated });
+          setInit(true);
+        } catch (e) {
+          console.log(e);
         }
-
-        setAuthenticated({ authenticated: currentAuth });
-        setInit(true);
-      }).catch((err) => {
-        console.log({ err: err as string });
-      });
+      }
     }
+    void go();
   }, []);
 
   const authContext = {

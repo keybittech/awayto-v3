@@ -1,12 +1,14 @@
 #!/bin/sh
 
 while true; do
-  if curl -s $KC_INTERNAL | grep -q "<html>"; then
+
+  if [ $(curl -o /dev/null -s -w "%{http_code}" "$KC_INTERNAL") = "303" ]; then
     echo "Found <html> in the response."
     break
   fi
   
   sleep 5 # sleep for 5 seconds before the next attempt
+
 done
 
 AUTH_CID=$($SUDO docker ps -aqf "name=auth")
@@ -42,7 +44,7 @@ kcadm update events/config -r $KC_REALM -s eventsListeners=[\"custom-event-liste
 echo "# Configuring authenticator to use custom registration"
 kcadm create authentication/flows/registration/copy -r $KC_REALM -s newName="custom registration"
 
-REGISTRATION_USER_CREATION_ID=$(kcadm get authentication/flows/custom%20registration/executions -r $KC_REALM | jq -r '.[] | select(.displayName == "Registration User Creation") | .id')
+REGISTRATION_USER_CREATION_ID=$(kcadm get authentication/flows/custom%20registration/executions -r $KC_REALM | jq -r '.[] | select(.displayName == "Registration User Profile Creation") | .id')
 
 kcadm delete authentication/executions/$REGISTRATION_USER_CREATION_ID -r $KC_REALM
 

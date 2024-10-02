@@ -171,7 +171,6 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 
 func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.PatchGroupAssignmentsRequest) (*types.PatchGroupAssignmentsResponse, error) {
 
-	data.GetAssignments()
 	session := h.Redis.ReqSession(req)
 
 	assignmentsBytes, err := h.Redis.Client().Get(req.Context(), "group_role_assignments:"+session.GroupId).Bytes()
@@ -254,7 +253,12 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 
 	assignments := make(map[string]*types.IGroupRoleAuthActions)
 
-	for _, sg := range kcGroup.SubGroups {
+	subgroups, err := h.Keycloak.GetGroupSubgroups(kcGroup.Id)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	for _, sg := range *subgroups {
 
 		graa := &types.IGroupRoleAuthActions{
 			Id:      sg.Id,

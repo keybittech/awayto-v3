@@ -24,12 +24,14 @@ export type ConfirmActionProps = [
   approval?: boolean,
 ]
 
+export type ConfirmAction = (...props: ConfirmActionProps) => void | Promise<void>;
+
 /**
  * @category Util
  * @purpose stores UI and general application related properties for use in application user experience enhancing functionalities
  */
 export type IUtil = {
-  confirmAction(...props: ConfirmActionProps): void | Promise<void>;
+  confirmAction: ConfirmAction;
   confirmActionId: string;
   isConfirming: boolean;
   confirmEffect: string;
@@ -63,9 +65,11 @@ export const utilConfig = {
     isConfirming: false
   } as IUtil,
   reducers: {
-    openConfirm: (...[state, { payload: { confirmEffect, confirmSideEffect } }]: UtilPayload) => {
+    openConfirm: (...[state, { payload: { confirmAction, confirmEffect, confirmSideEffect } }]: UtilPayload) => {
+      console.log({ confirmAction, confirmEffect, confirmSideEffect })
       if (confirmEffect) {
         state.isConfirming = true;
+        state.confirmAction = confirmAction as ConfirmAction;
         state.confirmEffect = confirmEffect;
         state.confirmSideEffect = confirmSideEffect;
         state.confirmActionId = encodeVal(confirmEffect);

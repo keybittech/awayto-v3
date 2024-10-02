@@ -1,6 +1,6 @@
 # docker build -t wcauth . && docker run --rm --init -p 8443:8443 wcauth
 
-FROM quay.io/keycloak/keycloak:21.1 AS builder
+FROM quay.io/keycloak/keycloak:25.0.6 AS builder
 
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
@@ -11,13 +11,16 @@ ENV KC_DB=postgres
 
 COPY ./java/target/*.jar /opt/keycloak/providers/
 COPY ./java/themes/base /opt/keycloak/themes/site
-RUN /opt/keycloak/bin/kc.sh build --features=declarative-user-profile
+RUN /opt/keycloak/bin/kc.sh build # --features=declarative-user-profile
 
-# FROM quay.io/keycloak/keycloak:21.1
+# FROM quay.io/keycloak/keycloak:25.0.6
+
 #
 # USER root
 #
+
 # COPY --from=builder /opt/keycloak/ /opt/keycloak/
+
 # COPY ./certs/KeyStore.jks /opt/keycloak/conf/KeyStore.jks
 # COPY ./certs/keycloak_fullchain.pem /opt/keycloak/conf/keycloak_fullchain.pem
 # COPY ./certs/keycloak.key /opt/keycloak/conf/keycloak.key
@@ -33,3 +36,5 @@ RUN /opt/keycloak/bin/kc.sh build --features=declarative-user-profile
 # USER keycloak
 
 ENTRYPOINT [ "/opt/keycloak/bin/kc.sh", "start", "--optimized" ]
+
+

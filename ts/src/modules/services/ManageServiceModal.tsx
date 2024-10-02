@@ -254,11 +254,11 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
                         if (existingId) {
                           setServiceTierAddonIds([...serviceTierAddonIds, existingId])
                         } else {
-                          postServiceAddon({ postServiceAddonRequest: { name: suggestedAddon } }).unwrap().then(({ serviceAddon }) => {
-                            postGroupServiceAddon({ serviceAddonId: serviceAddon.id! }).unwrap().then(async () => {
+                          postServiceAddon({ postServiceAddonRequest: { name: suggestedAddon } }).unwrap().then(({ id: serviceAddonId }) => {
+                            postGroupServiceAddon({ serviceAddonId }).unwrap().then(async () => {
                               await getGroupServiceAddons();
-                              if (serviceAddon.id) {
-                                !serviceTierAddonIds.includes(serviceAddon.id) && setServiceTierAddonIds([...serviceTierAddonIds, serviceAddon.id]);
+                              if (serviceAddonId) {
+                                !serviceTierAddonIds.includes(serviceAddonId) && setServiceTierAddonIds([...serviceTierAddonIds, serviceAddonId]);
                               }
                             }).catch(console.error);
                           }).catch(console.error);
@@ -272,6 +272,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
                   if (gsa) setServiceTierAddonIds(gsa);
                 }}
                 createAction={postServiceAddon}
+                createActionBodyKey='postServiceAddonRequest'
                 deleteAction={deleteGroupServiceAddon}
                 deleteActionIdentifier='serviceAddonId'
                 deleteComplete={(val: string) => {
@@ -285,7 +286,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
                 }}
                 refetchAction={getGroupServiceAddons}
                 attachAction={postGroupServiceAddon}
-                attachName='id'
+                attachName='serviceAddonId'
                 {...props}
               />
             </Box>

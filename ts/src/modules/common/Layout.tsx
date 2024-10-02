@@ -3,7 +3,6 @@ import { Route, Outlet, Routes } from 'react-router-dom';
 
 import Grid from '@mui/material/Unstable_Grid2';
 
-import CssBaseline from '@mui/material/CssBaseline';
 
 import { useComponents } from 'awayto/hooks';
 import Sidebar from './Sidebar';
@@ -12,8 +11,6 @@ import Topbar from './Topbar';
 const Layout = (props: IComponent): React.JSX.Element => {
 
   const {
-    SnackAlert,
-    ConfirmAction,
     Home,
     Exchange,
     ExchangeSummary,
@@ -31,10 +28,6 @@ const Layout = (props: IComponent): React.JSX.Element => {
   }, []);
 
   return <>
-    <CssBaseline />
-
-    <SnackAlert />
-    <ConfirmAction {...props} />
 
     <TopLevelProviders>
       <Routes>

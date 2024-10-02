@@ -14,9 +14,7 @@ export const keycloak = new Keycloak({
 });
 
 export const refreshToken = async () => {
-  await keycloak.updateToken(-1);
-  localStorage.setItem('kc_token', keycloak.token as string);
-  localStorage.setItem('kc_refreshToken', keycloak.refreshToken as string);
+  await keycloak.updateToken(50);
   return true;
 }
 
@@ -72,11 +70,10 @@ export const hasRole = function(availableUserGroupRoles?: string[], targetRoles?
  * @category Authorization
  */
 export const getTokenHeaders = function(): { headers: Record<string, string> } {
-  const token = localStorage.getItem('kc_token');
   return {
     headers: {
       'Content-Type': 'application/json',
-      'Authorization': `Bearer ${token as string}`
+      'Authorization': `Bearer ${keycloak.token}`
     }
   }
 }
