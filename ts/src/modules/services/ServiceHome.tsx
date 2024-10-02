@@ -12,7 +12,6 @@ import CardHeader from '@mui/material/CardHeader';
 import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 
-import { IPrompts } from '@keybittech/wizapp/dist/lib';
 import { useComponents, IService, useStyles, useUtil, useSuggestions } from 'awayto/hooks';
 
 export function ServiceHome(props: IProps): React.JSX.Element {

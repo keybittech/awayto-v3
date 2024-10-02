@@ -13,6 +13,7 @@ const glob = require('glob');
 const ModuleScopePlugin = require('react-dev-utils/ModuleScopePlugin');
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const CompressionWebpackPlugin = require('compression-webpack-plugin');
+const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const CracoEsbuildPlugin = require('craco-esbuild');
 
@@ -162,6 +163,14 @@ module.exports = {
           failOnError: true,
           allowAsyncCycles: false,
           cwd: process.cwd()
+        }),
+        new CopyWebpackPlugin({
+          patterns: [
+            {
+              from: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
+              to: 'static/js'
+            }
+          ]
         })
       );
 

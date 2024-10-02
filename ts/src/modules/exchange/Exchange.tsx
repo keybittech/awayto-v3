@@ -1,5 +1,3 @@
-/// <reference lib="WebWorker" />
-
 import React, { Suspense, useContext, useEffect, useState } from 'react';
 
 import IconButton from '@mui/material/IconButton';

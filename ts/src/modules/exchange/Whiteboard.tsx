@@ -5,7 +5,12 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import 'react-pdf/dist/esm/Page/TextLayer.css';
-import { Document, Page } from 'react-pdf/dist/esm/entry.webpack5';
+
+import { pdfjs } from 'react-pdf';
+
+pdfjs.GlobalWorkerOptions.workerSrc = '../static/js/pdf.worker.min.mjs'
+
+import { Document, Page } from 'react-pdf';
 
 import Box from '@mui/material/Box';
 
