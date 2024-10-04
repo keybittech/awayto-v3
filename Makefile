@@ -98,10 +98,11 @@ cert: $(CERTS_DIR)
 java: $(JAVA_TARGET_DIR)
 	mvn -f $(JAVA_SRC) install
 
+# using npm here as pnpm symlinks just hugo and doesn't build correctly
 landing: $(LANDING_BUILD_DIR)
-	pnpm --dir $(LANDING_SRC) i
+	cd landing && npm i
 	sed -e 's&project-title&${PROJECT_TITLE}&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
-	pnpm run --dir $(LANDING_SRC) build
+	cd landing && npm run build
 
 landing_dev: landing
 	chmod +x $(LANDING_SRC)/server.sh && pnpm run --dir $(LANDING_SRC) start
