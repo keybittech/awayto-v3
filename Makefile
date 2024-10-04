@@ -99,6 +99,7 @@ java: $(JAVA_TARGET_DIR)
 	mvn -f $(JAVA_SRC) install
 
 landing: $(LANDING_BUILD_DIR)
+	pnpm i
 	sed -e 's&project-title&${PROJECT_TITLE}&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
 	pnpm run --dir $(LANDING_SRC) build
 
@@ -113,6 +114,7 @@ ts_protoc:
 	npx @rtk-query/codegen-openapi $(TS_CONFIG_API)
 
 ts: ts_protoc
+	pnpm i
 	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/settings.application.env.template" > "$(TS_SRC)/settings.application.env"
 	pnpm run --dir $(TS_SRC) build
 
