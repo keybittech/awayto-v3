@@ -56,7 +56,7 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 	}
 
 	// Attach landing/ to domain url root /
-	mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("landing/build/"))))
+	mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("landing/public/"))))
 
 	// use dev server or built for /app
 	_, err = http.Get(devServerUrl.String())

@@ -16,6 +16,6 @@
   },
   "scripts": {
     "start": "./server.sh",
-    "build": "hugo --cleanDestinationDir -s . -d ./build"
+    "build": "hugo"
   }
 }
