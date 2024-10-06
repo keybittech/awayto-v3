@@ -3,12 +3,22 @@ baseURL: app-host-url
 languageCode: en-us
 enableRobotsTXT: true
 
-Params:
-  docsURL: https://awayto.dev 
-
 menu:
   main:
-    - identifier: welcome 
-      name: Welcome
-      url: /
+    - identifier: features
+      name: Features
+      url: /features
       weight: 10
+    - identifier: about 
+      name: About
+      url: /about
+      weight: 20
+    - identifier: pricing
+      name: Pricing
+      url: /pricing
+      weight: 30
+    - identifier: use_of_ai
+      name: Use of AI
+      url: /use_of_ai
+      weight: 50
+

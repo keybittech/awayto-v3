@@ -8,8 +8,11 @@
       </nav>
     </div>
     <div class="post-content">
-      {{ partial "index.md" | markdownify }}
+      <div class="section-header" id="what-is-awayto"><h1>What is Awayto?</h1>
+        <p>Awayto is for groups or organizations which require scheduling, communications, reporting, and related functionality. Collaborative multi-modal features (voice/video/chat/docs) are positioned within a robust collection of operations-driven functionality (users/groups/roles/services/scheduling/surveying/reporting). Many founding principles of the platform were derived from previous experience developing and extending an online writing center. However, Awayto is built to be generic-purpose and enable the development of any kind of online platform with multi-modal needs.</p>
+      </div>
     </div>
   </div>
+
   {{ partial "footer.html" . }}
 {{ end }}
