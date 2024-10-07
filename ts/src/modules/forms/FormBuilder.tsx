@@ -105,6 +105,8 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
   const [cell, setCell] = useState({} as IField);
   const [position, setPosition] = useState({ row: '', col: 0 });
 
+  const cellSelected = Object.hasOwn(cell, 'l');
+
   useEffect(() => {
     if (Object.keys(version.form).length) {
       setRows({ ...version.form });
@@ -155,10 +157,6 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
     }
   }, [rows, cell]);
 
-  const CurrentLabelInput = useCallback(() => <Grid item>
-    <TextField fullWidth autoFocus id={`row_${position.row}_col_${position.col}_label_input`} label="Label" type="text" helperText="Required." value={cell.l} onChange={e => setCellAttr(e.target.value, 'l')} />
-  </Grid>, [cell]);
-
   return <Grid container spacing={2}>
 
     <Grid item sx={{ display: 'flex', flex: 1, alignItems: 'start' }}>
@@ -167,13 +165,13 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
           <Button variant="outlined" fullWidth onClick={addRow}>add row</Button>
         </Grid>}
         {Object.keys(rows).length > 0 && <Grid item xs={12}>
-          <Typography variant="subtitle1">Add a field. Give it a label. Any example values shown on this screen are for display purposes only while editing.</Typography>
+          <Typography variant="caption">Click the <SettingsIcon fontSize="small" /> icon to edit fields.</Typography>
         </Grid>}
         {rowKeys.map((rowId, i) => <Grid key={`form_fields_row_${i}`} item xs={12}>
           <Grid container spacing={2}>
             {rows[rowId].length < 3 && <Grid item xs={12} md={2}>
               <Grid container direction="column" sx={{ placeItems: 'center', height: '100%' }}>
-                <Button fullWidth variant="outlined" color="warning" sx={{ display: 'flex', flex: 1 }} onClick={() => addCol(rowId)}>add column</Button>
+                <Button fullWidth variant="outlined" color="warning" sx={{ alignItems: 'center', display: 'flex', flex: 1 }} onClick={() => addCol(rowId)}>add column</Button>
                 {/* <ButtonBase sx={{ display: 'flex', padding: '2px', backgroundColor: 'rgba(255, 0, 0, .1)' }} onClick={() => delRow(rowId)}>- row</ButtonBase> */}
               </Grid>
             </Grid>}
@@ -202,11 +200,11 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
       </Grid>
     </Grid>
 
-    {editable && Object.hasOwn(cell, 'l') && <Grid item>
+    {editable && cellSelected && <Grid item>
       <Divider orientation="vertical" />
     </Grid>}
 
-    {editable && Object.hasOwn(cell, 'l') && <Grid item xs={4}>
+    {editable && cellSelected && <Grid item xs={4}>
       <Grid container spacing={2} direction="column">
 
         <Grid item>
@@ -231,7 +229,9 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
           }}>Delete</Button>
         </Grid>
 
-        <CurrentLabelInput />
+        <Grid item>
+          <TextField fullWidth autoFocus id={`row_${position.row}_col_${position.col}_label_input`} label="Label" type="text" helperText="Required." value={cell.l} onChange={e => setCellAttr(e.target.value, 'l')} />
+        </Grid>
 
         {'labelntext' === cell.t && <Grid item>
           <TextField fullWidth label="Text" type="text" value={cell.x} onChange={e => setCellAttr(e.target.value, 'x')} />
