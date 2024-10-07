@@ -23,6 +23,8 @@ declare global {
 }
 
 export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element {
+  window.INT_SITE_LOAD = true;
+
   const location = useLocation();
   const navigate = useNavigate();
 
@@ -39,7 +41,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
   const [hasCode, setHasCode] = useState(false);
 
   const [groupCode, setGroupCode] = useState('');
-  const [expanded, setExpanded] = useState<string | false>('create_group');
+  const [expanded, setExpanded] = useState<string | false>(location.hash.includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
@@ -89,14 +91,6 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
   const CreateService = useAccordion('Create Service', false, expanded === 'create_service', openTip(group.defaultRoleId ? 'create_service' : ''), stepAvatar('create_service', 3, !!groupService?.service?.name));
   const CreateSchedule = useAccordion('Create Schedule', false, expanded === 'create_schedule', openTip(groupService.service?.name ? 'create_schedule' : ''), stepAvatar('create_schedule', 4, !!groupSchedule.schedule?.name));
   const Review = useAccordion('Review', false, expanded === 'review', openTip(groupSchedule.schedule?.name ? 'review' : ''), stepAvatar('review', 5));
-
-  useEffect(() => {
-    window.INT_SITE_LOAD = true;
-    const hash = location.hash.replace('#', '');
-    if (['review', 'create'].some(t => hash.includes(t))) {
-      setExpanded(hash)
-    }
-  }, []);
 
   useEffect(() => {
     const userGroups = Object.values(profileReq?.userProfile?.groups || {});
