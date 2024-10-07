@@ -49,10 +49,11 @@
   },
   "pnpm": {
     "overrides": {
+      "braces": ">=3.0.3",
+      "cookie": ">=0.7.0",
       "micromatch": ">=4.0.8",
       "nth-check": ">=2.0.1",
-      "postcss": ">=8.4.31",
-      "braces": ">=3.0.3"
+      "postcss": ">=8.4.31"
     }
   },
   "resolutions": {
