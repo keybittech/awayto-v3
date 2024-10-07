@@ -37,7 +37,7 @@ LANDING_SRC=./landing
 CERTS_DIR=certs
 JAVA_TARGET_DIR=java/target
 JAVA_THEMES_DIR=java/themes
-LANDING_BUILD_DIR=landing/build
+LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
 HOST_LOCAL_DIR=deployed/${PROJECT_PREFIX}
 GO_GEN_DIR=go/pkg/types
@@ -100,9 +100,9 @@ java: $(JAVA_TARGET_DIR)
 
 # using npm here as pnpm symlinks just hugo and doesn't build correctly
 landing: $(LANDING_BUILD_DIR)
-	cd landing && npm i
+	npm --prefix ./landing i
 	sed -e 's&project-title&${PROJECT_TITLE}&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
-	cd landing && npm run build
+	npm run --prefix ./landing build
 
 landing_dev: landing
 	chmod +x $(LANDING_SRC)/server.sh && pnpm run --dir $(LANDING_SRC) start
@@ -151,7 +151,7 @@ genmocks: $(MOCKS_GEN_DIR)
 
 ## Utilities
 
-docker_up: java
+docker_up:
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA)
 	${SUDO} docker volume create $(REDIS_DATA)
