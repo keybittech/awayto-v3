@@ -188,7 +188,7 @@ img {
 
 .logo {
   display: flex;
-  min-width: var(--side);
+  min-width: 50%;
   padding-right: var(--gap);
 }
 
