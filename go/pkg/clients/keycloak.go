@@ -76,7 +76,6 @@ type KeycloakCommand struct {
 type AuthEventDetails struct {
 	AuthMethod     string `json:"auth_method"`
 	AuthType       string `json:"auth_type"`
-	CodeId         string `json:"code_id"`
 	Email          string `json:"email"`
 	FirstName      string `json:"first_name"`
 	LastName       string `json:"last_name"`
@@ -93,6 +92,11 @@ type AuthEvent struct {
 	Timestamp   string           `json:"time"`
 	UserId      string           `json:"userId"`
 	WebhookName string           `json:"webhookName"`
+	GroupCode   string           `json:"groupCode"`
+	Email       string           `json:"email"`
+	FirstName   string           `json:"firstName"`
+	LastName    string           `json:"lastName"`
+	Username    string           `json:"username"`
 	Details     AuthEventDetails `json:"details"`
 }
 

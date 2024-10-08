@@ -59,7 +59,11 @@ func ErrCheck(err error) error {
 			}
 		}
 
-		return errors.New(fmt.Sprintf("%s File: %s; Line: %d; Function: %s; UserError: %s", time.Now().String(), file, line, functionName, err))
+		errStr := fmt.Sprintf("%s File: %s; Line: %d; Function: %s; UserError: %s", time.Now().String(), file, line, functionName, err)
+
+		Debug(errStr)
+
+		return errors.New(errStr)
 	}
 
 	return nil

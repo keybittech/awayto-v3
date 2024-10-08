@@ -39,6 +39,9 @@ public final class BackchannelAuth {
     response.put("success", false);
 
     try (AFUNIXSocket sock = AFUNIXSocket.newInstance()) {
+
+      eventPayload.put("webhookName", eventType);
+
       sock.connect(new AFUNIXSocketAddress(SOCKET_FILE));
       try (OutputStream out = sock.getOutputStream();
           BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(out))) {

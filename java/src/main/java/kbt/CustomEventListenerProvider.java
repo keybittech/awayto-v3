@@ -22,7 +22,7 @@ public class CustomEventListenerProvider implements EventListenerProvider {
   @Override
   public void onEvent(Event event) {
     EventType[] eventTypes = new EventType[] {
-        EventType.REGISTER,
+        // EventType.REGISTER,
         // EventType.REGISTER_ERROR,
         // EventType.LOGIN,
         // EventType.LOGOUT,
@@ -38,7 +38,6 @@ public class CustomEventListenerProvider implements EventListenerProvider {
       String eventType = event.getType().name();
 
       eventPayload.remove("type");
-      eventPayload.put("webhookName", eventType);
 
       JSONObject response = BackchannelAuth.sendUnixMessage(eventType, eventPayload);
 

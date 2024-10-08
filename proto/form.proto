@@ -56,14 +56,14 @@ service FormService {
 message IProtoFormVersionSubmission {
   string id = 1;
   string formVersionId = 2;
-  google.protobuf.Value submission = 3 [(google.api.field_behavior) = REQUIRED];
+  string submission = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message IProtoFormVersion {
   string id = 1;
   string formId = 2;
-  google.protobuf.Value form = 3 [(google.api.field_behavior) = REQUIRED];
-  google.protobuf.Value submission = 4 [(google.api.field_behavior) = REQUIRED];
+  string form = 3 [(google.api.field_behavior) = REQUIRED];
+  string submission = 4 [(google.api.field_behavior) = REQUIRED];
   string createdOn = 5;
 }
 

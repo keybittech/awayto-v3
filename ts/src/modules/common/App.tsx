@@ -16,7 +16,7 @@ const {
 } = process.env as { [prop: string]: string };
 
 export default function App(props: IComponent): React.JSX.Element {
-  const location = useLocation();
+  // const location = useLocation();
   const navigate = useNavigate();
 
   const { AuthContext } = useContexts();
@@ -31,8 +31,8 @@ export default function App(props: IComponent): React.JSX.Element {
 
   const { data: profileRes, refetch: getUserProfileDetails } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
-  const [attachUser] = siteApi.useGroupServiceAttachUserMutation();
-  const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
+  // const [attachUser] = siteApi.useGroupServiceAttachUserMutation();
+  // const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
 
   const reloadProfile = async (): Promise<void> => {
     await refreshToken().then(() => {
@@ -61,13 +61,15 @@ export default function App(props: IComponent): React.JSX.Element {
     if (!profileRes) return;
     const profile = profileRes.userProfile;
 
-    if (location.pathname === "/registration/code/success") {
-      const code = location.search.split('?code=')[1].split('&')[0];
-      attachUser({ attachUserRequest: { code } }).unwrap().then(async () => {
-        await activateProfile().unwrap().catch(console.error);
-        await reloadProfile().catch(console.error);
-      }).catch(console.error);
-    } else if (!profile.active) {
+    // if (location.pathname === "/registration/code/success") {
+    //   const code = location.search.split('?code=')[1].split('&')[0];
+    //   attachUser({ attachUserRequest: { code } }).unwrap().then(async () => {
+    //     await activateProfile().unwrap().catch(console.error);
+    //     await reloadProfile().catch(console.error);
+    //   }).catch(console.error);
+    // } else 
+
+    if (!profile.active) {
       setOnboarding(true);
     } else if (profile.active) {
       setOnboarding(false);
