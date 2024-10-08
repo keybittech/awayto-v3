@@ -6,6 +6,7 @@ import (
 	"bufio"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net"
 	"net/http"
@@ -64,11 +65,23 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 
 		fakeReq = fakeReq.WithContext(bgContext)
 
-		handler.Call([]reflect.Value{
+		results := handler.Call([]reflect.Value{
 			reflect.ValueOf(fakeReq),
 			reflect.ValueOf(authEvent),
 		})
 
-		fmt.Fprint(conn, `{ "success": true }`)
+		if len(results) != 2 {
+			util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
+			return
+		}
+
+		if !results[1].IsNil() {
+			util.ErrCheck(results[1].Interface().(error))
+			return
+		}
+
+		resStr := results[0].Interface().(string)
+
+		fmt.Fprint(conn, resStr)
 	}
 }

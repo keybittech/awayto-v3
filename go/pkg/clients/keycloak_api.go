@@ -565,6 +565,7 @@ func (keycloakClient KeycloakClient) MutateGroupRoles(method, groupId string, ro
 }
 
 func (keycloakClient KeycloakClient) MutateUserGroupMembership(method, userId, groupId string) error {
+
 	_, err := util.Mutate(
 		method,
 		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/users/"+userId+"/groups/"+groupId,

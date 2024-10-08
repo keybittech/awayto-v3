@@ -23,7 +23,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 	serviceForm, tierForm := data.GetServiceFormVersionSubmission(), data.GetTierFormVersionSubmission()
 
 	for _, form := range []*types.IProtoFormVersionSubmission{serviceForm, tierForm} {
-		if form.Submission != nil {
+		if form.Submission != "" {
 			formSubmission, err := json.Marshal(form.GetSubmission())
 
 			if err != nil {

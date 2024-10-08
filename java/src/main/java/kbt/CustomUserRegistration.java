@@ -3,6 +3,7 @@ package kbt;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.jboss.logging.Logger;
 import org.json.JSONObject;
 import org.keycloak.Config;
 import org.keycloak.authentication.FormContext;
@@ -10,9 +11,12 @@ import org.keycloak.authentication.ValidationContext;
 import org.keycloak.authentication.forms.RegistrationUserCreation;
 import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.http.HttpRequest;
+import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
 import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
+import org.keycloak.representations.idm.AbstractUserRepresentation;
+import org.keycloak.userprofile.UserProfile;
 import org.keycloak.utils.RegexUtils;
 
 import jakarta.ws.rs.core.MultivaluedHashMap;
@@ -21,6 +25,8 @@ import jakarta.ws.rs.ext.Provider;
 
 @Provider
 public class CustomUserRegistration extends RegistrationUserCreation {
+
+  private static final Logger log = Logger.getLogger(CustomEventListenerProvider.class);
 
   @Override
   public void init(Config.Scope config) {
@@ -67,8 +73,10 @@ public class CustomUserRegistration extends RegistrationUserCreation {
             registrationValidationPayload);
 
         if (registrationValidationResponse.getBoolean("success")) {
+          String groupId = registrationValidationResponse.getString("id");
           groupName = registrationValidationResponse.getString("name").replaceAll("_", " ");
           allowedDomains = registrationValidationResponse.getString("allowedDomains").replaceAll(",", ", ");
+          session.setAttribute("groupId", groupId);
           session.setAttribute("groupCode", groupCode);
           session.setAttribute("groupName", groupName);
           session.setAttribute("allowedDomains", allowedDomains);
@@ -146,8 +154,10 @@ public class CustomUserRegistration extends RegistrationUserCreation {
                   validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
                 }
               } else {
+                String groupId = registrationValidationResponse.getString("id");
                 groupName = registrationValidationResponse.getString("name");
                 allowedDomains = registrationValidationResponse.getString("allowedDomains");
+                session.setAttribute("groupId", groupId);
                 session.setAttribute("groupCode", groupCode);
                 session.setAttribute("groupName", groupName);
                 session.setAttribute("allowedDomains", allowedDomains);
@@ -178,7 +188,7 @@ public class CustomUserRegistration extends RegistrationUserCreation {
           return;
         }
 
-        context.getEvent().detail("group_code", groupCode);
+        // context.getEvent().detail("group_code", groupCode);
       }
 
       super.validate(context);
@@ -187,16 +197,29 @@ public class CustomUserRegistration extends RegistrationUserCreation {
 
   @Override
   public void success(FormContext context) {
+    super.success(context);
 
     KeycloakSession session = context.getSession();
 
-    String groupCode = (String) session.getAttribute("groupCode");
+    UserProfile profile = (UserProfile) session.getAttribute("UP_REGISTER");
+    AbstractUserRepresentation up = profile.toRepresentation();
 
-    if (groupCode != null) {
-      context.getAuthenticationSession().setRedirectUri(
-          context.getAuthenticationSession().getRedirectUri() + "registration/code/success?code=" + groupCode);
+    Object groupIdObj = session.getAttribute("groupId");
+
+    JSONObject registrationSuccessPayload = new JSONObject();
+
+    if (groupIdObj != null) {
+      GroupModel gr = context.getRealm().getGroupById(groupIdObj.toString());
+      context.getUser().joinGroup(gr);
+      registrationSuccessPayload.put("groupCode", session.getAttribute("groupCode").toString());
     }
 
-    super.success(context);
+    registrationSuccessPayload.put("userId", up.getId());
+    registrationSuccessPayload.put("firstName", up.getFirstName());
+    registrationSuccessPayload.put("lastName", up.getLastName());
+    registrationSuccessPayload.put("email", up.getEmail());
+
+    BackchannelAuth.sendUnixMessage("REGISTER", registrationSuccessPayload);
   }
+
 }
