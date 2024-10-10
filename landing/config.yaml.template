@@ -3,6 +3,10 @@ baseURL: app-host-url
 languageCode: en-us
 enableRobotsTXT: true
 
+Params:
+  docsUrl: https://awayto.dev
+  gitUrl: https://github.com/keybittech/awayto_exchange
+
 menu:
   main:
     - identifier: features
