@@ -1,10 +1,10 @@
 import React, { useMemo } from 'react';
 
-import { siteApi, useComponents, useContexts, useFileContents } from 'awayto/hooks';
+import { siteApi, useComponents, useFileContents } from 'awayto/hooks';
+
+import FileContext from './FileContext';
 
 export function FileProvider({ children }: IComponent): React.JSX.Element {
-
-  const { FileContext } = useContexts();
 
   const { FileManager } = useComponents();
 
@@ -19,10 +19,7 @@ export function FileProvider({ children }: IComponent): React.JSX.Element {
     fileManager: FileManager
   } as FileContextType;
 
-  return useMemo(() => !FileContext ? <></> :
-    <FileContext.Provider value={fileContext}>
-      {children}
-    </FileContext.Provider>,
-    [FileContext, fileContext]
-  );
+  return useMemo(() => <FileContext.Provider value={fileContext}>
+    {children}
+  </FileContext.Provider>, [fileContext]);
 }

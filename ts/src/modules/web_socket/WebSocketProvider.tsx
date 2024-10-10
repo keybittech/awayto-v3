@@ -1,6 +1,8 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useContexts, useUtil, SocketResponse, SocketResponseHandler, siteApi, SocketActions } from 'awayto/hooks';
+import { useUtil, SocketResponse, SocketResponseHandler, siteApi, SocketActions } from 'awayto/hooks';
+
+import WebSocketContext from './WebSocketContext';
 
 const {
   REACT_APP_APP_HOST_NAME,
@@ -11,7 +13,6 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
   const [getTicket] = siteApi.useLazySockServiceGetSocketTicketQuery();
 
   const { setSnack } = useUtil();
-  const { WebSocketContext } = useContexts();
 
   const [socket, setSocket] = useState<WebSocket | undefined>();
   const [connectionId, setConnectionId] = useState('');
@@ -127,11 +128,11 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
     },
   } as WebSocketContextType;
 
-  return useMemo(() => !initialConnectionMade.current || !WebSocketContext ? <></> :
+  return useMemo(() => !initialConnectionMade.current ? <></> :
     <WebSocketContext.Provider value={webSocketContext}>
       {children}
     </WebSocketContext.Provider>,
-    [WebSocketContext, webSocketContext]
+    [initialConnectionMade.current, webSocketContext]
   );
 }
 

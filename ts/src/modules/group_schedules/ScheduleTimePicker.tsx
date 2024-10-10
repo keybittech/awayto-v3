@@ -4,11 +4,12 @@ import { Duration, DurationUnitType } from 'dayjs/plugin/duration';
 import TextField from '@mui/material/TextField';
 import { TimePicker } from '@mui/x-date-pickers/TimePicker';
 
-import { useContexts, useTimeName, dayjs, getRelativeDuration, TimeUnit } from 'awayto/hooks';
+import { useTimeName, dayjs, getRelativeDuration, TimeUnit } from 'awayto/hooks';
+
+import GroupScheduleContext from './GroupScheduleContext';
+import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
 
 export function ScheduleTimePicker(): React.JSX.Element {
-
-  const { GroupScheduleContext, GroupScheduleSelectionContext } = useContexts();
 
   const { selectGroupSchedule: { item: groupSchedule } } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 

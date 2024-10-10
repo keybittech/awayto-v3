@@ -1,6 +1,8 @@
 import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
 
-import { ExchangeSessionAttributes, SenderStreams, SocketMessage, SocketActions, useComponents, useContexts, useUtil, useWebSocketSubscribe } from 'awayto/hooks';
+import { ExchangeSessionAttributes, SenderStreams, SocketMessage, SocketActions, useComponents, useUtil, useWebSocketSubscribe } from 'awayto/hooks';
+
+import WSCallContext from './WSCallContext';
 
 const {
   REACT_APP_TURN_NAME,
@@ -25,7 +27,6 @@ declare global {
 export function WSCallProvider({ children, topicId, setTopicMessages }: IComponent): React.JSX.Element {
   if (!topicId) return <>{children}</>;
 
-  const { WSCallContext } = useContexts();
   const { setSnack } = useUtil();
   const { Video } = useComponents();
 
@@ -419,12 +420,9 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: ICompone
     localStreamElement
   } as WSCallContextType | null;
 
-  return useMemo(() => !WSCallContext ? <></> :
-    <WSCallContext.Provider value={wsTextContext}>
-      {children}
-    </WSCallContext.Provider>,
-    [WSCallContext, wsTextContext]
-  );
+  return useMemo(() => <WSCallContext.Provider value={wsTextContext}>
+    {children}
+  </WSCallContext.Provider>, [wsTextContext]);
 }
 
 export default WSCallProvider;

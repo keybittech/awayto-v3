@@ -5,7 +5,9 @@ import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 
-import { SocketMessage, SocketActions, plural, useComponents, useContexts, useWebSocketSubscribe } from 'awayto/hooks';
+import { SocketMessage, SocketActions, plural, useComponents, useWebSocketSubscribe } from 'awayto/hooks';
+
+import WSTextContext from './WSTextContext';
 
 declare global {
   interface IComponent {
@@ -17,8 +19,6 @@ declare global {
 
 export function WSTextProvider({ children, topicId, topicMessages, setTopicMessages }: IComponent): React.JSX.Element {
   if (!topicId) return <></>;
-
-  const { WSTextContext } = useContexts();
 
   const { GroupedMessages, SubmitMessageForm } = useComponents();
 
@@ -111,12 +111,9 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
     }, [userList])
   } as WSTextContextType | null;
 
-  return useMemo(() => !WSTextContext ? <></> :
-    <WSTextContext.Provider value={wsTextContext}>
-      {children}
-    </WSTextContext.Provider>,
-    [WSTextContext, wsTextContext]
-  );
+  return useMemo(() => <WSTextContext.Provider value={wsTextContext}>
+    {children}
+  </WSTextContext.Provider>, [wsTextContext]);
 }
 
 export default WSTextProvider;

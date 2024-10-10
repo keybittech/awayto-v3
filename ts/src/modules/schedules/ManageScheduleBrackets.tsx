@@ -12,7 +12,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, useUtil, siteApi, useContexts, useComponents, dayjs, plural, ISchedule } from 'awayto/hooks';
+import { useGrid, useUtil, siteApi, useComponents, dayjs, plural, ISchedule } from 'awayto/hooks';
+
+import GroupContext from '../groups/GroupContext';
+import GroupScheduleContext from '../group_schedules/GroupScheduleContext';
 
 // This is how group users interact with the schedule
 
@@ -24,7 +27,7 @@ export function ManageScheduleBrackets(): React.JSX.Element {
   const {
     GroupSelect,
     groupSchedules,
-  } = useContext(useContexts().GroupContext) as GroupContextType;
+  } = useContext(GroupContext) as GroupContextType;
 
   const {
     getGroupSchedules: {
@@ -36,7 +39,7 @@ export function ManageScheduleBrackets(): React.JSX.Element {
     getGroupUserScheduleStubs: {
       refetch: refetchGroupUserScheduleStubs
     },
-  } = useContext(useContexts().GroupScheduleContext) as GroupScheduleContextType;
+  } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
 
   const [deleteGroupUserScheduleByUserScheduleId] = siteApi.useGroupUserScheduleServiceDeleteGroupUserScheduleByUserScheduleIdMutation();

@@ -29,7 +29,7 @@ import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Icon from '../../img/kbt-icon.png';
 
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useSecure, useComponents, siteApi, useAppSelector, useUtil, useStyles, useContexts, SiteRoles, useTheme } from 'awayto/hooks';
+import { useSecure, useComponents, siteApi, useAppSelector, keycloak, useStyles, SiteRoles, useTheme } from 'awayto/hooks';
 
 const {
   REACT_APP_APP_HOST_URL
@@ -48,9 +48,6 @@ export function Topbar(props: IComponent): React.JSX.Element {
   const classes = useStyles();
   const navigate = useNavigate();
   const hasRole = useSecure();
-
-  const { AuthContext } = useContexts();
-  const { keycloak } = useContext(AuthContext) as AuthContextType;
 
   const { FeedbackMenu, PendingQuotesMenu, PendingQuotesProvider, UpcomingBookingsMenu } = useComponents();
   const location = useLocation();
@@ -142,16 +139,17 @@ export function Topbar(props: IComponent): React.JSX.Element {
 
         <Grid>
           {/** PENDING REQUESTS MENU */}
-          <PendingQuotesProvider>
-            <PendingQuotesMenu
-              {...props}
-              pendingQuotesAnchorEl={pendingQuotesAnchorEl}
-              pendingQuotesMenuId={pendingQuotesMenuId}
-              isPendingQuotesOpen={isPendingQuotesOpen}
-              handleMenuClose={handleMenuClose}
-            />
-          </PendingQuotesProvider>
-
+          <Suspense>
+            <PendingQuotesProvider>
+              <PendingQuotesMenu
+                {...props}
+                pendingQuotesAnchorEl={pendingQuotesAnchorEl}
+                pendingQuotesMenuId={pendingQuotesMenuId}
+                isPendingQuotesOpen={isPendingQuotesOpen}
+                handleMenuClose={handleMenuClose}
+              />
+            </PendingQuotesProvider>
+          </Suspense>
           <Tooltip title="Approve Exchanges">
             <IconButton
               disableRipple

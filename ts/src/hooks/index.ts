@@ -12,7 +12,7 @@ export * from './time_unit';
 export * from './useAuth';
 export * from './useDebounce';
 export * from './useComponents';
-export * from './useContexts';
+// export * from './useContexts';
 export * from './useFiles';
 export * from './useFileStore';
 export * from './useFileContents';

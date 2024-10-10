@@ -12,7 +12,9 @@ import Tooltip from '@mui/material/Tooltip';
 import JoinFullIcon from '@mui/icons-material/JoinFull';
 import DoneIcon from '@mui/icons-material/Done';
 
-import { useContexts, useUtil, bookingDT, dayjs, shortNSweet, IQuote } from 'awayto/hooks';
+import { useUtil, bookingDT, dayjs, shortNSweet } from 'awayto/hooks';
+
+import BookingContext from './BookingContext';
 
 declare global {
   interface IComponent {
@@ -34,7 +36,7 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
   const minsAgo15 = dayjs.duration(-15, 'years');
   const startOfDay = dayjs().startOf('day');
 
-  const { bookingValues: upcomingBookings } = useContext(useContexts().BookingContext) as BookingContextType;
+  const { bookingValues: upcomingBookings } = useContext(BookingContext) as BookingContextType;
 
   return exchangeId ?
     <Tooltip title="Go to Exchange Summary">

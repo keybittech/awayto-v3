@@ -11,7 +11,10 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { useComponents, useContexts, IGroupUserScheduleStub, shortNSweet, siteApi } from 'awayto/hooks';
+import { useComponents, IGroupUserScheduleStub, shortNSweet, siteApi } from 'awayto/hooks';
+
+import GroupScheduleContext from './GroupScheduleContext';
+import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
 
 declare global {
   interface IComponent {
@@ -20,8 +23,6 @@ declare global {
 }
 
 export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal }: Required<IComponent>): React.JSX.Element {
-
-  const { GroupScheduleContext, GroupScheduleSelectionContext } = useContexts();
 
   const {
     selectGroupSchedule: { item: groupSchedule },

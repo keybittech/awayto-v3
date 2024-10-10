@@ -15,16 +15,13 @@ import Logout from '@mui/icons-material/Logout';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useSecure, useGrid, useUtil, useStyles, useContexts, siteApi, dayjs, IGroup, SiteRoles } from 'awayto/hooks';
+import { useSecure, useGrid, useUtil, useStyles, keycloak, siteApi, dayjs, IGroup, SiteRoles } from 'awayto/hooks';
 
 import ManageGroupModal from './ManageGroupModal';
 import JoinGroupModal from './JoinGroupModal';
 
 export function ManageGroups(props: IComponent): React.JSX.Element {
   const classes = useStyles();
-
-  const { AuthContext } = useContexts();
-  const { keycloak } = useContext(AuthContext) as AuthContextType;
 
   const { openConfirm } = useUtil();
 
@@ -34,7 +31,6 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
   const [group, setGroup] = useState<IGroup>();
   const [dialog, setDialog] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
-
 
   const { data: profileRequest, refetch: getUserProfileDetails } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 

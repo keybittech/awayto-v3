@@ -40,7 +40,7 @@ export function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
                 <TextField
                   label="Code"
                   type="code"
-                  placeholder="Type an code and press enter..."
+                  placeholder="Type a code and press enter..."
                   fullWidth
                   value={code}
                   onChange={e => {

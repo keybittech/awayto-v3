@@ -14,7 +14,7 @@ import CardHeader from '@mui/material/CardHeader';
 import CheckIcon from '@mui/icons-material/Check';
 import Alert from '@mui/material/Alert';
 
-import { useComponents, useUtil, useAccordion, siteApi, IGroup, IGroupSchedule, IGroupService, IService, useContexts } from 'awayto/hooks';
+import { useComponents, useUtil, useAccordion, siteApi, IGroup, IGroupSchedule, IGroupService, IService, refreshToken } from 'awayto/hooks';
 
 declare global {
   interface IProps {
@@ -27,9 +27,6 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
 
   const location = useLocation();
   const navigate = useNavigate();
-
-  const { AuthContext } = useContexts();
-  const { refreshToken } = useContext(AuthContext) as AuthContextType;
 
   const { setSnack, openConfirm } = useUtil();
 
