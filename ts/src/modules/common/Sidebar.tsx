@@ -20,7 +20,7 @@ import Icon from '../../img/kbt-icon.png';
 
 const { REACT_APP_APP_HOST_URL } = process.env as { [prop: string]: string };
 
-import { useSecure, useStyles, useContexts, SiteRoles } from 'awayto/hooks';
+import { useSecure, useStyles, keycloak, SiteRoles } from 'awayto/hooks';
 
 export function Sidebar(): React.JSX.Element {
   const hasRole = useSecure();
@@ -30,9 +30,6 @@ export function Sidebar(): React.JSX.Element {
   }
   const classes = useStyles();
   const location = useLocation();
-
-  const { AuthContext } = useContexts();
-  const { keycloak } = useContext(AuthContext) as AuthContextType;
 
   return <Grid container style={{ height: '100vh' }} alignContent="space-between">
     <Grid item xs={12} style={{ marginTop: '20px' }}>

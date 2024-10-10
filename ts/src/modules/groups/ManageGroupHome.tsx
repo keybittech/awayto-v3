@@ -17,9 +17,11 @@ import CardContent from '@mui/material/CardContent';
 
 import CreateIcon from '@mui/icons-material/Create';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-
-import { useContexts, useComponents, useUtil, SiteRoles, useStyles, siteApi } from 'awayto/hooks';
 import { ContentCopy } from '@mui/icons-material';
+
+import { useComponents, useUtil, SiteRoles, useStyles, siteApi } from 'awayto/hooks';
+
+import GroupContext from './GroupContext';
 
 const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULES, APP_GROUP_SERVICES, APP_GROUP_USERS } = SiteRoles;
 
@@ -37,7 +39,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
 
   const {
     group
-  } = useContext(useContexts().GroupContext) as GroupContextType;
+  } = useContext(GroupContext) as GroupContextType;
 
   const navigate = useNavigate();
 
@@ -101,7 +103,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
     setSnack({ snackType: 'success', snackOn: 'Group code copied to clipboard!' })
   }
 
-  const groupUrl = `https://${window.location.hostname}/join/${group.code}`;
+  const groupUrl = `https://${window.location.hostname}/app/join?groupCode=${group.code}`;
 
   const copyUrl = () => {
     window.navigator.clipboard.writeText(groupUrl).catch(console.error);

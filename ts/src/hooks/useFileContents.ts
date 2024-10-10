@@ -1,12 +1,9 @@
-import { useCallback, useMemo, useState, useContext } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { IFile } from './api';
-import { useContexts } from './useContexts';
+import { keycloak } from './auth';
 import { UseFileContents } from './util';
 
 export const useFileContents: UseFileContents = () => {
-
-  const { AuthContext } = useContexts();
-  const { keycloak } = useContext(AuthContext) as AuthContextType;
 
   const [fileContents, setFileContents] = useState<IFile | undefined>();
 

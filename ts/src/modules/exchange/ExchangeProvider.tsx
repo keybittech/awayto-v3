@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react';
 import { useParams } from 'react-router';
 
-import { ExchangeActions, useComponents, useContexts, SocketMessage, siteApi } from 'awayto/hooks';
+import { ExchangeActions, useComponents, SocketMessage, siteApi } from 'awayto/hooks';
+
+import ExchangeContext from './ExchangeContext';
 
 export function ExchangeProvider({ children }: IComponent): React.JSX.Element {
 
   const { exchangeId } = useParams();
   if (!exchangeId) return <></>;
 
-  const { ExchangeContext } = useContexts();
   const { WSTextProvider, WSCallProvider } = useComponents();
 
   const [topicMessages, setTopicMessages] = useState<SocketMessage[]>([]);
@@ -18,9 +19,9 @@ export function ExchangeProvider({ children }: IComponent): React.JSX.Element {
     topicMessages,
     setTopicMessages,
     getBookingFiles: siteApi.useBookingServiceGetBookingFilesQuery({ id: exchangeId })
-  } as ExchangeContextType | null;
+  } as ExchangeContextType;
 
-  return useMemo(() => !ExchangeContext || !WSTextProvider || !WSCallProvider || !exchangeContext ? <></> :
+  return useMemo(() => !WSTextProvider || !WSCallProvider ? <></> :
     <ExchangeContext.Provider value={exchangeContext}>
       <WSTextProvider
         topicId={`exchange/${ExchangeActions.EXCHANGE_TEXT}:${exchangeContext.exchangeId}`}
@@ -36,7 +37,7 @@ export function ExchangeProvider({ children }: IComponent): React.JSX.Element {
         </WSCallProvider>
       </WSTextProvider>
     </ExchangeContext.Provider>,
-    [ExchangeContext, exchangeContext]
+    [WSTextProvider, WSCallProvider, exchangeContext]
   );
 }
 

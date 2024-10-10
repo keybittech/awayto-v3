@@ -10,7 +10,9 @@ import CreateIcon from '@mui/icons-material/Create';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, useComponents, useContexts, IGroupUserScheduleStub, shortNSweet, IGroupUser, IGroup } from 'awayto/hooks';
+import { useGrid, useComponents, IGroupUserScheduleStub, shortNSweet } from 'awayto/hooks';
+
+import GroupScheduleContext from './GroupScheduleContext';
 
 export function ManageScheduleStubs(): React.JSX.Element {
 
@@ -21,7 +23,7 @@ export function ManageScheduleStubs(): React.JSX.Element {
       data: groupUserScheduleStubsRequest,
       refetch: getGroupUserScheduleStubs
     }
-  } = useContext(useContexts().GroupScheduleContext) as GroupScheduleContextType;
+  } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
   const [stub, setStub] = useState<IGroupUserScheduleStub>();
   const [selected, setSelected] = useState<string[]>([]);
@@ -59,18 +61,18 @@ export function ManageScheduleStubs(): React.JSX.Element {
     </>
   })
 
-  return <>
+  return <Suspense>
     <Dialog open={dialog === 'manage_schedule_stub'} fullWidth maxWidth="sm">
-      <Suspense>
-        {stub ? <ManageScheduleStubModal editGroupUserScheduleStub={stub} closeModal={() => {
-          setDialog('');
-          getGroupUserScheduleStubs().catch(console.error);
-        }} /> : <></>}
-      </Suspense>
+
+      {stub ? <ManageScheduleStubModal editGroupUserScheduleStub={stub} closeModal={() => {
+        setDialog('');
+        getGroupUserScheduleStubs().catch(console.error);
+      }} /> : <></>}
+
     </Dialog>
 
     <DataGrid {...scheduleStubGridProps} />
-  </>
+  </Suspense>
 }
 
 export default ManageScheduleStubs;

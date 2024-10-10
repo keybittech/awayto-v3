@@ -1,10 +1,10 @@
 import { useMemo, useState } from "react";
 
-import { siteApi, useContexts, IBooking } from 'awayto/hooks';
+import { siteApi, IBooking } from 'awayto/hooks';
+
+import BookingContext from "./BookingContext";
 
 export function BookingProvider({ children }: IComponent): React.JSX.Element {
-
-  const { BookingContext } = useContexts();
 
   const [bookingValuesChanged, setBookingValuesChanged] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<IBooking[]>([]);
@@ -40,12 +40,9 @@ export function BookingProvider({ children }: IComponent): React.JSX.Element {
     }
   } as BookingContextType | null;
 
-  return useMemo(() => !BookingContext ? <></> :
-    <BookingContext.Provider value={bookingContext}>
-      {children}
-    </BookingContext.Provider>,
-    [BookingContext, bookingContext]
-  );
+  return useMemo(() => <BookingContext.Provider value={bookingContext}>
+    {children}
+  </BookingContext.Provider>, [bookingContext]);
 
 }
 

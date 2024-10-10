@@ -3,7 +3,9 @@ import React, { useContext } from 'react';
 import TextField from '@mui/material/TextField';
 import { DesktopDatePicker } from '@mui/x-date-pickers/DesktopDatePicker';
 
-import { useContexts, dayjs } from 'awayto/hooks';
+import { dayjs } from 'awayto/hooks';
+
+import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
 
 export function ScheduleDatePicker(): React.JSX.Element {
 
@@ -13,7 +15,7 @@ export function ScheduleDatePicker(): React.JSX.Element {
     setSelectedDate,
     firstAvailable,
     dateSlots,
-  } = useContext(useContexts().GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
+  } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
   return <DesktopDatePicker
     value={selectedDate}

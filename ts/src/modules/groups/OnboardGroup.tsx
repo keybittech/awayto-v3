@@ -9,8 +9,9 @@ import Button from '@mui/material/Button';
 
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 
-import { useContexts } from 'awayto/hooks';
 import { useNavigate } from 'react-router';
+
+import GroupContext from './GroupContext';
 
 function OnboardGroup() {
 
@@ -21,7 +22,7 @@ function OnboardGroup() {
     groupSchedules,
     groupServices,
     groupForms
-  } = useContext(useContexts().GroupContext) as GroupContextType;
+  } = useContext(GroupContext) as GroupContextType;
 
   const hasSchedule = !!groupSchedules.length;
   const hasForm = !!groupForms.length;
@@ -32,7 +33,7 @@ function OnboardGroup() {
   if (complete) return <></>;
 
   return groups.map((group, i) => {
-      return <Card key={`group-setup-${i}`}>
+    return <Card key={`group-setup-${i}`}>
       <CardHeader title="Welcome!" subheader={`Complete the following set up for ${group.displayName}.`} />
       <CardContent>
         <Box mb={2}>

@@ -14,7 +14,10 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 
-import { useComponents, siteApi, useUtil, useContexts, bracketSchema, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName } from 'awayto/hooks';
+import { useComponents, siteApi, useUtil, bracketSchema, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName } from 'awayto/hooks';
+
+import GroupContext from '../groups/GroupContext';
+import GroupScheduleContext from '../group_schedules/GroupScheduleContext';
 
 declare global {
   interface IComponent {
@@ -25,8 +28,6 @@ declare global {
 export function ManageScheduleBracketsModal({ editSchedule, closeModal }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
-
-  const { GroupContext, GroupScheduleContext } = useContexts();
 
   const {
     groupServices,

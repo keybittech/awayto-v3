@@ -9,9 +9,13 @@ import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
-
-import { useComponents, useContexts, siteApi, useUtil, useGroupForm, useAccordion, useFiles, IFormVersionSubmission } from 'awayto/hooks';
 import { CircularProgress } from '@mui/material';
+
+import { useComponents, siteApi, useUtil, useGroupForm, useAccordion, useFiles, IFormVersionSubmission } from 'awayto/hooks';
+
+import GroupContext from '../groups/GroupContext';
+import GroupScheduleContext from '../group_schedules/GroupScheduleContext';
+import GroupScheduleSelectionContext from '../group_schedules/GroupScheduleSelectionContext';
 
 export function RequestQuote(props: IComponent): React.JSX.Element {
 
@@ -25,12 +29,6 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
   const handleChange = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
     setExpanded(isExpanded ? panel : false);
   };
-
-  const {
-    GroupContext,
-    GroupScheduleContext,
-    GroupScheduleSelectionContext
-  } = useContexts();
 
   const {
     GroupSelect

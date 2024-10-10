@@ -6,10 +6,11 @@ import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
-import { siteApi, useAppSelector, useComponents, lightTheme, darkTheme, useContexts, SiteRoles } from 'awayto/hooks';
+import { siteApi, useAppSelector, useComponents, lightTheme, darkTheme, SiteRoles } from 'awayto/hooks';
 
 import Layout from './Layout';
 import reportWebVitals from '../../reportWebVitals';
+import AuthContext from '../auth/AuthContext';
 
 const {
   REACT_APP_KC_CLIENT
@@ -19,7 +20,6 @@ export default function App(props: IComponent): React.JSX.Element {
   // const location = useLocation();
   const navigate = useNavigate();
 
-  const { AuthContext } = useContexts();
   const { keycloak, refreshToken } = useContext(AuthContext) as AuthContextType;
 
   const { ConfirmAction, SnackAlert, Onboard } = useComponents();

@@ -1,9 +1,10 @@
 import React, { useMemo } from 'react';
 
-import { siteApi, useContexts, useSelectOne, isExternal, IGroup } from 'awayto/hooks';
+import { siteApi, useSelectOne, isExternal, IGroup } from 'awayto/hooks';
+
+import GroupContext from './GroupContext';
 
 export function GroupProvider({ children }: IComponent): React.JSX.Element {
-  const { GroupContext } = useContexts();
 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(undefined, { skip: isExternal(window.location.pathname) });
 
@@ -26,12 +27,9 @@ export function GroupProvider({ children }: IComponent): React.JSX.Element {
     GroupSelect
   } as GroupContextType | null;
 
-  return useMemo(() => !GroupContext ? <></> :
-    <GroupContext.Provider value={groupContext}>
-      {children}
-    </GroupContext.Provider>,
-    [GroupContext, groupContext]
-  );
+  return useMemo(() => <GroupContext.Provider value={groupContext}>
+    {children}
+  </GroupContext.Provider>, [groupContext]);
 }
 
 export default GroupProvider;

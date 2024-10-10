@@ -16,14 +16,14 @@ import CallIcon from '@mui/icons-material/Call';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import InsertPageBreak from '@mui/icons-material/InsertPageBreak';
 
-import { ExchangeActions, useComponents, useContexts, useStyles, IFile, OrderedFiles } from 'awayto/hooks';
+import { ExchangeActions, useComponents, useStyles, IFile, OrderedFiles } from 'awayto/hooks';
+
+import ExchangeContext from './ExchangeContext';
+import WSTextContext from '../web_socket/WSTextContext';
+import WSCallContext from '../web_socket/WSCallContext';
 
 export function Exchange(): React.JSX.Element {
   const classes = useStyles();
-
-  const { ExchangeContext, WSTextContext, WSCallContext } = useContexts();
-
-  if (!ExchangeContext || !WSTextContext || !WSCallContext) return <></>;
 
   const { Whiteboard, FileSelectionModal } = useComponents();
   const [dialog, setDialog] = useState('');

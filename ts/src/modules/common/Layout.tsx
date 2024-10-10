@@ -28,7 +28,6 @@ const Layout = (props: IComponent): React.JSX.Element => {
   }, []);
 
   return <>
-
     <TopLevelProviders>
       <Routes>
         <Route element={

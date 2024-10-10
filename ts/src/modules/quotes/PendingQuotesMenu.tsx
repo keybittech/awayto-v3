@@ -15,7 +15,9 @@ import IconButton from '@mui/material/IconButton';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
-import { useContexts, shortNSweet } from 'awayto/hooks';
+import { shortNSweet } from 'awayto/hooks';
+
+import PendingQuotesContext from './PendingQuotesContext';
 
 declare global {
   interface IComponent {
@@ -35,7 +37,7 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
     handleSelectPendingQuoteAll,
     approvePendingQuotes,
     denyPendingQuotes
-  } = useContext(useContexts().PendingQuotesContext) as PendingQuotesContextType;
+  } = useContext(PendingQuotesContext) as PendingQuotesContextType;
 
   return <Menu
     anchorEl={pendingQuotesAnchorEl}

@@ -1,9 +1,9 @@
-import React from 'react';
+import React, { Suspense } from 'react';
 import { useComponents } from 'awayto/hooks';
 
 export function TopLevelProviders({ children }: IComponent): React.JSX.Element {
   const { BookingProvider, GroupProvider, GroupScheduleProvider, WebSocketProvider } = useComponents();
-  return <>
+  return <Suspense>
     <WebSocketProvider>
       <BookingProvider>
         <GroupProvider>
@@ -13,7 +13,7 @@ export function TopLevelProviders({ children }: IComponent): React.JSX.Element {
         </GroupProvider>
       </BookingProvider>
     </WebSocketProvider>
-  </>
+  </Suspense>
 }
 
 export default TopLevelProviders;

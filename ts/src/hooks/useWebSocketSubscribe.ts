@@ -1,11 +1,12 @@
 // useWebSocket.js
 import { useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useContexts } from './useContexts';
 import { generateLightBgColor } from './util';
 import { SocketActions, SocketParticipant, SocketResponseHandler } from './web_socket';
 
+import WebSocketContext from '../modules/web_socket/WebSocketContext';
+
 export function useWebSocketSend() {
-  const context = useContext(useContexts().WebSocketContext) as WebSocketContextType;
+  const context = useContext(WebSocketContext) as WebSocketContextType;
   return context.transmit;
 }
 
@@ -16,7 +17,7 @@ export function useWebSocketSubscribe<T>(topic: string, callback: SocketResponse
     connected,
     transmit,
     subscribe
-  } = useContext(useContexts().WebSocketContext) as WebSocketContextType;
+  } = useContext(WebSocketContext) as WebSocketContextType;
 
   const [subscribed, setSubscribed] = useState(false);
 

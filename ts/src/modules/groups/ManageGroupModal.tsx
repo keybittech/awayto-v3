@@ -19,7 +19,7 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import ArrowRightAlt from '@mui/icons-material/ArrowRightAlt';
 import NotInterestedIcon from '@mui/icons-material/NotInterested';
 
-import { useDebounce, useUtil, useContexts, siteApi, IGroup } from 'awayto/hooks';
+import { useDebounce, useUtil, refreshToken, siteApi, IGroup } from 'awayto/hooks';
 
 declare global {
   interface IComponent {
@@ -31,9 +31,6 @@ declare global {
 export function ManageGroupModal({ children, editGroup, showCancel = true, closeModal }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
-
-  const { AuthContext } = useContexts();
-  const { refreshToken } = useContext(AuthContext) as AuthContextType;
 
   const [group, setGroup] = useState({
     name: '',

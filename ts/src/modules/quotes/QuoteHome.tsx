@@ -10,7 +10,9 @@ import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useContexts, useGrid, utcDTLocal, shortNSweet } from 'awayto/hooks';
+import { useGrid, utcDTLocal, shortNSweet } from 'awayto/hooks';
+
+import PendingQuotesContext from './PendingQuotesContext';
 
 function QuoteHome(): React.JSX.Element {
 
@@ -20,7 +22,7 @@ function QuoteHome(): React.JSX.Element {
     setSelectedPendingQuotes,
     approvePendingQuotes,
     denyPendingQuotes
-  } = useContext(useContexts().PendingQuotesContext) as PendingQuotesContextType;
+  } = useContext(PendingQuotesContext) as PendingQuotesContextType;
 
   const actions = useMemo(() => {
     const { length } = selectedPendingQuotes;

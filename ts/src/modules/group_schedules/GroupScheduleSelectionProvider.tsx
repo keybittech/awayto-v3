@@ -1,10 +1,11 @@
 import React, { useContext, useEffect, useMemo, useState } from 'react';
 
-import { useContexts, dayjs, IGroupScheduleDateSlots, IQuote, TimeUnit, quotedDT, userTimezone, encodeVal, siteApi } from 'awayto/hooks';
+import { dayjs, IGroupScheduleDateSlots, IQuote, TimeUnit, quotedDT, userTimezone, siteApi } from 'awayto/hooks';
+
+import GroupScheduleContext from './GroupScheduleContext';
+import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
 
 export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.Element {
-
-  const { GroupScheduleContext, GroupScheduleSelectionContext } = useContexts();
 
   const { selectGroupSchedule: { item: groupSchedule } } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
@@ -69,14 +70,11 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
     dateSlots: dateSlots?.groupScheduleDateSlots,
     firstAvailable,
     bracketSlotDateDayDiff,
-  } as GroupScheduleSelectionContextType | null;
+  } as GroupScheduleSelectionContextType;
 
-  return useMemo(() => !GroupScheduleSelectionContext ? <></> :
-    <GroupScheduleSelectionContext.Provider value={groupScheduleSelectionContext}>
-      {children}
-    </GroupScheduleSelectionContext.Provider>,
-    [GroupScheduleSelectionContext, groupScheduleSelectionContext]
-  );
+  return useMemo(() => <GroupScheduleSelectionContext.Provider value={groupScheduleSelectionContext}>
+    {children}
+  </GroupScheduleSelectionContext.Provider>, [groupScheduleSelectionContext]);
 }
 
 export default GroupScheduleSelectionProvider;

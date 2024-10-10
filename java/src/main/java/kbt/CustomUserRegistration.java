@@ -49,7 +49,7 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     HttpRequest request = context.getHttpRequest();
     MultivaluedMap<String, String> queryParams = request.getUri().getQueryParameters();
 
-    String groupCode = queryParams.getFirst("group_code");
+    String groupCode = queryParams.getFirst("groupCode");
     Boolean failedValidation = groupCode == null;
 
     if (failedValidation) {
