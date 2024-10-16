@@ -141,7 +141,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
         setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule.name, snackType: 'info' });
         if (closeModal) {
           firstLoad.current = true;
-          closeModal();
+          closeModal(true);
         }
       } else {
         setSnack({ snackOn: 'A schedule should have a name, a duration, and at least 1 bracket.', snackType: 'info' });

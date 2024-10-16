@@ -117,6 +117,7 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
 	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules/"+data.GetScheduleId())
+	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules")
 
 	return &types.PostScheduleBracketsResponse{Id: data.GetScheduleId(), Brackets: brackets}, nil
 }

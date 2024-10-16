@@ -130,11 +130,13 @@ export function ManageScheduleBrackets(): React.JSX.Element {
       <Dialog fullScreen open={dialog === 'manage_schedule'} fullWidth maxWidth="sm">
         <ManageScheduleBracketsModal
           editSchedule={schedule}
-          closeModal={() => {
+          closeModal={(shouldReload: boolean) => {
             setDialog('');
-            if (schedule?.id) {
-              getScheduleById({ id: schedule?.id }).catch(console.error);
-              getSchedules().catch(console.error);
+            if (shouldReload) {
+              if (schedule?.id) {
+                void getScheduleById({ id: schedule.id }).catch(console.error);
+              }
+              void getSchedules().catch(console.error);
             }
           }}
         />

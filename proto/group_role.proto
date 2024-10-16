@@ -23,18 +23,21 @@ service GroupRoleService {
       patch: "/v1/group/roles"
       body: "*"
     };
+    option (siteRole) = APP_GROUP_ROLES; 
   }
 
   rpc GetGroupRoles(GetGroupRolesRequest) returns (GetGroupRolesResponse) {
     option (google.api.http) = {
       get: "/v1/group/roles"
     };
+    option (siteRole) = APP_GROUP_ROLES; 
   }
 
   rpc DeleteGroupRole(DeleteGroupRoleRequest) returns (DeleteGroupRoleResponse) {
     option (google.api.http) = {
       delete: "/v1/group/roles/{ids}"
     };
+    option (siteRole) = APP_GROUP_ROLES; 
   }
 }
 

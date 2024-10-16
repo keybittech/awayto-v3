@@ -55,34 +55,27 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     ), timers AS (
       SELECT
         series.*,
-        TIMEZONE(p_client_timezone, NOW()) - TIMEZONE(schedule_timezone, NOW()) as client_offset,
-        (DATE_TRUNC('day', week_start::timestamp) + start_time)::TIMESTAMP AT TIME ZONE schedule_timezone AS scheduler_start_time,
-        (DATE_TRUNC('day', week_start::timestamp) + start_time + interval '1 hour')::TIMESTAMP AT TIME ZONE schedule_timezone AS scheduler_start_time_dst_check
+        (week_start + start_time) AT TIME ZONE schedule_timezone AS schedule_time,
+        (week_start + start_time) AT TIME ZONE schedule_timezone AT TIME ZONE p_client_timezone AS client_time,
+        EXTRACT(EPOCH FROM (week_start + start_time) AT TIME ZONE schedule_timezone AT TIME ZONE p_client_timezone - DATE_TRUNC('week', (week_start + start_time) AT TIME ZONE schedule_timezone AT TIME ZONE p_client_timezone)) AS seconds_from_week_start
       FROM
         series
     )
     SELECT 
-      TO_CHAR(CASE
-        WHEN start_time + client_offset < INTERVAL '0 days'
-        THEN week_start - INTERVAL '1 week'
-        ELSE week_start
-      END::DATE, 'YYYY-MM-DD')::TEXT as "weekStart",
-      TO_CHAR(CASE
-        WHEN start_time + client_offset < INTERVAL '0 days'
-        THEN week_start - INTERVAL '1 week' + start_time + client_offset + INTERVAL '1 week'
-        ELSE week_start + start_time + client_offset
-      END::DATE, 'YYYY-MM-DD')::TEXT as "startDate",
-      CASE
-        WHEN start_time + client_offset < INTERVAL '0 days'
-        THEN start_time + client_offset + INTERVAL '1 week'
-        ELSE start_time + client_offset
-      END::TEXT as "startTime",
+      TO_CHAR(DATE_TRUNC('week', client_time)::DATE, 'YYYY-MM-DD')::TEXT as "weekStart",
+      TO_CHAR(client_time::DATE, 'YYYY-MM-DD')::TEXT as "startDate",
+      CONCAT(
+        'P',
+        FLOOR(seconds_from_week_start / 86400)::TEXT, 'DT',
+        FLOOR((seconds_from_week_start % 86400) / 3600)::TEXT, 'H',
+        FLOOR((seconds_from_week_start % 3600) / 60)::TEXT, 'M'
+      ) as "startTime",
       schedule_bracket_slot_id as "scheduleBracketSlotId"
     FROM timers
     WHERE 
-      scheduler_start_time >= TIMEZONE(schedule_timezone, NOW()) AND
-      scheduler_start_time <> scheduler_start_time_dst_check
-    ORDER BY week_start, start_time;
+      schedule_time > (NOW() AT TIME ZONE schedule_timezone) AND
+      schedule_time <> schedule_time + INTERVAL '1 hour'
+    ORDER BY client_time;
   END;
   $$ LANGUAGE PLPGSQL;
 

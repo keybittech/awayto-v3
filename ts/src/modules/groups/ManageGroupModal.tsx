@@ -48,6 +48,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
   const { data: nameCheck } = siteApi.useGroupServiceCheckGroupNameQuery({ name: debouncedName }, { skip: !debouncedName || skipQuery });
   const { isValid } = nameCheck || { isValid: false };
 
+  const [editedName, setEditedName] = useState(false);
   const [editedPurpose, setEditedPurpose] = useState(false);
   const [allowedDomains, setAllowedDomains] = useState([] as string[]);
   const [allowedDomain, setAllowedDomain] = useState('');
@@ -72,7 +73,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
     .replaceAll(/__+/g, '_')
     .replaceAll(/__+/g, '').toLowerCase(); // Enforce a name like this_is_a_name
 
-  const badName = !checkingName && !isValid && !!group?.name && formatName(group.name) == checkedName;
+  const badName = useMemo(() => checkingName || (!isValid && !!group?.name && formatName(group.name) == checkedName) || (editedName && group.name.length == 0), [checkingName, isValid, group, checkedName]);
 
   const handleSubmit = useCallback(async () => {
     let id = group.id;
@@ -106,6 +107,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
   }, [group]);
 
   const handleName = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
+    setEditedName(true);
     setChecker({ checkingName: true });
     const displayName = event.target.value;
     const name = formatName(displayName);
@@ -179,10 +181,10 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
             <TextField
               id={`group-purpose-entry`}
               fullWidth
-              inputProps={{ minLength: 25, maxLength: 100 }}
-              helperText={'Enter a short phrase about the function of your group (25 to 100 characters).'}
+              inputProps={{ maxLength: 100 }}
+              helperText={'Enter a short phrase about the function of your group (max. 100 characters).'}
               label={`Group Description`}
-              error={editedPurpose && !!group.purpose && group.purpose.length < 25}
+              error={editedPurpose && !!group.purpose && group.purpose.length > 100}
               onBlur={() => setEditedPurpose(true)}
               onFocus={() => setEditedPurpose(false)}
               onChange={e => setGroup({ ...group, purpose: e.target.value })}
@@ -238,7 +240,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
                 }
                 label="Use AI Suggestions"
               />
-              <Typography variant="caption">Check to enable. AI suggestions are group-wide, for all of your members. This can be toggled later in the group settings.</Typography>
+              <Typography variant="caption">AI suggestions will be seen by all group members. This functionality can be toggled on/off in group settings. Group name and description are used to generate suggestions.</Typography>
             </FormGroup>
           </Grid>
         </Grid>
@@ -246,7 +248,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
       <CardActions>
         <Grid container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-          <Button disabled={!editGroup?.id && (group.purpose.length < 25 || !isValid || checkingName || badName)} onClick={handleSubmit}>Save Group</Button>
+          <Button disabled={!editGroup?.id && (group.purpose.length > 100 || !isValid || checkingName || badName)} onClick={handleSubmit}>Save Group</Button>
         </Grid>
       </CardActions>
     </Card>

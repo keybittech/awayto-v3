@@ -23,9 +23,9 @@ export function ScheduleDatePicker(): React.JSX.Element {
     label="Date"
     inputFormat="MM/DD/YYYY"
     minDate={firstAvailable.time}
-    onOpen={() => setStartOfMonth(selectedDate.isAfter(firstAvailable.time) ? selectedDate.startOf('month') : firstAvailable.time)}
-    onMonthChange={date => date && setStartOfMonth(date)}
-    onYearChange={date => date && setStartOfMonth(date)}
+    onOpen={() => setSelectedDate(selectedDate.isAfter(firstAvailable.time) ? selectedDate : firstAvailable.time)}
+    onMonthChange={date => date && setStartOfMonth(date.startOf('month'))}
+    onYearChange={date => date && setStartOfMonth(date.startOf('month'))}
     renderInput={(params) => <TextField fullWidth {...params} />}
     disableHighlightToday={true}
     shouldDisableDate={date => {

@@ -38,7 +38,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
   const [hasCode, setHasCode] = useState(false);
 
   const [groupCode, setGroupCode] = useState('');
-  const [expanded, setExpanded] = useState<string | false>(location.hash.includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
+  const [expanded, setExpanded] = useState<string | false>(location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
@@ -109,13 +109,13 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
             <Grid item xs={12}>
               <AccordionWrap {...CreateGroup}>
                 <Typography variant="subtitle1">
-                  <p>Start by providing a unique name for your group. You can name it whatever you want, but we'll also generate a url-safe version alongside it.</p>
-                  <p>If AI Suggestions are enabled, your group's description will enable various cusotmized functionality across the site, such as suggestions to complete forms, etc.</p>
-                  <p>Restrict who can join your group by adding an email to the list of allowed domains. For example, site.com is the domain for the email user@site.com.</p>
+                  <p>Start by providing a unique name for your group; a url-safe version is generated alongside. Group name can be changed later.</p>
+                  <p>If AI Suggestions are enabled, the group name and description will be used to generate custom suggestions for naming roles, services, and other elements on the site.</p>
+                  <p>Restrict who can join your group by adding an email to the list of allowed domains. For example, site.com is the domain for the email user@site.com. To ensure only these email accounts can join the group, enter site.com into the Allowed Email Domains and press Add. Multiple domains can be added. Leave empty to allow users with any email address.</p>
                   <p>To make onboarding easier, we'll use the example of creating an online learning center. For this step, we give our group a name and description which reflect the group's purpose.</p>
                 </Typography>
                 <Alert sx={{ py: 0 }} icon={false} severity="info">
-                  Complete each section in order to progress
+                  Complete each section in order to progress. The save button will become active when the form is valid.
                 </Alert>
               </AccordionWrap>
 

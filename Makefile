@@ -219,7 +219,10 @@ host_ssh:
 	ssh -p ${SSH_PORT} ${HOST_OPERATOR}@$(APP_IP)
 
 host_db:
-	$(SSH) "sudo docker exec -i \$(sudo docker ps -aqf "name=db") psql -U \"${PG_USER}\" \"${PG_DB}\""
+	$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="db") psql -U ${PG_USER} ${PG_DB}
+
+host_cmd:
+	$(SSH) $(CMD)
 
 host_deploy_env:
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > "$(HOST_LOCAL_DIR)/${BINARY_NAME}.service"
