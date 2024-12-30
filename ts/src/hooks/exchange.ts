@@ -12,6 +12,7 @@ export enum ExchangeActions {
  * @purpose tracks essential props between participants during whiteboard interactions
  */
 export interface Whiteboard {
+  selectedText?: string;
   sharedFile?: IFile;
   lines: {
     startPoint: {

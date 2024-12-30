@@ -85,7 +85,7 @@ LOCAL_UNIX_SOCK_DIR=/home/$(shell whoami)/${UNIX_SOCK_DIR_NAME}
 define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
-	
+
 .PHONY: build cert java landing ts_protoc ts go_protoc go go_dev genmocks go_test go_coverage clean docker_up docker_down docker_build docker_start docker_stop db redis host_up host_gen host_ssh host_down host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down host_deploy host_db
 
 ## Builds
@@ -120,7 +120,8 @@ ts: ts_protoc
 	pnpm run --dir $(TS_SRC) build
 
 ts_dev: ts
-	WDS_SOCKET_PORT=${GO_HTTPS_PORT} HTTPS=true pnpm run --dir $(TS_SRC) start
+	HTTPS=true pnpm run --dir $(TS_SRC) start
+	# WDS_SOCKET_PORT=${GO_HTTPS_PORT} 
 
 go_protoc: $(GO_GEN_DIR)
 	protoc --proto_path=proto \

@@ -19,6 +19,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
         (
           SELECT
             eq.id,
+            schedule.timezone,
             eq."slotDate",
             eq."startTime",
             eq."scheduleBracketSlotId",
@@ -42,6 +43,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
         (
           SELECT
             eb.id,
+            schedule.timezone,
             eb."slotDate",
             eb."scheduleBracketSlot",
             eb."service",

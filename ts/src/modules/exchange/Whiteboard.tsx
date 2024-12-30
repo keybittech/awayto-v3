@@ -57,6 +57,7 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
   const [pageNumber, setPageNumber] = useState(1);
   const [strokeColor, setStrokeColor] = useState('#aaaaaa');
   const [fileToggle, setFileToggle] = useState(false);
+  const [selectedText, setSelectedText] = useState<Record<string, string>>({});
   const [boards, setBoards] = useState<Record<string, Partial<Whiteboard>>>({});
 
   const {
@@ -96,6 +97,10 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
           }
         } else {
           getFileContents(fileDetails).catch(console.error);
+        }
+      } else if (SocketActions.SET_SELECTED_TEXT === action) {
+        if (payload.selectedText?.length) {
+          setSelectedText({ [sender]: payload.selectedText });
         }
       } else if (SocketActions.CHANGE_SETTING === action) {
       }
@@ -184,7 +189,6 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
 
   useEffect(() => {
     if (sharedFile && sharedFile.uuid !== fileContents?.uuid) {
-      console.log({ SHARING: sharedFile });
       sendWhiteboardMessage(SocketActions.SHARE_FILE, { sharedFile });
     }
   }, [fileContents, sharedFile]);
@@ -222,6 +226,24 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
       // contextRef.current = whiteboardRef.current.getContext('2d');
     }
   }, [whiteboardRef, sharedFile]);
+
+  useEffect(() => {
+    if (selectedText[connectionId]?.length) {
+      sendWhiteboardMessage(SocketActions.SET_SELECTED_TEXT, { selectedText: selectedText[connectionId].replace('\n', ' ') });
+    }
+  }, [selectedText[connectionId], userList]);
+
+  const textRenderer = useCallback((textItem: { str: string }) => {
+    let newText = textItem.str;
+    for (const connId of Object.keys(selectedText)) {
+      for (const user of Object.values(userList)) {
+        if (user.cids.includes(connId)) {
+          newText = newText.replace(selectedText[connId], txt => `<span style="background-color:${user.color};opacity:.3;">${txt}</span>`);
+        }
+      }
+    }
+    return newText;
+  }, [selectedText, userList]);
 
   return <Box
     onClick={() => !active && setActive(true)}
@@ -264,6 +286,7 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
           canvasRef={fileDisplayRef}
           renderAnnotationLayer={false}
           pageNumber={pageNumber}
+          customTextRenderer={textRenderer}
           onRenderSuccess={() => {
             if (fileDisplayRef.current && whiteboardRef.current) {
               const tempCanvas = document.createElement('canvas');
@@ -281,7 +304,12 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
               // fileDisplayRef.current.getContext('2d')?.translate(0, 0);
               setFileToggle(!fileToggle);
             }
-
+          }}
+          onMouseUp={() => {
+            const selection = document.getSelection();
+            if (selection && selection.toString() != "") {
+              setSelectedText({ [connectionId]: selection.toString() });
+            }
           }}
         />
       </Document>}

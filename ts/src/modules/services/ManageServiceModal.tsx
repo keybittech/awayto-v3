@@ -27,7 +27,7 @@ const serviceSchema = {
 
 const serviceTierSchema = {
   name: '',
-  multiplier: '1.00',
+  multiplier: 100,
   formId: '',
   surveyId: '',
   addons: {}
@@ -385,7 +385,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
                   sx={classes.chipRoot}
                   label={
                     <Typography sx={classes.chipLabel}>
-                      {`#${i + 1} ` + tier.name + ' (' + tier.multiplier + 'x)'}
+                      {`#${i + 1} ` + tier.name + ' (' + (tier.multiplier || 100) / 100 + 'x)'}
                     </Typography>
                   }
                   onDelete={() => {

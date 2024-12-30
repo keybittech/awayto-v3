@@ -66,7 +66,6 @@ export const utilConfig = {
   } as IUtil,
   reducers: {
     openConfirm: (...[state, { payload: { confirmAction, confirmEffect, confirmSideEffect } }]: UtilPayload) => {
-      console.log({ confirmAction, confirmEffect, confirmSideEffect })
       if (confirmEffect) {
         state.isConfirming = true;
         state.confirmAction = confirmAction as ConfirmAction;

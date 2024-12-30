@@ -16,5 +16,5 @@ export const scheduleSchema = {
 export const bracketSchema = {
   duration: 1,
   automatic: false,
-  multiplier: '1.00'
+  multiplier: 100
 };

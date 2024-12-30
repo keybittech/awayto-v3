@@ -54,7 +54,7 @@ message IServiceTier {
   string formId = 3;
   string surveyId = 4;
   string name = 5;
-  string multiplier = 6;
+  int32 multiplier = 6;
   map<string, IServiceAddon> addons = 7;
   int32 order = 8;
   string createdOn = 9;
@@ -64,7 +64,7 @@ message IServiceTier {
 message PostServiceTierRequest {
   string name = 1 [(google.api.field_behavior) = REQUIRED];
   string serviceId = 2 [(google.api.field_behavior) = REQUIRED];
-  string multiplier = 3 [(google.api.field_behavior) = REQUIRED];
+  int32 multiplier = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostServiceTierResponse {
@@ -74,7 +74,7 @@ message PostServiceTierResponse {
 message PatchServiceTierRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
   string name = 2 [(google.api.field_behavior) = REQUIRED];
-  string multiplier = 3 [(google.api.field_behavior) = REQUIRED];
+  int32 multiplier = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchServiceTierResponse {

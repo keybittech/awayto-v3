@@ -188,8 +188,8 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
           <Typography variant="h6">Multiplier</Typography>
           <Typography variant="body2">Affects the cost of all services in this bracket.</Typography>
           <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
-            <Box>{bracket.multiplier}x <span>&nbsp;</span> &nbsp;</Box>
-            <Slider value={parseFloat(bracket.multiplier || '')} onChange={(_, val) => setBracket({ ...bracket, multiplier: parseFloat(val.toString()).toFixed(2) })} step={.01} min={1} max={5} />
+            <Box>{(bracket.multiplier || 100) / 100}x <span>&nbsp;</span> &nbsp;</Box>
+            <Slider value={bracket.multiplier || 100} onChange={(_, val) => setBracket({ ...bracket, multiplier: val as number })} step={1} min={0} max={500} />
           </Box>
         </Box>
 

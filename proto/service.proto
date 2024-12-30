@@ -56,6 +56,7 @@ message IService {
   string formId = 5;
   string surveyId = 6;
   string createdOn = 7;
+  int32 row = 8;
 }
 
 message PostServiceRequest {

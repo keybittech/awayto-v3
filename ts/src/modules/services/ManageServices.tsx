@@ -34,7 +34,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
     const acts = length == 1 ? [
       <Tooltip key={'manage_service'} title="Edit">
         <Button onClick={() => {
-          setGroupService(groupServicesRequest?.groupServices.find(gs => gs.service?.id === selected[0]));
+          setGroupService(groupServicesRequest?.groupServices.find(gs => gs.id === selected[0])?.service);
           setDialog('manage_service');
           setSelected([]);
         }}>
@@ -64,7 +64,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
         </Button>
       </Tooltip>
     ]
-  }, [selected]);
+  }, [selected, groupServicesRequest]);
 
   const serviceGridProps = useGrid({
     rows: groupServicesRequest?.groupServices || [],
@@ -94,7 +94,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
       <Suspense>
         <Grid container>
           <Grid item xs={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
-            <ManageServiceModal {...props} editService={groupService?.service} closeModal={() => {
+            <ManageServiceModal {...props} editService={groupService} closeModal={() => {
               setDialog('')
               void getGroupServices();
             }} />

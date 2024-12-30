@@ -77,7 +77,7 @@ message IScheduleBracket {
   bool automatic = 2;
   string scheduleId = 3;
   int32 duration = 4;
-  string multiplier = 5;
+  int32 multiplier = 5;
   map<string, IService> services = 6;
   map<string, IScheduleBracketSlot> slots = 7;
   map<string, IQuote> quotes = 8;

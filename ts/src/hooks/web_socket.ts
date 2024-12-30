@@ -21,6 +21,7 @@ export enum SocketActions {
   SHARE_FILE = 19,
   CHANGE_SETTING = 20,
   SUBSCRIBE_INIT = 21,
+  SET_SELECTED_TEXT = 22,
 }
 
 /**
