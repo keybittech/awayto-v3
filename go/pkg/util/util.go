@@ -7,7 +7,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-	"os/exec"
 	"runtime"
 	"strings"
 	"time"
@@ -21,10 +20,6 @@ var (
 )
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
-
-func WriteErrorToDisk(err error) {
-	exec.Command("sh", "-c", fmt.Sprintf("echo \"%s\" >> errors.log", err.Error())).Run()
-}
 
 func Debug(message string, args ...interface{}) {
 	if *debugMode {

@@ -127,7 +127,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 				loggedErr := errors.New(fmt.Sprintf("%s LogId: %s %s", time.Now().String(), requestId, err.Error()))
 
-				util.WriteErrorToDisk(loggedErr)
+				// util.WriteErrorToDisk(loggedErr)
 
 				userErr := strings.Split(loggedErr.Error(), "UserError: ")[1]
 				errRes := fmt.Sprintf("Method: %s\nId: %s\nError: %s", pbVal.Type().Name(), requestId, userErr)

@@ -61,6 +61,10 @@ func (a *API) HandleSockConnection(conn net.Conn, req *http.Request) {
 	session := a.Handlers.Redis.ReqSession(req)
 
 	ticket := req.URL.Query().Get("ticket")
+	if ticket == "" {
+		util.ErrCheck(fmt.Errorf("no ticket"))
+		return
+	}
 
 	_, connId, err := util.SplitSocketId(ticket)
 	if err != nil {
