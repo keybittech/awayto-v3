@@ -2,9 +2,6 @@
 
 psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
 
-  DROP SCHEMA IF EXISTS dbfunc_schema CASCADE;
-  CREATE SCHEMA dbfunc_schema;
-
   CREATE OR REPLACE FUNCTION dbfunc_schema.delete_group(
     sub UUID  
   ) RETURNS TABLE (

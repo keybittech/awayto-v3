@@ -131,7 +131,7 @@ func (a *API) SessionAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 				return
 			}
 
-			if session.GroupSessionVersion == groupVersion {
+			if session.GroupSessionVersion == groupVersion && session.GroupId != "" {
 				buildSession = false
 			} else {
 				session.GroupSessionVersion = groupVersion

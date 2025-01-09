@@ -72,7 +72,8 @@ SITE_INSTALLER=deploy/scripts/host/install.sh
 
 # backup related
 DB_BACKUP_DIR=backups/db
-LATEST_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art $(DB_BACKUP_DIR) | tail -n 1)
+LATEST_KEYCLOAK_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_app*" $(DB_BACKUP_DIR) | tail -n 1)
+LATEST_APP_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_keycloak*" $(DB_BACKUP_DIR) | tail -n 1)
 
 RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 
@@ -191,16 +192,25 @@ docker_stop:
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
 
 docker_db:
-	${SUDO} docker exec -it $(shell docker ps -aqf "name=db") su - postgres -c 'psql -U ${PG_USER} -d ${PG_DB}'
+	${SUDO} docker exec -it $(shell ${SUDO} docker ps -aqf "name=db") su - postgres -c 'psql -U ${PG_USER} -d ${PG_DB}'
 
 docker_db_start:
 	${SUDO} docker $(DOCKER_COMPOSE) up -d db
+	sleep 5
 
-docker_db_backup: $(DB_BACKUP_DIR)
-	${SUDO} docker exec $(shell ${SUDO} docker ps -aqf "name=db") pg_dump -U ${PG_USER} -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+docker_db_backup: 
+	${SUDO} docker exec $(shell ${SUDO} docker ps -aqf "name=db") pg_dump -U ${PG_USER} -Fc -N dbtable_schema -N dbview_schema -N dbfunc_schema ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_keycloak_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+	${SUDO} docker exec $(shell ${SUDO} docker ps -aqf "name=db") pg_dump -U ${PG_USER} -a -Fc -n dbtable_schema -n dbview_schema ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
 docker_db_restore:
-	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") pg_restore -U ${PG_USER} -d postgres --clean --create < $(LATEST_RESTORE) 
+	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") pg_restore -U ${PG_USER} -c -d ${PG_DB} < $(LATEST_KEYCLOAK_RESTORE)
+	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") psql -U ${PG_USER} -d ${PG_DB} -c "\
+		TRUNCATE TABLE dbtable_schema.file_types CASCADE; \
+		TRUNCATE TABLE dbtable_schema.budgets CASCADE; \
+		TRUNCATE TABLE dbtable_schema.time_units CASCADE; \
+		TRUNCATE TABLE dbtable_schema.timelines CASCADE; \
+	"
+	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") pg_restore -U ${PG_USER} -c -d ${PG_DB} < $(LATEST_APP_RESTORE) 
 
 docker_db_restore_op: docker_stop docker_db_start docker_db_restore docker_start
 
