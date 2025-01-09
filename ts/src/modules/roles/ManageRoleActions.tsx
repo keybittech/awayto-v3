@@ -9,7 +9,8 @@ import Checkbox from '@mui/material/Checkbox';
 
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 
-import { useGrid, siteApi, useUtil, SiteRoles } from 'awayto/hooks';
+import { useGrid, siteApi, useUtil, SiteRoles, SiteRoleDetails } from 'awayto/hooks';
+import { Tooltip } from '@mui/material';
 
 export function ManageRoleActions(): React.JSX.Element {
 
@@ -48,11 +49,13 @@ export function ManageRoleActions(): React.JSX.Element {
       const group = groupsValues.find(g => g.active);
       if (group?.roles && Object.keys(group.roles).length) {
 
-        const cols: GridColDef<{ name: string }>[] = [{
+        const cols: GridColDef<{ id: string, name: string, description: string }>[] = [{
           width: 200,
           field: 'id',
           headerName: '',
-          renderCell: ({ row }) => row.name
+          renderCell: ({ row }) => <Tooltip placement="right" title={row.description}>
+            <Typography>{row.name}</Typography>
+          </Tooltip>
         }];
 
         for (const roleId in group.roles) {
@@ -68,8 +71,8 @@ export function ManageRoleActions(): React.JSX.Element {
               if (!assignments[subgroup]) return <></>;
               return <Checkbox
                 disabled={name.toLowerCase() == "admin"}
-                checked={assignments[subgroup].actions?.some(a => a.name === row.name) ?? false}
-                onChange={e => handleCheck(subgroup, row.name, e.target.checked)}
+                checked={assignments[subgroup].actions?.some(a => a.name === row.id) ?? false}
+                onChange={e => handleCheck(subgroup, row.id, e.target.checked)}
               />
             }
           });
@@ -81,7 +84,13 @@ export function ManageRoleActions(): React.JSX.Element {
     return [];
   }, [groupsValues, assignments]);
 
-  const options = useMemo(() => Object.values(SiteRoles).filter(r => ![SiteRoles.APP_ROLE_CALL, SiteRoles.APP_GROUP_ADMIN].includes(r)).map((name, id) => ({ id, name })), []);
+  const options = useMemo(() => {
+    return Object.values(SiteRoles)
+      .filter(r => ![SiteRoles.UNRESTRICTED, SiteRoles.APP_ROLE_CALL, SiteRoles.APP_GROUP_ADMIN].includes(r))
+      .map(r => {
+        return { id: r, name: SiteRoleDetails[r].name, description: SiteRoleDetails[r].description }
+      });
+  }, []);
 
   const roleActionGridProps = useGrid({
     rows: options,

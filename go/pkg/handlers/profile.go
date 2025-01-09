@@ -100,6 +100,8 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 		return nil, util.ErrCheck(err)
 	}
 
+	userProfile.RoleName = session.RoleName
+
 	return &types.GetUserProfileDetailsResponse{UserProfile: userProfile}, nil
 }
 

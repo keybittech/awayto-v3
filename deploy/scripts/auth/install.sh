@@ -62,7 +62,8 @@ echo "# Configuring front-end auth client"
 SITE_CLIENT_ID=$(kcadm create clients -r $KC_REALM -s clientId=$KC_CLIENT -s 'redirectUris=["'"$APP_HOST_URL/*"'"]' -s rootUrl=$APP_HOST_URL -s baseUrl=$APP_HOST_URL -s publicClient=true -s standardFlowEnabled=true -s directAccessGrantsEnabled=true -s attributes='{ "post.logout.redirect.uris": "'"$APP_HOST_URL"'", "access.token.lifespan": 60 }' -i)
 
 echo "# Attaching roles"
-SITE_ROLES="GROUP_ADMIN GROUP_BOOKINGS GROUP_FEATURES GROUP_MATRIX GROUP_ROLES GROUP_SCHEDULES GROUP_SERVICES GROUP_USERS ROLE_CALL"
+# GROUP_FEATURES
+SITE_ROLES="GROUP_ADMIN GROUP_BOOKINGS GROUP_PERMISSIONS GROUP_ROLES GROUP_SCHEDULES GROUP_SCHEDULE_KEYS GROUP_SERVICES GROUP_USERS ROLE_CALL"
 for SITE_ROLE in $SITE_ROLES; do
   kcadm create clients/$SITE_CLIENT_ID/roles -r $KC_REALM -s name=APP_$SITE_ROLE
 done

@@ -49,8 +49,8 @@ const Layout = (props: IComponent): React.JSX.Element => {
         }>
           <Route path="/" element={<Home {...props} />} />
           <Route path="/profile" element={<Profile {...props} />} />
-          <Route path="/service" element={<ServiceHome {...props} />} />
-          <Route path="/quote/request" element={<RequestQuote {...props} />} />
+          {/* <Route path="/service" element={<ServiceHome {...props} />} /> */}
+          <Route path="/request" element={<RequestQuote {...props} />} />
           <Route path="/schedule" element={<ScheduleHome {...props} />} />
           <Route path="/group/*" element={<GroupPaths {...props} />} />
           <Route path="/exchange/:summaryId/summary" element={<ExchangeSummary {...props} />} />

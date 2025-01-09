@@ -87,6 +87,7 @@ message IUserProfile {
   map<string, IRole> roles = 18;
   repeated string availableUserGroupRoles = 19;
   int32 row = 20;
+  string roleName = 21;
 }
 
 message PostUserProfileRequest {

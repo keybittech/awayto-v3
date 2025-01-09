@@ -25,7 +25,7 @@ endif
 BINARY_SERVICE=$(BINARY_NAME).service
 BINARY_OUT=$(BINARY_NAME)
 
-# soure files
+# source files
 
 JAVA_SRC=./java
 TS_SRC=./ts
@@ -41,7 +41,7 @@ LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
 HOST_LOCAL_DIR=deployed/${PROJECT_PREFIX}
 GO_GEN_DIR=go/pkg/types
-MOCKS_GEN_DIR=go/pkg/mocks
+GO_MOCKS_GEN_DIR=go/pkg/mocks
 
 # host locations
 
@@ -70,6 +70,11 @@ DEPLOY_HOST_SCRIPTS=deploy/scripts/host
 AUTH_INSTALL_SCRIPT=deploy/scripts/auth/install.sh
 SITE_INSTALLER=deploy/scripts/host/install.sh
 
+# backup related
+DB_BACKUP_DIR=backups/db
+LATEST_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art $(DB_BACKUP_DIR) | tail -n 1)
+
+
 RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 
 # APP_IP=$(shell hcloud server ip -6 ${APP_HOST})
@@ -86,7 +91,15 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-.PHONY: build cert java landing ts_protoc ts go_protoc go go_dev genmocks go_test go_coverage clean docker_up docker_down docker_build docker_start docker_stop db redis host_up host_gen host_ssh host_down host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down host_deploy host_db
+.PHONY: build cert java landing clean \
+	ts ts_protoc ts_dev \
+	go go_protoc go_dev go_genmocks go_test go_coverage \
+	docker_up docker_down docker_build docker_start docker_stop \
+	docker_db docker_db_start docker_db_backup docker_db_restore docker_db_restore_op \
+	docker_redis \
+	host_up host_gen host_ssh host_down \
+	host_deploy host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down \
+	host_db
 
 ## Builds
 
@@ -136,19 +149,19 @@ go: go_protoc
 go_dev: go $(CERTS_DIR) cert
 	exec ./$(BINARY_NAME) --debug
 
-go_test: go_protoc genmocks
+go_test: go_protoc go_genmocks
 	go test -C $(GO_SRC) ./...
 
-go_coverage: go_protoc genmocks
+go_coverage: go_protoc go_genmocks
 	go test -C $(GO_SRC) -coverpkg=./... ./...
 
 clean:
-	rm -rf $(TS_BUILD_DIR) $(MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR)
+	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR)
 	rm -f $(BINARY_OUT) $(TS_API_YAML) $(TS_API_BUILD)
 
 ## Tests
-genmocks: $(MOCKS_GEN_DIR)
-	mockgen -source=go/pkg/clients/interfaces.go -destination=$(MOCKS_GEN_DIR)/clients.go -package=mocks
+go_genmocks: $(GO_MOCKS_GEN_DIR)
+	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCKS_GEN_DIR)/clients.go -package=mocks
 
 ## Utilities
 
@@ -174,10 +187,21 @@ docker_start: docker_build
 docker_stop:
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
 
-db:
+docker_db:
 	${SUDO} docker exec -it $(shell docker ps -aqf "name=db") su - postgres -c 'psql -U ${PG_USER} -d ${PG_DB}'
 
-redis:
+docker_db_start:
+	${SUDO} docker $(DOCKER_COMPOSE) up -d db
+
+docker_db_backup: $(DB_BACKUP_DIR)
+	${SUDO} docker exec $(shell docker ps -aqf "name=db") pg_dump -U ${PG_USER} -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+
+docker_db_restore:
+	${SUDO} docker exec -i $(shell docker ps -aqf "name=db") pg_restore -U ${PG_USER} -d postgres --clean --create < $(LATEST_RESTORE) 
+
+docker_db_restore_op: docker_stop docker_db_start docker_db_restore docker_start
+
+docker_redis:
 	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass ${REDIS_PASS}
 
 host_up: host_gen 
@@ -312,7 +336,7 @@ host_deploy: host_predeploy build host_deploy_env host_deploy_sync host_deploy_d
 host_metric_cpu:
 	hcloud server metrics --type cpu $(APP_HOST)
 
-$(MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR):
+$(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR):
 	mkdir -p $@
 
 # sed -i -e "/^\(#\|\)UNIX_SOCK_DIR=/s&^.*$$&UNIX_SOCK_DIR=local_tmp&;" $(ENVFILE)

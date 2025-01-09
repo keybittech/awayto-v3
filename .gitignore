@@ -1,6 +1,7 @@
 landing/config.yaml
 landing/public/
 ts/settings.application.env
+backups/
 certs/
 deployed/
 deploy/images/

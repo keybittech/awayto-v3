@@ -26,7 +26,7 @@ func ApplyMiddleware(h http.HandlerFunc, middlewares []Middleware) http.HandlerF
 
 func (a *API) CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "*")
+		w.Header().Set("Access-Control-Allow-Origin", os.Getenv("APP_HOST_URL"))
 
 		if req.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)
@@ -78,7 +78,6 @@ func (a *API) SocketAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// TODO group selection via header etc
 		ctx = context.WithValue(ctx, "UserSession", &clients.UserSession{UserSub: userSub, UserEmail: userEmail})
 		ctx = context.WithValue(ctx, "SourceIp", req.RemoteAddr)
 
@@ -119,29 +118,30 @@ func (a *API) SessionAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// var nonce string
-		// if no, ok := payload["nonce"]; ok {
-		// 	nonce = fmt.Sprint(no)
-		// } else {
-		// 	http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-		// 	return
-		// }
+		buildSession := true
 
 		gidSelect := req.Header.Get("X-Gid-Select")
 
 		session, err := a.Handlers.Redis.GetSession(ctx, userSub)
 
 		if err == nil && gidSelect == "" {
-			if session.UserSub != userSub {
-				http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+			groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(ctx, session.GroupId)
+			if err != nil {
+				http.Error(w, util.InternalErrorResponse, http.StatusInternalServerError)
 				return
 			}
-			// util.Debug("using session for %s", session.UserSub)
-		} else {
+
+			if session.GroupSessionVersion == groupVersion {
+				buildSession = false
+			} else {
+				session.GroupSessionVersion = groupVersion
+			}
+		}
+
+		if buildSession {
 
 			session = &clients.UserSession{
 				UserSub: userSub,
-				// Nonce:   nonce,
 			}
 
 			if em, ok := payload["email"]; ok {
@@ -183,12 +183,15 @@ func (a *API) SessionAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 						return
 					}
 
-					session.GroupName = "/" + strings.Split(session.SubGroupName, "/")[1]
+					names := strings.Split(session.SubGroupName, "/")
+					session.GroupName = names[1]
+					session.RoleName = names[2]
+					kcGroupName := "/" + session.GroupName
 
-					kcGroups, err := a.Handlers.Keycloak.GetGroupByName(session.GroupName)
+					kcGroups, err := a.Handlers.Keycloak.GetGroupByName(kcGroupName)
 
 					for _, gr := range *kcGroups {
-						if gr.Path == session.GroupName {
+						if gr.Path == kcGroupName {
 							session.GroupExternalId = gr.Id
 							break
 						}
@@ -224,6 +227,14 @@ func (a *API) SessionAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 						util.ErrCheck(err)
 						http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
 						return
+					}
+
+					groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(ctx, session.GroupId)
+					if err != nil {
+						http.Error(w, util.InternalErrorResponse, http.StatusInternalServerError)
+						return
+					} else {
+						session.GroupSessionVersion = groupVersion
 					}
 
 					// err = a.Handlers.Database.Client.QueryRow(`

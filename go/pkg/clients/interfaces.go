@@ -75,6 +75,8 @@ type IRedis interface {
 	GetCachedParticipants(ctx context.Context, topic string) SocketParticipants
 	GetParticipantTargets(participants SocketParticipants) []string
 	TrackTopicParticipant(ctx context.Context, topic, socketId string)
+	GetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
+	SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	GetSession(ctx context.Context, userSub string) (*UserSession, error)
 	SetSession(ctx context.Context, userSub string, session *UserSession) error
 	DeleteSession(ctx context.Context, userSub string) error

@@ -20,6 +20,7 @@ var (
 )
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
+const InternalErrorResponse = `{ "error": { "status": 500 } }`
 
 func Debug(message string, args ...interface{}) {
 	if *debugMode {

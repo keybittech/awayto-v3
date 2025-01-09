@@ -30,7 +30,7 @@ service GroupRoleService {
     option (google.api.http) = {
       get: "/v1/group/roles"
     };
-    option (siteRole) = APP_GROUP_ROLES; 
+    // option (siteRole) = APP_GROUP_ROLES; 
   }
 
   rpc DeleteGroupRole(DeleteGroupRoleRequest) returns (DeleteGroupRoleResponse) {

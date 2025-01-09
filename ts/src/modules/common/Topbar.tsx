@@ -119,7 +119,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
             handleMenuClose={handleMenuClose}
           />
 
-          <Tooltip sx={{ display: !!exchangeId ? 'none' : 'flex' }} title="View Exchanges">
+          <Tooltip sx={{ display: !!exchangeId ? 'none' : 'flex' }} title="View Appointments">
             <IconButton
               disableRipple
               color="primary"
@@ -130,7 +130,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
             >
               <Badge badgeContent={upcomingBookings.length} color="error">
                 <ThreePIcon sx={classes.mdHide} />
-                <Typography sx={classes.mdShow}>View</Typography>
+                <Typography sx={classes.mdShow}>Upcoming</Typography>
               </Badge>
             </IconButton>
           </Tooltip>
@@ -150,7 +150,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
               />
             </PendingQuotesProvider>
           </Suspense>
-          <Tooltip title="Approve Exchanges">
+          {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <Tooltip title="Approve Appointments">
             <IconButton
               disableRipple
               color="primary"
@@ -164,7 +164,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
                 <Typography sx={classes.mdShow}>Approve</Typography>
               </Badge>
             </IconButton>
-          </Tooltip>
+          </Tooltip>}
         </Grid>
 
         <FeedbackMenu
@@ -174,17 +174,17 @@ export function Topbar(props: IComponent): React.JSX.Element {
           handleMenuClose={handleMenuClose}
         />
         <Grid>
-          <Tooltip title="Comment">
+          <Tooltip title="Feedback">
             <IconButton
               disableRipple
               color="primary"
-              aria-label={`submit a group or site comment`}
+              aria-label={`submit group or site feedback`}
               aria-controls={feedbackMenuId}
               aria-haspopup="true"
               onClick={e => setFeedbackAnchorEl(e.currentTarget)}
             >
               <CampaignIcon sx={classes.mdHide} />
-              <Typography sx={classes.mdShow}>Comment</Typography>
+              <Typography sx={classes.mdShow}>Feedback</Typography>
             </IconButton>
           </Tooltip>
         </Grid>
@@ -252,8 +252,8 @@ export function Topbar(props: IComponent): React.JSX.Element {
             <ListItemText>Schedule</ListItemText>
           </MenuItem>
 
-          <MenuItem hidden={!hasRole([SiteRoles.APP_GROUP_BOOKINGS])} aria-label="navigate to create request" onClick={e => handleNavAndClose(e, '/quote/request')}>
-            <ListItemIcon><MoreTimeIcon color={location.pathname === '/quote/request' ? "secondary" : "primary"} /></ListItemIcon>
+          <MenuItem hidden={!hasRole([SiteRoles.APP_GROUP_BOOKINGS])} aria-label="navigate to create request" onClick={e => handleNavAndClose(e, '/request')}>
+            <ListItemIcon><MoreTimeIcon color={location.pathname === '/request' ? "secondary" : "primary"} /></ListItemIcon>
             <ListItemText>Request</ListItemText>
           </MenuItem>
 

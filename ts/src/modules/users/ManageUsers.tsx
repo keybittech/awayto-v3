@@ -15,7 +15,7 @@ import ManageUserModal from './ManageUserModal';
 
 export function ManageUsers(props: IComponent): React.JSX.Element {
 
-  const { data: groupUsersRequest } = siteApi.useGroupUsersServiceGetGroupUsersQuery();
+  const { data: groupUsersRequest, refetch: getGroupUsers } = siteApi.useGroupUsersServiceGetGroupUsersQuery();
 
   const [user, setUser] = useState<IGroupUser>({});
   const [selected, setSelected] = useState<string[]>([]);
@@ -25,7 +25,7 @@ export function ManageUsers(props: IComponent): React.JSX.Element {
     const { length } = selected;
     const actions = length == 1 ? [
       <IconButton key={'manage_user'} onClick={() => {
-        const sel = groupUsersRequest?.groupUsers?.find(gu => gu.userProfile?.id === selected[0]);
+        const sel = groupUsersRequest?.groupUsers?.find(gu => gu.id === selected[0]);
         if (sel) {
           setUser(sel);
           setDialog('manage_user');
@@ -63,13 +63,16 @@ export function ManageUsers(props: IComponent): React.JSX.Element {
     toolbar: () => <>
       <Typography variant="button">Users</Typography>
       {!!selected.length && <Box sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Box>}
-    </>
+    </>,
   });
 
   return <>
     <Dialog open={dialog === 'manage_user'} fullWidth maxWidth="xs">
       <Suspense>
-        <ManageUserModal {...props} editRoleId={user.roleId} editUser={user.userProfile} closeModal={() => setDialog('')} />
+        <ManageUserModal {...props} editRoleId={user.roleId} editUser={user.userProfile} closeModal={() => {
+          getGroupUsers()
+          setDialog('')
+        }} />
       </Suspense>
     </Dialog>
 

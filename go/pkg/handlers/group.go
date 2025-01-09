@@ -140,6 +140,8 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
 
+	h.Redis.SetGroupSessionVersion(req.Context(), groupId)
+
 	err = tx.Commit()
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -165,6 +167,8 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 
 	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+
+	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
 
 	return &types.PatchGroupResponse{Success: true}, nil
 }
@@ -238,6 +242,8 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/assignments")
+
+	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
 
 	return &types.PatchGroupAssignmentsResponse{Success: true}, nil
 }

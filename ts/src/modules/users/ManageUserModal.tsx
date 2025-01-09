@@ -29,7 +29,7 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: IComponent
   const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const [patchGroupUser] = siteApi.useGroupUsersServicePatchGroupUserMutation();
 
-  const [password, setPassword] = useState('');
+  // const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState(editRoleId);
   const [profile, setProfile] = useState({
     firstName: '',
@@ -41,14 +41,14 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: IComponent
     ...editUser
   } as IUserProfile);
 
-  const handlePassword = useCallback(({ target: { value } }: React.ChangeEvent<HTMLTextAreaElement>) => setPassword(value), [])
-  const handleProfile = useCallback(({ target: { name, value } }: React.ChangeEvent<HTMLTextAreaElement>) => setProfile({ ...profile, [name]: value }), [profile])
+  // const handlePassword = useCallback(({ target: { value } }: React.ChangeEvent<HTMLTextAreaElement>) => setPassword(value), [])
+  // const handleProfile = useCallback(({ target: { name, value } }: React.ChangeEvent<HTMLTextAreaElement>) => setProfile({ ...profile, [name]: value }), [profile])
 
   const handleSubmit = useCallback(() => {
     async function go() {
       if (editUser?.id && groupRolesRequest?.groupRoles) {
         const { id } = profile;
-        const { name } = groupRolesRequest.groupRoles?.find(gr => gr.id === roleId)?.role || {};
+        const { name } = groupRolesRequest.groupRoles?.find(gr => gr.roleId === roleId)?.role || {};
         if (id && roleId && name) {
           await patchGroupUser({ patchGroupUserRequest: { userId: id, roleId, roleName: name } }).unwrap();
           if (closeModal)
@@ -97,11 +97,11 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: IComponent
     // }
 
     // void submitUser();
-  }, [profile, password]);
+  }, [profile, roleId]);
 
-  const passwordGenerator = useCallback(() => {
-    setPassword(passwordGen());
-  }, []);
+  // const passwordGenerator = useCallback(() => {
+  //   setPassword(passwordGen());
+  // }, []);
 
   return <>
     <Card>
@@ -120,7 +120,7 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: IComponent
                 </TextField>
               </Grid>
 
-              {!editUser && (
+              {/* !editUser && (
                 <Grid item xs>
                   <Grid container direction="column" justifyContent="space-evenly" spacing={4}>
                     <Grid item xs={12}>
@@ -144,7 +144,7 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: IComponent
                     </Grid>
                   </Grid>
                 </Grid>
-              )}
+              ) */}
             </Grid>
           </Grid>
         </Grid>

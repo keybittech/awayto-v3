@@ -23,12 +23,12 @@ import { useComponents, useUtil, SiteRoles, useStyles, siteApi } from 'awayto/ho
 
 import GroupContext from './GroupContext';
 
-const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULES, APP_GROUP_SERVICES, APP_GROUP_USERS } = SiteRoles;
+const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULE_KEYS, APP_GROUP_SERVICES, APP_GROUP_USERS } = SiteRoles;
 
 export function ManageGroupHome(props: IComponent): React.JSX.Element {
 
   const { component } = useParams();
-  if (!component) return <></>;
+
   const classes = useStyles();
 
   const [dialog, setDialog] = useState('');
@@ -46,18 +46,18 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
   const { ManageGroupModal, GroupSeatModal, ManageFeedback, ManageUsers, ManageRoles, ManageRoleActions, ManageForms, ManageServices, ManageSchedules, GroupSecure } = useComponents();
 
   const menuRoles: Record<string, SiteRoles[]> = {
-    users: [APP_GROUP_USERS],
+    services: [APP_GROUP_SERVICES],
+    schedules: [APP_GROUP_SCHEDULE_KEYS],
     roles: [APP_GROUP_ROLES],
-    matrix: [APP_GROUP_ADMIN],
+    users: [APP_GROUP_USERS],
+    permissions: [APP_GROUP_ADMIN],
     feedback: [APP_GROUP_ADMIN],
     forms: [APP_GROUP_ADMIN],
-    services: [APP_GROUP_SERVICES],
-    schedules: [APP_GROUP_SCHEDULES],
   }
 
   const menu = Object.keys(menuRoles).map(comp => {
-    const selected = comp === component;
-    return group.name && component && <GroupSecure key={`menu_${comp}`} contentGroupRoles={menuRoles[comp]}>
+    const selected = comp === component || (!component && comp === 'services');
+    return group.name && <GroupSecure key={`menu_${comp}`} contentGroupRoles={menuRoles[comp]}>
       <Grid item>
         <Button
           variant="text"
@@ -78,22 +78,21 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
 
   const viewPage = useMemo(() => {
     switch (component) {
-      case 'users':
-        return <ManageUsers {...props} />
+      case 'schedules':
+        return <ManageSchedules {...props} />
       case 'roles':
         return <ManageRoles {...props} />
-      case 'matrix':
+      case 'users':
+        return <ManageUsers {...props} />
+      case 'permissions':
         return <ManageRoleActions {...props} />
+      case 'feedback':
+        return <ManageFeedback {...props} />
       case 'forms':
         return <ManageForms {...props} />
       case 'services':
-        return <ManageServices {...props} />
-      case 'schedules':
-        return <ManageSchedules {...props} />
-      case 'feedback':
-        return <ManageFeedback {...props} />
       default:
-        return;
+        return <ManageServices {...props} />
     }
   }, [component]);
 

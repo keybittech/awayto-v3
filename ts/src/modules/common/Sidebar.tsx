@@ -55,8 +55,8 @@ export function Sidebar(): React.JSX.Element {
           <ListItemIcon><EventNoteIcon color={location.pathname === '/schedule' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Schedule</ListItemText>
         </ListItem>}
-        {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/quote/request')} button key={'quote/request'}>
-          <ListItemIcon><MoreTimeIcon color={location.pathname === '/quote/request' ? "secondary" : "primary"} /></ListItemIcon>
+        {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/request')} button key={'request'}>
+          <ListItemIcon><MoreTimeIcon color={location.pathname === '/request' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Request</ListItemText>
         </ListItem>}
       </List>
