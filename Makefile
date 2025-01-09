@@ -74,7 +74,6 @@ SITE_INSTALLER=deploy/scripts/host/install.sh
 DB_BACKUP_DIR=backups/db
 LATEST_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art $(DB_BACKUP_DIR) | tail -n 1)
 
-
 RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 
 # APP_IP=$(shell hcloud server ip -6 ${APP_HOST})
@@ -97,9 +96,12 @@ endef
 	docker_up docker_down docker_build docker_start docker_stop \
 	docker_db docker_db_start docker_db_backup docker_db_restore docker_db_restore_op \
 	docker_redis \
-	host_up host_gen host_ssh host_down \
+	host_status host_up host_gen host_ssh host_down \
+	host_service_stop host_service_start \
 	host_deploy host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down \
-	host_db
+	host_update_cert host_update_cert_op \
+	host_db host_db_backup host_db_restore host_db_restore_op \
+	host_redis
 
 ## Builds
 
@@ -183,6 +185,7 @@ docker_build:
 
 docker_start: docker_build
 	${SUDO} docker $(DOCKER_COMPOSE) up -d
+	@while true; do if [ $$(curl -o /dev/null -s -w "%{http_code}" "${KC_INTERNAL}") = "303" ]; then break; fi; echo "waiting for keycloak..." && sleep 5; done
 
 docker_stop:
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
@@ -194,15 +197,18 @@ docker_db_start:
 	${SUDO} docker $(DOCKER_COMPOSE) up -d db
 
 docker_db_backup: $(DB_BACKUP_DIR)
-	${SUDO} docker exec $(shell docker ps -aqf "name=db") pg_dump -U ${PG_USER} -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+	${SUDO} docker exec $(shell ${SUDO} docker ps -aqf "name=db") pg_dump -U ${PG_USER} -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
 docker_db_restore:
-	${SUDO} docker exec -i $(shell docker ps -aqf "name=db") pg_restore -U ${PG_USER} -d postgres --clean --create < $(LATEST_RESTORE) 
+	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") pg_restore -U ${PG_USER} -d postgres --clean --create < $(LATEST_RESTORE) 
 
 docker_db_restore_op: docker_stop docker_db_start docker_db_restore docker_start
 
 docker_redis:
 	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass ${REDIS_PASS}
+
+host_status:
+	$(SSH) "sudo journalctl -u ${BINARY_SERVICE} -f"
 
 host_up: host_gen 
 	until ping -c1 $(APP_IP) ; do sleep 5; done
@@ -211,6 +217,7 @@ host_up: host_gen
 		sudo mkdir -p $(H_ETC_DIR); \
 		mkdir -p \
 		$(UNIX_SOCK_DIR) \
+		$(H_REM_DIR)/$(DB_BACKUP_DIR) \
 		$(H_REM_DIR)/$(DEPLOY_SCRIPTS) \
 		$(H_REM_DIR)/$(JAVA_TARGET_DIR) \
 		$(H_REM_DIR)/$(JAVA_THEMES_DIR) \
@@ -246,8 +253,17 @@ host_ssh:
 host_db:
 	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="db") psql -U ${PG_USER} ${PG_DB}
 
+host_redis:
+	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="redis") redis-cli --pass ${REDIS_PASS}
+
 host_cmd:
 	$(SSH) $(CMD)
+
+host_service_start:
+	$(SSH) sudo systemctl start $(BINARY_SERVICE)
+
+host_service_stop:
+	$(SSH) sudo systemctl stop $(BINARY_SERVICE)
 
 host_deploy_env:
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > "$(HOST_LOCAL_DIR)/${BINARY_NAME}.service"
@@ -292,7 +308,25 @@ host_deploy_env:
 	"
 	echo "properties set"
 
+host_update_cert:
+	$(SSH) " \
+		sudo certbot certificates; \
+		sudo ip6tables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}; \
+		sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}; \
+		sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email; \
+		sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}; \
+		sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}; \
+		sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt; \
+		sudo chmod 700 ${CERTS_DIR}/cert.pem ${CERTS_DIR}/privkey.pem; \
+		sudo systemctl restart $(BINARY_SERVICE); \
+		sudo certbot certificates; \
+		sudo systemctl is-active $(BINARY_SERVICE); \
+	"
+
+host_update_cert_op: host_predeploy host_update_cert host_postdeploy
+
 host_deploy_sync:
+	rsync ${RSYNC_FLAGS} Makefile "$(SSH_OP_B):$(H_REM_DIR)/Makefile"
 	rsync ${RSYNC_FLAGS} "$(DEPLOY_SCRIPTS)/" "$(SSH_OP_B):$(H_REM_DIR)/$(DEPLOY_SCRIPTS)/"
 	rsync ${RSYNC_FLAGS} "$(JAVA_TARGET_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(JAVA_TARGET_DIR)/"
 	rsync ${RSYNC_FLAGS} "$(JAVA_THEMES_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(JAVA_THEMES_DIR)/"
@@ -325,6 +359,14 @@ host_deploy_compose_up:
 
 host_deploy_compose_down:
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_down"
+
+host_db_backup:
+	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_backup"
+
+host_db_restore:
+	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_restore_op"
+
+host_db_restore_op: host_predeploy host_service_stop host_db_restore host_service_start host_postdeploy
 
 host_deploy: host_predeploy build host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
 	$(SSH) " \
