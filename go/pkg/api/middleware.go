@@ -280,7 +280,7 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(http.Handl
 				session := a.Handlers.Redis.ReqSession(req)
 				hasSiteRole := slices.Contains(session.AvailableUserGroupRoles, opts.SiteRole)
 
-				util.Debug("access of %s, request allowed: %v", req.URL, hasSiteRole)
+				fmt.Println(fmt.Sprintf("access of %s, request allowed: %v", req.URL, hasSiteRole))
 
 				if !hasSiteRole {
 					http.Error(w, util.ForbiddenResponse, http.StatusForbidden)

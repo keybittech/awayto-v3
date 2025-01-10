@@ -68,7 +68,7 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 			Prompt: content,
 		})
 
-		util.Debug("str res %+v\n", resp.Choices)
+		fmt.Println(fmt.Sprintf("str res %+v", resp.Choices))
 
 		if err != nil {
 			util.ErrCheck(err)
@@ -96,7 +96,7 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 			Messages: messages,
 		})
 
-		util.Debug("messages res %+v\n", resp.Choices)
+		fmt.Println(fmt.Sprintf("messages res %+v", resp.Choices))
 
 		if err != nil {
 			util.ErrCheck(err)

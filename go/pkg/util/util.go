@@ -7,6 +7,7 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"os"
 	"runtime"
 	"strings"
 	"time"
@@ -16,32 +17,27 @@ import (
 )
 
 var (
-	debugMode = flag.Bool("debug", false, "Debug mode")
+	DebugMode = flag.Bool("debug", false, "Debug mode")
+	ErrorLog  *log.Logger
 )
+
+func init() {
+	file, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ErrorLog = log.New(file, "ERROR: ", log.Ldate|log.Ltime)
+}
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
 const InternalErrorResponse = `{ "error": { "status": 500 } }`
-
-func Debug(message string, args ...interface{}) {
-	if *debugMode {
-		fmt.Printf(message+"\n", args...)
-	}
-}
-
-func ErrDebug(err error, args ...string) error {
-	argsStr := ""
-	for _, str := range args {
-		argsStr += str + " "
-	}
-	return errors.New(fmt.Sprintf("%s %s", err.Error(), argsStr))
-}
 
 func ErrCheck(err error) error {
 	if err != nil {
 		pc, file, line, ok := runtime.Caller(1)
 
 		if !ok {
-			log.Fatal("error check fatal: ", err)
+			log.Fatal(fmt.Sprintf("fatal error when checking err %s", err))
 		}
 
 		function := runtime.FuncForPC(pc)
@@ -55,11 +51,13 @@ func ErrCheck(err error) error {
 			}
 		}
 
-		errStr := fmt.Sprintf("%s File: %s; Line: %d; Function: %s; UserError: %s", time.Now().String(), file, line, functionName, err)
+		errStr := err.Error()
 
-		Debug(errStr)
+		if strings.Contains(errStr, "SysErrMsg:") {
+			errStr = "SPAWNED FROM: " + errStr
+		}
 
-		return errors.New(errStr)
+		return errors.New(fmt.Sprintf("File: %s; Line: %d; Function: %s; SysErrMsg: %s", file, line, functionName, errStr))
 	}
 
 	return nil

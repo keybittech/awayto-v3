@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"reflect"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -125,12 +124,15 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 				err := results[1].Interface().(error)
 
-				loggedErr := errors.New(fmt.Sprintf("%s LogId: %s %s", time.Now().String(), requestId, err.Error()))
+				loggedErr := errors.New(fmt.Sprintf("RequestId: %s %s", requestId, err.Error()))
 
-				// util.WriteErrorToDisk(loggedErr)
+				util.ErrorLog.Println(loggedErr)
 
-				userErr := strings.Split(loggedErr.Error(), "UserError: ")[1]
-				errRes := fmt.Sprintf("Method: %s\nId: %s\nError: %s", pbVal.Type().Name(), requestId, userErr)
+				if *util.DebugMode {
+					fmt.Println(fmt.Sprintf("DEBUG: %s", loggedErr))
+				}
+
+				errRes := fmt.Sprintf("Request Id: %s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
 
 				http.Error(w, errRes, http.StatusInternalServerError)
 				return

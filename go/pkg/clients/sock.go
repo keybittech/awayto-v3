@@ -5,6 +5,7 @@ import (
 	"av3api/pkg/util"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"time"
@@ -201,7 +202,7 @@ func InitSocket() ISocket {
 		for {
 			select {
 			case <-ticker.C:
-				util.Debug("\nSock Report:\nConnections: %+v\nSubscribers: %+v\n", connections, subscribers)
+				fmt.Println(fmt.Sprintf("\nSock Report:\nConnections: %+v\nSubscribers: %+v\n", connections, subscribers))
 			}
 		}
 	}()
@@ -278,7 +279,8 @@ func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) {
 	}
 	reply := <-replyChan
 	close(replyChan)
-	util.Debug("Sent message bytes messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed))
+
+	fmt.Println(fmt.Sprintf("Sent message bytes messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed)))
 }
 
 func (s *Socket) SendMessage(targets []string, message SocketMessage) {
@@ -302,7 +304,7 @@ func (s *Socket) SendMessage(targets []string, message SocketMessage) {
 	}
 	reply := <-replyChan
 	close(replyChan)
-	util.Debug("Sent normal messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed))
+	fmt.Println(fmt.Sprintf("Sent normal messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed)))
 }
 
 func (s *Socket) SendMessageWithReply(targets []string, message SocketMessage, replyChan chan SocketResponse) error {
