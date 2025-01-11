@@ -33,12 +33,12 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 		serviceSurveyId = &service.SurveyId
 	}
 
-	var serviceID string
+	var serviceId string
 	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.services (name, cost, form_id, survey_id, created_sub)
 		VALUES ($1, $2::integer, $3, $4, $5::uuid)
 		RETURNING id
-	`, service.GetName(), service.GetCost(), serviceFormId, serviceSurveyId, session.UserSub).Scan(&serviceID)
+	`, service.GetName(), service.GetCost(), serviceFormId, serviceSurveyId, session.UserSub).Scan(&serviceId)
 
 	if err != nil {
 		var dbErr *pq.Error
@@ -48,17 +48,72 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 		return nil, util.ErrCheck(err)
 	}
 
-	for _, tier := range service.GetTiers() {
-		var tierID string
+	return &types.PostServiceResponse{Id: serviceId}, nil
+}
 
-		var tierFormId *string
+func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest) (*types.PatchServiceResponse, error) {
+	session := h.Redis.ReqSession(req)
+	service := data.GetService()
+
+	tx, ongoing := h.Database.ReqTx(req)
+	if tx == nil {
+		return nil, util.ErrCheck(errors.New("bad patch service tx"))
+	}
+
+	if !ongoing {
+		defer tx.Rollback()
+	}
+
+	rows, err := tx.Query(`
+		SELECT id FROM dbtable_schema.service_tier_addons
+		WHERE schedule_id = $1
+	`, service.GetId())
+
+	for rows.Next() {
+		var tierId string
+		err = rows.Scan(&tierId)
+
+		// delete any existing addons using tier ids dbtable_schema.service_tier_addons
+		_, err = tx.Exec(`
+			DELETE FROM dbtable_schema.service_tier_addons
+			WHERE service_tier_id = $1
+		`, tierId)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
+
+	// delete any tiers with serviceId dbtable_schema.service_tiers
+	_, err = tx.Exec(`
+		DELETE FROM dbtable_schema.service_tiers
+		WHERE service_id = $1
+	`, service.GetId())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	// update PatchService
+	_, err = tx.Exec(`
+		UPDATE dbtable_schema.services
+		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
+		WHERE id = $1
+	`, service.GetId(), service.GetName(), service.GetFormId(), service.GetSurveyId(), session.UserSub, time.Now().Local().UTC())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	// build tiers
+	for _, tier := range service.GetTiers() {
+		var tierId string
+
+		var tierFormId string
 		if tier.GetFormId() != "" {
-			tierFormId = &tier.FormId
+			tierFormId = tier.GetFormId()
 		}
 
-		var tierSurveyId *string
+		var tierSurveyId string
 		if tier.GetSurveyId() != "" {
-			tierSurveyId = &tier.SurveyId
+			tierSurveyId = tier.GetSurveyId()
 		}
 
 		err := tx.QueryRow(`
@@ -74,7 +129,7 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 			SELECT st.id
 			FROM input_rows
 			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), serviceID, tier.GetMultiplier(), tierFormId, tierSurveyId, session.UserSub).Scan(&tierID)
+		`, tier.GetName(), service.GetId(), tier.GetMultiplier(), tierFormId, tierSurveyId, session.UserSub).Scan(&tierId)
 
 		if err != nil {
 			return nil, util.ErrCheck(err)
@@ -85,7 +140,7 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 				INSERT INTO dbtable_schema.service_tier_addons (service_addon_id, service_tier_id, created_sub)
 				VALUES ($1, $2, $3::uuid)
 				ON CONFLICT (service_addon_id, service_tier_id) DO NOTHING
-			`, addon.GetId(), tierID, session.UserSub)
+			`, addon.GetId(), tierId, session.UserSub)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -94,22 +149,6 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 
 	if !ongoing {
 		tx.Commit()
-	}
-
-	return &types.PostServiceResponse{Id: serviceID}, nil
-}
-
-func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest) (*types.PatchServiceResponse, error) {
-	session := h.Redis.ReqSession(req)
-	service := data.GetService()
-
-	_, err := h.Database.Client().Exec(`
-		UPDATE dbtable_schema.services
-		SET name = $2, updated_sub = $3, updated_on = $4 
-		WHERE id = $1
-	`, service.GetId(), service.GetName(), session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
 	}
 
 	return &types.PatchServiceResponse{Success: true}, nil

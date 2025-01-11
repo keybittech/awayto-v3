@@ -90,7 +90,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
   })
 
   return <>
-    <Dialog open={dialog === 'manage_service'} fullWidth maxWidth="sm">
+    <Dialog open={dialog === 'manage_service'} fullWidth maxWidth="lg">
       <Suspense>
         <Grid container>
           <Grid item xs={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>

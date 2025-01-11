@@ -6,6 +6,7 @@ import Grid from '@mui/material/Grid';
 type UseScheduleProps<T extends GridValidRowModel> = {
   rows: T[];
   columns: GridColDef<T>[];
+  columnHeaderHeight?: number;
   rowId?: string;
   noPagination?: boolean;
   selected?: GridRowSelectionModel;
@@ -14,13 +15,15 @@ type UseScheduleProps<T extends GridValidRowModel> = {
   toolbar?: () => JSX.Element;
 };
 
-export function useGrid<T extends GridValidRowModel>({ rows, columns, rowId, noPagination, selected, onSelected, toolbar, disableRowSelectionOnClick = true }: UseScheduleProps<T>) {
+export function useGrid<T extends GridValidRowModel>({ rows, columns, columnHeaderHeight, rowId, noPagination, selected, onSelected, toolbar, disableRowSelectionOnClick = true }: UseScheduleProps<T>) {
+  const defaultHeight = 42;
   const grid = useMemo(() => {
     return {
       autoHeight: true,
       sx: { bgcolor: 'secondary.dark' },
       rows,
       columns,
+      columnHeaderHeight: columnHeaderHeight || defaultHeight,
       rowSelectionModel: selected,
       checkboxSelection: !!selected,
       onRowSelectionModelChange: onSelected,

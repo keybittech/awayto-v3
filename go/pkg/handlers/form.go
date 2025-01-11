@@ -32,12 +32,18 @@ func (h *Handlers) PostForm(w http.ResponseWriter, req *http.Request, data *type
 
 func (h *Handlers) PostFormVersion(w http.ResponseWriter, req *http.Request, data *types.PostFormVersionRequest) (*types.PostFormVersionResponse, error) {
 	session := h.Redis.ReqSession(req)
+
+	formJson, err := data.GetVersion().GetForm().MarshalJSON()
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	var versionId string
-	err := h.Database.Client().QueryRow(`
+	err = h.Database.Client().QueryRow(`
 		INSERT INTO dbtable_schema.form_versions (form_id, form, created_on, created_sub)
 		VALUES ($1::uuid, $2::jsonb, $3, $4::uuid)
 		RETURNING id
-	`, data.GetVersion().GetFormId(), data.GetVersion().GetForm(), time.Now().Local().UTC(), session.UserSub).Scan(&versionId)
+	`, data.GetVersion().GetFormId(), formJson, time.Now().Local().UTC(), session.UserSub).Scan(&versionId)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)

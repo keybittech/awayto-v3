@@ -72,6 +72,7 @@ message IProtoForm {
   string name = 2;
   IProtoFormVersion version = 3 [(google.api.field_behavior) = REQUIRED];
   string createdOn = 4;
+  int32 row = 5;
 }
 
 message PostFormRequest {

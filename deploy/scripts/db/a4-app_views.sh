@@ -439,32 +439,52 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     LEFT JOIN dbview_schema.enabled_schedule_bracket_slots esbs ON esbs.id = eb."scheduleBracketSlotId";
 
   CREATE
-  OR REPLACE VIEW dbview_schema.enabled_group_forms_ext AS
+  OR REPLACE VIEW dbview_schema.enabled_forms_ext AS
   SELECT
     ef.*,
-    egf."formId",
-    egf."groupId",
     eefv.* as version
   FROM
-    dbview_schema.enabled_group_forms egf
-  LEFT JOIN dbview_schema.enabled_forms ef ON ef.id = egf."formId"
-  LEFT JOIN LATERAL (
-    SELECT
-      TO_JSONB(vers) as version
-    FROM
-    (
+    dbview_schema.enabled_forms ef
+    LEFT JOIN LATERAL (
       SELECT
-        efv.*
+        TO_JSONB(vers) as version
       FROM
-        dbview_schema.enabled_form_versions efv
-      WHERE
-        efv."formId" = egf."formId"
-      ORDER BY
-        efv."createdOn" DESC
-      LIMIT
-        1
-    ) vers
-  ) as eefv ON true;
+        (
+          SELECT
+            efv.*
+          FROM
+            dbview_schema.enabled_form_versions efv
+          WHERE
+            efv."formId" = ef.id
+          ORDER BY
+            efv."createdOn" DESC
+          LIMIT
+            1
+        ) vers
+    ) as eefv ON true;
+
+
+  CREATE
+  OR REPLACE VIEW dbview_schema.enabled_group_forms_ext AS
+  SELECT
+    egf."formId",
+    egf."groupId",
+    eef.* as form
+  FROM
+    dbview_schema.enabled_group_forms egf
+    LEFT JOIN LATERAL (
+      SELECT
+        TO_JSONB(frm) as form
+      FROM
+        (
+          SELECT
+            efe.*
+          FROM
+            dbview_schema.enabled_forms_ext efe
+          WHERE
+            efe.id = egf."formId"
+        ) frm
+    ) as eef ON true;
 
   CREATE
   OR REPLACE VIEW dbview_schema.enabled_group_user_schedules_ext AS

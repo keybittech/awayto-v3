@@ -9,7 +9,7 @@ import Grid from '@mui/material/Grid';
 import ClearIcon from '@mui/icons-material/Clear';
 import CheckIcon from '@mui/icons-material/Check';
 import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
-import { SiteMutation, useUtil, ILookup } from 'awayto/hooks';
+import { SiteMutation, useUtil, ILookup, useStyles } from 'awayto/hooks';
 
 type CreateActionBody = Record<string, string | Record<string, string>>;
 
@@ -43,6 +43,8 @@ function isStringArray(str?: string | string[]): str is string[] {
 }
 
 export function SelectLookup({ lookupChange, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, createActionBodyKey, deleteAction, deleteComplete, deleteActionIdentifier }: IComponent): React.JSX.Element {
+
+  const classes = useStyles();
 
   const { setSnack } = useUtil();
 
@@ -116,100 +118,105 @@ export function SelectLookup({ lookupChange, disabled = false, invalidValues = [
   //   }
   // }, [defaultValue, lookupValue]);
 
-  return (addingNew ?
-    <TextField
-      autoFocus
-      fullWidth
-      label={`New ${lookupName}`}
-      value={newLookup.name}
-      onChange={e => {
-        setNewLookup({ name: e.target.value } as ILookup)
-      }}
-      onKeyDown={(e) => {
-        ('Enter' === e.key && newLookup.name) && handleSubmit();
-      }}
-      InputProps={{
-        endAdornment: (
-          <InputAdornment position="end">
-            <Box mb={2}>
-              <IconButton aria-label="close new record" onClick={() => {
-                setAddingNew(false);
-                setNewLookup({ ...newLookup, name: '' });
-              }}>
-                <ClearIcon style={{ color: 'red' }} />
-              </IconButton>
-              <IconButton aria-label="create new record" onClick={() => {
-                newLookup.name ? handleSubmit() : void setSnack({ snackOn: 'Provide a name for the record.', snackType: 'info' });
-              }}>
-                <CheckIcon style={{ color: 'green' }} />
-              </IconButton>
-            </Box>
-          </InputAdornment>
-        ),
-      }}
-    /> : <TextField
-      select
-      disabled={disabled}
-      autoFocus={!!lookupUpdater}
-      id={`${lookupName}-lookup-selection`}
-      fullWidth
-      helperText={helperText || ''}
-      label={`${lookupName}s`}
-      onChange={e => {
-        const { value } = e.target as { value: string | string[] };
-        if (isStringArray(value) && value.indexOf('new') > -1) {
-        } else {
-          lookupChange(value);
-        }
-      }}
-      value={lookupValue}
-      SelectProps={{
-        multiple,
-        renderValue: selected => {
-          if (isStringArray(selected as string[]))
-            return (selected as string[]).map(v => lookups?.find(r => r.id === v)?.name).join(', ')
-
-          return lookups?.find(r => r.id === selected)?.name as string
-        }
-      }}
-
-    >
-      {!multiple && !noEmptyValue && <MenuItem value="">No selection</MenuItem>}
-      {createAction && <MenuItem value="new" onClick={e => {
-        e.preventDefault();
-        setAddingNew(true);
-      }}>Add a {lookupName} to this list</MenuItem>}
-      {!lookups?.length && <MenuItem disabled>You have no pre-defined {lookupName}s.<br /> Click the button above to add some.</MenuItem>}
-      {lookups?.length ? lookups.map((lookup, i) => (
-        <MenuItem key={i} style={{ display: 'flex' }} value={lookup.id}>
-          <span style={{ flex: '1' }}>{lookup.name}</span>
-          {refetchAction && deleteAction && <ClearIcon style={{ color: 'red', marginRight: '8px' }} onClick={e => {
-            e.stopPropagation();
-            if (isStringArray(lookupValue) && lookup.id) {
-              lookupChange([...lookupValue.filter(l => l !== lookup.id)]);
-            } else if (lookupValue === lookup.id) {
-              lookupChange('');
+  return <>
+    {
+      addingNew ?
+        <TextField
+          autoFocus
+          label={`New ${lookupName}`}
+          value={newLookup.name}
+          onChange={e => {
+            setNewLookup({ name: e.target.value } as ILookup)
+          }}
+          onKeyDown={(e) => {
+            ('Enter' === e.key && newLookup.name) && handleSubmit();
+          }}
+          InputProps={{
+            endAdornment: (
+              <InputAdornment position="end">
+                <Box mb={2}>
+                  <IconButton aria-label="close new record" onClick={() => {
+                    setAddingNew(false);
+                    setNewLookup({ ...newLookup, name: '' });
+                  }}>
+                    <ClearIcon style={{ color: 'red' }} />
+                  </IconButton>
+                  <IconButton aria-label="create new record" onClick={() => {
+                    newLookup.name ? handleSubmit() : void setSnack({ snackOn: 'Provide a name for the record.', snackType: 'info' });
+                  }}>
+                    <CheckIcon style={{ color: 'green' }} />
+                  </IconButton>
+                </Box>
+              </InputAdornment>
+            ),
+          }}
+        /> : <TextField
+          select
+          disabled={disabled}
+          autoFocus={!!lookupUpdater}
+          id={`${lookupName}-lookup-selection`}
+          helperText={helperText || ''}
+          label={`${lookupName}s`}
+          fullWidth
+          onChange={e => {
+            const { value } = e.target as { value: string | string[] };
+            if (isStringArray(value) && value.indexOf('new') > -1) {
+            } else {
+              lookupChange(value);
             }
+          }}
+          value={lookupValue}
+          SelectProps={{
+            multiple,
+            renderValue: selected => {
+              const lookupText = isStringArray(selected as string[]) ?
+                (selected as string[]).map(v => lookups?.find(r => r.id === v)?.name).join(', ') :
+                lookups?.find(r => r.id === selected)?.name as string;
 
-            if (lookup.id && ((parentUuidName && parentUuid && attachName) || deleteActionIdentifier)) {
-              deleteAction(
-                parentUuidName && parentUuid && attachName ? { [parentUuidName]: parentUuid, [attachName]: lookup.id } :
-                  deleteActionIdentifier ? { [deleteActionIdentifier]: lookup.id } :
-                    {}
-              ).unwrap().then(() => {
-                if (lookup.id) {
-                  deleteComplete && deleteComplete(lookup.id);
-                  refresh()
+              return <Box sx={{ whiteSpace: 'pre-wrap' }}>{lookupText}</Box>;
+            }
+          }}
+
+        >
+          {!multiple && !noEmptyValue && <MenuItem value="">No selection</MenuItem>}
+          {createAction && <MenuItem value="new" onClick={e => {
+            e.preventDefault();
+            setAddingNew(true);
+          }}>Add a {lookupName} to this list</MenuItem>}
+          {!lookups?.length && <MenuItem disabled>
+            You have no pre-defined {lookupName}s.<br />
+            Click the button above to add some.
+          </MenuItem>}
+          {lookups?.length ? lookups.map((lookup, i) => (
+            <MenuItem key={i} style={{ display: 'flex' }} value={lookup.id}>
+              <span style={{ flex: '1' }}>{lookup.name}</span>
+              {refetchAction && deleteAction && <ClearIcon style={{ color: 'red', marginRight: '8px' }} onClick={e => {
+                e.stopPropagation();
+                if (isStringArray(lookupValue) && lookup.id) {
+                  lookupChange([...lookupValue.filter(l => l !== lookup.id)]);
+                } else if (lookupValue === lookup.id) {
+                  lookupChange('');
                 }
-              }).catch(console.error);
-            }
 
-          }} />}
-        </MenuItem>
-      )) : []}
-    </TextField>
-  )
+                if (lookup.id && ((parentUuidName && parentUuid && attachName) || deleteActionIdentifier)) {
+                  deleteAction(
+                    parentUuidName && parentUuid && attachName ? { [parentUuidName]: parentUuid, [attachName]: lookup.id } :
+                      deleteActionIdentifier ? { [deleteActionIdentifier]: lookup.id } :
+                        {}
+                  ).unwrap().then(() => {
+                    if (lookup.id) {
+                      deleteComplete && deleteComplete(lookup.id);
+                      refresh()
+                    }
+                  }).catch(console.error);
+                }
+
+              }} />}
+            </MenuItem>
+          )) : []}
+        </TextField>
+    }
+  </>;
 }
 
 export default SelectLookup;
-

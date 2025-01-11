@@ -38,7 +38,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
 
   CREATE TABLE dbtable_schema.forms (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-    name VARCHAR (50) NOT NULL,
+    name VARCHAR (500) NOT NULL,
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
     created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
     updated_on TIMESTAMP,

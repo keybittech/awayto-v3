@@ -9,7 +9,7 @@ import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useComponents, siteApi, useUtil, IForm, IFormVersion, IField, deepClone, IGroupForm } from 'awayto/hooks';
+import { useComponents, siteApi, useUtil, IForm, IProtoForm, IFormVersion, IField, deepClone, IGroupForm } from 'awayto/hooks';
 
 declare global {
   interface IComponent {
@@ -105,8 +105,14 @@ export function ManageFormModal({ editForm, closeModal, ...props }: IComponent):
         postGroupFormRequest: {
           name,
           groupForm: {
-            form: newForm,
-            formId: id
+            form: {
+              name,
+              formId: id,
+              version: {
+                form: newForm,
+                submission: {}
+              }
+            }
           } as IGroupForm
         }
       }).unwrap();

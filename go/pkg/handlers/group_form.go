@@ -22,7 +22,13 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 	}
 	groupFormId := formResp.GetId()
 
-	_, err = h.PostFormVersion(w, req, &types.PostFormVersionRequest{Version: data.GetGroupForm().GetForm().GetVersion()})
+	_, err = h.PostFormVersion(w, req, &types.PostFormVersionRequest{
+		Name: data.GetGroupForm().GetForm().GetName(),
+		Version: &types.IProtoFormVersion{
+			FormId: groupFormId,
+			Form:   data.GetGroupForm().GetForm().GetVersion().GetForm(),
+		},
+	})
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -69,17 +75,21 @@ func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data
 
 func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormsRequest) (*types.GetGroupFormsResponse, error) {
 	session := h.Redis.ReqSession(req)
-	var groupForms []*types.IGroupForm
+	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(&groupForms, `
+	err := h.Database.QueryRows(&forms, `
 		SELECT es.*
 		FROM dbview_schema.enabled_group_forms eus
 		LEFT JOIN dbview_schema.enabled_forms es ON es.id = eus."formId"
 		WHERE eus."groupId" = $1
 	`, session.GroupId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
+	}
+
+	var groupForms []*types.IGroupForm
+	for _, f := range forms {
+		groupForms = append(groupForms, &types.IGroupForm{FormId: f.GetId(), Form: f})
 	}
 
 	return &types.GetGroupFormsResponse{GroupForms: groupForms}, nil
@@ -93,7 +103,7 @@ func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, da
 		SELECT egfe.*
 		FROM dbview_schema.enabled_group_forms_ext egfe
 		WHERE egfe."groupId" = $1 and egfe."formId" = $2
-	`, session.UserSub, data.GetFormId())
+	`, session.GroupId, data.GetFormId())
 
 	if err != nil {
 		return nil, util.ErrCheck(err)

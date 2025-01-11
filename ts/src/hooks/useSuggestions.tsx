@@ -9,7 +9,8 @@ import { IPrompts } from './assist';
 type SuggestFn = (props: { id: IPrompts, prompt: string }) => void;
 type SuggestionsComp = IComponent & {
   staticSuggestions: string;
-  handleSuggestion: (val: string) => void
+  handleSuggestion: (val: string) => void;
+  hideSuggestions?: boolean;
 };
 
 export function useSuggestions(refName: string): {
@@ -57,20 +58,19 @@ export function useSuggestions(refName: string): {
     }
   }, [allowSuggestions, history]);
 
-  const comp = useCallback(({ staticSuggestions, handleSuggestion }: SuggestionsComp) => {
+  const comp = useCallback(({ staticSuggestions, handleSuggestion, hideSuggestions }: SuggestionsComp) => {
     const compId = nid('v4');
-    return !suggestions.length || !allowSuggestions ? <>{staticSuggestions}</> :
-      <>
-        AI: {suggestions.filter(s => s.toLowerCase() !== 'admin').map((suggestion, i) => {
-          return <span key={`${compId}-selection-${i}`}>
-            <Link sx={{ cursor: 'pointer' }} onClick={() => {
-              handleSuggestion(suggestion);
-            }}>
-              {suggestion}
-            </Link>{i !== suggestions.length - 1 ? ',' : ''}&nbsp;
-          </span>
-        })}
-      </>;
+    return suggestions.length && allowSuggestions && !hideSuggestions ? <>
+      AI: {suggestions.filter(s => s.toLowerCase() !== 'admin').map((suggestion, i) => {
+        return <span key={`${compId}-selection-${i}`}>
+          <Link sx={{ cursor: 'pointer' }} onClick={() => {
+            handleSuggestion(suggestion);
+          }}>
+            {suggestion}
+          </Link>{i !== suggestions.length - 1 ? ',' : ''}&nbsp;
+        </span>
+      })}
+    </> : <>{staticSuggestions}</>;
   }, [allowSuggestions, suggestions]);
 
   return { suggestions, suggest, comp };

@@ -44,6 +44,8 @@ export const useStyles = (): { [key: string]: SxProps } => {
 
     datatable: { borderRadius: '4px' },
 
+    legendBox: { borderRadius: '12px', borderColor: '#333' },
+
     infoHeader: { fontWeight: 500, fontSize: '1rem', textTransform: 'uppercase', color: '#aaa !important' },
     infoLabel: { fontWeight: 500, fontSize: '1rem' },
     infoCard: { height: '200px', overflowY: 'auto' },
@@ -68,7 +70,6 @@ export const useStyles = (): { [key: string]: SxProps } => {
     chipRoot: { root: { margin: theme.spacing(1), height: '100%', display: 'flex', flexDirection: 'row' } },
 
     chipLabel: { label: { overflowWrap: 'break-word', whiteSpace: 'normal', textOverflow: 'clip' } },
-
 
     pdfViewerComps: {
       ...absoluteFullChild,

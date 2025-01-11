@@ -46,9 +46,10 @@ service GroupFormService {
 
 message IGroupForm {
   string id = 1;
-  string groupId = 2;
-  string formId = 3;
-  IProtoForm form = 4;
+  string name = 2;
+  string groupId = 3;
+  string formId = 4;
+  IProtoForm form = 5;
 }
 
 message PostGroupFormRequest {

@@ -25,7 +25,7 @@ export function Home(props: IProps): React.JSX.Element {
     return Object.values(SiteRoles).filter(r => augr.includes(r)).map((r, i) => {
       const rd = SiteRoleDetails[r];
       return <Tooltip key={`role_listing_${i + 1}`} title={rd.name} >
-        <Chip size="small" sx={{ marginX: .5 }} label={rd.description} onClick={() => navigate(rd.resource)} />
+        <Chip sx={{ marginX: .5 }} label={rd.description} onClick={() => navigate(rd.resource)} />
       </Tooltip>;
     });
   }, [profileRequest?.userProfile.availableUserGroupRoles, navigate]);
