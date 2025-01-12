@@ -77,8 +77,6 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
             }
           }
         }
-
-
       };
     }).catch(error => {
       if (!reconnectSnackShown.current) {

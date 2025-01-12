@@ -483,6 +483,11 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 		return nil, err
 	}
 
+	_, err = h.PatchService(w, req, &types.PatchServiceRequest{Service: service})
+	if err != nil {
+		return nil, err
+	}
+
 	_, err = h.PostGroupService(w, req, &types.PostGroupServiceRequest{ServiceId: postServiceRes.GetId()})
 	if err != nil {
 		return nil, err

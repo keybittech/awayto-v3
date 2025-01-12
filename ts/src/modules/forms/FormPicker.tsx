@@ -36,7 +36,7 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
         endAdornment: (
           <InputAdornment position="end" sx={{ mr: 2 }}>
             <Tooltip key={'create_form'} title="New">
-              <Button onClick={() => setDialog('manage_form')}>
+              <Button color="secondary" onClick={() => setDialog('manage_form')}>
                 <Typography variant="button">New</Typography>
               </Button>
             </Tooltip>

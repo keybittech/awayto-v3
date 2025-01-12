@@ -98,7 +98,14 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
           closeModal && closeModal({ ...newService });
         }).catch(console.error);
       } else {
-        postService({ postServiceRequest: { service: newService } }).unwrap().then(async ({ id: serviceId }) => {
+        const newPostBody = {
+          name: newService.name,
+          cost: newService.cost,
+          formId: newService.formId,
+          surveyId: newService.surveyId,
+        };
+        postService({ postServiceRequest: { service: newPostBody } }).unwrap().then(async ({ id: serviceId }) => {
+          await patchService({ patchServiceRequest: { service: newService } }).unwrap();
           await postGroupService({ postGroupServiceRequest: { serviceId } }).unwrap();
           closeModal && closeModal({ ...newService, id: serviceId });
         }).catch(console.error);
@@ -408,7 +415,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 3. Review</legend>
             <Box mb={2}>
-              <Typography sx={{ mb: .5 }} variant="h2">{newService.name}</Typography>
+              <Typography sx={{ mb: 1, mt: -2 }} variant="h2">{newService.name}</Typography>
               {!!newService.formId && <Chip color="info" size="small" label="Intake Form" />} &nbsp;
               {!!newService.surveyId && <Chip color="warning" size="small" label="Survey Form" />}
               {!(newService.surveyId || newService.formId) && <Chip size="small" label="No Forms" />}

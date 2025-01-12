@@ -64,10 +64,14 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		defer tx.Rollback()
 	}
 
-	rows, err := tx.Query(`
-		SELECT id FROM dbtable_schema.service_tier_addons
-		WHERE schedule_id = $1
+	rows, err := h.Database.Client().Query(`
+		SELECT st.id
+		FROM dbtable_schema.service_tiers st
+		WHERE st.service_id = $1
 	`, service.GetId())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	for rows.Next() {
 		var tierId string
