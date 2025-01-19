@@ -649,7 +649,7 @@ img {
   padding-bottom: var(--safe-bottom);
   margin-top: auto;
   font-size: 1.6rem;
-  color: var(--lit);
+  color: var(--white);
   border-top: 1px solid var(--fog);
 }
 

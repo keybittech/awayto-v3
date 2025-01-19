@@ -2,7 +2,8 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
-      "awayto/hooks": ["./src/hooks/index.ts"]
+      "awayto/hooks": ["./src/hooks/index.ts"],
+      "keycloak-js": ["./node_modules/keycloak-js/lib/keycloak.d.ts"]
     }
   }
 }

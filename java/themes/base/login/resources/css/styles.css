@@ -1,0 +1,17 @@
+.login-pf body {
+  background: #121212 !important;
+}
+
+.card-pf, #kc-info-wrapper  {
+  background: #304050;
+  color: white;
+}
+
+.pf-c-button.pf-m-primary {
+  background-color: #383;
+}
+
+#kc-header-wrapper {
+  display: none;
+}
+

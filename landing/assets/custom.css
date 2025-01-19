@@ -2,6 +2,8 @@
  -------------------------------------------------- */
 
 body {
+  background-color: #121212;
+  color: white;
   padding-left: unset;
   padding-right: unset;
 }
@@ -12,7 +14,8 @@ code {
 
 header {
   position: fixed !important;
-  background-color: #111;
+  /* background-color: #111; */
+  background-color: #203040;
   height: 60px !important;
   z-index: 10;
 }
@@ -143,9 +146,9 @@ main {
   font-size: 2rem;
 }
 
-.post-content p {
-  color: #333;
-}
+/* .post-content p { */
+/*   color: #333; */
+/* } */
 
 .post-content > * {
   margin: 0 16px;

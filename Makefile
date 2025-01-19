@@ -136,8 +136,7 @@ ts: ts_protoc
 	pnpm run --dir $(TS_SRC) build
 
 ts_dev: ts
-	HTTPS=true pnpm run --dir $(TS_SRC) start
-	# WDS_SOCKET_PORT=${GO_HTTPS_PORT} 
+	HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
 
 go_protoc: $(GO_GEN_DIR)
 	protoc --proto_path=proto \

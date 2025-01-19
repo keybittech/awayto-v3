@@ -41,8 +41,8 @@ dependencies:
     specifier: ^1.11.7
     version: 1.11.13
   keycloak-js:
-    specifier: 25.0.6
-    version: 25.0.6
+    specifier: 26.1.0
+    version: 26.1.0
   pdfjs-dist:
     specifier: 4.4.168
     version: 4.4.168
@@ -8453,10 +8453,6 @@ packages:
     engines: {node: '>=10'}
     dev: true
 
-  /js-sha256@0.11.0:
-    resolution: {integrity: sha512-6xNlKayMZvds9h1Y1VWc0fQHQ82BxTXizWPEtEeGvmOUYpBRy4gbWroHLpzowe6xiQhHpelCQiE7HEdznyBL9Q==}
-    dev: false
-
   /js-tokens@4.0.0:
     resolution: {integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==}
 
@@ -8588,16 +8584,8 @@ packages:
       object.values: 1.2.0
     dev: true
 
-  /jwt-decode@4.0.0:
-    resolution: {integrity: sha512-+KJGIyHgkGuIq3IEBNftfhW/LfWhXUIY6OmyVWjliu5KH1y0fw7VQ8YndE2O4qZdMSd9SqbnC8GOcZEy0Om7sA==}
-    engines: {node: '>=18'}
-    dev: false
-
-  /keycloak-js@25.0.6:
-    resolution: {integrity: sha512-Km+dc+XfNvY6a4az5jcxTK0zPk52ns9mAxLrHj7lF3V+riVYvQujfHmhayltJDjEpSOJ4C8a57LFNNKnNnRP2g==}
-    dependencies:
-      js-sha256: 0.11.0
-      jwt-decode: 4.0.0
+  /keycloak-js@26.1.0:
+    resolution: {integrity: sha512-3CTelLNADK6sIxGHCQmKlT3ezcIp8O3Iimmg+ybS78RHy+HAUkkoBaW/YuHGdYkfEDMBlrqD3u+CQ4vLsrmyFA==}
     dev: false
 
   /keyv@4.5.4:

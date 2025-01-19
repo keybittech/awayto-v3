@@ -110,14 +110,14 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	for _, tier := range service.GetTiers() {
 		var tierId string
 
-		var tierFormId string
+		var tierFormId *string
 		if tier.GetFormId() != "" {
-			tierFormId = tier.GetFormId()
+			tierFormId = &tier.FormId
 		}
 
-		var tierSurveyId string
+		var tierSurveyId *string
 		if tier.GetSurveyId() != "" {
-			tierSurveyId = tier.GetSurveyId()
+			tierSurveyId = &tier.SurveyId
 		}
 
 		err := tx.QueryRow(`

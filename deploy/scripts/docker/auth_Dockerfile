@@ -1,6 +1,6 @@
 # docker build -t wcauth . && docker run --rm --init -p 8443:8443 wcauth
 
-FROM quay.io/keycloak/keycloak:25.0.6 AS builder
+FROM quay.io/keycloak/keycloak:26.1.0 AS builder
 
 ENV KC_HEALTH_ENABLED=true
 ENV KC_METRICS_ENABLED=true
@@ -35,6 +35,6 @@ RUN /opt/keycloak/bin/kc.sh build # --features=declarative-user-profile
 #
 # USER keycloak
 
-ENTRYPOINT [ "/opt/keycloak/bin/kc.sh", "start", "--optimized" ]
+ENTRYPOINT [ "/opt/keycloak/bin/kc.sh", "start" ]
 
 

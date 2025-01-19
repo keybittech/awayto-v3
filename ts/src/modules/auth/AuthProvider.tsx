@@ -22,9 +22,9 @@ function AuthProvider(): React.JSX.Element {
           window.location.href = keycloak.createRegisterUrl({ redirectUri }) + '&' + location.search.substr(1);
         }).catch(console.error);
       } else if (location.pathname == '/register') {
-        void keycloak.init({}).then(() => {
+        void keycloak.init({}).then(async () => {
           const redirectUri = window.location.toString().replace('/register', '')
-          window.location.href = keycloak.createRegisterUrl({ redirectUri });
+          window.location.href = await keycloak.createRegisterUrl({ redirectUri });
         }).catch(console.error);
       } else {
         try {
