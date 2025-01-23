@@ -52,17 +52,17 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
 
   const { setSnack } = useUtil();
 
-  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
-  const group = useMemo(() => editGroup || Object.values(profileRequest?.userProfile?.groups || {}).find(g => g.active), [profileRequest?.userProfile, editGroup]);
-
-  const { data: existingServiceRequest } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editService?.id || '' }, { skip: !editService?.id });
-  const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery(undefined, { skip: !group?.id });
-
   const [newService, setNewService] = useState({ ...serviceSchema, ...editService });
   const [newServiceTier, setNewServiceTier] = useState({ ...serviceTierSchema });
   const [serviceTierAddonIds, setServiceTierAddonIds] = useState<string[]>([]);
   const [hasServiceFormOrSurvey, setHasServiceFormOrSurvey] = useState(!!newService.formId || !!newService.surveyId);
   const [hasTierFormOrSurvey, setHasTierFormOrSurvey] = useState(!!newServiceTier.formId || !!newServiceTier.surveyId);
+
+  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
+  const group = useMemo(() => editGroup || Object.values(profileRequest?.userProfile?.groups || {}).find(g => g.active), [profileRequest?.userProfile, editGroup]);
+
+  const { data: existingServiceRequest, refetch: getExistingService } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editService?.id || newService?.id || '' }, { skip: !editService?.id });
+  const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery(undefined, { skip: !group?.id });
 
   const {
     comp: ServiceSuggestions,
@@ -86,33 +86,41 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
   const [postService] = siteApi.useServiceServicePostServiceMutation();
   const [postGroupService] = siteApi.useGroupServiceServicePostGroupServiceMutation();
 
-  const handleSubmit = useCallback(() => {
+  const handleSubmit = useCallback(async () => {
     if (!newService.name || !Object.keys(newService?.tiers || {}).length) {
       setSnack({ snackOn: 'Provide the service name and at least 1 tier with at least 1 feature.', snackType: 'info' });
       return;
     }
 
-    if (!editGroup) {
-      if (newService?.id) {
-        patchService({ patchServiceRequest: { service: newService } }).unwrap().then(() => {
-          closeModal && closeModal({ ...newService });
-        }).catch(console.error);
-      } else {
-        const newPostBody = {
-          name: newService.name,
-          cost: newService.cost,
-          formId: newService.formId,
-          surveyId: newService.surveyId,
-        };
-        postService({ postServiceRequest: { service: newPostBody } }).unwrap().then(async ({ id: serviceId }) => {
-          await patchService({ patchServiceRequest: { service: newService } }).unwrap();
-          await postGroupService({ postGroupServiceRequest: { serviceId } }).unwrap();
-          closeModal && closeModal({ ...newService, id: serviceId });
-        }).catch(console.error);
-      }
-    } else {
+    if (editGroup) {
       closeModal && closeModal(newService);
+      return;
     }
+
+    if (newService?.id) {
+      await patchService({ patchServiceRequest: { service: newService } }).unwrap();
+    } else {
+      const { id: serviceId } = await postService({
+        postServiceRequest: {
+          service: {
+            name: newService.name,
+            cost: newService.cost,
+            formId: newService.formId,
+            surveyId: newService.surveyId,
+          }
+        }
+      }).unwrap();
+      const newServiceRef = {
+        ...newService,
+        id: serviceId
+      };
+      await patchService({ patchServiceRequest: { service: newServiceRef } }).unwrap();
+      await postGroupService({ postGroupServiceRequest: { serviceId } }).unwrap();
+      setNewService(newServiceRef);
+      // await getExistingService();
+    }
+
+    closeModal && closeModal(newService);
   }, [newService]);
 
   const useSuggestTiers = useCallback(() => {

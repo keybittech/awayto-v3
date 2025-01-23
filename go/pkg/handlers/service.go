@@ -48,6 +48,10 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 		return nil, util.ErrCheck(err)
 	}
 
+	if !ongoing {
+		tx.Commit()
+	}
+
 	return &types.PostServiceResponse{Id: serviceId}, nil
 }
 
@@ -64,6 +68,16 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		defer tx.Rollback()
 	}
 
+	var serviceFormId *string
+	if service.GetFormId() != "" {
+		serviceFormId = &service.FormId
+	}
+
+	var serviceSurveyId *string
+	if service.GetSurveyId() != "" {
+		serviceSurveyId = &service.SurveyId
+	}
+
 	rows, err := h.Database.Client().Query(`
 		SELECT st.id
 		FROM dbtable_schema.service_tiers st
@@ -76,6 +90,9 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	for rows.Next() {
 		var tierId string
 		err = rows.Scan(&tierId)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 
 		// delete any existing addons using tier ids dbtable_schema.service_tier_addons
 		_, err = tx.Exec(`
@@ -101,7 +118,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		UPDATE dbtable_schema.services
 		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, service.GetId(), service.GetName(), service.GetFormId(), service.GetSurveyId(), session.UserSub, time.Now().Local().UTC())
+	`, service.GetId(), service.GetName(), serviceFormId, serviceSurveyId, session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -120,7 +137,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 			tierSurveyId = &tier.SurveyId
 		}
 
-		err := tx.QueryRow(`
+		err = tx.QueryRow(`
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
 				SELECT * FROM input_rows

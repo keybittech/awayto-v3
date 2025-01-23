@@ -5,6 +5,8 @@ import Link from '@mui/material/Link';
 import { nid, obfuscate } from './util';
 import { siteApi } from './api';
 import { IPrompts } from './assist';
+import Typography from '@mui/material/Typography';
+import { Tooltip } from '@mui/material';
 
 type SuggestFn = (props: { id: IPrompts, prompt: string }) => void;
 type SuggestionsComp = IComponent & {
@@ -19,6 +21,7 @@ export function useSuggestions(refName: string): {
   comp(props: SuggestionsComp): React.JSX.Element;
 } {
 
+  const [helpText, setHelpText] = useState('');
   const [suggestions, setSuggestions] = useState(JSON.parse(localStorage.getItem(refName + '_suggestions') || '[]') as string[]);
   const [history, setHistory] = useState(JSON.parse(localStorage.getItem(refName + '_suggestion_history') || '{}') as Record<string, string[]>);
 
@@ -31,6 +34,7 @@ export function useSuggestions(refName: string): {
   const allowSuggestions = userGroup.ai;
 
   const suggest: SuggestFn = useCallback(({ id, prompt }) => {
+    setHelpText(`Suggestion Parameters: ${prompt}`);
     try {
       if (!allowSuggestions) {
         return
@@ -58,6 +62,18 @@ export function useSuggestions(refName: string): {
     }
   }, [allowSuggestions, history]);
 
+  const helpTextComp = useMemo(() => {
+    if (helpText.length) {
+      return <Tooltip title={helpText}>
+        <sup aria-label={helpText}>
+          <strong style={{ cursor: 'pointer', textDecoration: 'underline' }}>?</strong>
+        </sup>
+      </Tooltip>;
+    } else {
+      return <></>;
+    }
+  }, [helpText]);
+
   const comp = useCallback(({ staticSuggestions, handleSuggestion, hideSuggestions }: SuggestionsComp) => {
     const compId = nid('v4');
     return suggestions.length && allowSuggestions && !hideSuggestions ? <>
@@ -69,7 +85,7 @@ export function useSuggestions(refName: string): {
             {suggestion}
           </Link>{i !== suggestions.length - 1 ? ',' : ''}&nbsp;
         </span>
-      })}
+      })} {helpTextComp}
     </> : <>{staticSuggestions}</>;
   }, [allowSuggestions, suggestions]);
 
