@@ -5,8 +5,8 @@ import TextField from '@mui/material/TextField';
 import { IForm, IFormSubmission } from 'awayto/hooks';
 
 export type FormDisplayProps = {
-  form: Required<IForm>;
-  setForm(value: IForm): void;
+  form?: Required<IForm>;
+  setForm?(value: IForm): void;
 };
 
 declare global {
@@ -15,11 +15,11 @@ declare global {
 
 export default function FormDisplay({ form, setForm }: IProps & FormDisplayProps): React.JSX.Element {
   useEffect(() => {
-    if (!form.version?.submission) {
-      const submission = Object.keys(form.version?.form || {}).reduce((m, rowId) => {
+    if (setForm && form && !form?.version?.submission) {
+      const submission = Object.keys(form?.version?.form || {}).reduce((m, rowId) => {
         return {
           ...m,
-          [rowId]: form.version?.form[rowId].map(r => r.v) || []
+          [rowId]: form?.version?.form[rowId].map(r => r.v) || []
         }
       }, {}) as IFormSubmission;
       setForm({
@@ -32,20 +32,22 @@ export default function FormDisplay({ form, setForm }: IProps & FormDisplayProps
     }
   }, [form, setForm]);
 
-  const rowKeys = useMemo(() => Object.keys(form.version?.form || {}), [form]);
+  const rowKeys = useMemo(() => Object.keys(form?.version?.form || {}), [form]);
 
   const setCellAttr = useCallback((row: string, col: number, value: string, attr: string) => {
-    const updatedForm = { ...form };
-    updatedForm.version.form[row][col][attr] = value;
-    updatedForm.version.submission[row][col] = value;
-    setForm(updatedForm);
+    if (form && setForm) {
+      const updatedForm = { ...form };
+      updatedForm.version.form[row][col][attr] = value;
+      updatedForm.version.submission[row][col] = value;
+      setForm(updatedForm);
+    }
   }, [form, setForm]);
 
   return <Grid container spacing={2}>
 
     {rowKeys.map((rowId, i) => <Grid key={`form_fields_row_${i}`} item xs={12}>
       <Grid container spacing={2}>
-        {form.version.form[rowId].map((cell, j) => {
+        {form?.version.form[rowId].map((cell, j) => {
           return <Grid key={`form_fields_cell_${i + 1}_${j}`} item xs={12 / form.version.form[rowId].length}>
             <TextField
               fullWidth

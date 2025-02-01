@@ -31,7 +31,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     const acts = length == 1 ? [
       <Tooltip key={'manage_form'} title="Edit">
         <Button onClick={() => {
-          setGroupForm(groupFormsRequest?.groupForms?.find(gf => gf.id === selected[0]));
+          setGroupForm(groupFormsRequest?.groupForms?.find(gf => gf.formId === selected[0]));
           setDialog('manage_form');
           setSelected([]);
         }}>
@@ -60,9 +60,10 @@ export function ManageForms(props: IComponent): React.JSX.Element {
   }, [selected]);
 
   const formGridProps = useGrid<IGroupForm>({
+    rowId: 'formId',
     rows: groupFormsRequest?.groupForms || [],
     columns: [
-      { flex: 1, headerName: 'Name', field: 'name' },
+      { flex: 1, headerName: 'Name', field: 'name', valueGetter: ({ row }) => row.form?.name },
       { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.form?.createdOn)) }
     ],
     selected,

@@ -86,7 +86,7 @@ SSH_OP=${HOST_OPERATOR}@$(APP_IP)
 SSH_OP_B=${HOST_OPERATOR}@$(APP_IP)
 SSH=ssh -p ${SSH_PORT} -T $(SSH_OP)
 
-LOCAL_UNIX_SOCK_DIR=/home/$(shell whoami)/${UNIX_SOCK_DIR_NAME}
+LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
 define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef

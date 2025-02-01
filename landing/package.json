@@ -2,10 +2,8 @@
   "name": "landing",
   "version": "1.0.0",
   "description": "app landing page",
-  "dependencies": {
-  },
   "devDependencies": {
-    "hugo-bin": "^0.89.0"
+    "hugo-bin": "^0.139.0"
   },
   "overrides": {
     "http-cache-semantics": ">=4.1.1",
