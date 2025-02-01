@@ -275,7 +275,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
             Continue
           </Button>
         </Grid> : <Grid item>
-          <Button onClick={() => { setViewStep(1); }}>Add another</Button>
+          <Button onClick={() => { setViewStep(1); }}>Add bracket</Button>
           <Button onClick={handleSubmit}>Submit</Button>
         </Grid>}
       </Grid>

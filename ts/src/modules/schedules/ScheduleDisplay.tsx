@@ -6,7 +6,7 @@ import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 
-import { useSchedule, useTimeName, deepClone, getRelativeDuration, ISchedule, IScheduleBracket, IScheduleBracketSlot } from 'awayto/hooks';
+import { useSchedule, useTimeName, deepClone, getRelativeDuration, ISchedule, IScheduleBracket, IScheduleBracketSlot, useStyles, useUtil } from 'awayto/hooks';
 
 export type ScheduleDisplayProps = {
   schedule?: ISchedule;
@@ -22,13 +22,17 @@ declare global {
   interface IComponent extends ScheduleDisplayProps { }
 }
 
-const bracketColors = ['cadetblue', 'brown', 'chocolate', 'forestgreen', 'darkslateblue', 'goldenrod', 'indianred', 'teal'];
+const bracketColors = ['cadetblue', 'forestgreen', 'brown', 'chocolate', 'darkslateblue', 'goldenrod', 'indianred', 'teal'];
 
 export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: IComponent & Required<ScheduleDisplayProps>): React.JSX.Element {
 
   const scheduleDisplay = useMemo(() => deepClone(schedule) as Required<ISchedule>, [schedule]);
 
   const columnWidth = 150;
+
+  const classes = useStyles();
+
+  const { openConfirm } = useUtil();
 
   const getScheduleData = useSchedule();
   const parentRef = useRef<HTMLDivElement>(null);
@@ -63,6 +67,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
         } as IScheduleBracketSlot;
 
         if (exists?.id) {
+          if (exists.scheduleBracketId !== bracket.id) return;
           delete bracket.slots[exists.id];
           delete selected[target];
         } else if (slot.id && Object.keys(bracket.slots).length * scheduleDisplay.slotDuration < getRelativeDuration(selectedBracket.duration, scheduleDisplay.bracketTimeUnitName, scheduleDisplay.slotTimeUnitName)) {
@@ -85,13 +90,14 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
 
     const target = `schedule_bracket_slot_selection_${startTime}`;
     const exists = selected[target];
+    const bracketColor = exists ? bracketColors[scheduleBracketsValues.findIndex(b => b.id === exists.scheduleBracketId)] : '#eee';
 
     return <Box
       style={gridCell.style}
       sx={{
         userSelect: 'none',
         cursor: 'pointer',
-        backgroundColor: exists ? '#eee' : 'white',
+        backgroundColor: exists ? `color-mix(in srgb, ${bracketColor} 90%, transparent)` : 'white',
         textAlign: 'center',
         position: 'relative',
         '&:hover': {
@@ -99,7 +105,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
           opacity: '1',
           boxShadow: '2'
         },
-        border: exists ? `1px solid ${bracketColors[scheduleBracketsValues.findIndex(b => b.id === exists.scheduleBracketId)]}` : undefined,
+        // border: exists ? `1px solid ${bracketColor}` : undefined,
         color: !exists ? '#666' : 'black',
         boxShadow: exists ? '2' : undefined
       }}
@@ -140,47 +146,61 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
 
   return <>
     {!isKiosk && <>
-      <Box>
-        <Typography variant="caption">Click a bracket, then use up the allotted time by clicking on the time slots. Hold down the mouse button to select multiple slots. There can be leftover slots if they're unneeded.</Typography>
+      <Box p={2} component="fieldset" sx={classes.legendBox}>
+        <legend>Step 1. Select a Bracket</legend>
+        <Typography variant="body1">Brackets are blocks of time that can be applied to the schedule. You can add multiple brackets, in case certain services only occur at certain times. You can click the X to remove a bracket.</Typography>
+        <Grid sx={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap' }}>
+
+          <Grid item display='flex' flexDirection='row'>
+            {scheduleBracketsValues.map((bracket, i) => {
+              if (!bracket.slots) bracket.slots = {};
+              return <Box key={`bracket-chip${i + 1}new`} m={1}>
+                <Chip
+                  label={`${getRelativeDuration(bracket.duration, bracketTimeUnitName, slotTimeUnitName) - (Object.keys(bracket.slots).length * scheduleDisplay.slotDuration)} ${slotTimeUnitName}s for ${Object.values(bracket.services).map(s => s.name).join(', ')}`}
+                  sx={{
+                    '&:hover': {
+                      backgroundColor: 'rgba(48, 64, 80, 0.4)',
+                      cursor: 'pointer'
+                    },
+                    borderWidth: '1px',
+                    borderStyle: 'solid',
+                    borderColor: bracketColors[i],
+                    backgroundColor: selectedBracket?.id === bracket.id ? 'rgba(48, 64, 80, 0.25)' : undefined,
+                    boxShadow: selectedBracket?.id === bracket.id ? 2 : undefined
+                  }}
+                  onDelete={() => {
+                    openConfirm({
+                      isConfirming: true,
+                      confirmEffect: 'Delete a schedule bracket.',
+                      confirmAction: () => {
+                        const newSelected = Object.keys(selected).reduce((m, d) => {
+                          if (selected[d].scheduleBracketId == bracket?.id) return m;
+                          return {
+                            ...m,
+                            [d]: selected[d]
+                          }
+                        }, {});
+                        setSelected({ ...newSelected });
+                        delete scheduleDisplay.brackets[bracket.id];
+                        setSchedule({ ...schedule, brackets: { ...scheduleDisplay.brackets } });
+                      }
+                    });
+                  }}
+                  onClick={() => {
+                    setSelectedBracket(bracket);
+                  }}
+                />
+              </Box>
+            })}
+          </Grid>
+        </Grid>
       </Box>
-
-      <Grid sx={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-        <Grid item alignSelf='center'>
-          Brackets:
-        </Grid>
-
-        <Grid item display='flex' flexDirection='row'>
-          {scheduleBracketsValues.map((bracket, i) => {
-            if (!bracket.slots) bracket.slots = {};
-            return <Box key={`bracket-chip${i + 1}new`} m={1}>
-              <Chip
-                label={`#${i + 1} ${getRelativeDuration(bracket.duration, bracketTimeUnitName, slotTimeUnitName) - (Object.keys(bracket.slots).length * scheduleDisplay.slotDuration)} ${slotTimeUnitName}s (${bracket.multiplier}x)`}
-                sx={{
-                  '&:hover': {
-                    backgroundColor: 'rgba(48, 64, 80, 0.4)',
-                    cursor: 'pointer'
-                  },
-                  borderWidth: '1px',
-                  borderStyle: 'solid',
-                  borderColor: bracketColors[i],
-                  backgroundColor: selectedBracket?.id === bracket.id ? 'rgba(48, 64, 80, 0.25)' : undefined,
-                  boxShadow: selectedBracket?.id === bracket.id ? 2 : undefined
-                }}
-                onDelete={() => {
-                  delete scheduleDisplay.brackets[bracket.id];
-                  setSchedule({ ...schedule, brackets: { ...scheduleDisplay.brackets } });
-                }}
-                onClick={() => {
-                  setSelectedBracket(bracket);
-                }}
-              />
-            </Box>
-          })}
-        </Grid>
-      </Grid>
     </>}
 
-    <Box width="100%" ref={parentRef}>
+    <Box width="calc(100%-4px)" ref={parentRef} p={2} component="fieldset" sx={classes.legendBox}>
+      <legend>Step 2. Design your Schedule</legend>
+      <Typography variant="body1">Select a time by clicking on it. Press and hold to select multiple times. Selections will remove time from the bracket.</Typography>
+      <Typography pb={2} variant="body2">This schedule is representing 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s divided by {scheduleDisplay.slotDuration} {slotTimeUnitName} blocks.</Typography>
       <Box onMouseLeave={() => setButtonDown(false)}>
         {!isNaN(selections) && !isNaN(divisions) && <FixedSizeGrid
           rowCount={selections}
@@ -193,7 +213,6 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
           {Cell}
         </FixedSizeGrid>}
       </Box>
-      <Typography variant="caption">This schedule is representing 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s divided by {scheduleDisplay.slotDuration} {slotTimeUnitName} blocks.</Typography>
     </Box>
   </>;
 }

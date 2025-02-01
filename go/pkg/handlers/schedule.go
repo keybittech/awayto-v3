@@ -94,6 +94,14 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 
 		newSlots := make(map[string]*types.IScheduleBracketSlot)
 
+		_, err = h.Database.Client().Exec(`
+			DELETE FROM dbtable_schema.schedule_bracket_slots
+			WHERE schedule_bracket_id = $1
+		`, bracket.Id)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
 		for _, slot := range b.Slots {
 			var slotId string
 
@@ -102,7 +110,6 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 				VALUES ($1, $2::interval, $3::uuid)
 				RETURNING id
 			`, bracket.Id, slot.StartTime, session.UserSub).Scan(&slotId)
-
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
