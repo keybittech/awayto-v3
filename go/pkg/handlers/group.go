@@ -137,9 +137,8 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	}
 
 	h.Keycloak.RoleCall(http.MethodPost, session.UserSub)
-	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
-
+	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	h.Redis.SetGroupSessionVersion(req.Context(), groupId)
 
 	err = tx.Commit()
@@ -432,40 +431,30 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 	session := h.Redis.ReqSession(req)
 	ctx := req.Context()
 
-	var groupId, kcGroupExternalId, defaultRoleId, createdSub string // kcRoleSubgroupExternalId
+	var groupId, kcGroupExternalId, kcRoleSubgroupExternalId, defaultRoleId, createdSub string
 
 	err := h.Database.Client().QueryRow(`
-		SELECT id, external_id, default_role_id, created_sub
-		FROM dbtable_schema.groups WHERE code = $1
-	`, data.GetCode()).Scan(&groupId, &kcGroupExternalId, &defaultRoleId, &createdSub)
+		SELECT g.id, g.external_id, g.default_role_id, g.created_sub, gr.external_id FROM dbtable_schema.groups g
+		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
+		WHERE g.code = $1
+	`, data.GetCode()).Scan(&groupId, &kcGroupExternalId, &defaultRoleId, &createdSub, &kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	// moved user join group to registration flow for now
-	// err = h.Database.Client().QueryRow(`
-	// 	SELECT external_id
-	// 	FROM dbtable_schema.group_roles
-	// 	WHERE group_id = $1 AND role_id = $2
-	// `, groupId, defaultRoleId).Scan(&kcRoleSubgroupExternalId)
-	// if err != nil {
-	// 	return nil, util.ErrCheck(err)
-	// }
+	err = h.Keycloak.AddUserToGroup(session.UserSub, kcRoleSubgroupExternalId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	// err = h.Keycloak.AddUserToGroup(session.UserSub, kcRoleSubgroupExternalId)
-	// if err != nil {
-	// 	return nil, util.ErrCheck(err)
-	// }
+	if err := h.Keycloak.RoleCall(http.MethodPost, session.UserSub); err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	// if err := h.Keycloak.RoleCall(http.MethodPost, session.UserSub); err != nil {
-	// 	return nil, util.ErrCheck(err)
-	// }
-
-	// TODO regroup was here ... regroup(kcGroupExternalId)
-
-	h.Redis.DeleteSession(ctx, session.UserSub)
 	h.Redis.Client().Del(ctx, session.UserSub+"profile/details")
 	h.Redis.Client().Del(ctx, createdSub+"profile/details")
+	h.Redis.DeleteSession(ctx, session.UserSub)
+	h.Redis.SetGroupSessionVersion(ctx, groupId)
 
 	return &types.AttachUserResponse{Success: true}, nil
 }

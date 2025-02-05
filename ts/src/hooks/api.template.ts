@@ -27,7 +27,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = as
 
   if (result.error) {
     if (result.error.status === "FETCH_ERROR") {
-      await refreshToken();
+      await refreshToken(61);
       result = await baseQuery(args, api, {});
       if (result.error) {
         api.dispatch(setAuthenticated({ authenticated: false }))

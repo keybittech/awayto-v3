@@ -45,8 +45,7 @@ function AuthProvider(): React.JSX.Element {
 
   const authContext = {
     authenticated,
-    keycloak,
-    refreshToken
+    keycloak
   } as AuthContextType;
 
   return useMemo(() => !init ? <></> :

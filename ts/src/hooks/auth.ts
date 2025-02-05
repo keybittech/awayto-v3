@@ -14,8 +14,8 @@ export const keycloak = new Keycloak({
   clientId: REACT_APP_KC_CLIENT
 });
 
-export const refreshToken = async () => {
-  await keycloak.updateToken(50);
+export const refreshToken = async (dur?: number) => {
+  await keycloak.updateToken(dur || 50);
   return true;
 }
 

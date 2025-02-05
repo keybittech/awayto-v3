@@ -100,7 +100,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
       }).catch(console.error);
     }
 
-    void refreshToken().then(async () => {
+    await refreshToken(61).then(async () => {
       await getUserProfileDetails();
       closeModal && closeModal({ ...newGroup, id });
     }).catch(console.error);
@@ -246,7 +246,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
         </Grid>
       </CardContent>
       <CardActions>
-        <Grid container justifyContent={showCancel ? "space-between" : "flex-end"}>
+        <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button onClick={closeModal}>Cancel</Button>}
           <Button disabled={!editGroup?.id && (group.purpose.length > 100 || !isValid || checkingName || badName)} onClick={handleSubmit}>Save Group</Button>
         </Grid>

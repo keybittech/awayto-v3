@@ -6,7 +6,7 @@ import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
-import { siteApi, useAppSelector, useComponents, lightTheme, darkTheme, SiteRoles } from 'awayto/hooks';
+import { siteApi, useAppSelector, useComponents, lightTheme, darkTheme, SiteRoles, refreshToken } from 'awayto/hooks';
 
 import Layout from './Layout';
 import reportWebVitals from '../../reportWebVitals';
@@ -20,7 +20,7 @@ export default function App(props: IComponent): React.JSX.Element {
   // const location = useLocation();
   const navigate = useNavigate();
 
-  const { keycloak, refreshToken } = useContext(AuthContext) as AuthContextType;
+  const { keycloak } = useContext(AuthContext) as AuthContextType;
 
   const { ConfirmAction, SnackAlert, Onboard } = useComponents();
 
@@ -35,7 +35,7 @@ export default function App(props: IComponent): React.JSX.Element {
   // const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
 
   const reloadProfile = async (): Promise<void> => {
-    await refreshToken().then(async () => {
+    await refreshToken(61).then(async () => {
       await getUserProfileDetails().unwrap();
       navigate('/');
     }).catch(console.error);

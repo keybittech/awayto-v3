@@ -57,7 +57,6 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     }
     joinGroup({ joinGroupRequest: { code: groupCode } }).unwrap().then(async () => {
       await attachUser({ attachUserRequest: { code: groupCode } }).unwrap().catch(console.error);
-      await keycloak.updateToken(0);
       await activateProfile().unwrap().catch(console.error);
       reloadProfile && await reloadProfile().catch(console.error);
     }).catch(console.error);

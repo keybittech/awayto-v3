@@ -150,7 +150,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: IComponent):
 
     </CardContent>
     <CardActions>
-      <Grid container justifyContent="space-between">
+      <Grid size="grow" container justifyContent="space-between">
         <Button onClick={closeModal}>Cancel</Button>
         <Button onClick={handleSubmit}>Submit</Button>
       </Grid>

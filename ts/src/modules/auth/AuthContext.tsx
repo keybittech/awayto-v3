@@ -5,7 +5,6 @@ declare global {
   type AuthContextType = {
     authenticated: boolean;
     keycloak: Keycloak;
-    refreshToken(): Promise<boolean>; 
     token?: string;
   }
 }

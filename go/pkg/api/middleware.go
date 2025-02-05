@@ -236,17 +236,6 @@ func (a *API) SessionAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 					} else {
 						session.GroupSessionVersion = groupVersion
 					}
-
-					// err = a.Handlers.Database.Client.QueryRow(`
-					// 	SELECT sub
-					// 	FROM dbtable_schema.users
-					// 	WHERE username = $1
-					// `, "system_group_"+session.GroupId).Scan()
-					// if err != nil {
-					// 	util.ErrCheck(err)
-					// 	http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-					// 	return
-					// }
 				}
 			}
 
