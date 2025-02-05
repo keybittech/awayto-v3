@@ -34,9 +34,9 @@ export function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
       </CardContent>
       <CardContent>
         <Grid container>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Grid container>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   label="Code"
                   type="code"

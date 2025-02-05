@@ -30,17 +30,17 @@ export function AccordionWrap({
         aria-controls={`accordion-content-${idRef.current}`}
       >
         <Grid container sx={{ alignItems: 'center', placeContent: 'space-between' }}>
-          <Grid item sx={{ display: 'flex', flexDirection: 'row' }}>
-            {Icon && <Grid item>
+          <Grid sx={{ display: 'flex', flexDirection: 'row' }}>
+            {Icon && <Grid>
               <Avatar>
                 <Icon />
               </Avatar>
             </Grid>}
-            <Grid item sx={{ alignSelf: 'center' }}>
+            <Grid sx={{ alignSelf: 'center' }}>
               <Typography sx={{ pl: 2, fontStyle: 'underline' }}>{label}</Typography>
             </Grid>
           </Grid>
-          <Grid item sx={{ display: 'flex' }}>
+          <Grid sx={{ display: 'flex' }}>
             {invalidSubmission && <Alert severity="error">Review</Alert>}
           </Grid>
         </Grid>

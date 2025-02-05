@@ -48,7 +48,6 @@ export function ScheduleTimePicker(): React.JSX.Element {
     value={selectedTime}
     onChange={time => setSelectedTime(time)}
     ampmInClock={true}
-    ignoreInvalidInputs={true}
     onAccept={time => setSelectedTime(time)}
     shouldDisableTime={(time, clockType) => {
       if (dateSlots?.length) {
@@ -58,7 +57,7 @@ export function ScheduleTimePicker(): React.JSX.Element {
         if ('seconds' === clockType) return false;
 
         // Create a duration based on the current clock validation check and the days from start of current week
-        let duration = dayjs.duration(time, clockType).add(bracketSlotDateDayDiff, TimeUnit.DAY);
+        let duration = dayjs.duration('hours' === clockType ? time.hour() : time.minute(), clockType).add(bracketSlotDateDayDiff, TimeUnit.DAY);
 
         // Submitting a new time a two step process, an hour is selected, and then a minute. Upon hour selection, selectedTime is first set, and then when the user selects a minute, that will cause this block to run, so we should add the existing hour from selectedTime such that "hour + minute" will give us the total duration, i.e. 4:30 AM = PT4H30M
         if ('minutes' === clockType && currentSlotTime) {
@@ -89,7 +88,6 @@ export function ScheduleTimePicker(): React.JSX.Element {
       }
       return true;
     }}
-    renderInput={params => <TextField fullWidth {...params} />}
   />
 }
 

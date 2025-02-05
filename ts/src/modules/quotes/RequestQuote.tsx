@@ -80,7 +80,7 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
   return <>
     <Grid container spacing={2}>
 
-      <Grid item xs={12}>
+      <Grid size={12}>
         <Card>
           <CardHeader
             title="Create Request"
@@ -89,13 +89,13 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
           />
           <CardContent>
             <Grid container spacing={2}>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <GroupScheduleSelect />
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <GroupScheduleServiceSelect />
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <GroupScheduleServiceTierSelect />
               </Grid>
             </Grid>
@@ -121,10 +121,10 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
 
           <AccordionWrap {...SelectTimeAccordion}>
             <Grid container spacing={2}>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <ScheduleDatePicker key={groupSchedule?.schedule.id} />
               </Grid>
-              <Grid item xs={4}>
+              <Grid size={4}>
                 <ScheduleTimePicker key={groupSchedule?.schedule.id} />
               </Grid>
             </Grid>
@@ -136,7 +136,7 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
         </Suspense>}
       </Grid>
 
-      {groupUserSchedulesRequest?.groupUserSchedules && <Grid item xs={12} mb={2}>
+      {groupUserSchedulesRequest?.groupUserSchedules && <Grid size={12} mb={2}>
         <Card>
           <CardActionArea onClick={() => {
             if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier || !quote.slotDate || !quote.scheduleBracketSlotId) {

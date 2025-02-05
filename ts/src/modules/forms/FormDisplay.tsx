@@ -2,7 +2,7 @@ import React, { useCallback, useMemo, useEffect } from 'react';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 
-import { IForm, IFormSubmission } from 'awayto/hooks';
+import { IForm, IFormSubmission, useComponents } from 'awayto/hooks';
 
 export type FormDisplayProps = {
   form?: Required<IForm>;
@@ -14,6 +14,9 @@ declare global {
 }
 
 export default function FormDisplay({ form, setForm }: IProps & FormDisplayProps): React.JSX.Element {
+
+  const { Field } = useComponents();
+
   useEffect(() => {
     if (setForm && form && !form?.version?.submission) {
       const submission = Object.keys(form?.version?.form || {}).reduce((m, rowId) => {
@@ -45,16 +48,18 @@ export default function FormDisplay({ form, setForm }: IProps & FormDisplayProps
 
   return <Grid container spacing={2}>
 
-    {rowKeys.map((rowId, i) => <Grid key={`form_fields_row_${i}`} item xs={12}>
+    {rowKeys.map((rowId, i) => <Grid key={`form_fields_row_${i}`} size={12}>
       <Grid container spacing={2}>
         {form?.version.form[rowId].map((cell, j) => {
-          return <Grid key={`form_fields_cell_${i + 1}_${j}`} item xs={12 / form.version.form[rowId].length}>
-            <TextField
+          return <Grid key={`form_fields_cell_${i + 1}_${j}`} size={12 / form.version.form[rowId].length}>
+            <Field
+              field={cell}
               fullWidth
+              editable={true}
               label={cell.l}
               type={cell.t || 'text'}
-              helperText={`${cell.r ? 'Required. ' : ''}${cell.h || ''}`}
-              onBlur={e => { setCellAttr(rowId, j, e.target.value, 'v') }}
+              helperText={`${cell.r ? 'Required. aaa' : ''}${cell.h || ''}`}
+              onBlur={(e: React.FocusEvent<HTMLInputElement>) => { setCellAttr(rowId, j, e.target.value, 'v') }}
               defaultValue={cell.v || ''}
             />
           </Grid>

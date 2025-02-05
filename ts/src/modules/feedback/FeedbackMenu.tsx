@@ -56,7 +56,7 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
   >
     <Box p={1} sx={{ width: 300 }}>
       <Grid spacing={2} container direction="row">
-        <Grid item xs={12}>
+        <Grid size={12}>
           <TextField
             select
             fullWidth
@@ -70,7 +70,7 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
           </TextField>
         </Grid>
 
-        <Grid item xs={12}>
+        <Grid size={12}>
           <TextField
             fullWidth
             multiline
@@ -83,7 +83,7 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
             onKeyDown={e => e.stopPropagation()}
           />
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Button fullWidth onClick={handleSubmit}>Submit Comment</Button>
         </Grid>
       </Grid>

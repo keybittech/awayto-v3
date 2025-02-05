@@ -118,6 +118,7 @@ const resolveApp = (relativePath) => path.resolve(appDirectory, relativePath);
 module.exports = {
   webpack: {
     alias: {
+      '@mui/material/Grid': path.resolve(appDirectory, './node_modules/@mui/material/Grid2'),
       'awayto/hooks': resolveApp('.' + AWAYTO_WEBAPP + '/hooks/index.ts'),
     },
     configure: (webpackConfig, { env, paths }) => {

@@ -98,13 +98,13 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
             </Box>
 
             <Grid container direction="row" alignItems="center" spacing={2} mb={4}>
-              <Grid item flexGrow={1}>
+              <Grid flexGrow={1}>
                 <Divider />
               </Grid>
-              <Grid item>
+              <Grid>
                 Or
               </Grid>
-              <Grid item flexGrow={1}>
+              <Grid flexGrow={1}>
                 <Divider />
               </Grid>
             </Grid>
@@ -115,12 +115,12 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
               <Typography>Select a new date and time:</Typography>
             </Box>
             <Grid container spacing={2}>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <ScheduleDatePicker
                   key={editGroupUserScheduleStub.userScheduleId}
                 />
               </Grid>
-              <Grid item xs={6}>
+              <Grid size={6}>
                 <ScheduleTimePicker
                   key={selectedDate?.format("YYYY-MM-DD")}
                 />

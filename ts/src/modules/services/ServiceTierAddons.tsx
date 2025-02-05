@@ -63,6 +63,7 @@ export function ServiceTierAddons({ service, showFormChips }: IComponent): React
           type: 'string',
           field: `sta_col_${st.id}`,
           headerName: st.name,
+          cellClassName: 'vertical-parent',
           renderHeader: col => {
             return !showFormChips ? col.colDef.headerName : <div>
               <Typography mt={2}>{col.colDef.headerName}</Typography>
@@ -86,7 +87,7 @@ export function ServiceTierAddons({ service, showFormChips }: IComponent): React
     ]
   });
 
-  return <Grid container><Grid item xs={12}><DataGrid {...tierGridProps} /></Grid></Grid>;
+  return <Grid container><Grid size={12}><DataGrid {...tierGridProps} /></Grid></Grid>;
 }
 
 export default ServiceTierAddons;

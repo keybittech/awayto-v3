@@ -54,9 +54,14 @@ function Field({ settingsBtn, defaultDisplay, field, editable = false }: ICompon
     label={field.l}
     type={field.t}
     helperText={`${field.r ? 'Required. ' : ''}${field.h || ''}`}
-    value={field.v ? field.v : defaultValue}
+    value={field.v ?? ''}
     InputProps={{
       endAdornment: settingsBtn
+    }}
+    slotProps={{
+      inputLabel: {
+        shrink: true
+      }
     }}
   />;
 }

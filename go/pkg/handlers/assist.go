@@ -41,7 +41,7 @@ func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *ty
 func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data *types.GetSuggestionRequest) (*types.GetSuggestionResponse, error) {
 
 	session := h.Redis.ReqSession(req)
-	if session.GroupAi == true {
+	if session.GroupAi {
 		promptParts := strings.Split(data.GetPrompt(), "!$")
 		promptType, err := strconv.Atoi(data.GetId())
 		if err != nil {

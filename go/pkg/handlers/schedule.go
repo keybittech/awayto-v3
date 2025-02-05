@@ -48,7 +48,7 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) && pgErr.Constraint == "unique_enabled_name_created_sub" {
-			return nil, util.ErrCheck(errors.New("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it."))
+			return nil, util.ErrCheck(util.UserError("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it."))
 		}
 		return nil, util.ErrCheck(err)
 	}
@@ -178,8 +178,7 @@ func (h *Handlers) GetScheduleById(w http.ResponseWriter, req *http.Request, dat
 	}
 
 	if len(schedules) == 0 {
-		err := errors.New("no schedules found for id " + data.GetId())
-		return nil, util.ErrCheck(err)
+		return nil, util.ErrCheck(util.UserError("No schedules found."))
 	}
 
 	return &types.GetScheduleByIdResponse{Schedule: schedules[0]}, nil

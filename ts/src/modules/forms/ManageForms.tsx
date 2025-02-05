@@ -63,7 +63,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     rowId: 'formId',
     rows: groupFormsRequest?.groupForms || [],
     columns: [
-      { flex: 1, headerName: 'Name', field: 'name', valueGetter: ({ row }) => row.form?.name },
+      { flex: 1, headerName: 'Name', field: 'name', renderCell: ({ row }) => row.form?.name },
       { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.form?.createdOn)) }
     ],
     selected,

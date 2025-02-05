@@ -17,7 +17,9 @@ export function ManageRoleActions(): React.JSX.Element {
   const { setSnack } = useUtil();
   const [patchAssignments] = siteApi.useGroupServicePatchGroupAssignmentsMutation();
 
-  const { data: availableGroupAssignmentsRequest } = siteApi.useGroupServiceGetGroupAssignmentsQuery();
+  const { data: availableGroupAssignmentsRequest } = siteApi.useGroupServiceGetGroupAssignmentsQuery(undefined, {
+    refetchOnMountOrArgChange: true
+  });
 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
@@ -53,6 +55,7 @@ export function ManageRoleActions(): React.JSX.Element {
           width: 200,
           field: 'id',
           headerName: '',
+          cellClassName: 'vertical-parent',
           renderCell: ({ row }) => <Tooltip placement="right" title={row.description}>
             <Typography>{row.name}</Typography>
           </Tooltip>
@@ -101,16 +104,16 @@ export function ManageRoleActions(): React.JSX.Element {
   return <>
 
     <Grid container>
-      <Grid item mb={2} xs={12}>
+      <Grid mb={2} size={12}>
         <Card>
           <CardActionArea onClick={handleSubmit}>
             <Grid container direction="row" justifyContent="space-between">
-              <Grid item>
+              <Grid>
                 <Box m={2}>
                   <Typography color="secondary" variant="button">Update Assignments </Typography>
                 </Box>
               </Grid>
-              <Grid item>
+              <Grid>
                 <Box m={2}>
                   <Typography color="GrayText" variant="button">Changes will persist within 1 minute</Typography>
                 </Box>

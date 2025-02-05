@@ -3,7 +3,7 @@ import React, { useMemo, useState, useEffect, useContext, Suspense } from 'react
 import Box from '@mui/material/Box';
 import Switch from '@mui/material/Switch';
 import Divider from '@mui/material/Divider';
-import Grid from '@mui/material/Unstable_Grid2';
+import Grid from '@mui/material/Grid';
 import Badge from '@mui/material/Badge';
 import Menu from '@mui/material/Menu';
 import Typography from '@mui/material/Typography';
@@ -94,7 +94,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
     navigate(path);
   };
 
-  return <Grid xs={12} sx={{ height: '60px' }} container>
+  return <Grid size={12} sx={{ height: '60px' }} container>
     <Grid sx={{ display: { xs: 'flex', md: true ? 'flex' : !props.forceSiteMenu ? 'none' : 'flex' } }}>
       <Tooltip title="Menu">
         <Button

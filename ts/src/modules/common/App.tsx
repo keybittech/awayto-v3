@@ -35,8 +35,8 @@ export default function App(props: IComponent): React.JSX.Element {
   // const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
 
   const reloadProfile = async (): Promise<void> => {
-    await refreshToken().then(() => {
-      void getUserProfileDetails();
+    await refreshToken().then(async () => {
+      await getUserProfileDetails().unwrap();
       navigate('/');
     }).catch(console.error);
   }

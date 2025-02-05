@@ -151,7 +151,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
 
       <Box mb={4}>
         <Grid container spacing={2} direction="row">
-          <Grid item xs={6}>
+          <Grid size={6}>
 
             <TextField
               fullWidth
@@ -177,7 +177,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
                 renderInput={(params) => <TextField helperText="Bookings can be scheduled any time after this date. Removing this value and saving the schedule will deactivate it, preventing it from being seen during booking." {...params} />}
               /> */}
           </Grid>
-          <Grid item xs={6}>
+          <Grid size={6}>
             <TextField
               fullWidth
               label="End Date"

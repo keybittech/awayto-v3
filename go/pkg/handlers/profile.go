@@ -188,6 +188,8 @@ func (h *Handlers) ActivateProfile(w http.ResponseWriter, req *http.Request, dat
 		tx.Commit()
 	}
 
+	h.Redis.DeleteSession(req.Context(), session.UserSub)
+
 	return &types.ActivateProfileResponse{Success: true}, nil
 }
 

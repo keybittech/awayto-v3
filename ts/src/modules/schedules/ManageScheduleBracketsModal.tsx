@@ -247,7 +247,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
             closeModal();
           }
         }}>Cancel</Button>
-        {1 === viewStep ? <Grid item>
+        {1 === viewStep ? <Grid>
           {!!scheduleBracketsValues.length && <Button
             onClick={() => {
               setViewStep(2);
@@ -274,7 +274,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
           >
             Continue
           </Button>
-        </Grid> : <Grid item>
+        </Grid> : <Grid>
           <Button onClick={() => { setViewStep(1); }}>Add bracket</Button>
           <Button onClick={handleSubmit}>Submit</Button>
         </Grid>}

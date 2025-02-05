@@ -58,7 +58,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
   const menu = Object.keys(menuRoles).map(comp => {
     const selected = comp === component || (!component && comp === 'services');
     return group.name && <GroupSecure key={`menu_${comp}`} contentGroupRoles={menuRoles[comp]}>
-      <Grid item>
+      <Grid>
         <Button
           variant="text"
           color={selected ? "primary" : "secondary"}
@@ -127,7 +127,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
       <CardContent>
 
         <Grid container mb={2} justifyContent="space-between">
-          <Grid flex={1} item>
+          <Grid flex={1}>
             <Typography fontWeight="bold">
               Group Code &nbsp;
               <Tooltip title="Copy Group Code">
@@ -138,7 +138,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
             </Typography>
             <Typography>{group.code}</Typography>
           </Grid>
-          <Grid flex={1} item>
+          <Grid flex={1}>
             <Typography fontWeight="bold">
               Invite Url &nbsp;
               <Tooltip title="Copy Invite URL">
@@ -149,7 +149,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
             </Typography>
             <Typography>{groupUrl}</Typography>
           </Grid>
-          <Grid flex={1} item>
+          <Grid flex={1}>
             <Typography fontWeight="bold">
               Seats &nbsp;
               <Tooltip title="Add Seats">
@@ -164,7 +164,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
     </Card>
 
     <Grid container pb={2} spacing={2} justifyContent="flex-start" alignItems="center">
-      <Grid item>
+      <Grid>
         <Typography variant="button">Controls:</Typography>
       </Grid>
       {menu}

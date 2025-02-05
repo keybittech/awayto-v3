@@ -48,16 +48,16 @@ function GroupedMessages({ topicMessages: messages }: IComponent): React.JSX.Ele
       return <Card sx={{ marginBottom: '8px' }} key={`${group.scid}_group_${i}`}>
         <CardContent>
           <Grid container spacing={1}>
-            <Grid item>
+            <Grid>
               <Avatar sx={{ color: 'black', backgroundColor: group.color, fontStyle: 'bold' }}>{group.name}</Avatar>
             </Grid>
-            <Grid item sx={{ flex: 1 }}>
+            <Grid sx={{ flex: 1 }}>
               <Chip size="small" variant="outlined" label={group.role} />
               <Grid>
                 <Typography variant="caption">{utcDTLocal(group.timestamp || '')}</Typography>
               </Grid>
             </Grid>
-            <Grid item>
+            <Grid>
               <Tooltip title={capitalize(group.style)}>
                 <IconButton disableRipple>
                   {'utterance' == group.style && <RecordVoiceOverIcon />}

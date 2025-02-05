@@ -24,7 +24,7 @@ func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, da
 	if err != nil {
 		var sqlErr *pq.Error
 		if errors.As(err, &sqlErr) && sqlErr.Constraint == "unique_group_owner" {
-			return nil, util.ErrCheck(errors.New("Only 1 group can be managed at a time."))
+			return nil, util.ErrCheck(util.UserError("Only 1 group can be managed at a time."))
 		}
 		return nil, util.ErrCheck(err)
 	}

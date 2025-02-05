@@ -14,7 +14,7 @@ import CardHeader from '@mui/material/CardHeader';
 import CheckIcon from '@mui/icons-material/Check';
 import Alert from '@mui/material/Alert';
 
-import { useComponents, useUtil, useAccordion, siteApi, IGroup, IGroupSchedule, IGroupService, IService, refreshToken } from 'awayto/hooks';
+import { useComponents, useUtil, useAccordion, siteApi, IGroup, IGroupSchedule, IGroupService, IService, refreshToken, keycloak } from 'awayto/hooks';
 
 declare global {
   interface IProps {
@@ -57,7 +57,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     }
     joinGroup({ joinGroupRequest: { code: groupCode } }).unwrap().then(async () => {
       await attachUser({ attachUserRequest: { code: groupCode } }).unwrap().catch(console.error);
-      await refreshToken();
+      await keycloak.updateToken(0);
       await activateProfile().unwrap().catch(console.error);
       reloadProfile && await reloadProfile().catch(console.error);
     }).catch(console.error);
@@ -103,10 +103,10 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     <Box sx={{ bgcolor: 'primary.main' }}>
       <Grid container sx={{ placeItems: { xs: 'start', sm: 'center' }, minHeight: '100vh', height: '100%' }}>
 
-        <Grid item xs={12} sm={8} md={6} p={4}>
+        <Grid size={{ xs: 12, sm: 8, md: 6 }} p={4}>
           <Grid container spacing={2}>
 
-            <Grid item xs={12}>
+            <Grid size={12}>
               <AccordionWrap {...CreateGroup}>
                 <Typography variant="subtitle1">
                   <p>Start by providing a unique name for your group; a url-safe version is generated alongside. Group name can be changed later.</p>
@@ -155,13 +155,13 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
           </Grid>
         </Grid>
 
-        <Grid item xs={12} sm={4} md={6}>
+        <Grid size={{ xs: 12, sm: 4, md: 6 }}>
           <Suspense>
 
             <Grid container sx={{ p: 4, height: '100vh', bgcolor: 'secondary.main', placeContent: 'center' }}>
-              <Grid item xs={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
+              <Grid size={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
                 <Box ref={onboardTop} />
-                {hasCode ? <Grid item xs={12} p={2}>
+                {hasCode ? <Grid size={12} p={2}>
                   <TextField
                     fullWidth
                     sx={{ mb: 2 }}

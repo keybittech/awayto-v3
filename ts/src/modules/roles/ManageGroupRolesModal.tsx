@@ -62,7 +62,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
     if (editGroup) {
       void suggestRoles({ id: IPrompts.SUGGEST_ROLE, prompt: `${editGroup.name}!$${editGroup.purpose}` });
     }
-  }, [])
+  }, []);
 
   return <>
     <Card>
@@ -71,7 +71,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
         {!!children && children}
 
         <Grid container spacing={4}>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <SelectLookup
               multiple
               helperText={
@@ -115,7 +115,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
               {...props}
             />
           </Grid>
-          {roleIds.length && <Grid item xs={12}>
+          {roleIds.length && <Grid size={12}>
             <TextField
               select
               id={`group-default-role-selection`}
@@ -128,7 +128,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
               {roleIds.map(roleId => <MenuItem key={`${roleId}_primary_role_select`} value={roleId}>{roleValues.find(role => role.id === roleId)?.name || ''}</MenuItem>)}
             </TextField>
           </Grid>}
-          <Grid item>
+          <Grid>
             <Alert severity="info">Your Admin role is created automatically. Only create roles for your members.</Alert>
           </Grid>
         </Grid>

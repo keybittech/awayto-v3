@@ -43,7 +43,7 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 	if err != nil {
 		var dbErr *pq.Error
 		if errors.As(err, &dbErr) && dbErr.Constraint == "services_name_created_sub_key" {
-			return nil, util.ErrCheck(errors.New("you already have a service with the same name"))
+			return nil, util.ErrCheck(util.UserError("A service with the same name already exists."))
 		}
 		return nil, util.ErrCheck(err)
 	}

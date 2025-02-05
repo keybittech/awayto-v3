@@ -32,14 +32,14 @@ export function Sidebar(): React.JSX.Element {
   const location = useLocation();
 
   return <Grid container style={{ height: '100vh' }} alignContent="space-between">
-    <Grid item xs={12} style={{ marginTop: '20px' }}>
+    <Grid size={12} style={{ marginTop: '20px' }}>
       <Grid container justifyContent="center">
         <Button onClick={() => navigate('/')}>
           <img src={Icon} width="64" alt="kbt-icon" />
         </Button>
       </Grid>
       <List component="nav">
-        <ListItem sx={classes.menuIcon} onClick={() => navigate('/')} button key={'home'}>
+        <ListItem sx={classes.menuIcon} onClick={() => navigate('/')} key={'home'}>
           <ListItemIcon><GroupIcon color={location.pathname === '/' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Home</ListItemText>
         </ListItem>
@@ -51,19 +51,19 @@ export function Sidebar(): React.JSX.Element {
           <ListItemIcon><BusinessIcon color={location.pathname === '/service' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Service</ListItemText>
         </ListItem>} */}
-        {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/schedule')} button key={'schedule'}>
+        {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/schedule')} key={'schedule'}>
           <ListItemIcon><EventNoteIcon color={location.pathname === '/schedule' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Schedule</ListItemText>
         </ListItem>}
-        {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/request')} button key={'request'}>
+        {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/request')} key={'request'}>
           <ListItemIcon><MoreTimeIcon color={location.pathname === '/request' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Request</ListItemText>
         </ListItem>}
       </List>
     </Grid>
-    <Grid item xs={12}>
+    <Grid size={12}>
       <List component="nav">
-        <ListItem sx={classes.menuIcon} onClick={() => navigate('/profile')} button key={'profile'}>
+        <ListItem sx={classes.menuIcon} onClick={() => navigate('/profile')} key={'profile'}>
           <ListItemIcon><AccountBoxIcon color={location.pathname === '/profile' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Profile</ListItemText>
         </ListItem>
@@ -73,7 +73,7 @@ export function Sidebar(): React.JSX.Element {
             await keycloak.logout({ redirectUri: REACT_APP_APP_HOST_URL });
           }
           void go();
-        }} button key={'logout'}>
+        }} key={'logout'}>
           <ListItemIcon><ExitToAppIcon color="primary" /></ListItemIcon>
           <ListItemText sx={classes.menuIcon}>Logout</ListItemText>
         </ListItem>

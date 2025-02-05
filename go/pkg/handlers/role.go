@@ -6,7 +6,6 @@ import (
 	"database/sql"
 	"net/http"
 	"strings"
-	"time"
 )
 
 func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest) (*types.PostRoleResponse, error) {
@@ -51,24 +50,6 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
 
 	return &types.PostRoleResponse{Id: role.Id}, nil
-}
-
-func (h *Handlers) PatchRole(w http.ResponseWriter, req *http.Request, data *types.PatchRoleRequest) (*types.PatchRoleResponse, error) {
-	session := h.Redis.ReqSession(req)
-	_, err := h.Database.Client().Exec(`
-		UPDATE dbtable_schema.roles
-		SET name = $2, updated_sub = $3, updated_on = $4  
-		WHERE id = $1::uuid
-		RETURNING id, name
-	`, data.GetId(), data.GetName(), session.UserSub, time.Now().Local().UTC())
-
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
-
-	return &types.PatchRoleResponse{Success: true}, nil
 }
 
 func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest) (*types.GetRolesResponse, error) {

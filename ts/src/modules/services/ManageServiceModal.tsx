@@ -183,7 +183,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
 
 
       <Grid container spacing={2}>
-        <Grid item xs={12} lg={6}>
+        <Grid size={{ xs: 12, lg: 6 }}>
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 1. Provide details</legend>
             <Typography variant="caption">Services relate to the work performed during appointments. They can be specific or more broad. For example, a "Tutoring" service where all consultants handle all subjects, versus two separate "Math Tutoring" and "English Tutoring" services.</Typography>
@@ -248,7 +248,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
             </Suspense>}
           </Box>
         </Grid>
-        <Grid item xs={12} lg={6}>
+        <Grid size={{ xs: 12, lg: 6 }}>
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 2. Add a Tier</legend>
             <Typography variant="caption">Tiers describe the context and features that go along with a service. For example, a "bronze, silver, gold" ranking system, or subject categories like "English 1010, English 2010, etc.". At least 1 tier is required.</Typography>
@@ -419,7 +419,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
             </Box>
           </Box>
         </Grid>
-        <Grid item xs={12}>
+        <Grid size={12}>
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 3. Review</legend>
             <Box mb={2}>

@@ -111,25 +111,25 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: IComponent
       />
       <CardContent>
         <Grid container direction="row" spacing={2} justifyContent="space-evenly">
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Grid container direction="column" spacing={4} justifyContent="space-evenly" >
 
-              <Grid item>
+              <Grid>
                 <TextField select fullWidth id="roleId" label="Role" value={roleId} name="roleId" onChange={e => setRoleId(e.target.value)}>
                   {groupRolesRequest?.groupRoles?.map(gr => <MenuItem key={`${gr.role?.id}_user_profile_role_select`} value={gr.role?.id}>{gr.role?.name}</MenuItem>)}
                 </TextField>
               </Grid>
 
               {/* !editUser && (
-                <Grid item xs>
+                <Grid xs>
                   <Grid container direction="column" justifyContent="space-evenly" spacing={4}>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <Typography variant="h6">Account</Typography>
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <TextField fullWidth id="username" label="Username" value={profile.username} name="username" onChange={handleProfile} />
                     </Grid>
-                    <Grid item xs={12}>
+                    <Grid size={12}>
                       <FormControl fullWidth>
                         <InputLabel htmlFor="password">Password</InputLabel>
                         <Input type="text" id="password" aria-describedby="password" value={password} onChange={handlePassword}

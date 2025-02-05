@@ -25,10 +25,10 @@ export function PickTheme(props: IComponent): React.JSX.Element {
 
   return <>
     <Grid container alignItems="center">
-      {showTitle ? <Grid item><Typography>Theme</Typography></Grid> : <></>}
-      <Grid item onClick={edit} id="dark"><Box bgcolor="gray" sx={classes.colorBox} /></Grid>
-      <Grid item onClick={edit} id="light"><Box bgcolor="white" sx={classes.colorBox} /></Grid>
-      {/* <Grid item onClick={edit} id="blue"><Box bgcolor="deepskyblue" sx={classes.colorBox} /></Grid> */}
+      {showTitle ? <Grid><Typography>Theme</Typography></Grid> : <></>}
+      <Grid onClick={edit} id="dark"><Box bgcolor="gray" sx={classes.colorBox} /></Grid>
+      <Grid onClick={edit} id="light"><Box bgcolor="white" sx={classes.colorBox} /></Grid>
+      {/* <Grid onClick={edit} id="blue"><Box bgcolor="deepskyblue" sx={classes.colorBox} /></Grid> */}
     </Grid>
   </>
 }

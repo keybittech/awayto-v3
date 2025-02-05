@@ -33,7 +33,7 @@ export function FileSelectionModal({ closeModal, fileGroups }: IComponent): Reac
           No files could be found.
         </Alert> : <Grid container>
           {fileGroups.map((group, i) => {
-            return <Grid item xs={12} md={4} key={`file_group_${i}`}>
+            return <Grid size={{ xs: 12, md: 4 }} key={`file_group_${i}`}>
               <List
                 subheader={
                   <ListSubheader>{group.name} files</ListSubheader>

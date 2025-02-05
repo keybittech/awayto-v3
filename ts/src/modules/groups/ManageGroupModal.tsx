@@ -138,7 +138,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
         {!!children && children}
 
         <Grid container spacing={4}>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <TextField
               fullWidth
               id="name"
@@ -159,11 +159,11 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
                     }
                     position="start"
                   >
-                    <Grid item style={{ alignSelf: 'center' }}>
+                    <Grid style={{ alignSelf: 'center' }}>
                       {checkingName ? progressMemo :
                         badName ? <NotInterestedIcon color="error" /> : <ArrowRightAlt />}
                     </Grid>
-                    <Grid item xs style={{ wordBreak: 'break-all' }}>
+                    <Grid size="grow" style={{ wordBreak: 'break-all' }}>
                       <Typography style={{
                         padding: '2px 4px',
                         border: `1px solid #666`,
@@ -177,7 +177,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
               }}
             />
           </Grid>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <TextField
               id={`group-purpose-entry`}
               fullWidth
@@ -192,7 +192,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
             />
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <TextField
               id={`group-allowed-domains-entry`}
               fullWidth
@@ -228,7 +228,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
             </Grid>
           </Grid>
 
-          <Grid item xs={12}>
+          <Grid size={12}>
             <FormGroup>
               <FormControlLabel
                 id={`group-disable-ai-entry`}

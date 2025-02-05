@@ -322,6 +322,15 @@ export const getThemedComponents: (mode: PaletteMode) => ThemeOptions = (mode) =
             }
           }
         },
+        MuiDataGrid: {
+          styleOverrides: {
+            root: {
+              '& .MuiDataGrid-container--top [role="row"]': {
+                backgroundColor: 'unset'
+              }
+            }
+          }
+        },
         // MuiIconButton: {
         //   styleOverrides: {
         //     root: {

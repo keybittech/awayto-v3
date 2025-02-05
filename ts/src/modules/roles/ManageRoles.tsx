@@ -23,6 +23,8 @@ export function ManageRoles(): React.JSX.Element {
   const { data: groupRolesRequest, refetch: getGroupRoles } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const { data: profileRequest, refetch: getUserProfileDetails } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
+  const group = useMemo(() => Object.values(profileRequest?.userProfile?.groups || {}).find(g => g.active), [profileRequest?.userProfile]);
+
   const roleSet = useMemo<IGroupRole[]>(() => groupRolesRequest?.groupRoles ?? [], [groupRolesRequest?.groupRoles]);
 
   const [deleteRole] = siteApi.useRoleServiceDeleteRoleMutation();
@@ -59,18 +61,20 @@ export function ManageRoles(): React.JSX.Element {
 
             if (selectedGroupRoleNames.length) {
 
-              await deleteGroupRole({ ids: selected.join(',') }).unwrap();
+              await deleteGroupRole({ ids: selected.join(',') }).unwrap().then(async () => {
 
-              const userRoleIds = Object.values(profileRequest?.userProfile.roles || {}).
-                filter(ur => ur.name && selectedGroupRoleNames.includes(ur.name)).
-                map(ur => ur.id || '') || []
+                const userRoleIds = Object.values(profileRequest?.userProfile.roles || {}).
+                  filter(ur => ur.name && selectedGroupRoleNames.includes(ur.name)).
+                  map(ur => ur.id || '') || []
 
-              if (userRoleIds.length) {
-                await deleteRole({ ids: userRoleIds.join(',') }).unwrap();
-                void getUserProfileDetails();
-              }
-              void getGroupRoles();
-              setSelected([]);
+                if (userRoleIds.length) {
+                  await deleteRole({ ids: userRoleIds.join(',') }).unwrap();
+                  void getUserProfileDetails();
+                }
+                void getGroupRoles();
+                setSelected([]);
+
+              }).catch(console.error);
             }
           }
           void go();
@@ -86,7 +90,8 @@ export function ManageRoles(): React.JSX.Element {
     rows: roleSet,
     columns: [
       { flex: 1, headerName: 'Name', field: 'name', renderCell: ({ row }) => row.role?.name },
-      { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.createdOn)) }
+      { flex: 1, headerName: 'Default', sortable: false, field: 'isDefault', renderCell: ({ row }) => row.role?.id == group?.defaultRoleId ? 'Yes' : 'No' },
+      { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.createdOn)) },
     ],
     selected,
     onSelected: selection => setSelected(selection as string[]),
@@ -108,9 +113,10 @@ export function ManageRoles(): React.JSX.Element {
   return <>
     <Dialog open={dialog === 'manage_role'} fullWidth maxWidth="sm">
       <Suspense>
-        <ManageRoleModal editRole={editRole?.role} closeModal={() => {
+        <ManageRoleModal editRole={editRole?.role} isDefault={group?.defaultRoleId == editRole?.role?.id} closeModal={() => {
           setDialog('');
-          groupRolesRequest?.groupRoles?.length ? void getGroupRoles() : void getUserProfileDetails();
+          void getGroupRoles(); // refresh roles on screen
+          void getUserProfileDetails(); // refresh roles globally
         }} />
       </Suspense>
     </Dialog>

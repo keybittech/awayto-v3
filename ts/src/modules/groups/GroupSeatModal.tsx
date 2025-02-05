@@ -27,7 +27,7 @@ export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
       <CardHeader title={`Group Seats`}></CardHeader>
       <CardContent>
         <Grid container spacing={4}>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <TextField
               fullWidth
               type="number"

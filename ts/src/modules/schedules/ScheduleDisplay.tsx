@@ -151,7 +151,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
         <Typography variant="body1">Brackets are blocks of time that can be applied to the schedule. You can add multiple brackets, in case certain services only occur at certain times. You can click the X to remove a bracket.</Typography>
         <Grid sx={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap' }}>
 
-          <Grid item display='flex' flexDirection='row'>
+          <Grid display='flex' flexDirection='row'>
             {scheduleBracketsValues.map((bracket, i) => {
               if (!bracket.slots) bracket.slots = {};
               return <Box key={`bracket-chip${i + 1}new`} m={1}>

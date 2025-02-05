@@ -212,7 +212,10 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 			}
 
 			if len(deletions) > 0 {
-				h.Keycloak.DeleteRolesFromGroup(sgRoleActions.GetId(), deletions)
+				err = h.Keycloak.DeleteRolesFromGroup(sgRoleActions.GetId(), deletions)
+				if err != nil {
+					return nil, util.ErrCheck(err)
+				}
 			}
 
 			additions := []clients.KeycloakRole{}
@@ -341,7 +344,7 @@ func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data
 	}
 
 	if count > 0 {
-		return nil, util.ErrCheck(errors.New("Group name in use."))
+		return nil, util.ErrCheck(util.UserError("Group name in use."))
 	}
 
 	return &types.CheckGroupNameResponse{IsValid: true}, nil
@@ -368,7 +371,7 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 	if allowedDomains != "" {
 		allowedDomainsSlice := strings.Split(allowedDomains, ",")
 		if !slices.Contains(allowedDomainsSlice, strings.Split(session.UserEmail, "@")[1]) {
-			return nil, util.ErrCheck(errors.New("Group access is restricted."))
+			return nil, util.ErrCheck(util.UserError("Group access is restricted."))
 		}
 	}
 
@@ -385,6 +388,9 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 	`, userId, groupId, kcSubgroupExternalId, session.UserSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	h.Redis.SetGroupSessionVersion(req.Context(), groupId)
+	h.Redis.DeleteSession(req.Context(), session.UserSub)
 
 	return &types.JoinGroupResponse{Success: true}, nil
 }
@@ -458,8 +464,8 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 	// TODO regroup was here ... regroup(kcGroupExternalId)
 
 	h.Redis.DeleteSession(ctx, session.UserSub)
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
-	h.Redis.Client().Del(req.Context(), createdSub+"profile/details")
+	h.Redis.Client().Del(ctx, session.UserSub+"profile/details")
+	h.Redis.Client().Del(ctx, createdSub+"profile/details")
 
 	return &types.AttachUserResponse{Success: true}, nil
 }

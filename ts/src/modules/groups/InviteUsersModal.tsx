@@ -41,9 +41,9 @@ export function InviteUsersModal({ closeModal }: IProps): React.JSX.Element {
       </CardContent>
       <CardContent>
         <Grid container>
-          <Grid item xs={12}>
+          <Grid size={12}>
             <Grid container>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <TextField
                   label="Email"
                   type="email"
@@ -62,7 +62,7 @@ export function InviteUsersModal({ closeModal }: IProps): React.JSX.Element {
                   }}
                 />
               </Grid>
-              <Grid item xs={12}>
+              <Grid size={12}>
                 <ul>
                   {users.map(({ email }, i) => <li key={`group_invite_email_${i}`}>{email}</li>)}
                 </ul>

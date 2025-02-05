@@ -2,6 +2,7 @@
   "compilerOptions": {
     "baseUrl": "./",
     "paths": {
+      "@mui/material/Grid": ["./node_modules/@mui/material/Grid2"],
       "awayto/hooks": ["./src/hooks/index.ts"],
       "keycloak-js": ["./node_modules/keycloak-js/lib/keycloak.d.ts"]
     }

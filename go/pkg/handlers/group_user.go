@@ -81,8 +81,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 
 	// Target user will see their roles persisted through cache with this
 	h.Redis.Client().Del(req.Context(), groupUserSub+"profile/details")
-	h.Redis.Client().Del(req.Context(), "user_session:"+groupUserSub)
-
+	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	// response := make([]*types.UserRolePair, 1)
 	// response[0] = &types.UserRolePair{
 	// 	Id:       userId,

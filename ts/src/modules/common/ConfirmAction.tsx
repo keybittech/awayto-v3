@@ -20,7 +20,7 @@ export function ConfirmAction(): React.JSX.Element {
     <Card>
       <CardHeader title="Confirm Action" subheader={`Action: ${util.confirmEffect}`} />
       <Grid container sx={{ minHeight: '25vh' }}>
-        <Grid item xs={util.confirmSideEffect ? 6 : 12}>
+        <Grid size={{ xs: util.confirmSideEffect ? 6 : 12 }}>
           <CardActionArea sx={{ height: '100%', padding: '50px' }} onClick={() => {
             async function go() {
               await getUtilRegisteredAction(util.confirmActionId)(true);
@@ -29,16 +29,16 @@ export function ConfirmAction(): React.JSX.Element {
             void go();
           }}>
             <Grid container textAlign="center" justifyContent="center">
-              <Grid item>
+              <Grid>
                 {util.confirmSideEffect && <Typography variant="button" fontSize={16}>{util.confirmSideEffect?.approvalAction}</Typography>}
               </Grid>
-              <Grid item>
+              <Grid>
                 <Typography variant="caption">{util.confirmSideEffect?.approvalEffect ? 'Click here to: ' + util.confirmSideEffect.approvalEffect : 'Click here to confirm.'}</Typography>
               </Grid>
             </Grid>
           </CardActionArea>
         </Grid>
-        {util.confirmSideEffect && <Grid item xs={6}>
+        {util.confirmSideEffect && <Grid size={6}>
 
           <CardActionArea sx={{ height: '100%', padding: '50px' }} onClick={() => {
             async function go() {
@@ -58,7 +58,7 @@ export function ConfirmAction(): React.JSX.Element {
         <Button onClick={() => { closeConfirm({}); }}>Cancel</Button>
       </CardActions>
     </Card>
-  </Dialog>, [util]);
+  </Dialog >, [util]);
 }
 
 export default ConfirmAction;

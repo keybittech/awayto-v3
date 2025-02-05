@@ -1,7 +1,7 @@
 import React, { useEffect, Suspense } from 'react';
 import { Route, Outlet, Routes } from 'react-router-dom';
 
-import Grid from '@mui/material/Unstable_Grid2';
+import Grid from '@mui/material/Grid';
 
 
 import { useComponents } from 'awayto/hooks';
@@ -35,7 +35,7 @@ const Layout = (props: IComponent): React.JSX.Element => {
             {/* <Grid width={175} sx={{ bgcolor: 'primary.dark', position: 'fixed', minWidth: '175px', display: { xs: 'none', md: 'flex' } }}>
               <Sidebar />
             </Grid> */}
-            <Grid xs={12} container direction="column" sx={{ marginLeft: { xs: 0, md: true ? 0 : '175px' } }}>
+            <Grid size={12} container direction="column" sx={{ marginLeft: { xs: 0, md: true ? 0 : '175px' } }}>
               <Grid px={1} sx={{ bgcolor: 'primary.dark' }}>
                 <Topbar {...props} />
               </Grid>
@@ -56,8 +56,8 @@ const Layout = (props: IComponent): React.JSX.Element => {
           <Route path="/exchange/:summaryId/summary" element={<ExchangeSummary {...props} />} />
         </Route>
         <Route element={
-          <Grid xs={12} container direction="column">
-            <Grid xs={12} px={1} sx={{ bgcolor: 'primary.dark' }}>
+          <Grid size={12} container direction="column">
+            <Grid size={12} px={1} sx={{ bgcolor: 'primary.dark' }}>
               <Topbar forceSiteMenu={true} {...props} />
             </Grid>
             <Grid sx={{ display: 'flex', height: 'calc(100vh - 60px)', width: '100%' }}>
