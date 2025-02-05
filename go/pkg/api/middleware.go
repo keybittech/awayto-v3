@@ -79,7 +79,7 @@ func (a *API) SocketAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		ctx = context.WithValue(ctx, "UserSession", &clients.UserSession{UserSub: userSub, UserEmail: userEmail})
-		ctx = context.WithValue(ctx, "SourceIp", req.RemoteAddr)
+		ctx = context.WithValue(ctx, "SourceIp", util.AnonIp(req.RemoteAddr))
 
 		req = req.WithContext(ctx)
 		next.ServeHTTP(w, req)
@@ -248,7 +248,7 @@ func (a *API) SessionAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
 		}
 
 		ctx = context.WithValue(ctx, "UserSession", session)
-		ctx = context.WithValue(ctx, "SourceIp", req.RemoteAddr)
+		ctx = context.WithValue(ctx, "SourceIp", util.AnonIp(req.RemoteAddr))
 
 		req = req.WithContext(ctx)
 		next.ServeHTTP(w, req)

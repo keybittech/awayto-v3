@@ -40,6 +40,9 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 			}
 		}
 
+		// Use remoteAddr for keycloak rate limiting
+		proxyReq.Header.Add("X-Forwarded-For", r.RemoteAddr)
+
 		// Send the proxy request using the custom transport
 		resp, err := authTransport.RoundTrip(proxyReq)
 		if err != nil {

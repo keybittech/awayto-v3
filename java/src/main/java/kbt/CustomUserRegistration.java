@@ -105,11 +105,12 @@ public class CustomUserRegistration extends RegistrationUserCreation {
 
   @Override
   public void validate(ValidationContext context) {
+    KeycloakSession session = context.getSession();
 
     List<FormMessage> validationErrors = new ArrayList<>();
     MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
 
-    String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("x-forwarded-for");
+    String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Forwarded-For");
 
     RedisConnection redis = new RedisConnection();
     boolean rateLimitExceeded = redis.rateLimit(xForwardedFor, "submit_registration",
@@ -123,7 +124,6 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     } else {
 
       if (formData.containsKey("groupCode")) {
-        KeycloakSession session = context.getSession();
         String groupCode = formData.getFirst("groupCode");
         String email = formData.getFirst("email");
 
@@ -206,6 +206,8 @@ public class CustomUserRegistration extends RegistrationUserCreation {
 
     Object groupIdObj = session.getAttribute("groupId");
 
+    String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Forwarded-For").split(":")[0];
+
     JSONObject registrationSuccessPayload = new JSONObject();
 
     if (groupIdObj != null) {
@@ -218,6 +220,7 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     registrationSuccessPayload.put("firstName", up.getFirstName());
     registrationSuccessPayload.put("lastName", up.getLastName());
     registrationSuccessPayload.put("email", up.getEmail());
+    registrationSuccessPayload.put("ipAddress", xForwardedFor);
 
     BackchannelAuth.sendUnixMessage("REGISTER", registrationSuccessPayload);
   }

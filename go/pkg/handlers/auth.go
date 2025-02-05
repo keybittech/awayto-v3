@@ -10,25 +10,18 @@ import (
 
 func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent clients.AuthEvent) (string, error) {
 
-	userProfile := &types.PostUserProfileRequest{}
-
-	userProfile.FirstName = authEvent.FirstName
-	userProfile.LastName = authEvent.LastName
-	userProfile.Username = authEvent.Email
-	userProfile.Email = authEvent.Email
-
-	_, err := h.PostUserProfile(nil, req, userProfile)
+	_, err := h.PostUserProfile(nil, req, &types.PostUserProfileRequest{
+		FirstName: authEvent.FirstName,
+		LastName:  authEvent.LastName,
+		Username:  authEvent.Email,
+		Email:     authEvent.Email,
+	})
 	if err != nil {
 		return "", util.ErrCheck(err)
 	}
 
 	if authEvent.GroupCode != "" {
 		_, err := h.JoinGroup(nil, req, &types.JoinGroupRequest{Code: authEvent.GroupCode})
-		if err != nil {
-			return "", util.ErrCheck(err)
-		}
-
-		_, err = h.AttachUser(nil, req, &types.AttachUserRequest{Code: authEvent.GroupCode})
 		if err != nil {
 			return "", util.ErrCheck(err)
 		}

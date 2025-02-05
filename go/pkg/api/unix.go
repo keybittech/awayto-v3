@@ -60,8 +60,19 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		}
 
 		bgContext := context.Background()
-		bgContext = context.WithValue(bgContext, "SourceIp", authEvent.IpAddress)
-		bgContext = context.WithValue(bgContext, "UserSession", &clients.UserSession{UserSub: authEvent.UserId})
+
+		userSession := &clients.UserSession{
+			UserSub:   authEvent.UserId,
+			UserEmail: authEvent.Email,
+		}
+
+		a.Handlers.Redis.SetSession(bgContext, authEvent.UserId, userSession)
+
+		if authEvent.IpAddress != "" {
+			bgContext = context.WithValue(bgContext, "SourceIp", util.AnonIp(authEvent.IpAddress))
+		}
+
+		bgContext = context.WithValue(bgContext, "UserSession", userSession)
 
 		fakeReq = fakeReq.WithContext(bgContext)
 
@@ -71,16 +82,18 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		})
 
 		if len(results) != 2 {
-			util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
+			util.ErrorLog.Println(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
 			return
 		}
 
 		if !results[1].IsNil() {
-			util.ErrCheck(results[1].Interface().(error))
+			util.ErrorLog.Println(results[1].Interface().(error))
 			return
 		}
 
 		resStr := results[0].Interface().(string)
+
+		a.Handlers.Redis.DeleteSession(bgContext, authEvent.UserId)
 
 		fmt.Fprint(conn, resStr)
 	}
