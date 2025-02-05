@@ -17,9 +17,10 @@ function AuthProvider(): React.JSX.Element {
   useEffect(() => {
     async function go() {
       if (location.pathname == '/join' && location.search.includes('groupCode')) {
-        void keycloak.init({}).then(() => {
+        void keycloak.init({}).then(async () => {
           const redirectUri = window.location.toString().split('?')[0].replace('/join', '');
-          window.location.href = keycloak.createRegisterUrl({ redirectUri }) + '&' + location.search.substr(1);
+          const kcRegisterUrl = await keycloak.createRegisterUrl({ redirectUri });
+          window.location.href = kcRegisterUrl + '&' + location.search.slice(1, location.search.length);
         }).catch(console.error);
       } else if (location.pathname == '/register') {
         void keycloak.init({}).then(async () => {
