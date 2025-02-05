@@ -1,6 +1,8 @@
 syntax = "proto3";
 package types;
 
+import "util.proto";
+
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -74,8 +76,8 @@ message IGroupUsers {
 
 message PatchGroupUserRequest {
   string userId = 1 [(google.api.field_behavior) = REQUIRED];
-  string roleName = 3 [(google.api.field_behavior) = REQUIRED];
-  string roleId = 4 [(google.api.field_behavior) = REQUIRED];
+  string roleName = 2 [(google.api.field_behavior) = REQUIRED];
+  string roleId = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchGroupUserResponse {
@@ -85,7 +87,7 @@ message PatchGroupUserResponse {
 message GetGroupUsersRequest {}
 
 message GetGroupUsersResponse {
-  repeated IGroupUser groupUsers = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated IGroupUser groupUsers = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message GetGroupUserByIdRequest {
@@ -93,7 +95,7 @@ message GetGroupUserByIdRequest {
 }
 
 message GetGroupUserByIdResponse {
-  IGroupUser groupUser = 1 [(google.api.field_behavior) = REQUIRED];
+  IGroupUser groupUser = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message DeleteGroupUserRequest {

@@ -110,7 +110,7 @@ type IKeycloak interface {
 	DeleteGroup(id string) error
 	UpdateGroup(id, name string) error
 	AddRolesToGroup(id string, roles []KeycloakRole) error
-	DeleteRolesFromGroup(id string, roles []KeycloakRole)
+	DeleteRolesFromGroup(id string, roles []KeycloakRole) error
 	AddUserToGroup(userId, groupId string) error
 	DeleteUserFromGroup(userId, groupId string) error
 }

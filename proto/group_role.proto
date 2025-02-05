@@ -18,6 +18,14 @@ service GroupRoleService {
     option (siteRole) = APP_GROUP_ROLES; 
   }
 
+  rpc PatchGroupRole(PatchGroupRoleRequest) returns (PatchGroupRoleResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/role"
+      body: "*"
+    };
+    option (siteRole) = APP_GROUP_ROLES; 
+  }
+
   rpc PatchGroupRoles(PatchGroupRolesRequest) returns (PatchGroupRolesResponse) {
     option (google.api.http) = {
       patch: "/v1/group/roles"
@@ -51,11 +59,23 @@ message IGroupRole {
 }
 
 message PostGroupRoleRequest {
-  IRole role = 1 [(google.api.field_behavior) = REQUIRED]; 
+  string roleId = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  bool defaultRole = 3;
 }
 
 message PostGroupRoleResponse {
-  string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string groupRoleId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupRoleRequest {
+  string roleId = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 2 [(google.api.field_behavior) = REQUIRED];
+  bool defaultRole = 3;
+}
+
+message PatchGroupRoleResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchGroupRolesRequest {

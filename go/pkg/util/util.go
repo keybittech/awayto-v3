@@ -19,6 +19,7 @@ import (
 var (
 	DebugMode = flag.Bool("debug", false, "Debug mode")
 	ErrorLog  *log.Logger
+	TitleCase cases.Caser
 )
 
 func init() {
@@ -27,10 +28,20 @@ func init() {
 		log.Fatal(err)
 	}
 	ErrorLog = log.New(file, "ERROR: ", log.Ldate|log.Ltime)
+	TitleCase = cases.Title(language.Und)
 }
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
 const InternalErrorResponse = `{ "error": { "status": 500 } }`
+const ErrorForUser = "ERROR_FOR_USER"
+
+func UserError(err string) error {
+	return errors.New(fmt.Sprintf("%s %s %s", ErrorForUser, err, ErrorForUser))
+}
+
+func SnipUserError(err string) string {
+	return strings.TrimSpace(strings.Split(err, ErrorForUser)[1])
+}
 
 func ErrCheck(err error) error {
 	if err != nil {

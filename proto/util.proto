@@ -19,6 +19,10 @@ extend google.protobuf.MessageOptions {
   string url = 50001;
 }
 
+extend google.protobuf.FieldOptions {
+  optional bool nolog = 70000;
+}
+
 enum CacheType {
   DEFAULT = 0;
   SKIP = 1;

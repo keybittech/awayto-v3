@@ -91,10 +91,10 @@ message IUserProfile {
 }
 
 message PostUserProfileRequest {
-  string firstName = 1 [(google.api.field_behavior) = REQUIRED];
-  string lastName = 2 [(google.api.field_behavior) = REQUIRED];
-  string username = 3 [(google.api.field_behavior) = REQUIRED];
-  string email = 4 [(google.api.field_behavior) = REQUIRED];
+  string firstName = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string lastName = 2 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string username = 3 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string email = 4 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
   string image = 5 [(google.api.field_behavior) = REQUIRED];
   string sub = 6 [(google.api.field_behavior) = REQUIRED];
 }
@@ -105,10 +105,10 @@ message PostUserProfileResponse {
 
 message PatchUserProfileRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
-  string firstName = 2 [(google.api.field_behavior) = REQUIRED];
-  string lastName = 3 [(google.api.field_behavior) = REQUIRED];
-  string username = 4 [(google.api.field_behavior) = REQUIRED];
-  string email = 5 [(google.api.field_behavior) = REQUIRED];
+  string firstName = 2 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string lastName = 3 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string username = 4 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string email = 5 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
   string image = 6 [(google.api.field_behavior) = REQUIRED];
 }
 
@@ -119,14 +119,14 @@ message PatchUserProfileResponse {
 message GetUserProfileDetailsRequest {}
 
 message GetUserProfileDetailsResponse {
-  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED];
+  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message GetUserProfileDetailsBySubRequest {
   string sub = 1 [(google.api.field_behavior) = REQUIRED];
 }
 message GetUserProfileDetailsBySubResponse {
-  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED];
+  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message GetUserProfileDetailsByIdRequest {
@@ -134,7 +134,7 @@ message GetUserProfileDetailsByIdRequest {
 }
 
 message GetUserProfileDetailsByIdResponse {
-  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED];
+  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message DisableUserProfileRequest {

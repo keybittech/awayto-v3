@@ -11,6 +11,7 @@ import (
 	"log"
 	"net/http"
 	"reflect"
+	"slices"
 	"strings"
 
 	"github.com/google/uuid"
@@ -50,6 +51,8 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 		}
 
 		handlerOpts := util.ParseHandlerOptions(serviceMethod)
+
+		ignoreFields := slices.Concat([]string{"state", "sizeCache", "unknownFields"}, handlerOpts.NoLogFields)
 
 		protoHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
@@ -122,9 +125,21 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 					util.ErrCheck(errors.New(fmt.Sprintf("bad api result for %s", pbVal.Type().Name())))
 				}
 
-				err := results[1].Interface().(error)
+				var reqParams string
+				pbValType := pbVal.Type()
+				for i = 0; i < pbVal.NumField(); i++ {
+					field := pbVal.Field(i)
 
-				loggedErr := errors.New(fmt.Sprintf("RequestId: %s %s", requestId, err.Error()))
+					fName := pbValType.Field(i).Name
+
+					if !slices.Contains(ignoreFields, fName) {
+						reqParams += " " + fmt.Sprintf("%s=%v", fName, field.Interface())
+					}
+				}
+
+				errStr := results[1].Interface().(error).Error()
+
+				loggedErr := errors.New(fmt.Sprintf("RequestId: %s Error: %s Params:%s", requestId, errStr, reqParams))
 
 				util.ErrorLog.Println(loggedErr)
 
@@ -132,7 +147,13 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 					fmt.Println(fmt.Sprintf("DEBUG: %s", loggedErr))
 				}
 
-				errRes := fmt.Sprintf("Request Id: %s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
+				var errRes string
+
+				if strings.Contains(errStr, util.ErrorForUser) {
+					errRes = fmt.Sprintf("Request Id: %s\n%s", requestId, util.SnipUserError(errStr))
+				} else {
+					errRes = fmt.Sprintf("Request Id: %s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
+				}
 
 				http.Error(w, errRes, http.StatusInternalServerError)
 				return

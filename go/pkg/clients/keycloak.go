@@ -477,15 +477,20 @@ func (k *Keycloak) AddRolesToGroup(id string, roles []KeycloakRole) error {
 	return nil
 }
 
-func (k *Keycloak) DeleteRolesFromGroup(id string, roles []KeycloakRole) {
+func (k *Keycloak) DeleteRolesFromGroup(id string, roles []KeycloakRole) error {
 	kcDelGroupRoleReplyChan := make(chan KeycloakResponse)
 	k.Chan() <- KeycloakCommand{
 		Ty:        DeleteRolesFromGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: id, Roles: roles},
 		ReplyChan: kcDelGroupRoleReplyChan,
 	}
-	<-kcDelGroupRoleReplyChan
+	deleteGroupRoleReply := <-kcDelGroupRoleReplyChan
 	close(kcDelGroupRoleReplyChan)
+	if deleteGroupRoleReply.Error != nil {
+		return deleteGroupRoleReply.Error
+	}
+
+	return nil
 }
 
 func (k *Keycloak) AddUserToGroup(userId, groupId string) error {

@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"google.golang.org/genproto/googleapis/api/annotations"
+	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -26,6 +27,7 @@ type HandlerOptions struct {
 	Pattern          string
 	CacheType        types.CacheType
 	CacheDuration    int32
+	NoLogFields      []string
 }
 
 func UnmarshalProto(req *http.Request, pb protoreflect.ProtoMessage) error {
@@ -65,6 +67,16 @@ func DecomposeProto(msg proto.Message) ([]string, []string, []interface{}) {
 
 func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	parsedOptions := &HandlerOptions{}
+
+	if md.Input().Fields().Len() > 0 {
+		for i := 0; i < md.Input().Fields().Len(); i++ {
+			field := md.Input().Fields().ByNumber(protowire.Number(i + 1))
+
+			if proto.HasExtension(field.Options(), types.E_Nolog) {
+				parsedOptions.NoLogFields = append(parsedOptions.NoLogFields, TitleCase.String(string(field.Name())))
+			}
+		}
+	}
 
 	inputOpts := md.Options().(*descriptor.MethodOptions)
 

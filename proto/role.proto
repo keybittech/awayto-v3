@@ -17,13 +17,6 @@ service RoleService {
     option (throttle) = 1;
   }
 
-  rpc PatchRole(PatchRoleRequest) returns (PatchRoleResponse) {
-    option (google.api.http) = {
-      patch: "/v1/roles"
-      body: "*"
-    };
-  }
-
   rpc GetRoles(GetRolesRequest) returns (GetRolesResponse) {
     option (google.api.http) = {
       get: "/v1/roles"
@@ -55,15 +48,6 @@ message PostRoleRequest {
 
 message PostRoleResponse {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
-}
-
-message PatchRoleRequest {
-  string id = 1 [(google.api.field_behavior) = REQUIRED];
-  string name = 2 [(google.api.field_behavior) = REQUIRED];
-}
-
-message PatchRoleResponse {
-  bool success = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetRolesRequest {}

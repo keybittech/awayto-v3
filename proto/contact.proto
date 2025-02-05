@@ -1,6 +1,8 @@
 syntax = "proto3";
 package types;
 
+import "util.proto";
+
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -54,9 +56,9 @@ message Contact {
 }
 
 message PostContactRequest {
-  string name = 1 [(google.api.field_behavior) = REQUIRED];
-  string email = 2 [(google.api.field_behavior) = REQUIRED];
-  string phone = 3 [(google.api.field_behavior) = REQUIRED];
+  string name = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string email = 2 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
+  string phone = 3 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message PostContactResponse {
@@ -65,9 +67,9 @@ message PostContactResponse {
 
 message PatchContactRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
-  string name = 2;
-  string email = 3;
-  string phone = 4;
+  string name = 2 [(types.nolog) = true];
+  string email = 3 [(types.nolog) = true];
+  string phone = 4 [(types.nolog) = true];
 }
 
 message PatchContactResponse {
@@ -77,7 +79,7 @@ message PatchContactResponse {
 message GetContactsRequest {}
 
 message GetContactsResponse {
-  repeated Contact contacts = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated Contact contacts = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message GetContactByIdRequest {
@@ -85,7 +87,7 @@ message GetContactByIdRequest {
 }
 
 message GetContactByIdResponse {
-  Contact contact = 1 [(google.api.field_behavior) = REQUIRED];
+  Contact contact = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 
 message DeleteContactRequest {
