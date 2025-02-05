@@ -435,22 +435,24 @@ func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*K
 	var kcSubGroup *KeycloakGroup
 
 	if kcCreateSubgroup.Error != nil && strings.Contains(kcCreateSubgroup.Error.Error(), "exists") {
-		util.ErrCheck(kcCreateSubgroup.Error)
-		groupByNameReplyChan := make(chan KeycloakResponse)
+		groupSubgroupsReplyChan := make(chan KeycloakResponse)
 		k.Chan() <- KeycloakCommand{
-			Ty:        GetGroupByNameKeycloakCommand,
-			Params:    KeycloakParams{GroupName: subGroupName},
-			ReplyChan: groupByNameReplyChan,
+			Ty:        GetGroupSubgroupsKeycloakCommand,
+			Params:    KeycloakParams{GroupId: groupExternalId},
+			ReplyChan: groupSubgroupsReplyChan,
 		}
-		groupByNameReply := <-groupByNameReplyChan
-		close(groupByNameReplyChan)
+		groupSubgroupsReply := <-groupSubgroupsReplyChan
+		close(groupSubgroupsReplyChan)
 
-		if groupByNameReply.Error != nil {
-			return nil, groupByNameReply.Error
+		if groupSubgroupsReply.Error != nil {
+			return nil, groupSubgroupsReply.Error
 		}
 
-		kcSubGroup = &(*groupByNameReply.Groups)[0]
-
+		for _, sg := range *groupSubgroupsReply.Groups {
+			if sg.Name == subGroupName {
+				kcSubGroup = &sg
+			}
+		}
 	} else if kcCreateSubgroup.Error != nil || kcCreateSubgroup.Group.Id == "" {
 		return nil, kcCreateSubgroup.Error
 	} else {

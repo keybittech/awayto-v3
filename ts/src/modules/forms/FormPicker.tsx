@@ -45,7 +45,7 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
       }}
     >
       {formId && <MenuItem key="unset-selection" value=""><Typography variant="caption">Remove selection</Typography></MenuItem>}
-      {groupFormsRequest?.groupForms?.map(gf => <MenuItem key={`form-version-select${gf.form?.id}`} value={gf.form?.id}>{gf.form?.name}</MenuItem>) || <MenuItem key={`no-forms`} value="unset">No forms created</MenuItem>}
+      {groupFormsRequest?.groupForms?.map(gf => <MenuItem key={`form-version-select${gf.form?.id}`} value={gf.form?.id}>{gf.form?.name}</MenuItem>) || <MenuItem key={`no-forms`} value="">No forms created</MenuItem>}
     </TextField>}
 
     <Dialog open={dialog === 'manage_form'} fullWidth maxWidth="lg">

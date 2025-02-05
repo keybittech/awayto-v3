@@ -34,7 +34,7 @@ export function useSuggestions(refName: string): {
   const allowSuggestions = userGroup.ai;
 
   const suggest: SuggestFn = useCallback(({ id, prompt }) => {
-    setHelpText(`Suggestion Parameters: ${prompt}`);
+    setHelpText(`Suggestion Parameters: ${prompt.replace('!$', ' ')}`);
     try {
       if (!allowSuggestions) {
         return
@@ -78,7 +78,7 @@ export function useSuggestions(refName: string): {
     const compId = nid('v4');
     return suggestions.length && allowSuggestions && !hideSuggestions ? <>
       AI: {suggestions.filter(s => s.toLowerCase() !== 'admin').map((suggestion, i) => {
-        return <span key={`${compId}-selection-${i}`}>
+        return <span style={{ display: 'inline-block' }} key={`${compId}-selection-${i}`}>
           <Link sx={{ cursor: 'pointer' }} onClick={() => {
             handleSuggestion(suggestion);
           }}>

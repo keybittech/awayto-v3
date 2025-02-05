@@ -115,7 +115,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
               {...props}
             />
           </Grid>
-          {roleIds.length && <Grid size={12}>
+          {!!roleIds.length && <Grid size={12}>
             <TextField
               select
               id={`group-default-role-selection`}
@@ -128,13 +128,13 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
               {roleIds.map(roleId => <MenuItem key={`${roleId}_primary_role_select`} value={roleId}>{roleValues.find(role => role.id === roleId)?.name || ''}</MenuItem>)}
             </TextField>
           </Grid>}
-          <Grid>
+          <Grid size="grow">
             <Alert severity="info">Your Admin role is created automatically. Only create roles for your members.</Alert>
           </Grid>
         </Grid>
       </CardContent>
       <CardActions>
-        <Grid container justifyContent={showCancel ? "space-between" : "flex-end"}>
+        <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button onClick={closeModal}>Cancel</Button>}
           <Button disabled={!defaultRoleId} onClick={handleSubmit}>Save Roles</Button>
         </Grid>

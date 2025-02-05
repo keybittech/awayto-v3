@@ -160,7 +160,7 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
 
   return <Grid container spacing={2}>
 
-    <Grid sx={{ display: 'flex', flex: 1, alignItems: 'start' }}>
+    <Grid size="grow" sx={{ alignItems: 'start' }}>
       <Grid container spacing={2}>
         {Object.keys(rows).length < 3 && <Grid size={12}>
           <Button variant="outlined" fullWidth onClick={addRow}>add row</Button>
@@ -247,11 +247,28 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
 
         {!inputTypes.includes(cell.t || '') ? <></> : <>
           <Grid>
-            <TextField fullWidth label="Helper Text" type="text" value={cell.h} onChange={e => setCellAttr(e.target.value, 'h')} />
+            <TextField
+              fullWidth
+              label="Helper Text"
+              type="text"
+              value={cell.h}
+              onChange={e => setCellAttr(e.target.value, 'h')}
+            />
           </Grid>
 
           <Grid>
-            <TextField fullWidth label="Default Value" type={cell.t} value={cell.v} onChange={e => setCellAttr(e.target.value, 'v')} />
+            <TextField
+              fullWidth
+              label="Default Value"
+              type={cell.t}
+              value={cell.v}
+              onChange={e => setCellAttr(e.target.value, 'v')}
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
+              }}
+            />
           </Grid>
 
           <Grid>

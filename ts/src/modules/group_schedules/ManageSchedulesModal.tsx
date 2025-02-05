@@ -282,7 +282,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       </Box>
     </CardContent>
     <CardActions>
-      <Grid container justifyContent={showCancel ? "space-between" : "flex-end"}>
+      <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
         <Button disabled={!schedule?.name} onClick={handleSubmit}>Save Schedule</Button>
       </Grid>

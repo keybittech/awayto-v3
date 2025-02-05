@@ -54,8 +54,9 @@ export function ServiceTierAddons({ service, showFormChips }: IComponent): React
       {
         type: 'string',
         field: 'name',
-        headerName: '',
-        flex: 1
+        headerName: 'Features',
+        flex: 1,
+        sortable: false
       },
       ...serviceTiers.map<GridColDef<{ tiers: string[] }>>(st => {
         const hasFormOrSurvey = !!st.formId || !!st.surveyId;
@@ -65,14 +66,12 @@ export function ServiceTierAddons({ service, showFormChips }: IComponent): React
           headerName: st.name,
           cellClassName: 'vertical-parent',
           renderHeader: col => {
-            return !showFormChips ? col.colDef.headerName : <div>
+            return !showFormChips ? col.colDef.headerName : <Box mt={-2}>
               <Typography mt={2}>{col.colDef.headerName}</Typography>
-              <Box mt={-2}>
-                {st.formId && <Chip color="info" size="small" label="Intake Form" />} &nbsp;
-                {st.surveyId && <Chip color="warning" size="small" label="Survey Form" />}
-                {!hasFormOrSurvey && <Chip size="small" label="No Forms" />}
-              </Box>
-            </div>;
+              {st.formId && <Chip color="info" size="small" label="Intake Form" />} &nbsp;
+              {st.surveyId && <Chip color="warning" size="small" label="Survey Form" />}
+              {!hasFormOrSurvey && <Chip size="small" label="No Forms" />}
+            </Box>;
           },
           renderCell: params => {
             return st.name && params.row.tiers.includes(st.name) ?
@@ -87,7 +86,7 @@ export function ServiceTierAddons({ service, showFormChips }: IComponent): React
     ]
   });
 
-  return <Grid container><Grid size={12}><DataGrid {...tierGridProps} /></Grid></Grid>;
+  return <DataGrid {...tierGridProps} />;
 }
 
 export default ServiceTierAddons;

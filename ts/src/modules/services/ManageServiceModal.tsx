@@ -423,7 +423,8 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 3. Review</legend>
             <Box mb={2}>
-              <Typography sx={{ mb: 1, mt: -2 }} variant="h2">{newService.name}</Typography>
+              <Typography variant="button">Service Name</Typography>
+              <Typography sx={{ mb: 1 }} variant="h2">{newService.name}</Typography>
               {!!newService.formId && <Chip color="info" size="small" label="Intake Form" />} &nbsp;
               {!!newService.surveyId && <Chip color="warning" size="small" label="Survey Form" />}
               {!(newService.surveyId || newService.formId) && <Chip size="small" label="No Forms" />}
@@ -435,12 +436,13 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
         </Grid>
       </Grid>
 
-      <Grid container justifyContent={showCancel ? "space-between" : "flex-end"}>
+    </CardContent>
+    <CardActions>
+      <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
         <Button disabled={!newService.name || newService.tiers && !Object.keys(newService.tiers).length} onClick={handleSubmit}>Save Service</Button>
       </Grid>
-
-    </CardContent>
+    </CardActions>
   </Card >;
 }
 
