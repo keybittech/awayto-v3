@@ -78,7 +78,7 @@ export function useSuggestions(refName: string): {
     const compId = nid('v4');
     return suggestions.length && allowSuggestions && !hideSuggestions ? <>
       AI: {suggestions.filter(s => s.toLowerCase() !== 'admin').map((suggestion, i) => {
-        return <span style={{ display: 'inline-block' }} key={`${compId}-selection-${i}`}>
+        return <span role="listitem" style={{ display: 'inline-block' }} key={`${compId}-selection-${i}`}>
           <Link sx={{ cursor: 'pointer' }} onClick={() => {
             handleSuggestion(suggestion);
           }}>

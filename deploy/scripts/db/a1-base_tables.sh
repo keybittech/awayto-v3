@@ -127,7 +127,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     default_role_id uuid REFERENCES dbtable_schema.roles (id) ON DELETE CASCADE,
     display_name VARCHAR (100) NOT NULL UNIQUE,
     name VARCHAR (50) NOT NULL UNIQUE,
-    purpose VARCHAR (200) NOT NULL UNIQUE,
+    purpose VARCHAR (200) NOT NULL,
     allowed_domains TEXT,
     code TEXT NOT NULL,
     ai BOOLEAN NOT NULL DEFAULT true,
