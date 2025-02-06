@@ -12,6 +12,8 @@ import (
 
 func main() {
 
+	ParseFlags()
+
 	api := &a.API{
 		Server: &http.Server{
 			Addr:         fmt.Sprintf("[::]:%d", httpsPort),

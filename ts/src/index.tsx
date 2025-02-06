@@ -2,7 +2,6 @@ import React, { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
-import type { Theme } from '@mui/material/styles/createTheme';
 
 import './index.css';
 import './fonts.css';
@@ -18,14 +17,12 @@ declare global {
     children?: ReactNode;
     loading?: boolean;
     closeModal?(prop?: unknown): void;
-    theme?: Theme;
   }
 
   interface IComponent {
     children?: ReactNode;
     loading?: boolean;
     closeModal?(prop?: unknown): void;
-    theme?: Theme;
   }
 }
 

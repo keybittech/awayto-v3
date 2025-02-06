@@ -1,4 +1,6 @@
-import React, { useMemo, useState, useEffect, useContext, Suspense } from 'react';
+import React, { useMemo, useState, Suspense } from 'react';
+
+import { useColorScheme } from '@mui/material';
 
 import Box from '@mui/material/Box';
 import Switch from '@mui/material/Switch';
@@ -26,10 +28,8 @@ import GroupIcon from '@mui/icons-material/Group';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-import Icon from '../../img/kbt-icon.png';
-
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useSecure, useComponents, siteApi, useAppSelector, keycloak, useStyles, SiteRoles, useTheme } from 'awayto/hooks';
+import { useSecure, useComponents, siteApi, keycloak, useStyles, SiteRoles } from 'awayto/hooks';
 
 const {
   REACT_APP_APP_HOST_URL
@@ -52,14 +52,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
   const { FeedbackMenu, PendingQuotesMenu, PendingQuotesProvider, UpcomingBookingsMenu } = useComponents();
   const location = useLocation();
 
-  const { variant } = useAppSelector(state => state.theme);
-  const { setTheme } = useTheme();
-
-  useEffect(() => {
-    if (variant) {
-      localStorage.setItem('site_theme', variant);
-    }
-  }, [variant]);
+  const { mode, setMode } = useColorScheme();
 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
@@ -224,11 +217,9 @@ export function Topbar(props: IComponent): React.JSX.Element {
             <ListItemText>
               Dark
               <Switch
-                value={variant}
-                checked={variant !== 'dark'}
+                checked={mode == 'light'}
                 onChange={e => {
-                  e.preventDefault();
-                  setTheme({ variant: e.target.checked ? 'light' : 'dark' });
+                  setMode(e.target.checked ? 'light' : 'dark');
                 }}
               />
               Light
@@ -261,7 +252,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
 
           <MenuItem aria-label="logout of the application" onClick={() => {
             async function go() {
-              localStorage.clear();
+              // localStorage.clear();
               await keycloak.logout({ redirectUri: REACT_APP_APP_HOST_URL });
             }
             void go();

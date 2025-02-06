@@ -90,6 +90,9 @@ func CastSlice[T any](items []interface{}) ([]T, bool) {
 
 func AnonIp(ipAddr string) string {
 	ipParts := strings.Split(ipAddr, ".")
+	if len(ipParts) != 4 {
+		return ""
+	}
 	ipParts[3] = "0"
 	return strings.Join(ipParts, ".")
 }

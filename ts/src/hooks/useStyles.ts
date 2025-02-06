@@ -1,17 +1,134 @@
-import { SxProps, ThemeOptions, createTheme } from '@mui/material/styles';
+import { SxProps, createTheme } from '@mui/material/styles';
 import green from '@mui/material/colors/green';
 import red from '@mui/material/colors/red';
 
-import { PaletteMode, deepMerge } from './util';
-
 const drawerWidth = 175;
 
-/**
- * @category Style
- */
-export const useStyles = (): { [key: string]: SxProps } => {
+export const theme = createTheme({
+  colorSchemes: {
+    light: {
+      palette: {
+        primary: {
+          main: '#121f31',
+          dark: '#ddeeff',
+          contrastText: '#333'
+        },
+        secondary: { main: 'rgb(100 150 200)' }
+      }
+    },
+    dark: {
+      palette: {
+        primary: {
+          main: '#ddd',
+          contrastText: '#333',
+          dark: '#203040'
+        },
+        secondary: {
+          main: '#009cc8',
+          dark: '#1c1d1e'
+        }
+      }
+    }
+  },
+  components: {
+    // MuiPickersDay: {
+    //   styleOverrides: {
+    //     root: {
+    //       '&:not(.Mui-disabled)': {
+    //         backgroundColor: 'rgb(64 64 64)',
+    //         color: 'rgb(100 150 200)'
+    //       },
+    //       '&.Mui-selected': {
+    //         backgroundColor: 'rgb(128 128 128) !important'
+    //       },
+    //       '&:hover': {
+    //         backgroundColor: '#aaa'
+    //       }
+    //     }
+    //   }
+    // },
+    // MuiClockPointer: {
+    //   styleOverrides: {
+    //     thumb: {
+    //       backgroundColor: 'inherit'
+    //     }
+    //   }
+    // },
+    // MuiClockNumber: {
+    //   styleOverrides: {
+    //     root: {
+    //       '&:not(.Mui-disabled)': {
+    //         color: 'rgb(100 150 200)'
+    //       }
+    //     }
+    //   }
+    // },
+    MuiDrawer: {
+      styleOverrides: {
+        paper: {
+          '& .MuiList-padding': {
+            paddingLeft: 'unset'
+          },
+          '& .MuiListItem-button': {
+            paddingLeft: '16px'
+          }
+        }
+      }
+    },
+    MuiTableCell: {
+      styleOverrides: {
+        root: {
+          padding: '4px 8px !important'
+        }
+      }
+    },
+    MuiTableBody: {
+      styleOverrides: {
+        root: {
+          '& .MuiTableCell-body:not(:last-child)': {
+            '&:not(:last-child)': {
+              borderRight: '1px solid rgb(228, 228, 228)',
+            }
+          },
+          '& .MuiIconButton-root': {
+            padding: 0
+          },
+          '& .MuiButton-textSizeSmall': {
+            padding: '0 4px'
+          }
+        }
+      }
+    },
+    MuiSlider: {
+      styleOverrides: {
+        root: {
+          padding: '4px 0'
+        }
+      }
+    },
+    MuiButton: {
+      styleOverrides: {
+        root: {
+          // marginBottom: '4px',
+          padding: '6px 8px 4px',
+          alignItems: 'baseline'
+        }
+      }
+    },
+    MuiDialog: {
+      styleOverrides: {
+        container: {
+          '.MuiCard-root': {
+            overflowY: 'scroll'
+          }
+        }
+      }
+    }
+  }
+});
 
-  const theme = createTheme();
+
+export const useStyles = (): { [key: string]: SxProps } => {
 
   const absoluteFullChild = {
     position: 'absolute',
@@ -127,273 +244,92 @@ export const useStyles = (): { [key: string]: SxProps } => {
   }
 };
 
-export const getBaseComponents: () => ThemeOptions = () => ({
-  components: {
-    MuiPickersDay: {
-      styleOverrides: {
-        root: {
-          '&:not(.Mui-disabled)': {
-            backgroundColor: 'rgb(64 64 64)',
-            color: 'rgb(100 150 200)'
-          },
-          '&.Mui-selected': {
-            backgroundColor: 'rgb(128 128 128) !important'
-          },
-          '&:hover': {
-            backgroundColor: '#aaa'
-          }
-        }
-      }
-    },
-    MuiClockPointer: {
-      styleOverrides: {
-        thumb: {
-          backgroundColor: 'inherit'
-        }
-      }
-    },
-    MuiClockNumber: {
-      styleOverrides: {
-        root: {
-          '&:not(.Mui-disabled)': {
-            color: 'rgb(100 150 200)'
-          }
-        }
-      }
-    },
-    MuiDrawer: {
-      styleOverrides: {
-        paper: {
-          '& .MuiList-padding': {
-            paddingLeft: 'unset'
-          },
-          '& .MuiListItem-button': {
-            paddingLeft: '16px'
-          }
-        }
-      }
-    },
-    MuiTableCell: {
-      styleOverrides: {
-        root: {
-          padding: '4px 8px !important'
-        }
-      }
-    },
-    MuiTableBody: {
-      styleOverrides: {
-        root: {
-          '& .MuiTableCell-body:not(:last-child)': {
-            '&:not(:last-child)': {
-              borderRight: '1px solid rgb(228, 228, 228)',
-            }
-          },
-          '& .MuiIconButton-root': {
-            padding: 0
-          },
-          '& .MuiButton-textSizeSmall': {
-            padding: '0 4px'
-          }
-        }
-      }
-    },
-    MuiSlider: {
-      styleOverrides: {
-        root: {
-          padding: '4px 0'
-        }
-      }
-    },
-    MuiButton: {
-      styleOverrides: {
-        root: {
-          // marginBottom: '4px',
-          padding: '6px 8px 4px',
-          alignItems: 'baseline'
-        }
-      }
-    },
-    MuiDialog: {
-      styleOverrides: {
-        container: {
-          '.MuiCard-root': {
-            overflowY: 'scroll'
-          }
-        }
-      }
-    }
-  }
-});
+// export const getThemedComponents: (mode: PaletteMode) => ThemeOptions = (mode) => ({
+//   components: {
+//     ...(
+//       mode === 'light' ? {
+//         // Light theme components
+//         MuiPickersDay: {
+//           styleOverrides: {
+//             root: {
+//               '&.Mui-selected': {
+//                 backgroundColor: '#333 !important'
+//               }
+//             }
+//           }
+//         },
+//         MuiClock: {
+//           styleOverrides: {
+//             pmButton: {
+//               color: '#aaa'
+//             },
+//             amButton: {
+//               color: '#aaa'
+//             }
+//           }
+//         },
+//         MuiClockNumber: {
+//           styleOverrides: {
+//             root: {
+//               '&.Mui-selected': {
+//                 backgroundColor: '#ccc'
+//               }
+//             }
+//           }
+//         },
+//         // MuiIconButton: {
+//         //   styleOverrides: {
+//         //     root: {
+//         //       color: 'rgb(100 150 200)'
+//         //     }
+//         //   }
+//         // },
+//         MuiButton: {
+//           styleOverrides: {
+//             root: {
+//               color: 'rgb(100 150 200)'
+//             }
+//           }
+//         }
+//       } : {
+//         // Dark theme components
+//         MuiInput: {
+//           styleOverrides: {
+//             underline: {
+//               '&:before': {
+//                 borderBottom: '1px solid #333'
+//               }
+//             }
+//           }
+//         },
+//         MuiDataGrid: {
+//           styleOverrides: {
+//             root: {
+//               '& .MuiDataGrid-container--top [role="row"]': {
+//                 backgroundColor: 'unset'
+//               }
+//             }
+//           }
+//         },
+//         // MuiIconButton: {
+//         //   styleOverrides: {
+//         //     root: {
+//         //       color: 'rgb(100 150 200)'
+//         //     }
+//         //   }
+//         // },
+//         MuiButton: {
+//           styleOverrides: {
+//             root: {
+//               ':not(.MuiButton-*Secondary)': {
+//                 color: 'rgb(100 150 200)'
+//               }
+//             }
+//           }
+//         }
+//       }
+//     )
+//   }
+// });
 
-export const getDesignTokens: (mode: PaletteMode) => ThemeOptions = (mode) => ({
-  // typography: {
-  //   fontFamily: ['Roboto', 'sans-serif'].join(',')
-  // },
-  palette: {
-    mode,
-    ...(
-      mode === 'light' ? {
-        // palette values for light mode
-        primary: {
-          main: '#121f31',
-          dark: '#ddeeff',
-          contrastText: '#333'
-        },
-        secondary: { main: 'rgb(100 150 200)' }
-      }
-        : mode === 'dark' ? {
-          // palette values for dark mode
-          primary: {
-            main: '#ddd',
-            contrastText: '#333',
-            dark: '#203040'
-          },
-          secondary: {
-            main: '#009cc8',
-            dark: '#1c1d1e'
-          }
-        }
-          : {
-            // palette for blue
-            primary: {
-              main: '#000',
-              dark: '#121f31'
-            },
-            secondary: { main: 'rgb(100 150 200)' }
-          })
-  },
-});
 
-export const getThemedComponents: (mode: PaletteMode) => ThemeOptions = (mode) => ({
-  components: {
-    ...(
-      mode === 'light' ? {
-        // Light theme components
-        MuiPickersDay: {
-          styleOverrides: {
-            root: {
-              '&.Mui-selected': {
-                backgroundColor: '#333 !important'
-              }
-            }
-          }
-        },
-        MuiClock: {
-          styleOverrides: {
-            pmButton: {
-              color: '#aaa'
-            },
-            amButton: {
-              color: '#aaa'
-            }
-          }
-        },
-        MuiClockNumber: {
-          styleOverrides: {
-            root: {
-              '&.Mui-selected': {
-                backgroundColor: '#ccc'
-              }
-            }
-          }
-        },
-        // MuiIconButton: {
-        //   styleOverrides: {
-        //     root: {
-        //       color: 'rgb(100 150 200)'
-        //     }
-        //   }
-        // },
-        MuiButton: {
-          styleOverrides: {
-            root: {
-              color: 'rgb(100 150 200)'
-            }
-          }
-        }
-      } : mode === 'dark' ? {
-        // Dark theme components
-        MuiInput: {
-          styleOverrides: {
-            underline: {
-              '&:before': {
-                borderBottom: '1px solid #333'
-              }
-            }
-          }
-        },
-        MuiDataGrid: {
-          styleOverrides: {
-            root: {
-              '& .MuiDataGrid-container--top [role="row"]': {
-                backgroundColor: 'unset'
-              }
-            }
-          }
-        },
-        // MuiIconButton: {
-        //   styleOverrides: {
-        //     root: {
-        //       color: 'rgb(100 150 200)'
-        //     }
-        //   }
-        // },
-        MuiButton: {
-          styleOverrides: {
-            root: {
-              ':not(.MuiButton-*Secondary)': {
-                color: 'rgb(100 150 200)'
-              }
-            }
-          }
-        }
-      } : {
-        // Blue theme components
-        MuiDrawer: {
-          styleOverrides: {
-            paper: {
-              backgroundColor: '#009cc8'
-            },
-            root: {
-              '& .MuiTypography-root': {
-                color: '#fff'
-              },
-              '& .MuiSvgIcon-colorPrimary': {
-                color: '#fff'
-              },
-              '& .MuiSvgIcon-colorSecondary': {
-                color: '#121f31'
-              }
-            }
-          }
-        },
-        MuiInput: {
-          styleOverrides: {
-            underline: {
-              '&:before': {
-                borderBottom: '1px solid #aaa'
-              },
-              '&:hover:not(.Mui-disabled):before': {
-                borderBottom: '2px solid rgb(100 150 200)'
-              },
-              '&.Mui-focused:after': {
-                borderBottom: '2px solid rgb(39 109 129)'
-              }
-            }
-          }
-        }
-      }
-
-    )
-  }
-})
-
-const darkTokens = getDesignTokens('dark');
-const darkComponents = getThemedComponents('dark');
-const darkSite = { ...darkTokens, ...darkComponents };
-export const darkTheme = createTheme(deepMerge(darkSite, getBaseComponents()));
-
-const lightTokens = getDesignTokens('light');
-const lightComponents = getThemedComponents('light');
-const lightSite = { ...lightTokens, ...lightComponents };
-export const lightTheme = createTheme(deepMerge(lightSite, getBaseComponents()));

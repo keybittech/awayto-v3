@@ -32,7 +32,7 @@ var (
 	unixPathFlag         = flag.String("unixPath", unixPathDefault, "Unix socket path")
 )
 
-func init() {
+func ParseFlags() {
 	flag.Parse()
 
 	httpPort = *httpPortFlag

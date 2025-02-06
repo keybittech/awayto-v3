@@ -24,6 +24,7 @@ endif
 
 BINARY_SERVICE=$(BINARY_NAME).service
 BINARY_OUT=$(BINARY_NAME)
+BINARY_TEST=$(BINARY_NAME).test
 
 # source files
 
@@ -91,9 +92,9 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-.PHONY: build cert java landing clean \
-	ts ts_protoc ts_dev \
-	go go_protoc go_dev go_genmocks go_test go_coverage \
+.PHONY: build clean \
+	ts_prep ts ts_test ts_protoc ts_dev \
+	go go_dev go_test go_test_main go_test_pkg go_coverage \
 	docker_up docker_down docker_build docker_start docker_stop \
 	docker_db docker_db_start docker_db_backup docker_db_restore docker_db_restore_op \
 	docker_redis \
@@ -130,10 +131,15 @@ ts_protoc:
 		$(PROTO_FILES)
 	npx @rtk-query/codegen-openapi $(TS_CONFIG_API)
 
-ts: ts_protoc
+ts_prep: ts_protoc
 	pnpm --dir $(TS_SRC) i
 	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/settings.application.env.template" > "$(TS_SRC)/settings.application.env"
+
+ts: ts_prep
 	pnpm run --dir $(TS_SRC) build
+
+ts_test: ts_prep
+	NODE_ENV=test pnpm run --dir $(TS_SRC) build
 
 ts_dev: ts
 	HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
@@ -148,18 +154,25 @@ go: go_protoc
 	$(call set_local_unix_sock_dir)
 	go build -C $(GO_SRC) -o ../$(BINARY_OUT) .
 
-go_dev: go $(CERTS_DIR) cert
+go_dev: go cert
 	exec ./$(BINARY_NAME) --debug
 
-go_test: go_protoc go_genmocks
-	go test -C $(GO_SRC) ./...
+go_test: docker_up go_test_main go_test_pkg
+
+go_test_main: go ts_test go_genmocks
+	$(call set_local_unix_sock_dir)
+	go test -C $(GO_SRC) -v -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
+
+go_test_pkg: go go_genmocks
+	$(call set_local_unix_sock_dir)
+	go test -C $(GO_SRC) -v ./...
 
 go_coverage: go_protoc go_genmocks
 	go test -C $(GO_SRC) -coverpkg=./... ./...
 
 clean:
-	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR)
-	rm -f $(BINARY_OUT) $(TS_API_YAML) $(TS_API_BUILD)
+	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR)
+	rm -f $(BINARY_OUT) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD)
 
 ## Tests
 go_genmocks: $(GO_MOCKS_GEN_DIR)
@@ -176,8 +189,8 @@ docker_up:
 
 docker_down:
 	${SUDO} docker $(DOCKER_COMPOSE) down 
-	${SUDO} docker volume remove $(PG_DATA)
-	${SUDO} docker volume remove $(REDIS_DATA)
+	${SUDO} docker volume remove $(PG_DATA) || true
+	${SUDO} docker volume remove $(REDIS_DATA) || true
 
 docker_build:
 	$(call set_local_unix_sock_dir)

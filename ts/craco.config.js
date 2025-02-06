@@ -4,8 +4,6 @@ const dotenv = require('dotenv');
 dotenv.config({ path: path.join(__dirname, `settings.${process.env.NODE_ENV}.env`) });
 dotenv.config({ path: path.join(__dirname, `settings.application.env`) });
 
-const dd = process.env.NODE_ENV === 'docker';
-
 const fs = require('fs');
 const crypto = require('crypto');
 const glob = require('glob');
@@ -17,6 +15,7 @@ const CopyWebpackPlugin = require('copy-webpack-plugin');
 
 const CracoEsbuildPlugin = require('craco-esbuild');
 
+const prodBuild = process.env.NODE_ENV == 'production'
 
 const { AWAYTO_WEBAPP_MODULES, AWAYTO_WEBAPP, AWAYTO_CORE } = process.env;
 
@@ -129,6 +128,7 @@ module.exports = {
         }
       });
 
+      webpackConfig.optimization.minimize = prodBuild
       webpackConfig.resolve.plugins.splice(scopePluginIdx, 1);
 
       CracoEsbuildPlugin.overrideWebpackConfig({

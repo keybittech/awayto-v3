@@ -6,11 +6,12 @@ import ThemeProvider from '@mui/material/styles/ThemeProvider';
 import CssBaseline from '@mui/material/CssBaseline';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
-import { siteApi, useAppSelector, useComponents, lightTheme, darkTheme, SiteRoles, refreshToken } from 'awayto/hooks';
+import { siteApi, useAppSelector, useComponents, theme, SiteRoles, refreshToken } from 'awayto/hooks';
 
 import Layout from './Layout';
 import reportWebVitals from '../../reportWebVitals';
 import AuthContext from '../auth/AuthContext';
+import { PaletteMode, useColorScheme } from '@mui/material';
 
 const {
   REACT_APP_KC_CLIENT
@@ -24,15 +25,12 @@ export default function App(props: IComponent): React.JSX.Element {
 
   const { ConfirmAction, SnackAlert, Onboard } = useComponents();
 
-  const { variant } = useAppSelector(state => state.theme);
-
   const [ready, setReady] = useState(false);
   const [onboarding, setOnboarding] = useState(false);
 
   const { data: profileRes, refetch: getUserProfileDetails } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
-  // const [attachUser] = siteApi.useGroupServiceAttachUserMutation();
-  // const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
+  const { mode } = useColorScheme();
 
   const reloadProfile = async (): Promise<void> => {
     await refreshToken(61).then(async () => {
@@ -61,14 +59,6 @@ export default function App(props: IComponent): React.JSX.Element {
     if (!profileRes) return;
     const profile = profileRes.userProfile;
 
-    // if (location.pathname === "/registration/code/success") {
-    //   const code = location.search.split('?code=')[1].split('&')[0];
-    //   attachUser({ attachUserRequest: { code } }).unwrap().then(async () => {
-    //     await activateProfile().unwrap().catch(console.error);
-    //     await reloadProfile().catch(console.error);
-    //   }).catch(console.error);
-    // } else 
-
     if (!profile.active) {
       setOnboarding(true);
     } else if (profile.active) {
@@ -79,22 +69,13 @@ export default function App(props: IComponent): React.JSX.Element {
 
   return <>
     <LocalizationProvider dateAdapter={AdapterDayjs}>
-      <ThemeProvider theme={'light' === variant ? lightTheme : darkTheme}>
+      <ThemeProvider theme={theme} defaultMode={mode}>
         <CssBaseline />
 
         <SnackAlert />
         <ConfirmAction />
         {onboarding && <Onboard {...props} reloadProfile={reloadProfile} />}
         {ready && <Layout {...props} />}
-
-        {/* !!isLoading && <Backdrop sx={{ zIndex: 9999, color: '#fff' }} open={!!isLoading}>
-          <Grid container direction="column" alignItems="center">
-            <CircularProgress color="inherit" />
-            {loadingMessage && <Box m={4}>
-              <Typography variant="caption">{loadingMessage}</Typography>
-            </Box>}
-          </Grid>
-        </Backdrop> */}
       </ThemeProvider>
     </LocalizationProvider>
   </>

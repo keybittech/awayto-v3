@@ -6,7 +6,6 @@ import { ConfirmActionProps, encodeVal, IUtil, utilSlice } from './util';
 import { authSlice } from './auth';
 import { CustomBaseQuery } from './api.template';
 import { UseQueryHookResult } from '@reduxjs/toolkit/dist/query/react/buildHooks';
-import { themeSlice } from './theme';
 
 export type ConfirmActionType = (...props: ConfirmActionProps) => void | Promise<void>;
 export type ActionRegistry = Record<string, ConfirmActionType>;
@@ -36,9 +35,7 @@ export const store = configureStore({
   reducer: {
     [siteApi.reducerPath]: siteApi.reducer,
     util: utilSlice.reducer,
-
     auth: authSlice.reducer,
-    theme: themeSlice.reducer
   },
   middleware(getDefaultMiddleware) {
     return getDefaultMiddleware().concat([

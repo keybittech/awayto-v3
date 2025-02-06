@@ -4,7 +4,9 @@ import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 
-import { useStyles, useTheme, PaletteMode } from 'awayto/hooks';
+import { useStyles, PaletteMode } from 'awayto/hooks';
+import { useColorScheme } from '@mui/material';
+
 declare global {
   interface IComponent {
     showTitle?: boolean;
@@ -16,19 +18,17 @@ export function PickTheme(props: IComponent): React.JSX.Element {
 
   const classes = useStyles();
 
-  const { setTheme } = useTheme();
+  const { setMode } = useColorScheme();
 
-  const edit = (e: React.SyntheticEvent) => {
-    localStorage.setItem('site_theme', e.currentTarget.id);
-    setTheme({ variant: e.currentTarget.id as PaletteMode });
+  const editMode = (e: React.SyntheticEvent) => {
+    setMode(e.currentTarget.id as PaletteMode);
   };
 
   return <>
     <Grid container alignItems="center">
       {showTitle ? <Grid><Typography>Theme</Typography></Grid> : <></>}
-      <Grid onClick={edit} id="dark"><Box bgcolor="gray" sx={classes.colorBox} /></Grid>
-      <Grid onClick={edit} id="light"><Box bgcolor="white" sx={classes.colorBox} /></Grid>
-      {/* <Grid onClick={edit} id="blue"><Box bgcolor="deepskyblue" sx={classes.colorBox} /></Grid> */}
+      <Grid onClick={editMode} id="dark"><Box bgcolor="gray" sx={classes.colorBox} /></Grid>
+      <Grid onClick={editMode} id="light"><Box bgcolor="white" sx={classes.colorBox} /></Grid>
     </Grid>
   </>
 }

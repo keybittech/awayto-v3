@@ -6,7 +6,7 @@ import (
 	"net/http"
 	"testing"
 
-	"go.uber.org/mock/gomock"
+	"github.com/golang/mock/gomock"
 )
 
 func TestAssist(t *testing.T) {
