@@ -92,7 +92,7 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-.PHONY: build clean \
+.PHONY: build clean test_gen \
 	ts_prep ts ts_test ts_protoc ts_dev \
 	go go_dev go_test go_test_main go_test_pkg go_coverage \
 	docker_up docker_down docker_build docker_start docker_stop \
@@ -169,6 +169,9 @@ go_test_pkg: go go_genmocks
 
 go_coverage: go_protoc go_genmocks
 	go test -C $(GO_SRC) -coverpkg=./... ./...
+
+test_gen:
+	npx playwright codegen --ignore-https-errors https://localhost:${GO_HTTPS_PORT}
 
 clean:
 	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR)
