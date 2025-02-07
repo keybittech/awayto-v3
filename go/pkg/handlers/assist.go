@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"net/http"
@@ -13,7 +14,7 @@ func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *ty
 	// TODO
 	// if rateLimited, err := h.Redis.Client().RateLimitResource(req.Context(), data.UserSub, "prompt", 25, 86400); err != nil || rateLimited {
 	// 	if err != nil {
-	// 		return nil, err
+	// 		return nil, util.ErrCheck(err)
 	// 	}
 	// 	return &types.PostPromptResponse{PromptResult: []string{}}, nil
 	// }
@@ -22,7 +23,7 @@ func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *ty
 	// response, err := h.AI.UseAI(req.Context(), data.Id, promptParts...)
 
 	// if err != nil {
-	// 	return nil, err
+	// 	return nil, util.ErrCheck(err)
 	// }
 
 	// promptResults := strings.Split(response.Message, "|")
@@ -38,15 +39,14 @@ func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PostPromptResponse{PromptResult: trimmedResults}, nil
 }
 
-func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data *types.GetSuggestionRequest) (*types.GetSuggestionResponse, error) {
+func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data *types.GetSuggestionRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetSuggestionResponse, error) {
 
-	session := h.Redis.ReqSession(req)
 	if session.GroupAi {
 		promptParts := strings.Split(data.GetPrompt(), "!$")
 		promptType, err := strconv.Atoi(data.GetId())
 		if err != nil {
 			util.ErrCheck(err)
-			return nil, err
+			return nil, util.ErrCheck(err)
 		}
 
 		resp := h.Ai.GetPromptResponse(req.Context(), promptParts, types.IPrompts(promptType))

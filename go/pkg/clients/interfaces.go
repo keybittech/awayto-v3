@@ -39,6 +39,7 @@ type IDatabase interface {
 }
 
 type IDatabaseClient interface {
+	Conn(ctx context.Context) (*sql.Conn, error)
 	Exec(query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (IRows, error)
 	QueryRow(query string, args ...any) IRow
@@ -80,7 +81,7 @@ type IRedis interface {
 	GetSession(ctx context.Context, userSub string) (*UserSession, error)
 	SetSession(ctx context.Context, userSub string, session *UserSession) error
 	DeleteSession(ctx context.Context, userSub string) error
-	ReqSession(req *http.Request) *UserSession
+	ReqSession(req *http.Request) (*UserSession, error)
 }
 
 type IRedisClient interface {
@@ -99,6 +100,7 @@ type IKeycloak interface {
 	SetChan(chan<- KeycloakCommand)
 	RoleCall(method string, userId string) error
 	UpdateUser(id, firstName, lastName string) error
+	GetUserInfoByToken(token string) (*KeycloakUser, error)
 	GetUserInfoById(id string) (*KeycloakUser, error)
 	GetGroupAdminRoles() []KeycloakRole
 	GetGroupSiteRoles(groupId string) []ClientRoleMappingRole

@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"errors"
@@ -8,9 +9,7 @@ import (
 	"strings"
 )
 
-func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserRequest) (*types.PatchGroupUserResponse, error) {
-	session := h.Redis.ReqSession(req)
-
+func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupUserResponse, error) {
 	userId := data.GetUserId()
 	roleId := data.GetRoleId()
 
@@ -23,7 +22,6 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 		JOIN dbtable_schema.groups g ON g.id = gu.group_id
 		WHERE g.id = $1 AND gu.user_id = $2
 	`, session.GroupId, userId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -40,7 +38,6 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
 	`, session.GroupId, roleId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -57,20 +54,19 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 
 	err = h.Keycloak.DeleteUserFromGroup(groupUserSub, kcOldSubgroupExternalId)
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	err = h.Keycloak.AddUserToGroup(groupUserSub, newSubgroupExternalId)
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
-	_, err = h.Database.Client().Exec(`
+	_, err = tx.Exec(`
 		UPDATE dbtable_schema.group_users
 		SET external_id = $3
 		WHERE group_id = $1 AND user_id = $2
 	`, session.GroupId, userId, newSubgroupExternalId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -92,8 +88,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest) (*types.GetGroupUsersResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUsersResponse, error) {
 	var groupUsers []*types.IGroupUser
 
 	err := h.Database.QueryRows(&groupUsers, `
@@ -105,7 +100,6 @@ func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data 
 		JOIN dbtable_schema.roles r ON gr.role_id = r.id
 		WHERE egu."groupId" = $1
 	`, session.GroupId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -113,8 +107,7 @@ func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupUsersResponse{GroupUsers: groupUsers}, nil
 }
 
-func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest) (*types.GetGroupUserByIdResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserByIdResponse, error) {
 	var groupUsers []*types.IGroupUser
 
 	err := h.Database.QueryRows(&groupUsers, `
@@ -136,7 +129,6 @@ func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, da
 		JOIN dbview_schema.enabled_roles er ON er.id = gr.role_id
 		WHERE egu.groupId = $1 and egu.userId = $2
 	`, session.GroupId, data.GetUserId())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -148,16 +140,14 @@ func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupUserByIdResponse{GroupUser: groupUsers[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserRequest) (*types.DeleteGroupUserResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := h.Database.Client().Exec(`
+		_, err := tx.Exec(`
 			DELETE FROM dbtable_schema.group_users
 			WHERE group_id = $1 AND user_id = $2
 		`, session.GroupId, id)
-
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -166,17 +156,15 @@ func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, dat
 	return &types.DeleteGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data *types.LockGroupUserRequest) (*types.LockGroupUserResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data *types.LockGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.LockGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := h.Database.Client().Exec(`
+		_, err := tx.Exec(`
 			UPDATE dbtable_schema.group_users
 			SET locked = true
 			WHERE group_id = $1 AND user_id = $2
 		`, session.GroupId, id)
-
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -187,17 +175,15 @@ func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data 
 	return &types.LockGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) UnlockGroupUser(w http.ResponseWriter, req *http.Request, data *types.UnlockGroupUserRequest) (*types.UnlockGroupUserResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) UnlockGroupUser(w http.ResponseWriter, req *http.Request, data *types.UnlockGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.UnlockGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := h.Database.Client().Exec(`
+		_, err := tx.Exec(`
 			UPDATE dbtable_schema.group_users
 			SET locked = false
 			WHERE group_id = $1 AND user_id = $2
 		`, session.GroupId, id)
-
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

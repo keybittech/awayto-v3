@@ -30,29 +30,25 @@ export function Home(props: IProps): React.JSX.Element {
     });
   }, [profileRequest?.userProfile.availableUserGroupRoles, navigate]);
 
-  return (
-    <Suspense>
-      <Card sx={{ padding: '12px' }} variant="outlined">
-        <CardHeader
-          title={`${profileRequest?.userProfile.firstName} ${profileRequest?.userProfile.lastName}`}
-          subheader={`${profileRequest?.userProfile.roleName}`}
-          action={<GroupSelect />}
-        />
-        {roleActions}
-      </Card>
-      <Box mb={2}>
-        <BookingHome {...props} />
-      </Box>
-      {/* <Box mb={2}>
+  return <>
+    <Card sx={{ padding: '12px' }} variant="outlined">
+      <CardHeader
+        title={`${profileRequest?.userProfile.firstName} ${profileRequest?.userProfile.lastName}`}
+        subheader={`${profileRequest?.userProfile.roleName}`}
+        action={<GroupSelect />}
+      />
+      {roleActions}
+    </Card>
+    <Box mb={2}>
+      <BookingHome {...props} />
+    </Box>
+    {/* <Box mb={2}>
         <GroupHome {...props} />
       </Box> */}
-      <Box mb={2}>
-        <PendingQuotesProvider>
-          <QuoteHome {...props} />
-        </PendingQuotesProvider>
-      </Box>
-    </Suspense>
-  );
+    <PendingQuotesProvider>
+      <QuoteHome {...props} />
+    </PendingQuotesProvider>
+  </>;
 }
 
 export default Home;

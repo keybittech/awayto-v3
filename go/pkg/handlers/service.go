@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"errors"
@@ -11,17 +12,8 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *types.PostServiceRequest) (*types.PostServiceResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *types.PostServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostServiceResponse, error) {
 	service := data.GetService()
-	tx, ongoing := h.Database.ReqTx(req)
-	if tx == nil {
-		return nil, util.ErrCheck(errors.New("bad post service tx"))
-	}
-
-	if !ongoing {
-		defer tx.Rollback()
-	}
 
 	var serviceFormId *string
 	if service.GetFormId() != "" {
@@ -48,25 +40,11 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 		return nil, util.ErrCheck(err)
 	}
 
-	if !ongoing {
-		tx.Commit()
-	}
-
 	return &types.PostServiceResponse{Id: serviceId}, nil
 }
 
-func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest) (*types.PatchServiceResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchServiceResponse, error) {
 	service := data.GetService()
-
-	tx, ongoing := h.Database.ReqTx(req)
-	if tx == nil {
-		return nil, util.ErrCheck(errors.New("bad patch service tx"))
-	}
-
-	if !ongoing {
-		defer tx.Rollback()
-	}
 
 	var serviceFormId *string
 	if service.GetFormId() != "" {
@@ -168,15 +146,10 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		}
 	}
 
-	if !ongoing {
-		tx.Commit()
-	}
-
 	return &types.PatchServiceResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *types.GetServicesRequest) (*types.GetServicesResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *types.GetServicesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServicesResponse, error) {
 	var services []*types.IService
 
 	err := h.Database.QueryRows(&services, `
@@ -191,7 +164,7 @@ func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetServicesResponse{Services: services}, nil
 }
 
-func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data *types.GetServiceByIdRequest) (*types.GetServiceByIdResponse, error) {
+func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data *types.GetServiceByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceByIdResponse, error) {
 	var services []*types.IService
 
 	err := h.Database.QueryRows(&services, `
@@ -210,12 +183,11 @@ func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetServiceByIdResponse{Service: services[0]}, nil
 }
 
-func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest) (*types.DeleteServiceResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteServiceResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := h.Database.Client().Exec(`
+		_, err := tx.Exec(`
 			DELETE FROM dbtable_schema.services
 			WHERE id = $1
 		`, id)
@@ -231,12 +203,11 @@ func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data 
 	return &types.DeleteServiceResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableService(w http.ResponseWriter, req *http.Request, data *types.DisableServiceRequest) (*types.DisableServiceResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) DisableService(w http.ResponseWriter, req *http.Request, data *types.DisableServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableServiceResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := h.Database.Client().Exec(`
+		_, err := tx.Exec(`
 			UPDATE dbtable_schema.services
 			SET enabled = false, updated_on = $2, updated_sub = $3
 			WHERE id = $1

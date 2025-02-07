@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"errors"
@@ -8,8 +9,7 @@ import (
 	"time"
 )
 
-func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, data *types.PostManageRolesRequest) (*types.PostManageRolesResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, data *types.PostManageRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostManageRolesResponse, error) {
 	var roles []*types.IRole
 
 	err := h.Database.QueryRows(&roles, `
@@ -17,7 +17,6 @@ func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, dat
 		VALUES ($1, $2::uuid)
 		RETURNING id, name
 	`, data.GetName(), session.UserSub)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -29,8 +28,7 @@ func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, dat
 	return &types.PostManageRolesResponse{Id: roles[0].GetId(), Name: roles[0].GetName()}, nil
 }
 
-func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, data *types.PatchManageRolesRequest) (*types.PatchManageRolesResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, data *types.PatchManageRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchManageRolesResponse, error) {
 	var roles []*types.IRole
 
 	err := h.Database.QueryRows(&roles, `
@@ -39,7 +37,6 @@ func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, da
 		WHERE id = $1
 		RETURNING id, name
 	`, data.GetId(), data.GetName(), session.UserSub, time.Now().Local().UTC())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -51,13 +48,12 @@ func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, da
 	return &types.PatchManageRolesResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data *types.GetManageRolesRequest) (*types.GetManageRolesResponse, error) {
+func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data *types.GetManageRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetManageRolesResponse, error) {
 	var roles []*types.IRole
 
 	err := h.Database.QueryRows(&roles, `
 		SELECT * FROM dbview_schema.enabled_roles
 	`)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -65,12 +61,11 @@ func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data
 	return &types.GetManageRolesResponse{Roles: roles}, nil
 }
 
-func (h *Handlers) DeleteManageRoles(w http.ResponseWriter, req *http.Request, data *types.DeleteManageRolesRequest) (*types.DeleteManageRolesResponse, error) {
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) DeleteManageRoles(w http.ResponseWriter, req *http.Request, data *types.DeleteManageRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteManageRolesResponse, error) {
+	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.roles
 		WHERE id = $1
 	`, data.GetId())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

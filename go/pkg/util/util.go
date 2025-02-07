@@ -2,7 +2,6 @@ package util
 
 import (
 	"encoding/base64"
-	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
@@ -16,9 +15,24 @@ import (
 	"golang.org/x/text/language"
 )
 
+type ErrLog struct {
+	Logger *log.Logger
+}
+
+func (e *ErrLog) Println(v ...any) {
+	if v == nil {
+		return
+	}
+	e.Logger.Println(v...)
+
+	if *DebugMode {
+		fmt.Println(fmt.Sprintf("DEBUG: %s", v))
+	}
+}
+
 var (
 	DebugMode = flag.Bool("debug", false, "Debug mode")
-	ErrorLog  *log.Logger
+	ErrorLog  *ErrLog
 	TitleCase cases.Caser
 )
 
@@ -27,7 +41,7 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ErrorLog = log.New(file, "ERROR: ", log.Ldate|log.Ltime)
+	ErrorLog = &ErrLog{log.New(file, "ERROR: ", log.Ldate|log.Ltime)}
 	TitleCase = cases.Title(language.Und)
 }
 
@@ -143,31 +157,4 @@ func Base64UrlDecode(str string) ([]byte, error) {
 		s += "="
 	}
 	return base64.StdEncoding.DecodeString(s)
-}
-
-func ParseJWT(token string) (map[string]interface{}, map[string]interface{}, error) {
-	parts := strings.Split(token, ".")
-	if len(parts) != 3 {
-		return nil, nil, fmt.Errorf("invalid JWT, expected 3 parts but got %d", len(parts))
-	}
-
-	headerBytes, err := Base64UrlDecode(parts[0])
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode header: %v", err)
-	}
-
-	payloadBytes, err := Base64UrlDecode(parts[1])
-	if err != nil {
-		return nil, nil, fmt.Errorf("failed to decode payload: %v", err)
-	}
-
-	var header, payload map[string]interface{}
-	if err := json.Unmarshal(headerBytes, &header); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal header: %v", err)
-	}
-	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
-		return nil, nil, fmt.Errorf("failed to unmarshal payload: %v", err)
-	}
-
-	return header, payload, nil
 }

@@ -4,7 +4,6 @@ import (
 	"av3api/pkg/clients"
 	"av3api/pkg/util"
 	"bufio"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -59,41 +58,51 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 			return
 		}
 
-		bgContext := context.Background()
-
-		userSession := &clients.UserSession{
+		session := &clients.UserSession{
 			UserSub:   authEvent.UserId,
 			UserEmail: authEvent.Email,
+			AnonIp:    util.AnonIp(authEvent.IpAddress),
 		}
 
-		a.Handlers.Redis.SetSession(bgContext, authEvent.UserId, userSession)
-
-		if authEvent.IpAddress != "" {
-			bgContext = context.WithValue(bgContext, "SourceIp", util.AnonIp(authEvent.IpAddress))
+		tx, err := a.Handlers.Database.Client().Begin()
+		if err != nil {
+			util.ErrCheck(err)
+			return
 		}
 
-		bgContext = context.WithValue(bgContext, "UserSession", userSession)
+		var reqErr error
 
-		fakeReq = fakeReq.WithContext(bgContext)
+		defer func() {
+			if p := recover(); p != nil {
+				tx.Rollback()
+				panic(p)
+			} else if reqErr != nil {
+				tx.Rollback()
+			} else {
+				util.ErrCheck(tx.Commit())
+			}
+		}()
 
 		results := handler.Call([]reflect.Value{
 			reflect.ValueOf(fakeReq),
 			reflect.ValueOf(authEvent),
+			reflect.ValueOf(session),
+			reflect.ValueOf(tx),
 		})
 
 		if len(results) != 2 {
-			util.ErrorLog.Println(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
+			reqErr = errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName)
+			util.ErrorLog.Println(util.ErrCheck(reqErr))
 			return
 		}
 
 		if !results[1].IsNil() {
-			util.ErrorLog.Println(results[1].Interface().(error))
+			reqErr = results[1].Interface().(error)
+			util.ErrorLog.Println(util.ErrCheck(reqErr))
 			return
 		}
 
 		resStr := results[0].Interface().(string)
-
-		a.Handlers.Redis.DeleteSession(bgContext, authEvent.UserId)
 
 		fmt.Fprint(conn, resStr)
 	}

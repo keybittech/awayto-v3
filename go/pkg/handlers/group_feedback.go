@@ -1,19 +1,18 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"net/http"
 	"time"
 )
 
-func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.PostGroupFeedbackRequest) (*types.PostGroupFeedbackResponse, error) {
-	session := h.Redis.ReqSession(req)
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.PostGroupFeedbackRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFeedbackResponse, error) {
+	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.group_feedback (message, group_id, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3::uuid, $4)
 	`, data.GetFeedback().GetFeedbackMessage(), session.GroupId, session.UserSub, time.Now().Local().UTC())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -23,8 +22,7 @@ func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, d
 	return &types.PostGroupFeedbackResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest) (*types.GetGroupFeedbackResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFeedbackResponse, error) {
 	var feedback []*types.IFeedback
 
 	err := h.Database.QueryRows(&feedback, `
@@ -34,7 +32,6 @@ func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, da
 		WHERE f.group_id = $1
 		ORDER BY f.created_on DESC
 	`, session.GroupId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -81,7 +81,6 @@ type Connections map[string]net.Conn
 
 func InitSocket() ISocket {
 
-	// TODO only setup sockets for payers
 	cmds := make(chan SocketCommand)
 	subscribers := make(Subscribers)
 	connections := make(Connections)

@@ -52,21 +52,22 @@ type KeycloakClient struct {
 }
 
 type KeycloakUser struct {
-	Id                string `json:"id,omitempty"`
-	Sub               string `json:"sub,omitempty"`
-	CreatedTimestamp  int64  `json:"createdTimestamp,omitempty"`
-	Username          string `json:"username,omitempty"`
-	Enabled           bool   `json:"enabled,omitempty"`
-	Totp              bool   `json:"totp,omitempty"`
-	Name              string `json:"name,omitempty"`
-	PreferredUsername string `json:"preferred_username,omitempty"`
-	GivenName         string `json:"given_name,omitempty"`
-	FamilyName        string `json:"family_name,omitempty"`
-	EmailVerified     bool   `json:"emailVerified,omitempty"`
-	FirstName         string `json:"firstName,omitempty"`
-	LastName          string `json:"lastName,omitempty"`
-	Email             string `json:"email,omitempty"`
-	FederationLink    string `json:"federationLink,omitempty"`
+	Id                string   `json:"id,omitempty"`
+	Sub               string   `json:"sub,omitempty"`
+	CreatedTimestamp  int64    `json:"createdTimestamp,omitempty"`
+	Username          string   `json:"username,omitempty"`
+	Enabled           bool     `json:"enabled,omitempty"`
+	Totp              bool     `json:"totp,omitempty"`
+	Name              string   `json:"name,omitempty"`
+	PreferredUsername string   `json:"preferred_username,omitempty"`
+	GivenName         string   `json:"given_name,omitempty"`
+	FamilyName        string   `json:"family_name,omitempty"`
+	EmailVerified     bool     `json:"emailVerified,omitempty"`
+	FirstName         string   `json:"firstName,omitempty"`
+	LastName          string   `json:"lastName,omitempty"`
+	Email             string   `json:"email,omitempty"`
+	FederationLink    string   `json:"federationLink,omitempty"`
+	Groups            []string `json:"groups,omitempty"`
 	Attributes        *struct {
 		LDAPENTRYDN []string `json:"LDAP_ENTRY_DN,omitempty"`
 		LDAPID      []string `json:"LDAP_ID,omitempty"`
@@ -140,6 +141,32 @@ type KeycloakUserSession struct {
 	UserId        string            `json:"userId"`
 	Username      string            `json:"username"`
 	TransientUser bool              `json:"transientUser"`
+}
+
+func ParseJWT(token string) (*KeycloakUser, error) {
+
+	bearerParts := strings.Split(token, " ")
+
+	if len(bearerParts) != 2 {
+		return nil, util.ErrCheck(errors.New("bad token split"))
+	}
+
+	tokenParts := strings.Split(bearerParts[1], ".")
+	if len(tokenParts) != 3 {
+		return nil, util.ErrCheck(errors.New(fmt.Sprintf("invalid JWT, expected 3 parts but got %d", len(tokenParts))))
+	}
+
+	payloadBytes, err := util.Base64UrlDecode(tokenParts[1])
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	var payload KeycloakUser
+	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return &payload, nil
 }
 
 func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
@@ -221,7 +248,7 @@ func (keycloakClient KeycloakClient) GetUserListInRealm() (*[]KeycloakUser, erro
 	return &result, nil
 }
 
-func (keycloakClient KeycloakClient) GetUserInfoByAuthorization(token string) (*KeycloakUser, error) {
+func (keycloakClient KeycloakClient) GetUserInfoByToken(token string) (*KeycloakUser, error) {
 
 	client := &http.Client{}
 	req, err := http.NewRequest(
@@ -236,7 +263,7 @@ func (keycloakClient KeycloakClient) GetUserInfoByAuthorization(token string) (*
 
 	req.Header = http.Header{
 		"Content-Type":  {"application/json"},
-		"Authorization": {"Bearer " + token},
+		"Authorization": {token},
 	}
 
 	do, err := client.Do(req)

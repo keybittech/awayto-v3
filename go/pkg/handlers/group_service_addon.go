@@ -1,16 +1,15 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"net/http"
 )
 
-func (h *Handlers) PostGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceAddonRequest) (*types.PostGroupServiceAddonResponse, error) {
-	session := h.Redis.ReqSession(req)
-
-	// TODO fix uuid thing?
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) PostGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceAddonRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupServiceAddonResponse, error) {
+	// TODO potentially undo the global uuid nature of uuid_service_addons table
+	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.uuid_service_addons (parent_uuid, service_addon_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		ON CONFLICT (parent_uuid, service_addon_id) DO NOTHING
@@ -25,9 +24,7 @@ func (h *Handlers) PostGroupServiceAddon(w http.ResponseWriter, req *http.Reques
 	return &types.PostGroupServiceAddonResponse{}, nil
 }
 
-func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetGroupServiceAddonsRequest) (*types.GetGroupServiceAddonsResponse, error) {
-	session := h.Redis.ReqSession(req)
-
+func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetGroupServiceAddonsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupServiceAddonsResponse, error) {
 	var groupServiceAddons []*types.IGroupServiceAddon
 
 	err := h.Database.QueryRows(&groupServiceAddons, `
@@ -36,7 +33,6 @@ func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Reques
 		LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = eusa."serviceAddonId"
 		WHERE eusa."parentUuid" = $1
 	`, session.GroupId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -44,14 +40,11 @@ func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Reques
 	return &types.GetGroupServiceAddonsResponse{GroupServiceAddons: groupServiceAddons}, nil
 }
 
-func (h *Handlers) DeleteGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceAddonRequest) (*types.DeleteGroupServiceAddonResponse, error) {
-	session := h.Redis.ReqSession(req)
-
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) DeleteGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceAddonRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupServiceAddonResponse, error) {
+	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.uuid_service_addons
 		WHERE parent_uuid = $1 AND service_addon_id = $2
 	`, session.GroupId, data.GetGroupServiceAddonId())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

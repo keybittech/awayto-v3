@@ -1,61 +1,41 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
-	"context"
 	"encoding/base64"
 	"errors"
 	"net/http"
 	"strings"
 )
 
-func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest) (*types.PostGroupScheduleResponse, error) {
-	session := h.Redis.ReqSession(req)
-	tx, ongoing := h.Database.ReqTx(req)
-	if tx == nil {
-		return nil, util.ErrCheck(errors.New("bad post schedule tx"))
-	}
+func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupScheduleResponse, error) {
+	groupSession := session
+	groupSession.UserSub = session.GroupSub
 
-	if !ongoing {
-		defer tx.Rollback()
-	}
-
-	ctx := context.WithValue(req.Context(), "UserSub", session.GroupSub)
-
-	req = req.WithContext(ctx)
-
-	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()})
+	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, groupSession, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
 	scheduleId := scheduleResp.GetId()
 
 	_, err = tx.Exec(`
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 	`, session.GroupId, scheduleId, session.GroupSub)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
 
-	if !ongoing {
-		tx.Commit()
-	}
-
 	return &types.PostGroupScheduleResponse{Id: scheduleId}, nil
 }
 
-func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest) (*types.PatchGroupScheduleResponse, error) {
-	session := h.Redis.ReqSession(req)
-
-	scheduleResp, err := h.PatchSchedule(w, req, &types.PatchScheduleRequest{
-		Schedule: data.GetGroupSchedule().GetSchedule(),
-	})
-
+func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupScheduleResponse, error) {
+	scheduleResp, err := h.PatchSchedule(w, req, &types.PatchScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -66,9 +46,7 @@ func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, 
 	return &types.PatchGroupScheduleResponse{Success: scheduleResp.Success}, nil
 }
 
-func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest) (*types.GetGroupSchedulesResponse, error) {
-	session := h.Redis.ReqSession(req)
-
+func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupSchedulesResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
 	err := h.Database.QueryRows(&groupSchedules, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
@@ -84,9 +62,7 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 	return &types.GetGroupSchedulesResponse{GroupSchedules: groupSchedules}, nil
 }
 
-func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest) (*types.GetGroupScheduleMasterByIdResponse, error) {
-	session := h.Redis.ReqSession(req)
-
+func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
 
 	err := h.Database.QueryRows(&groupSchedules, `
@@ -108,7 +84,7 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: groupSchedules[0]}, nil
 }
 
-func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest) (*types.GetGroupScheduleByDateResponse, error) {
+func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupScheduleByDateResponse, error) {
 
 	// TODO limit to group only query
 	tzString, err := base64.StdEncoding.DecodeString(data.GetTimezone())
@@ -127,13 +103,10 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: groupScheduleDateSlots}, nil
 }
 
-func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest) (*types.DeleteGroupScheduleResponse, error) {
-	session := h.Redis.ReqSession(req)
-
-	// TODO tx for deletes
+func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupScheduleResponse, error) {
 
 	for _, scheduleId := range strings.Split(data.GetIds(), ",") {
-		_, err := h.Database.Client().Exec(`
+		_, err := tx.Exec(`
 			DELETE FROM dbtable_schema.group_schedules
 			WHERE group_id = $1 AND schedule_id = $2
 		`, session.GroupId, scheduleId)

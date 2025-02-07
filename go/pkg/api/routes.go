@@ -3,7 +3,6 @@ package api
 import (
 	"av3api/pkg/types"
 	"av3api/pkg/util"
-	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -25,8 +24,6 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 	for i := 0; i <= services.Methods().Len()-1; i++ {
 		serviceMethod := services.Methods().Get(i)
-
-		serviceMethod.Input().FullName()
 
 		var serviceType protoreflect.MessageType
 		protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
@@ -55,13 +52,17 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 		ignoreFields := slices.Concat([]string{"state", "sizeCache", "unknownFields"}, handlerOpts.NoLogFields)
 
 		protoHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
 			exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
 
+			session, err := a.GetAuthorizedSession(req)
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+				return
+			}
+
 			requestId := uuid.NewString()
-
-			ctx := context.WithValue(req.Context(), "LogId", requestId)
-
-			req = req.WithContext(ctx)
 
 			pb := serviceType.New().Interface()
 
@@ -89,7 +90,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 			} else {
 				body, err := io.ReadAll(req.Body)
 				if err != nil {
-					util.ErrCheck(err)
+					util.ErrorLog.Println(util.ErrCheck(err))
 					http.Error(w, "could not read proto handler body", http.StatusUnprocessableEntity)
 					return
 				}
@@ -98,7 +99,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				if len(body) > 0 {
 					err = json.Unmarshal(body, pb)
 					if err != nil {
-						util.ErrCheck(err)
+						util.ErrorLog.Println(util.ErrCheck(err))
 						http.Error(w, "could not unmarshal proto handler body", http.StatusUnprocessableEntity)
 						return
 					}
@@ -114,15 +115,39 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
 			)
 
+			var reqErr error
+
+			tx, err := a.Handlers.Database.Client().Begin()
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				return
+			}
+
+			defer func() {
+				if p := recover(); p != nil {
+					tx.Rollback()
+					panic(p)
+				} else if reqErr != nil {
+					tx.Rollback()
+				} else {
+					reqErr = tx.Commit()
+					if reqErr != nil {
+						util.ErrorLog.Println(util.ErrCheck(reqErr))
+					}
+				}
+			}()
+
 			results := handlerFunc.Call([]reflect.Value{
 				reflect.ValueOf(w),
 				reflect.ValueOf(req),
 				reflect.ValueOf(pb),
+				reflect.ValueOf(session),
+				reflect.ValueOf(tx),
 			})
 
 			if len(results) != 2 || !results[1].IsNil() {
 				if len(results) != 2 {
-					util.ErrCheck(errors.New(fmt.Sprintf("bad api result for %s", pbVal.Type().Name())))
+					util.ErrorLog.Println(util.ErrCheck(errors.New(fmt.Sprintf("bad api result for %s", pbVal.Type().Name()))))
 				}
 
 				var reqParams string
@@ -143,10 +168,6 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 				util.ErrorLog.Println(loggedErr)
 
-				if *util.DebugMode {
-					fmt.Println(fmt.Sprintf("DEBUG: %s", loggedErr))
-				}
-
 				var errRes string
 
 				if strings.Contains(errStr, util.ErrorForUser) {
@@ -155,6 +176,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 					errRes = fmt.Sprintf("Request Id: %s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
 				}
 
+				reqErr = loggedErr
 				http.Error(w, errRes, http.StatusInternalServerError)
 				return
 			}
@@ -165,7 +187,8 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 			} else {
 				pbJsonBytes, err := protojson.Marshal(results[0].Interface().(protoreflect.ProtoMessage))
 				if err != nil {
-					util.ErrCheck(err)
+					reqErr = err
+					util.ErrorLog.Println(err)
 					http.Error(w, "Response parse failure", http.StatusInternalServerError)
 					return
 				}
@@ -180,8 +203,8 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 		middlewareHandler := ApplyMiddleware(protoHandler, []Middleware{
 			a.CacheMiddleware(handlerOpts),
 			a.SiteRoleCheckMiddleware(handlerOpts),
-			a.SessionAuthMiddleware,
 			a.CorsMiddleware,
+			// a.SessionAuthMiddleware,
 		})
 
 		mux.HandleFunc(handlerOpts.Pattern, middlewareHandler)

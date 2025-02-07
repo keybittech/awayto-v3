@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"net/http"
@@ -8,21 +9,17 @@ import (
 	"time"
 )
 
-func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupUserScheduleRequest) (*types.PostGroupUserScheduleResponse, error) {
-	session := h.Redis.ReqSession(req)
-
-	// Check if lack of deletions are causing conflict to occur here
+func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupUserScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupUserScheduleResponse, error) {
 	var groupUserScheduleId string
 
-	err := h.Database.Client().QueryRow(`
+	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.group_user_schedules (group_schedule_id, user_schedule_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (group_schedule_id, user_schedule_id) DO NOTHING
 		RETURNING id
 	`, data.GetGroupScheduleId(), data.GetUserScheduleId(), session.UserSub).Scan(&groupUserScheduleId)
-
 	if err != nil {
-		util.ErrCheck(err)
+		return nil, util.ErrCheck(err)
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
@@ -33,7 +30,7 @@ func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Reques
 	return &types.PostGroupUserScheduleResponse{Id: groupUserScheduleId}, nil
 }
 
-func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserSchedulesRequest) (*types.GetGroupUserSchedulesResponse, error) {
+func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserSchedulesResponse, error) {
 	var groupUserSchedules []*types.IGroupUserSchedule
 
 	err := h.Database.QueryRows(&groupUserSchedules, `
@@ -41,7 +38,6 @@ func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Reques
 		FROM dbview_schema.enabled_group_user_schedules_ext egus
 		WHERE egus."groupScheduleId" = $1
 	`, data.GetGroupScheduleId())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -49,8 +45,7 @@ func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Reques
 	return &types.GetGroupUserSchedulesResponse{GroupUserSchedules: groupUserSchedules}, nil
 }
 
-func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubsRequest) (*types.GetGroupUserScheduleStubsResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserScheduleStubsResponse, error) {
 	var groupUserScheduleStubs []*types.IGroupUserScheduleStub
 
 	err := h.Database.QueryRows(&groupUserScheduleStubs, `
@@ -62,7 +57,6 @@ func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Re
 		JOIN dbtable_schema.users u ON u.id = eu.id
 		WHERE u.username = $1
 	`, "system_group_"+session.GroupId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -70,13 +64,12 @@ func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Re
 	return &types.GetGroupUserScheduleStubsResponse{GroupUserScheduleStubs: groupUserScheduleStubs}, nil
 }
 
-func (h *Handlers) GetGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubReplacementRequest) (*types.GetGroupUserScheduleStubReplacementResponse, error) {
+func (h *Handlers) GetGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubReplacementRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserScheduleStubReplacementResponse, error) {
 	var stubs []*types.IGroupUserScheduleStub
 
 	err := h.Database.QueryRows(&stubs, `
 		SELECT replacement FROM dbfunc_schema.get_peer_schedule_replacement($1::UUID[], $2::DATE, $3::INTERVAL, $4::TEXT)
 	`, data.GetUserScheduleId(), data.GetSlotDate(), data.GetStartTime(), data.GetTierName())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -84,15 +77,12 @@ func (h *Handlers) GetGroupUserScheduleStubReplacement(w http.ResponseWriter, re
 	return &types.GetGroupUserScheduleStubReplacementResponse{GroupUserScheduleStubs: stubs}, nil
 }
 
-func (h *Handlers) PatchGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserScheduleStubReplacementRequest) (*types.PatchGroupUserScheduleStubReplacementResponse, error) {
-	session := h.Redis.ReqSession(req)
-
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) PatchGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserScheduleStubReplacementRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupUserScheduleStubReplacementResponse, error) {
+	_, err := tx.Exec(`
 		UPDATE dbtable_schema.quotes
 		SET slot_date = $2, schedule_bracket_slot_id = $3, service_tier_id = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
 	`, data.GetQuoteId(), data.GetSlotDate(), data.GetScheduleBracketSlotId(), data.GetServiceTierId(), session.UserSub, time.Now().Local().UTC())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -100,15 +90,13 @@ func (h *Handlers) PatchGroupUserScheduleStubReplacement(w http.ResponseWriter, 
 	return &types.PatchGroupUserScheduleStubReplacementResponse{Success: true}, nil
 }
 
-func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserScheduleByUserScheduleIdRequest) (*types.DeleteGroupUserScheduleByUserScheduleIdResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserScheduleByUserScheduleIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupUserScheduleByUserScheduleIdResponse, error) {
 	idsSplit := strings.Split(data.GetIds(), ",")
 
 	for _, userScheduleId := range idsSplit {
 		var parts []*types.ScheduledParts
 
 		err := h.Database.QueryRows(&parts, `SELECT * FROM dbfunc_schema.get_scheduled_parts($1);`, userScheduleId)
-
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -122,25 +110,27 @@ func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(w http.ResponseWriter
 		}
 
 		if !hasParts {
-			_, err = h.Database.Client().Exec(`
+			_, err = tx.Exec(`
 				DELETE FROM dbtable_schema.group_user_schedules
 				WHERE user_schedule_id = $1
 			`, userScheduleId)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
 		} else {
-			_, err = h.Database.Client().Exec(`
+			_, err = tx.Exec(`
 				UPDATE dbtable_schema.group_user_schedules
 				SET enabled = false
 				WHERE user_schedule_id = $1
 			`, userScheduleId)
-		}
-
-		if err != nil {
-			return nil, util.ErrCheck(err)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
 		}
 
 		var groupScheduleId string
 
-		err = h.Database.Client().QueryRow(`
+		err = tx.QueryRow(`
 			SELECT group_schedule_id as "groupScheduleId"
 			FROM dbtable_schema.group_user_schedules
 			WHERE user_schedule_id = $1

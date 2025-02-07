@@ -1,18 +1,16 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
-	"database/sql"
 	"net/http"
 	"strings"
 )
 
-func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest) (*types.PostRoleResponse, error) {
-	session := h.Redis.ReqSession(req)
-
+func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostRoleResponse, error) {
 	var role types.IRole
-	err := h.Database.Client().QueryRow(`
+	err := tx.QueryRow(`
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.roles (name, created_sub)
 			SELECT * FROM input_rows
@@ -30,15 +28,15 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 		return nil, util.ErrCheck(err)
 	}
 
-	var userId sql.NullString
-	err = h.Database.Client().QueryRow(`
+	var userId string
+	err = tx.QueryRow(`
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
 	`, session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = h.Database.Client().Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO dbtable_schema.user_roles (user_id, role_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (user_id, role_id) DO NOTHING
@@ -52,8 +50,7 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 	return &types.PostRoleResponse{Id: role.Id}, nil
 }
 
-func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest) (*types.GetRolesResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetRolesResponse, error) {
 	var roles []*types.IRole
 	err := h.Database.QueryRows(&roles, `
 		SELECT eur.id, er.name, eur."createdOn" 
@@ -69,9 +66,9 @@ func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *type
 	return &types.GetRolesResponse{Roles: roles}, nil
 }
 
-func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest) (*types.GetRoleByIdResponse, error) {
+func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetRoleByIdResponse, error) {
 	var role types.IRole
-	err := h.Database.Client().QueryRow(`
+	err := tx.QueryRow(`
 		SELECT * FROM dbview_schema.enabled_roles
 		WHERE id = $1
 	`, data.GetId()).Scan(&role.Id, &role.Name)
@@ -82,10 +79,9 @@ func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetRoleByIdResponse{Role: &role}, nil
 }
 
-func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest) (*types.DeleteRoleResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteRoleResponse, error) {
 	var userId string
-	err := h.Database.Client().QueryRow(`
+	err := tx.QueryRow(`
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
 	`, session.UserSub).Scan(&userId)
 	if err != nil {
@@ -95,10 +91,10 @@ func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *ty
 	ids := data.GetIds()
 	for _, id := range strings.Split(ids, ",") {
 		if id != "" {
-			_, err = h.Database.Client().Exec(`
-			DELETE FROM dbtable_schema.user_roles
-			WHERE role_id = $1 AND user_id = $2
-		`, id, userId)
+			_, err = tx.Exec(`
+				DELETE FROM dbtable_schema.user_roles
+				WHERE role_id = $1 AND user_id = $2
+			`, id, userId)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}

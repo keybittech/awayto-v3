@@ -1,21 +1,15 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"net/http"
 	"time"
 )
 
-func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *types.PostBookingRequest) (*types.PostBookingResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *types.PostBookingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostBookingResponse, error) {
 	newBookings := make([]*types.IBooking, 0)
-
-	tx, err := h.Database.Client().Begin()
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	defer tx.Rollback()
 
 	for _, booking := range data.Bookings {
 		var newBooking types.IBooking
@@ -31,17 +25,11 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 		newBookings = append(newBookings, &newBooking)
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
 	return &types.PostBookingResponse{Bookings: newBookings}, nil
 }
 
-func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRequest) (*types.PatchBookingResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchBookingResponse, error) {
 	var updatedBookings []*types.IBooking
 	err := h.Database.QueryRows(&updatedBookings, `
 		UPDATE dbtable_schema.bookings
@@ -57,8 +45,7 @@ func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *
 	return &types.PatchBookingResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *types.GetBookingsRequest) (*types.GetBookingsResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *types.GetBookingsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetBookingsResponse, error) {
 	bookings := []*types.IBooking{}
 	err := h.Database.QueryRows(&bookings, `
 		SELECT eb.*
@@ -70,7 +57,7 @@ func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetBookingsResponse{Bookings: bookings}, err
 }
 
-func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data *types.GetBookingByIdRequest) (*types.GetBookingByIdResponse, error) {
+func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data *types.GetBookingByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetBookingByIdResponse, error) {
 	var bookings []*types.IBooking
 	err := h.Database.QueryRows(&bookings, `
 		SELECT * FROM dbview_schema.enabled_bookings
@@ -83,7 +70,7 @@ func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetBookingByIdResponse{Booking: bookings[0]}, err
 }
 
-func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, data *types.GetBookingFilesRequest) (*types.GetBookingFilesResponse, error) {
+func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, data *types.GetBookingFilesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetBookingFilesResponse, error) {
 	files := []*types.IFile{}
 	err := h.Database.QueryRows(&files, `
 		SELECT f.name, f.uuid, f."mimeType"
@@ -95,8 +82,8 @@ func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, dat
 	return &types.GetBookingFilesResponse{Files: files}, err
 }
 
-func (h *Handlers) PatchBookingRating(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRatingRequest) (*types.PatchBookingRatingResponse, error) {
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) PatchBookingRating(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRatingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchBookingRatingResponse, error) {
+	_, err := tx.Exec(`
 		UPDATE dbtable_schema.bookings
 		SET rating = $2
 		WHERE id = $1
@@ -108,17 +95,16 @@ func (h *Handlers) PatchBookingRating(w http.ResponseWriter, req *http.Request, 
 	return &types.PatchBookingRatingResponse{Success: true}, nil
 }
 
-func (h *Handlers) DeleteBooking(w http.ResponseWriter, req *http.Request, data *types.DeleteBookingRequest) (*types.DeleteBookingResponse, error) {
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) DeleteBooking(w http.ResponseWriter, req *http.Request, data *types.DeleteBookingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteBookingResponse, error) {
+	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.bookings
 		WHERE id = $1
 	`, data.GetId())
 	return &types.DeleteBookingResponse{Id: data.Id}, err
 }
 
-func (h *Handlers) DisableBooking(w http.ResponseWriter, req *http.Request, data *types.DisableBookingRequest) (*types.DisableBookingResponse, error) {
-	session := h.Redis.ReqSession(req)
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) DisableBooking(w http.ResponseWriter, req *http.Request, data *types.DisableBookingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableBookingResponse, error) {
+	_, err := tx.Exec(`
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

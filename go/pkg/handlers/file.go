@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"bytes"
@@ -13,13 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, data *types.PostFileContentsRequest) (*types.PostFileContentsResponse, error) {
-	session := h.Redis.ReqSession(req)
-
-	tx, _ := h.Database.ReqTx(req)
-
-	defer tx.Rollback()
-
+func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, data *types.PostFileContentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostFileContentsResponse, error) {
 	newUuids := make([]string, len(data.Contents))
 
 	for idx, file := range data.GetContents() {
@@ -77,7 +72,6 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 			INSERT INTO dbtable_schema.file_contents (uuid, name, content, created_on, created_sub)
 			VALUES ($1::uuid, $2, $3::bytea, $4, $5)
 		`, fileUuid.String(), file.GetName(), pdfDoc, time.Now().Local().UTC(), session.UserSub)
-
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -85,12 +79,10 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 		newUuids[idx] = string(fileUuid.String())
 	}
 
-	tx.Commit()
-
 	return &types.PostFileContentsResponse{Ids: newUuids}, nil
 }
 
-func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, data *types.PatchFileContentsRequest) (*types.PatchFileContentsResponse, error) {
+func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, data *types.PatchFileContentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchFileContentsResponse, error) {
 	// expiration := time.Now().Local().UTC().AddDate(0, 1, 0) // Adds 30 days to current time
 	// err := h.FS.PatchFile(data.GetId(), data.GetName(), expiration)
 	// if err != nil {
@@ -99,11 +91,11 @@ func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, d
 	return &types.PatchFileContentsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest) (*[]byte, error) {
+func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*[]byte, error) {
 
 	var fileContent []byte
 
-	err := h.Database.Client().QueryRow(`
+	err := tx.QueryRow(`
 		SELECT content FROM dbtable_schema.file_contents
 		WHERE uuid = $1
 	`, data.GetFileId()).Scan(&fileContent)
@@ -120,11 +112,10 @@ func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, dat
 	return &fileContent, nil
 }
 
-func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *types.PostFileRequest) (*types.PostFileResponse, error) {
-	session := h.Redis.ReqSession(req)
+func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *types.PostFileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostFileResponse, error) {
 	file := data.GetFile()
 	var fileID string
-	err := h.Database.Client().QueryRow(`
+	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		RETURNING id
@@ -135,9 +126,8 @@ func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *type
 	return &types.PostFileResponse{Id: fileID, Uuid: file.GetUuid()}, nil
 }
 
-func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *types.PatchFileRequest) (*types.PatchFileResponse, error) {
-	session := h.Redis.ReqSession(req)
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *types.PatchFileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchFileResponse, error) {
+	_, err := tx.Exec(`
 		UPDATE dbtable_schema.files
 		SET name = $2, updated_on = $3, updated_sub = $4
 		WHERE id = $1
@@ -148,7 +138,7 @@ func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.PatchFileResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request) (*types.GetFilesResponse, error) {
+func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *types.GetFilesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetFilesResponse, error) {
 	var files []*types.IFile
 	err := h.Database.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files")
 	if err != nil {
@@ -157,7 +147,7 @@ func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request) (*types.Ge
 	return &types.GetFilesResponse{Files: files}, nil
 }
 
-func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *types.GetFileByIdRequest) (*types.GetFileByIdResponse, error) {
+func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *types.GetFileByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetFileByIdResponse, error) {
 	var files []*types.IFile
 	err := h.Database.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files WHERE id = $1", data.GetId())
 	if err != nil || len(files) == 0 {
@@ -166,17 +156,16 @@ func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetFileByIdResponse{File: files[0]}, nil
 }
 
-func (h *Handlers) DeleteFile(w http.ResponseWriter, req *http.Request, data *types.DeleteFileRequest) (*types.DeleteFileResponse, error) {
-	_, err := h.Database.Client().Exec("DELETE FROM dbtable_schema.files WHERE id = $1", data.GetId())
+func (h *Handlers) DeleteFile(w http.ResponseWriter, req *http.Request, data *types.DeleteFileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteFileResponse, error) {
+	_, err := tx.Exec("DELETE FROM dbtable_schema.files WHERE id = $1", data.GetId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 	return &types.DeleteFileResponse{Id: data.GetId()}, nil
 }
 
-func (h *Handlers) DisableFile(w http.ResponseWriter, req *http.Request, data *types.DisableFileRequest) (*types.DisableFileResponse, error) {
-	session := h.Redis.ReqSession(req)
-	_, err := h.Database.Client().Exec(`
+func (h *Handlers) DisableFile(w http.ResponseWriter, req *http.Request, data *types.DisableFileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableFileResponse, error) {
+	_, err := tx.Exec(`
 		UPDATE dbtable_schema.files
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

@@ -67,6 +67,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
   }, [selected, groupServicesRequest]);
 
   const serviceGridProps = useGrid({
+    rowId: 'serviceId',
     rows: groupServicesRequest?.groupServices || [],
     columns: [
       { flex: 1, headerName: 'Name', field: 'name', renderCell: ({ row }) => row.service?.name },

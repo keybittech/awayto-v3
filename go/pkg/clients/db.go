@@ -2,6 +2,7 @@ package clients
 
 import (
 	"av3api/pkg/util"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -44,7 +45,9 @@ func InitDatabase() IDatabase {
 	connString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable", dbDriver, pgUser, pgPass, pgHost, pgPort, pgDb)
 
 	db, err := sql.Open(dbDriver, connString)
-	util.ErrCheck(err)
+	if err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+	}
 
 	ct := &ColTypes{
 		reflect.TypeOf(sql.NullString{}),
@@ -128,6 +131,10 @@ func (db *Database) SetColTypes(ct *ColTypes) {
 // DB Wrappers
 type DBWrapper struct {
 	*sql.DB
+}
+
+func (db *DBWrapper) Conn(ctx context.Context) (*sql.Conn, error) {
+	return db.Conn(ctx)
 }
 
 func (db *DBWrapper) Begin() (IDatabaseTx, error) {
@@ -365,6 +372,33 @@ func (db *Database) ExtractValue(dst, src reflect.Value) {
 	}
 }
 
+// func (db *Database) ReqTx(req *http.Request) (*TxWrapper, bool) {
+//
+// 	ongoing := true
+// 	rtx := req.Context().Value("ReqTx")
+// 	if rtx == nil {
+// 		tx, err := db.Client().Begin()
+// 		if err != nil {
+// 			return nil, false
+// 		}
+// 		rtx = tx
+// 		ongoing = false
+// 	}
+//
+// 	if !didSet {
+// 		rtx.(*TxWrapper).Exec("SET SESSION app.bla = 'bla'")
+// 		didSet = true
+// 		println("DID SET EXEC")
+// 	}
+//
+// 	var thing string
+// 	rtx.(*TxWrapper).QueryRow("SELECT current_setting('app.bla')").Scan(&thing)
+//
+// 	println("PPPPPPPPPPPPPPPPPPPPPPPPPPPPP " + thing)
+//
+// 	return rtx.(*TxWrapper), ongoing
+// }
+
 func (db *Database) ReqTx(req *http.Request) (*TxWrapper, bool) {
 	ongoing := true
 	rtx := req.Context().Value("ReqTx")
@@ -373,7 +407,7 @@ func (db *Database) ReqTx(req *http.Request) (*TxWrapper, bool) {
 		if err != nil {
 			return nil, false
 		}
-		rtx = tx
+		rtx = tx.(*TxWrapper)
 		ongoing = false
 	}
 

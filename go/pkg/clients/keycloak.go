@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"av3api/pkg/util"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -171,7 +170,7 @@ func InitKeycloak() IKeycloak {
 				user, err := kc.GetUserInfoById(cmd.Params.UserId)
 				cmd.ReplyChan <- KeycloakResponse{User: user, Error: err}
 			case GetUserInfoByTokenKeycloakCommand:
-				user, err := kc.GetUserInfoByAuthorization(cmd.Params.Token)
+				user, err := kc.GetUserInfoByToken(cmd.Params.Token)
 				cmd.ReplyChan <- KeycloakResponse{User: user, Error: err}
 			case UpdateUserKeycloakCommand:
 				err := kc.UpdateUser(cmd.Params.UserId, cmd.Params.FirstName, cmd.Params.LastName)
@@ -281,10 +280,27 @@ func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
 	kcReply := <-kcReplyChan
 
 	if kcReply.Error != nil {
-		return util.ErrCheck(kcReply.Error)
+		return kcReply.Error
 	}
 
 	return nil
+}
+
+func (k *Keycloak) GetUserInfoByToken(token string) (*KeycloakUser, error) {
+	kcUserInfoTokenReplyChan := make(chan KeycloakResponse)
+	k.Chan() <- KeycloakCommand{
+		Ty:        GetUserInfoByTokenKeycloakCommand,
+		Params:    KeycloakParams{Token: token},
+		ReplyChan: kcUserInfoTokenReplyChan,
+	}
+	kcUserInfoTokenReply := <-kcUserInfoTokenReplyChan
+	close(kcUserInfoTokenReplyChan)
+
+	if kcUserInfoTokenReply.Error != nil {
+		return nil, kcUserInfoTokenReply.Error
+	}
+
+	return kcUserInfoTokenReply.User, nil
 }
 
 func (k *Keycloak) GetUserInfoById(id string) (*KeycloakUser, error) {
@@ -298,7 +314,7 @@ func (k *Keycloak) GetUserInfoById(id string) (*KeycloakUser, error) {
 	close(kcUserInfoReplyChan)
 
 	if kcUserInfoReply.Error != nil {
-		return nil, util.ErrCheck(kcUserInfoReply.Error)
+		return nil, kcUserInfoReply.Error
 	}
 
 	return kcUserInfoReply.User, nil
@@ -340,7 +356,7 @@ func (k *Keycloak) CreateGroup(name string) (*KeycloakGroup, error) {
 
 	fmt.Printf("kc create group %+v\n", kcCreateGroupReply)
 	if kcCreateGroupReply.Error != nil {
-		return nil, util.ErrCheck(kcCreateGroupReply.Error)
+		return nil, kcCreateGroupReply.Error
 	}
 
 	return kcCreateGroupReply.Group, nil
@@ -357,7 +373,7 @@ func (k *Keycloak) GetGroup(id string) (*KeycloakGroup, error) {
 	close(kcGetGroupChan)
 
 	if kcGetGroup.Error != nil {
-		return nil, util.ErrCheck(kcGetGroup.Error)
+		return nil, kcGetGroup.Error
 	}
 
 	return kcGetGroup.Group, nil
@@ -399,7 +415,7 @@ func (k *Keycloak) DeleteGroup(id string) error {
 	deleteGroup := <-deleteReply
 	close(deleteReply)
 	if deleteGroup.Error != nil {
-		return util.ErrCheck(deleteGroup.Error)
+		return deleteGroup.Error
 	}
 
 	return nil
@@ -416,7 +432,7 @@ func (k *Keycloak) UpdateGroup(id, name string) error {
 	close(kcUpdateSubgroupChan)
 
 	if kcUpdateSubgroup.Error != nil {
-		return util.ErrCheck(kcUpdateSubgroup.Error)
+		return kcUpdateSubgroup.Error
 	}
 
 	return nil
@@ -473,7 +489,7 @@ func (k *Keycloak) AddRolesToGroup(id string, roles []KeycloakRole) error {
 	close(kcAddGroupRolesReplyChan)
 
 	if kcAddGroupRolesReply.Error != nil {
-		return util.ErrCheck(kcAddGroupRolesReply.Error)
+		return kcAddGroupRolesReply.Error
 	}
 
 	return nil
@@ -522,7 +538,7 @@ func (k *Keycloak) DeleteUserFromGroup(userId, groupId string) error {
 	close(deleteUserReplyChan)
 
 	if deleteUserReply.Error != nil {
-		return util.ErrCheck(deleteUserReply.Error)
+		return deleteUserReply.Error
 	}
 
 	return nil

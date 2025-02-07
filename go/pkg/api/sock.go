@@ -58,44 +58,50 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 func (a *API) HandleSockConnection(conn net.Conn, req *http.Request) {
 
 	defer conn.Close()
-	session := a.Handlers.Redis.ReqSession(req)
 
 	ticket := req.URL.Query().Get("ticket")
 	if ticket == "" {
-		util.ErrCheck(fmt.Errorf("no ticket"))
+		util.ErrorLog.Println(util.ErrCheck(fmt.Errorf("no ticket")))
+		return
+	}
+
+	subscriber, err := a.Handlers.Socket.GetSubscriberByTicket(ticket)
+	if err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
 		return
 	}
 
 	_, connId, err := util.SplitSocketId(ticket)
 	if err != nil {
-		util.ErrCheck(err)
+		util.ErrorLog.Println(util.ErrCheck(err))
 		return
 	}
 
-	socketId := util.GetSocketId(session.UserSub, connId)
+	socketId := util.GetSocketId(subscriber.UserSub, connId)
 
-	deferSockClose, err := a.Handlers.Socket.InitConnection(conn, session.UserSub, ticket)
+	deferSockClose, err := a.Handlers.Socket.InitConnection(conn, subscriber.UserSub, ticket)
 	if err != nil {
-		util.ErrCheck(err)
+		util.ErrorLog.Println(util.ErrCheck(err))
 		return
 	}
 	defer deferSockClose()
 
-	deferSockDbClose, err := a.Handlers.Database.InitDBSocketConnection(session.UserSub, connId)
+	deferSockDbClose, err := a.Handlers.Database.InitDBSocketConnection(subscriber.UserSub, connId)
 	if err != nil {
-		util.ErrCheck(err)
+		util.ErrorLog.Println(util.ErrCheck(err))
 		return
 	}
 	defer deferSockDbClose()
 
 	err = a.Handlers.Redis.InitRedisSocketConnection(socketId)
 	if err != nil {
-		util.ErrCheck(err)
+		util.ErrorLog.Println(util.ErrCheck(err))
 		return
 	}
 	defer func() {
 		topics, err := a.Handlers.Redis.HandleUnsub(socketId)
 		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
@@ -130,7 +136,7 @@ func (a *API) HandleSockConnection(conn net.Conn, req *http.Request) {
 		case <-ticker.C:
 			pingBytes, _ := json.Marshal(&clients.SocketMessage{Payload: "PING"})
 			if err := util.WriteSocketConnectionMessage(pingBytes, conn); err != nil {
-				util.ErrCheck(err)
+				util.ErrorLog.Println(util.ErrCheck(err))
 				return
 			}
 		case data := <-messages:
@@ -143,10 +149,7 @@ func (a *API) HandleSockConnection(conn net.Conn, req *http.Request) {
 				var socketMessage clients.SocketMessage
 
 				if err := json.Unmarshal(data, &socketMessage); err != nil {
-
-					println("FAILED BYTES", string(data))
-
-					util.ErrCheck(err)
+					util.ErrorLog.Println(util.ErrCheck(err))
 					continue
 				}
 
@@ -155,10 +158,10 @@ func (a *API) HandleSockConnection(conn net.Conn, req *http.Request) {
 					continue
 				}
 
-				go a.SocketMessageRouter(socketMessage, session.UserSub, connId)
+				go a.SocketMessageRouter(socketMessage, subscriber.UserSub, connId)
 			}
 		case err := <-errs:
-			util.ErrCheck(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 		}
 
 		if time.Since(lastPong) > 1*time.Minute {
