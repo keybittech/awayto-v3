@@ -7,7 +7,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -370,46 +369,4 @@ func (db *Database) ExtractValue(dst, src reflect.Value) {
 		}
 
 	}
-}
-
-// func (db *Database) ReqTx(req *http.Request) (*TxWrapper, bool) {
-//
-// 	ongoing := true
-// 	rtx := req.Context().Value("ReqTx")
-// 	if rtx == nil {
-// 		tx, err := db.Client().Begin()
-// 		if err != nil {
-// 			return nil, false
-// 		}
-// 		rtx = tx
-// 		ongoing = false
-// 	}
-//
-// 	if !didSet {
-// 		rtx.(*TxWrapper).Exec("SET SESSION app.bla = 'bla'")
-// 		didSet = true
-// 		println("DID SET EXEC")
-// 	}
-//
-// 	var thing string
-// 	rtx.(*TxWrapper).QueryRow("SELECT current_setting('app.bla')").Scan(&thing)
-//
-// 	println("PPPPPPPPPPPPPPPPPPPPPPPPPPPPP " + thing)
-//
-// 	return rtx.(*TxWrapper), ongoing
-// }
-
-func (db *Database) ReqTx(req *http.Request) (*TxWrapper, bool) {
-	ongoing := true
-	rtx := req.Context().Value("ReqTx")
-	if rtx == nil {
-		tx, err := db.Client().Begin()
-		if err != nil {
-			return nil, false
-		}
-		rtx = tx.(*TxWrapper)
-		ongoing = false
-	}
-
-	return rtx.(*TxWrapper), ongoing
 }

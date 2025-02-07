@@ -4,7 +4,6 @@ import (
 	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
-	"context"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -433,9 +432,6 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, data *types.CompleteOnboardingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.CompleteOnboardingResponse, error) {
 	service := data.GetService()
 	schedule := data.GetSchedule()
-
-	ongoingTxReq := context.WithValue(req.Context(), "ongoingTx", true)
-	req = req.WithContext(ongoingTxReq)
 
 	postServiceRes, err := h.PostService(w, req, &types.PostServiceRequest{Service: service}, session, tx)
 	if err != nil {

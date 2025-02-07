@@ -137,12 +137,24 @@ func InitSocket() ISocket {
 					cmd.ReplyChan <- SocketResponse{Error: err}
 				}
 
+				var foundSub *Subscriber
+
 				for _, subscriber := range subscribers {
 					for ticketAuth := range subscriber.Tickets {
 						if auth == ticketAuth {
-							cmd.ReplyChan <- SocketResponse{Subscriber: &subscriber}
+							foundSub = &subscriber
+							break
 						}
 					}
+					if foundSub != nil {
+						break
+					}
+				}
+
+				if foundSub != nil {
+					cmd.ReplyChan <- SocketResponse{Subscriber: foundSub}
+				} else {
+					cmd.ReplyChan <- SocketResponse{Error: errors.New("no subscriber found for ticket")}
 				}
 
 			case SendSocketMessageSocketCommand:

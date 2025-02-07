@@ -1,12 +1,9 @@
 package api
 
 import (
-	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"bytes"
-	"context"
-	"errors"
 	"fmt"
 	"net/http"
 	"os"
@@ -37,56 +34,55 @@ func (a *API) CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	})
 }
 
-func (a *API) SocketAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		ctx := req.Context()
-
-		var userSub, userEmail string
-
-		ticket := req.URL.Query().Get("ticket")
-
-		if ticket == "" {
-			util.ErrorLog.Println(errors.New("no ticket during socket auth"))
-			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-			return
-		}
-
-		subscriber, err := a.Handlers.Socket.GetSubscriberByTicket(ticket)
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-			return
-		}
-
-		if subscriber.UserSub == "" {
-			util.ErrorLog.Println(util.ErrCheck(errors.New("err getting user sub during socket auth")))
-			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-			return
-		}
-
-		kcUser, err := a.Handlers.Keycloak.GetUserInfoById(subscriber.UserSub)
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-			return
-		}
-
-		userSub = kcUser.Sub
-		userEmail = kcUser.Email
-
-		if userSub == "" || userEmail == "" {
-			util.ErrorLog.Println(errors.New("change these errors"))
-			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-			return
-		}
-
-		ctx = context.WithValue(ctx, "UserSession", &clients.UserSession{UserSub: userSub, UserEmail: userEmail})
-		ctx = context.WithValue(ctx, "SourceIp", util.AnonIp(req.RemoteAddr))
-
-		req = req.WithContext(ctx)
-		next.ServeHTTP(w, req)
-	})
-}
+// func (a *API) SocketAuthMiddleware(next http.HandlerFunc) http.HandlerFunc {
+// 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+// 		ctx := req.Context()
+//
+// 		var userSub, userEmail string
+//
+// 		ticket := req.URL.Query().Get("ticket")
+// 		if ticket == "" {
+// 			util.ErrorLog.Println(errors.New("no ticket during socket auth"))
+// 			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+// 			return
+// 		}
+//
+// 		subscriber, err := a.Handlers.Socket.GetSubscriberByTicket(ticket)
+// 		if err != nil {
+// 			util.ErrorLog.Println(util.ErrCheck(err))
+// 			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+// 			return
+// 		}
+//
+// 		if subscriber.UserSub == "" {
+// 			util.ErrorLog.Println(util.ErrCheck(errors.New("err getting user sub during socket auth")))
+// 			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+// 			return
+// 		}
+//
+// 		kcUser, err := a.Handlers.Keycloak.GetUserInfoById(subscriber.UserSub)
+// 		if err != nil {
+// 			util.ErrorLog.Println(util.ErrCheck(err))
+// 			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+// 			return
+// 		}
+//
+// 		userSub = kcUser.Sub
+// 		userEmail = kcUser.Email
+//
+// 		if userSub == "" || userEmail == "" {
+// 			util.ErrorLog.Println(errors.New("change these errors"))
+// 			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+// 			return
+// 		}
+//
+// 		ctx = context.WithValue(ctx, "UserSession", &clients.UserSession{UserSub: userSub, UserEmail: userEmail})
+// 		ctx = context.WithValue(ctx, "SourceIp", util.AnonIp(req.RemoteAddr))
+//
+// 		req = req.WithContext(ctx)
+// 		next.ServeHTTP(w, req)
+// 	})
+// }
 
 func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(http.HandlerFunc) http.HandlerFunc {
 	return func(next http.HandlerFunc) http.HandlerFunc {

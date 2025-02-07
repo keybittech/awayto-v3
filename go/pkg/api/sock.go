@@ -40,7 +40,13 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				return
 			}
 
-			go a.HandleSockConnection(conn, req)
+			ticket := req.URL.Query().Get("ticket")
+			if ticket == "" {
+				util.ErrorLog.Println(util.ErrCheck(fmt.Errorf("no ticket")))
+				return
+			}
+
+			go a.HandleSockConnection(conn, ticket)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Bad Request: Expected WebSocket"))
@@ -49,21 +55,15 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 
 	middlewareHandler := ApplyMiddleware(sockHandler, []Middleware{
 		a.CorsMiddleware,
-		a.SocketAuthMiddleware,
+		// a.SocketAuthMiddleware,
 	})
 
 	mux.HandleFunc("GET /sock", middlewareHandler)
 }
 
-func (a *API) HandleSockConnection(conn net.Conn, req *http.Request) {
+func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 
 	defer conn.Close()
-
-	ticket := req.URL.Query().Get("ticket")
-	if ticket == "" {
-		util.ErrorLog.Println(util.ErrCheck(fmt.Errorf("no ticket")))
-		return
-	}
 
 	subscriber, err := a.Handlers.Socket.GetSubscriberByTicket(ticket)
 	if err != nil {

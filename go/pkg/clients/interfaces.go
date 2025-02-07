@@ -29,7 +29,6 @@ type IDatabase interface {
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 	MapTypeToNullType(t string) reflect.Type
 	ExtractValue(dst, src reflect.Value)
-	ReqTx(req *http.Request) (*TxWrapper, bool)
 	InitDBSocketConnection(userSub string, connId string) (func(), error)
 	GetSocketAllowances(userSub string) ([]util.IdStruct, error)
 	GetTopicMessageParticipants(topic string) SocketParticipants
