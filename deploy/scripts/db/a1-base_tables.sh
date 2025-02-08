@@ -1,15 +1,18 @@
 #!/bin/bash
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
+psql -v ON_ERROR_STOP=1 <<-EOSQL
+  \c $PG_DB $PG_WORKER;
 
+  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
-  DROP SCHEMA IF EXISTS dbfunc_schema CASCADE;
   CREATE SCHEMA dbfunc_schema;
+  CREATE SCHEMA dbtable_schema;
+  CREATE SCHEMA dbview_schema;
 
   -- from https://gist.github.com/kjmph/5bd772b2c2df145aa645b837da7eca74
   create or replace function dbfunc_schema.uuid_generate_v7()
   returns uuid
-  as $$
+  as \$\$
   begin
     -- use random v4 uuid as starting point (which has the same variant we need)
     -- then overlay timestamp
@@ -27,15 +30,9 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
       ),
       'hex')::uuid;
   end
-  $$
+  \$\$
   language plpgsql
   volatile;
-
-
-  DROP SCHEMA IF EXISTS dbtable_schema CASCADE;
-  CREATE SCHEMA dbtable_schema;
-
-  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
   CREATE TABLE dbtable_schema.users (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -56,6 +53,12 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
   );
 
   CREATE INDEX user_sub_index ON dbtable_schema.users (sub);
+  
+  ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
+
+  CREATE POLICY user_profile_access ON dbtable_schema.users
+  FOR SELECT
+  USING (sub = current_setting('app_session.user_sub')::uuid);
 
   CREATE TABLE dbtable_schema.roles (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -204,8 +207,4 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     enabled BOOLEAN NOT NULL DEFAULT true
   );
 
-EOSQL
-
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-EOSQL
-  GRANT ALL ON SCHEMA dbtable_schema TO $POSTGRES_USER;
 EOSQL

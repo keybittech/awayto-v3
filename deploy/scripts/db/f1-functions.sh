@@ -1,12 +1,13 @@
 #!/bin/bash
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
+psql -v ON_ERROR_STOP=1 <<-EOSQL
+  \c $PG_DB $PG_WORKER;
 
   CREATE OR REPLACE FUNCTION dbfunc_schema.delete_group(
     sub UUID  
   ) RETURNS TABLE (
     id UUID
-  ) AS $$
+  ) AS \$\$
   BEGIN
 
     RETURN QUERY
@@ -14,7 +15,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     RETURNING dbtable_schema.groups.id;
 
   END;
-  $$ LANGUAGE PLPGSQL;
+  \$\$ LANGUAGE PLPGSQL;
 
   CREATE OR REPLACE FUNCTION dbfunc_schema.get_group_schedules(
     p_month_start_date DATE, 
@@ -25,7 +26,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     "startDate" TEXT,
     "startTime" TEXT,
     "scheduleBracketSlotId" UUID
-  )  AS $$
+  )  AS \$\$
   BEGIN
     RETURN QUERY
     WITH series AS (
@@ -74,10 +75,10 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
       schedule_time <> schedule_time + INTERVAL '1 hour'
     ORDER BY client_time;
   END;
-  $$ LANGUAGE PLPGSQL;
+  \$\$ LANGUAGE PLPGSQL;
 
   CREATE OR REPLACE FUNCTION dbfunc_schema.make_group_code() RETURNS TRIGGER 
-  AS $$
+  AS \$\$
     BEGIN
       LOOP
         BEGIN
@@ -89,7 +90,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
       END LOOP;
       RETURN NEW;
     END;
-  $$ LANGUAGE PLPGSQL VOLATILE;
+  \$\$ LANGUAGE PLPGSQL VOLATILE;
 
   CREATE OR REPLACE FUNCTION dbfunc_schema.get_scheduled_parts (
     p_schedule_id UUID
@@ -97,7 +98,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
   RETURNS TABLE (
     partType TEXT,
     ids JSONB
-  )  AS $$
+  )  AS \$\$
   BEGIN
   RETURN QUERY
     SELECT DISTINCT 'slot', COALESCE(NULLIF(JSONB_AGG(sl.id), '[]'), '[]')
@@ -119,7 +120,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
     AND slot.schedule_bracket_id = bracket.id
     AND quote.id IS NOT NULL;
   END;
-  $$ LANGUAGE PLPGSQL;
+  \$\$ LANGUAGE PLPGSQL;
 
   CREATE OR REPLACE FUNCTION dbfunc_schema.get_peer_schedule_replacement (
     p_user_schedule_ids UUID[],
@@ -129,7 +130,7 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
   )
   RETURNS TABLE (
     replacement JSON
-  )  AS $$
+  )  AS \$\$
   BEGIN
   RETURN QUERY
     SELECT JSON_BUILD_OBJECT(
@@ -154,6 +155,6 @@ psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'
       AND repslot.enabled = true
     LIMIT 1;
   END;
-  $$ LANGUAGE PLPGSQL;
+  \$\$ LANGUAGE PLPGSQL;
 
 EOSQL

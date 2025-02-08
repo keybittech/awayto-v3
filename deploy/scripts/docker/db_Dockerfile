@@ -1,6 +1,6 @@
 # # docker build -t wcdb . && docker run --rm --init -p 8082:5432 -e POSTGRES_PASSWORD=postgres -v pgdata:/var/lib/postgresql/data wcdb
 
-FROM postgres:15.0-alpine
+FROM postgres:17.0-alpine
 EXPOSE 5432
 
 COPY ./deploy/scripts/db /docker-entrypoint-initdb.d

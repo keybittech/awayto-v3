@@ -1,12 +1,12 @@
 #!/bin/bash
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
-  
-  DROP SCHEMA IF EXISTS dbview_schema CASCADE;
-  CREATE SCHEMA dbview_schema;
+psql -v ON_ERROR_STOP=1 <<-EOSQL
+  \c $PG_DB $PG_WORKER;
 
   CREATE
-  OR REPLACE VIEW dbview_schema.enabled_users AS
+  OR REPLACE VIEW dbview_schema.enabled_users
+  WITH (security_invoker = true)
+  AS
   SELECT
     u.id,
     u.first_name as "firstName",

@@ -1,6 +1,7 @@
 #!/bin/bash
 
-psql -v ON_ERROR_STOP=1 --username "$POSTGRES_USER" --dbname "$POSTGRES_DB" <<-'EOSQL'
+psql -v ON_ERROR_STOP=1 <<-EOSQL
+  \c $PG_DB $PG_WORKER;
 
   CREATE TABLE dbtable_schema.budgets (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

@@ -123,7 +123,19 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				return
 			}
 
+			// SET doesn't support parameters, and UserSub is sourced from the auth token for safety
+			_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.UserSub))
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				return
+			}
+
 			defer func() {
+				_, err = tx.Exec(`SET SESSION app_session.user_sub = ''`)
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(reqErr))
+				}
+
 				if p := recover(); p != nil {
 					tx.Rollback()
 					panic(p)
@@ -188,7 +200,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				pbJsonBytes, err := protojson.Marshal(results[0].Interface().(protoreflect.ProtoMessage))
 				if err != nil {
 					reqErr = err
-					util.ErrorLog.Println(err)
+					util.ErrorLog.Println(util.ErrCheck(err))
 					http.Error(w, "Response parse failure", http.StatusInternalServerError)
 					return
 				}

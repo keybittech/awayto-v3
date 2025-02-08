@@ -10,9 +10,10 @@ services:
     ports:
       - ${PG_PORT}:${PG_PORT}
     environment:
-      - POSTGRES_DB=${PG_DB}
-      - POSTGRES_USER=${PG_USER}
       - POSTGRES_PASSWORD=${PG_PASS}
+      - PG_DB=${PG_DB}
+      - PG_WORKER=${PG_WORKER}
+      - PG_WORKER_PASS=${PG_WORKER_PASS}
     volumes: 
       - pg_data:/var/lib/postgresql/data
 
@@ -52,9 +53,9 @@ services:
       - KC_HTTP_RELATIVE_PATH=/auth/
       - KEYCLOAK_ADMIN=${KC_ADMIN} #SECRET
       - KEYCLOAK_ADMIN_PASSWORD=${KC_PASS} #SECRET
-      - KC_DB_URL=jdbc:postgresql://db:${PG_PORT}/${PG_DB} #NONSECRET
-      - KC_DB_USERNAME=${PG_USER} #SECRET
-      - KC_DB_PASSWORD=${PG_PASS} #SECRET
+      - KC_DB_URL=jdbc:postgresql://db:${PG_PORT}/keycloak #NONSECRET
+      - KC_DB_USERNAME=${PG_WORKER} #SECRET
+      - KC_DB_PASSWORD=${PG_WORKER_PASS} #SECRET
       - KC_REDIS_HOST=redis
       - KC_REDIS_PORT=${REDIS_PORT}
       - KC_REDIS_PASS=${REDIS_PASS}

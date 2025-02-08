@@ -21,7 +21,6 @@ type Database struct {
 	DatabaseClient      IDatabaseClient
 	DatabaseAdminRoleId string
 	DatabaseAdminSub    string
-	DatabaseColTypes    *ColTypes
 }
 
 type ColTypes struct {
@@ -33,10 +32,12 @@ type ColTypes struct {
 	reflectMap     reflect.Type
 }
 
+var colTypes *ColTypes
+
 func InitDatabase() IDatabase {
 	dbDriver := os.Getenv("DB_DRIVER")
-	pgUser := os.Getenv("PG_USER")
-	pgPass := os.Getenv("PG_PASS")
+	pgUser := os.Getenv("PG_WORKER")
+	pgPass := os.Getenv("PG_WORKER_PASS")
 	pgHost := os.Getenv("PG_HOST")
 	pgPort := os.Getenv("PG_PORT")
 	pgDb := os.Getenv("PG_DB")
@@ -48,7 +49,7 @@ func InitDatabase() IDatabase {
 		util.ErrorLog.Println(util.ErrCheck(err))
 	}
 
-	ct := &ColTypes{
+	colTypes = &ColTypes{
 		reflect.TypeOf(sql.NullString{}),
 		reflect.TypeOf(sql.NullInt32{}),
 		reflect.TypeOf(sql.NullInt64{}),
@@ -90,7 +91,6 @@ func InitDatabase() IDatabase {
 	dbc.SetClient(&DBWrapper{db})
 	dbc.SetAdminSub(adminSub)
 	dbc.SetAdminRoleId(adminRoleId)
-	dbc.SetColTypes(ct)
 
 	return dbc
 }
@@ -117,14 +117,6 @@ func (db *Database) AdminRoleId() string {
 
 func (db *Database) SetAdminRoleId(id string) {
 	db.DatabaseAdminRoleId = id
-}
-
-func (db *Database) ColTypes() *ColTypes {
-	return db.DatabaseColTypes
-}
-
-func (db *Database) SetColTypes(ct *ColTypes) {
-	db.DatabaseColTypes = ct
 }
 
 // DB Wrappers
@@ -215,28 +207,6 @@ func (r *IRowsWrapper) ColumnTypes() ([]*sql.ColumnType, error) {
 	return r.Rows.ColumnTypes()
 }
 
-// type ProtoStringSerializer string
-//
-// func (pss *ProtoStringSerializer) Scan(src interface{}) error {
-// 	var source string
-// 	switch s := src.(type) {
-// 	case time.Time:
-// 		source = s.String()
-// 	case []byte:
-// 		source = string(s)
-// 	case string:
-// 		source = s
-// 	case nil:
-// 		source = ""
-// 	default:
-// 		return errors.New("incompatible type for ProtoStringSerializer")
-// 	}
-//
-// 	*pss = ProtoStringSerializer(source)
-//
-// 	return nil
-// }
-
 type ProtoMapSerializer []byte
 
 func (pms *ProtoMapSerializer) Scan(src interface{}) error {
@@ -303,11 +273,11 @@ func (db *Database) QueryRows(protoStructSlice interface{}, query string, args .
 
 				fVal := newElem.Elem().Field(k)
 
-				safeVal := reflect.New(db.MapTypeToNullType(colType))
+				safeVal := reflect.New(mapTypeToNullType(colType))
 				values[i] = safeVal.Interface()
 
 				deferrals = append(deferrals, func() {
-					db.ExtractValue(fVal, safeVal)
+					extractValue(fVal, safeVal)
 				})
 
 				break
@@ -328,38 +298,107 @@ func (db *Database) QueryRows(protoStructSlice interface{}, query string, args .
 	return nil
 }
 
-func (db *Database) MapTypeToNullType(t string) reflect.Type {
+func (tx *TxWrapper) QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error {
+
+	protoValue := reflect.ValueOf(protoStructSlice)
+	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
+		return errors.New("must provide a pointer to a slice")
+	}
+
+	protoType := protoValue.Elem().Type().Elem()
+
+	rows, err := tx.Query(query, args...)
+	if err != nil {
+		return err
+	}
+
+	defer rows.Close()
+
+	columns, err := rows.Columns()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	columnTypes, err := rows.ColumnTypes()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for rows.Next() {
+		newElem := reflect.New(protoType.Elem())
+		values := make([]interface{}, len(columns))
+		deferrals := make([]func(), 0)
+
+		for i, col := range columnTypes {
+
+			colType := col.DatabaseTypeName()
+
+			for k := 0; k < protoType.Elem().NumField(); k++ {
+				fName := strings.Split(protoType.Elem().Field(k).Tag.Get("json"), ",")[0]
+
+				if fName != columns[i] {
+					continue
+				}
+
+				fVal := newElem.Elem().Field(k)
+
+				safeVal := reflect.New(mapTypeToNullType(colType))
+				values[i] = safeVal.Interface()
+
+				deferrals = append(deferrals, func() {
+					extractValue(fVal, safeVal)
+				})
+
+				break
+			}
+		}
+
+		if err := rows.Scan(values...); err != nil {
+			return err
+		}
+
+		for _, d := range deferrals {
+			d()
+		}
+
+		protoValue.Elem().Set(reflect.Append(protoValue.Elem(), newElem.Elem().Addr()))
+	}
+
+	return nil
+}
+
+func mapTypeToNullType(t string) reflect.Type {
 	switch t {
 	case "VARCHAR", "CHAR", "TIMESTAMP", "DATE", "INTERVAL", "TEXT", "UUID":
-		return db.ColTypes().reflectString
+		return colTypes.reflectString
 	case "INT8", "INT4":
-		return db.ColTypes().reflectInt32
+		return colTypes.reflectInt32
 	case "INTEGER", "SMALLINT":
-		return db.ColTypes().reflectInt64
+		return colTypes.reflectInt64
 	case "BOOL":
-		return db.ColTypes().reflectBool
+		return colTypes.reflectBool
 	case "JSONB":
-		return db.ColTypes().reflectMap
+		return colTypes.reflectMap
 	default:
 		return nil
 	}
 }
 
-func (db *Database) ExtractValue(dst, src reflect.Value) {
+func extractValue(dst, src reflect.Value) {
 	if dst.IsValid() && dst.CanSet() {
 		if src.Kind() == reflect.Ptr || src.Kind() == reflect.Interface {
 			src = reflect.Indirect(src)
 		}
 		switch src.Type() {
-		case db.ColTypes().reflectString:
+		case colTypes.reflectString:
 			dst.SetString(src.FieldByName("String").String())
-		case db.ColTypes().reflectInt32:
+		case colTypes.reflectInt32:
 			dst.SetInt(src.FieldByName("Int32").Int())
-		case db.ColTypes().reflectInt64:
+		case colTypes.reflectInt64:
 			dst.SetInt(src.FieldByName("Int64").Int())
-		case db.ColTypes().reflectBool:
+		case colTypes.reflectBool:
 			dst.SetBool(src.FieldByName("Bool").Bool())
-		case db.ColTypes().reflectMap:
+		case colTypes.reflectMap:
 			protoStruct := reflect.New(dst.Type())
 			json.Unmarshal(src.Bytes(), protoStruct.Interface())
 			dst.Set(protoStruct.Elem())

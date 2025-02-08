@@ -8,6 +8,10 @@ ifdef D_PG_PASS
 PG_PASS=${D_PG_PASS}
 endif
 
+ifdef D_PG_WORKER_PASS
+PG_WORKER_PASS=${D_PG_WORKER_PASS}
+endif
+
 ifdef D_REDIS_PASS
 REDIS_PASS=${D_REDIS_PASS}
 endif
@@ -22,9 +26,9 @@ endif
 
 # go build output
 
-BINARY_SERVICE=$(BINARY_NAME).service
 BINARY_OUT=$(BINARY_NAME)
 BINARY_TEST=$(BINARY_NAME).test
+BINARY_SERVICE=$(BINARY_NAME).service
 
 # source files
 
@@ -313,6 +317,7 @@ host_deploy_env:
 	@$(SSH) " \
 		sed -i -e ' \
 			/^\(#\|\)PG_PASS=/s&^.*$$&PG_PASS=${PG_PASS}&; \
+			/^\(#\|\)PG_WORKER_PASS=/s&^.*$$&PG_WORKER_PASS=${PG_WORKER_PASS}&; \
 			/^\(#\|\)REDIS_PASS=/s&^.*$$&REDIS_PASS=${REDIS_PASS}&; \
 			/^\(#\|\)KC_PASS=/s&^.*$$&KC_PASS=${KC_PASS}&; \
 			/^\(#\|\)KC_API_CLIENT_SECRET=/s&^.*$$&KC_API_CLIENT_SECRET=${KC_API_CLIENT_SECRET}&; \

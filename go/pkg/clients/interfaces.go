@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"net"
 	"net/http"
-	"reflect"
 	"time"
 
 	redis "github.com/redis/go-redis/v9"
@@ -24,17 +23,13 @@ type IDatabase interface {
 	SetAdminSub(string)
 	AdminRoleId() string
 	SetAdminRoleId(string)
-	ColTypes() *ColTypes
-	SetColTypes(*ColTypes)
-	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
-	MapTypeToNullType(t string) reflect.Type
-	ExtractValue(dst, src reflect.Value)
 	InitDBSocketConnection(userSub string, connId string) (func(), error)
 	GetSocketAllowances(userSub string) ([]util.IdStruct, error)
 	GetTopicMessageParticipants(topic string) SocketParticipants
 	GetSocketParticipantDetails(participants SocketParticipants) SocketParticipants
 	StoreTopicMessage(connId, topic string, message SocketMessage)
 	GetTopicMessages(topic string, page, pageSize int) [][]byte
+	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 }
 
 type IDatabaseClient interface {
@@ -50,6 +45,7 @@ type IDatabaseTx interface {
 	Rollback() error
 	Exec(query string, args ...any) (sql.Result, error)
 	QueryRow(query string, args ...any) IRow
+	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 }
 
 type IRow interface {

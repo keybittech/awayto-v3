@@ -45,7 +45,7 @@ func (h *Handlers) PatchUserProfile(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetUserProfileDetailsResponse, error) {
 	var userProfiles []*types.IUserProfile
 
-	err := h.Database.QueryRows(&userProfiles, `
+	err := tx.QueryRows(&userProfiles, `
 		SELECT * 
 		FROM dbview_schema.enabled_users_ext
 		WHERE sub = $1
@@ -64,7 +64,7 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 	for _, group := range userProfile.Groups {
 		var groups []*types.IGroup
 
-		err := h.Database.QueryRows(&groups, `
+		err := tx.QueryRows(&groups, `
 			SELECT *
 			FROM dbview_schema.enabled_groups_ext
 			WHERE id = $1
