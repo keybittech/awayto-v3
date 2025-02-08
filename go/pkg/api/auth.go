@@ -154,11 +154,10 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 		}
 
 		err = a.Handlers.Database.Client().QueryRow(`
-					SELECT g.id, g.ai, u.sub
-					FROM dbtable_schema.groups g
-					JOIN dbtable_schema.users u ON u.username = CONCAT('system_group_', g.id)
-					WHERE g.external_id = $1
-				`, session.GroupExternalId).Scan(&session.GroupId, &session.GroupAi, &session.GroupSub)
+			SELECT id, ai, sub
+			FROM dbtable_schema.groups
+			WHERE external_id = $1
+		`, session.GroupExternalId).Scan(&session.GroupId, &session.GroupAi, &session.GroupSub)
 		if err != nil {
 			return nil, err
 		}

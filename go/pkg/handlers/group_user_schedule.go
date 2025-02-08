@@ -55,8 +55,8 @@ func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Re
 		JOIN dbtable_schema.schedules schedule ON schedule.id = gus.group_schedule_id
 		JOIN dbview_schema.enabled_users eu ON eu.sub = schedule.created_sub
 		JOIN dbtable_schema.users u ON u.id = eu.id
-		WHERE u.username = $1
-	`, "system_group_"+session.GroupId)
+		WHERE u.sub = $1
+	`, session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

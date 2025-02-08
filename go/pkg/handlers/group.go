@@ -6,6 +6,7 @@ import (
 	"av3api/pkg/util"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -28,27 +29,37 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	var kcGroupExternalId, kcAdminSubgroupExternalId, groupId, groupName string
 
-	// Create group in application db
-	err := tx.QueryRow(`
-		INSERT INTO dbtable_schema.groups (external_id, code, admin_external_id, name, purpose, allowed_domains, created_sub, display_name, ai)
-		VALUES ($1, $2, $3, $4, $5, $6, $7::uuid, $8, $9)
-		RETURNING id, name
-	`, session.UserSub, session.UserSub, session.UserSub, data.GetName(), data.GetPurpose(), data.GetAllowedDomains(), session.UserSub, data.GetDisplayName(), data.GetAi()).Scan(&groupId, &groupName)
-
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
+	// Create group system user
 	groupSub, err := uuid.NewV7()
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	// Create group system user
+	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", groupSub))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	_, err = tx.Exec(`
 		INSERT INTO dbtable_schema.users (sub, username, created_on, created_sub)
 		VALUES ($1::uuid, $2, $3, $1::uuid)
-	`, groupSub, "system_group_"+groupId, time.Now().Local().UTC())
+	`, groupSub, data.GetName(), time.Now().Local().UTC())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.UserSub))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	// Create group in application db
+	// All the repeated $1 (UserSub) at the start are just placeholders until later in the method
+	err = tx.QueryRow(`
+		INSERT INTO dbtable_schema.groups (external_id, code, admin_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
+		VALUES ($1::uuid, $1, $1::uuid, $2, $3, $4, $1::uuid, $5, $6, $7)
+		RETURNING id, name
+	`, session.UserSub, data.GetName(), data.GetPurpose(), data.GetAllowedDomains(), data.GetDisplayName(), data.GetAi(), groupSub).Scan(&groupId, &groupName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -139,11 +150,31 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 }
 
 func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupResponse, error) {
+
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.groups
 		SET name = $2, purpose = $3, display_name = $4, updated_sub = $5, updated_on = $6, ai = $7
 		WHERE id = $1
 	`, session.GroupId, data.GetName(), data.GetPurpose(), data.GetDisplayName(), session.UserSub, time.Now().Local().UTC(), data.GetAi())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.GroupSub))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = tx.Exec(`
+		UPDATE dbtable_schema.users
+		SET name = $2, updated_sub = $3, updated_on = $4
+		WHERE sub = $1
+	`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC(), data.GetAi())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.UserSub))
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -456,6 +487,9 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 	}
 
 	_, err = h.ActivateProfile(w, req, &types.ActivateProfileRequest{}, session, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	return &types.CompleteOnboardingResponse{Success: true}, nil
 }

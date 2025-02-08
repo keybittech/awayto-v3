@@ -62,12 +62,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE INDEX user_sub_index ON dbtable_schema.users (sub);
 
   ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
-  -- anyone can insert
   CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT WITH CHECK (true);
+  CREATE POLICY table_select ON dbtable_schema.users FOR SELECT USING (sub = current_setting('app_session.user_sub')::uuid);
+  CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE USING (sub = current_setting('app_session.user_sub')::uuid);
   -- worker can get admin details on server start
   CREATE POLICY worker_select ON dbtable_schema.users FOR SELECT USING (uuid_nil() = current_setting('app_session.user_sub')::uuid);
-  -- users can only see their own profiles
-  CREATE POLICY table_select ON dbtable_schema.users FOR SELECT USING (sub = current_setting('app_session.user_sub')::uuid);
 
   CREATE TABLE dbtable_schema.roles (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -98,6 +97,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (role_id, user_id)
   );
+
+  ALTER TABLE dbtable_schema.user_roles ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_insert ON dbtable_schema.user_roles FOR INSERT WITH CHECK (created_sub = current_setting('app_session.user_sub')::uuid);
+  CREATE POLICY table_select ON dbtable_schema.user_roles FOR SELECT USING (created_sub = current_setting('app_session.user_sub')::uuid);
 
   CREATE TABLE dbtable_schema.file_types (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -151,6 +154,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     allowed_domains TEXT,
     code TEXT NOT NULL,
     ai BOOLEAN NOT NULL DEFAULT true,
+    sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
     created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
     updated_on TIMESTAMP,

@@ -91,14 +91,24 @@ func (r *Redis) ReqSession(req *http.Request) (*UserSession, error) {
 		return nil, err
 	}
 
+	update := false
+
 	if session == nil {
+		update = true
 		session = &UserSession{
 			UserSub:   userToken.Sub,
 			UserEmail: userToken.Email,
 			SubGroups: userToken.Groups,
 			AnonIp:    util.AnonIp(req.RemoteAddr),
 		}
+	}
 
+	if len(session.SubGroups) != len(userToken.Groups) {
+		update = true
+		session.SubGroups = userToken.Groups
+	}
+
+	if update {
 		err = r.SetSession(req.Context(), userToken.Sub, session)
 		if err != nil {
 			return nil, err

@@ -58,34 +58,30 @@ func SnipUserError(err string) string {
 }
 
 func ErrCheck(err error) error {
-	if err != nil {
-		pc, file, line, ok := runtime.Caller(1)
+	if err == nil {
+		return nil
+	}
 
+	callers := ""
+
+	for i := 0; ; i++ {
+		pc, file, line, ok := runtime.Caller(i + 1)
 		if !ok {
-			log.Fatal(fmt.Sprintf("fatal error when checking err %s", err))
+			break
 		}
 
 		function := runtime.FuncForPC(pc)
-		functionName := ""
-		if function != nil {
-			functionParts := strings.SplitAfterN(function.Name(), ".", -1)
-			if len(functionParts) > 2 {
-				functionName = functionParts[2]
-			} else {
-				functionName = function.Name()
-			}
-		}
 
-		errStr := err.Error()
-
-		if strings.Contains(errStr, "SysErrMsg:") {
-			errStr = "SPAWNED FROM: " + errStr
-		}
-
-		return errors.New(fmt.Sprintf("File: %s; Line: %d; Function: %s; SysErrMsg: %s", file, line, functionName, errStr))
+		callers += fmt.Sprintf("%s:%d %s \n  ", file, line, function.Name())
 	}
 
-	return nil
+	errStr := err.Error()
+
+	if strings.Contains(errStr, "SysErrMsg:") {
+		errStr = "SPAWNED FROM: " + errStr
+	}
+
+	return errors.New(fmt.Sprintf("%s %s", callers, errStr))
 }
 
 func CastSlice[T any](items []interface{}) ([]T, bool) {

@@ -11,10 +11,8 @@ import (
 )
 
 func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupScheduleResponse, error) {
-	groupSession := session
-	groupSession.UserSub = session.GroupSub
 
-	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, groupSession, tx)
+	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, &clients.UserSession{UserSub: session.GroupSub}, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -70,8 +68,8 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 		FROM dbview_schema.enabled_schedules_ext ese
 		JOIN dbtable_schema.schedules s ON s.id = ese.id
 		JOIN dbtable_schema.users u ON u.sub = s.created_sub
-		WHERE ese.id = $1 AND u.username = $2
-	`, data.GetGroupScheduleId(), "system_group_"+session.GroupId)
+		WHERE ese.id = $1 AND u.sub = $2
+	`, data.GetGroupScheduleId(), session.GroupSub)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)

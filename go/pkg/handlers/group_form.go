@@ -10,10 +10,7 @@ import (
 )
 
 func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFormResponse, error) {
-	groupSession := session
-	groupSession.UserSub = session.GroupSub
-
-	formResp, err := h.PostForm(w, req, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()}, session, tx)
+	formResp, err := h.PostForm(w, req, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()}, &clients.UserSession{UserSub: session.GroupSub}, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

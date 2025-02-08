@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *types.PostPromptRequest) (*types.PostPromptResponse, error) {
+func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *types.PostPromptRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostPromptResponse, error) {
 
 	// TODO
 	// if rateLimited, err := h.Redis.Client().RateLimitResource(req.Context(), data.UserSub, "prompt", 25, 86400); err != nil || rateLimited {
