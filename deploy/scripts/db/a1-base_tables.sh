@@ -1,13 +1,20 @@
 #!/bin/bash
 
-psql -v ON_ERROR_STOP=1 <<-EOSQL
-  \c $PG_DB $PG_WORKER;
+psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
 
   CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
   CREATE SCHEMA dbfunc_schema;
   CREATE SCHEMA dbtable_schema;
   CREATE SCHEMA dbview_schema;
+
+  GRANT USAGE ON SCHEMA dbfunc_schema TO $PG_WORKER;
+  GRANT USAGE ON SCHEMA dbtable_schema TO $PG_WORKER;
+  GRANT USAGE ON SCHEMA dbview_schema TO $PG_WORKER;
+
+  ALTER DEFAULT PRIVILEGES IN SCHEMA dbfunc_schema GRANT EXECUTE ON FUNCTIONS TO $PG_WORKER;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA dbtable_schema GRANT ALL ON TABLES TO $PG_WORKER;
+  ALTER DEFAULT PRIVILEGES IN SCHEMA dbview_schema GRANT ALL ON TABLES TO $PG_WORKER;
 
   -- from https://gist.github.com/kjmph/5bd772b2c2df145aa645b837da7eca74
   create or replace function dbfunc_schema.uuid_generate_v7()
@@ -53,12 +60,14 @@ psql -v ON_ERROR_STOP=1 <<-EOSQL
   );
 
   CREATE INDEX user_sub_index ON dbtable_schema.users (sub);
-  
-  ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
 
-  CREATE POLICY user_profile_access ON dbtable_schema.users
-  FOR SELECT
-  USING (sub = current_setting('app_session.user_sub')::uuid);
+  ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
+  -- anyone can insert
+  CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT WITH CHECK (true);
+  -- worker can get admin details on server start
+  CREATE POLICY worker_select ON dbtable_schema.users FOR SELECT USING (uuid_nil() = current_setting('app_session.user_sub')::uuid);
+  -- users can only see their own profiles
+  CREATE POLICY table_select ON dbtable_schema.users FOR SELECT USING (sub != current_setting('app_session.user_sub')::uuid);
 
   CREATE TABLE dbtable_schema.roles (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -70,6 +79,14 @@ psql -v ON_ERROR_STOP=1 <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true
   );
 
+  DO \$\$
+  DECLARE admin_id uuid;
+  BEGIN
+    admin_id := dbfunc_schema.uuid_generate_v7();
+    INSERT INTO dbtable_schema.users (username, sub, created_sub) VALUES ('system_owner', admin_id, admin_id);
+    INSERT INTO dbtable_schema.roles (name, created_sub) VALUES ('Admin', admin_id);
+  END \$\$;
+  
   CREATE TABLE dbtable_schema.user_roles (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     role_id uuid NOT NULL REFERENCES dbtable_schema.roles (id) ON DELETE CASCADE,

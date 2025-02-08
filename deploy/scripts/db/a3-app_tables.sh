@@ -1,7 +1,6 @@
 #!/bin/bash
 
-psql -v ON_ERROR_STOP=1 <<-EOSQL
-  \c $PG_DB $PG_WORKER;
+psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
 
   CREATE TABLE dbtable_schema.budgets (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

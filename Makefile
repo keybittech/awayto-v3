@@ -211,7 +211,7 @@ docker_stop:
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
 
 docker_db:
-	${SUDO} docker exec -it $(shell ${SUDO} docker ps -aqf "name=db") su - postgres -c 'psql -U ${PG_USER} -d ${PG_DB}'
+	${SUDO} docker exec -it $(shell ${SUDO} docker ps -aqf "name=db") psql -U postgres -d ${PG_DB}
 
 docker_db_start:
 	${SUDO} docker $(DOCKER_COMPOSE) up -d db

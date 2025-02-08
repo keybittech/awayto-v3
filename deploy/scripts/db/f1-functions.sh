@@ -1,7 +1,6 @@
 #!/bin/bash
 
-psql -v ON_ERROR_STOP=1 <<-EOSQL
-  \c $PG_DB $PG_WORKER;
+psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
 
   CREATE OR REPLACE FUNCTION dbfunc_schema.delete_group(
     sub UUID  
