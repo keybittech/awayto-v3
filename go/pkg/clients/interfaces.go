@@ -18,11 +18,8 @@ type IAi interface {
 
 type IDatabase interface {
 	Client() IDatabaseClient
-	SetClient(IDatabaseClient)
 	AdminSub() string
-	SetAdminSub(string)
 	AdminRoleId() string
-	SetAdminRoleId(string)
 	InitDBSocketConnection(userSub string, connId string) (func(), error)
 	GetSocketAllowances(userSub string) ([]util.IdStruct, error)
 	GetTopicMessageParticipants(topic string) SocketParticipants

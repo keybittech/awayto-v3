@@ -13,14 +13,14 @@ import (
 
 	"database/sql"
 
-	"github.com/google/uuid"
 	_ "github.com/lib/pq"
 )
 
 type Database struct {
 	DatabaseClient      IDatabaseClient
-	DatabaseAdminRoleId string
 	DatabaseAdminSub    string
+	DatabaseAdminRoleId string
+	DatabaseNilUuid     string
 }
 
 type ColTypes struct {
@@ -58,39 +58,53 @@ func InitDatabase() IDatabase {
 		reflect.TypeOf(ProtoMapSerializer{}),
 	}
 
-	var adminRoleId, adminSub string
+	var adminRoleId, adminSub, nilUuid string
 
-	if err = db.QueryRow(`
-		INSERT INTO dbtable_schema.users (sub, username, created_sub)
-		VALUES ($1::uuid, 'system_owner', $1::uuid)
-		RETURNING sub
-	`, uuid.NewString()).Scan(&adminSub); err != nil {
-		fmt.Printf("DB init startup %+v\n", err)
-
-		db.QueryRow(`
-			SELECT sub
-			FROM dbtable_schema.users
-			WHERE username = 'system_owner'
-		`).Scan(&adminSub)
-
-		db.QueryRow(`
-			SELECT id
-			FROM dbtable_schema.roles
-			WHERE name = 'Admin'
-		`).Scan(&adminRoleId)
-
-	} else {
-		db.QueryRow(`
-			INSERT INTO dbtable_schema.roles (name)
-			VALUES ('Admin')
-			RETURNING id
-   `).Scan(&adminRoleId)
+	err = db.QueryRow(`SELECT uuid_nil()`).Scan(&nilUuid)
+	if err != nil {
+		log.Fatal(err)
 	}
 
-	dbc := &Database{}
-	dbc.SetClient(&DBWrapper{db})
-	dbc.SetAdminSub(adminSub)
-	dbc.SetAdminRoleId(adminRoleId)
+	tx, err := db.Begin()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	defer tx.Rollback()
+
+	_, err = tx.Exec(fmt.Sprintf("SET app_session.user_sub = '%s'", nilUuid))
+	if err != nil {
+		log.Fatal(fmt.Sprintf("can't set app sub %s", err))
+	}
+
+	err = tx.QueryRow(`SELECT sub FROM dbtable_schema.users WHERE username = 'system_owner'`).Scan(&adminSub)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("can't get admin sub %s", err))
+	}
+
+	err = tx.QueryRow(`SELECT id FROM dbtable_schema.roles WHERE name = 'Admin'`).Scan(&adminRoleId)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("can't get admin role %s", err))
+	}
+
+	_, err = tx.Exec(`SET app_session.user_sub = ''`)
+	if err != nil {
+		log.Fatal(fmt.Sprintf("can't unset app sub %s", err))
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	println(fmt.Sprintf("Database Initialized\nAdmin Sub: %s\nAdmin Role Id: %s", adminSub, adminRoleId))
+
+	dbc := &Database{
+		&DBWrapper{db},
+		adminSub,
+		adminRoleId,
+		nilUuid,
+	}
 
 	return dbc
 }
@@ -99,24 +113,16 @@ func (db *Database) Client() IDatabaseClient {
 	return db.DatabaseClient
 }
 
-func (db *Database) SetClient(c IDatabaseClient) {
-	db.DatabaseClient = c
-}
-
 func (db *Database) AdminSub() string {
 	return db.DatabaseAdminSub
-}
-
-func (db *Database) SetAdminSub(sub string) {
-	db.DatabaseAdminSub = sub
 }
 
 func (db *Database) AdminRoleId() string {
 	return db.DatabaseAdminRoleId
 }
 
-func (db *Database) SetAdminRoleId(id string) {
-	db.DatabaseAdminRoleId = id
+func (db *Database) NilUuid() string {
+	return db.DatabaseNilUuid
 }
 
 // DB Wrappers
