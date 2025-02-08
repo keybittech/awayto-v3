@@ -67,7 +67,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   -- worker can get admin details on server start
   CREATE POLICY worker_select ON dbtable_schema.users FOR SELECT USING (uuid_nil() = current_setting('app_session.user_sub')::uuid);
   -- users can only see their own profiles
-  CREATE POLICY table_select ON dbtable_schema.users FOR SELECT USING (sub != current_setting('app_session.user_sub')::uuid);
+  CREATE POLICY table_select ON dbtable_schema.users FOR SELECT USING (sub = current_setting('app_session.user_sub')::uuid);
 
   CREATE TABLE dbtable_schema.roles (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
