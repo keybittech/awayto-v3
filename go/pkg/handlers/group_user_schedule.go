@@ -47,16 +47,22 @@ func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Reques
 
 func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserScheduleStubsResponse, error) {
 	var groupUserScheduleStubs []*types.IGroupUserScheduleStub
+	var err error
 
-	err := h.Database.QueryRows(&groupUserScheduleStubs, `
-		SELECT guss.*, gus.group_schedule_id as "groupScheduleId"
-		FROM dbview_schema.group_user_schedule_stubs guss
-		JOIN dbtable_schema.group_user_schedules gus ON gus.user_schedule_id = guss."userScheduleId"
-		JOIN dbtable_schema.schedules schedule ON schedule.id = gus.group_schedule_id
-		JOIN dbview_schema.enabled_users eu ON eu.sub = schedule.created_sub
-		JOIN dbtable_schema.users u ON u.id = eu.id
-		WHERE u.sub = $1
-	`, session.GroupSub)
+	groupTxErr := tx.GroupTx(session, func() {
+		err = tx.QueryRows(&groupUserScheduleStubs, `
+			SELECT guss.*, gus.group_schedule_id as "groupScheduleId"
+			FROM dbview_schema.group_user_schedule_stubs guss
+			JOIN dbtable_schema.group_user_schedules gus ON gus.user_schedule_id = guss."userScheduleId"
+			JOIN dbtable_schema.schedules schedule ON schedule.id = gus.group_schedule_id
+			JOIN dbview_schema.enabled_users eu ON eu.sub = schedule.created_sub
+			JOIN dbtable_schema.users u ON u.id = eu.id
+			WHERE u.sub = $1
+		`, session.GroupSub)
+	})
+	if groupTxErr != nil {
+		return nil, util.ErrCheck(groupTxErr)
+	}
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

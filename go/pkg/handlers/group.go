@@ -6,7 +6,6 @@ import (
 	"av3api/pkg/util"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"net/http"
 	"slices"
 	"strings"
@@ -35,20 +34,17 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", groupSub))
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	session.GroupSub = groupSub.String()
 
-	_, err = tx.Exec(`
+	groupTxErr := tx.GroupTx(session, func() {
+		_, err = tx.Exec(`
 		INSERT INTO dbtable_schema.users (sub, username, created_on, created_sub)
 		VALUES ($1::uuid, $2, $3, $1::uuid)
-	`, groupSub, data.GetName(), time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
+	`, session.GroupSub, data.GetName(), time.Now().Local().UTC())
+	})
+	if groupTxErr != nil {
+		return nil, util.ErrCheck(groupTxErr)
 	}
-
-	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.UserSub))
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -59,7 +55,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		INSERT INTO dbtable_schema.groups (external_id, code, admin_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
 		VALUES ($1::uuid, $1, $1::uuid, $2, $3, $4, $1::uuid, $5, $6, $7)
 		RETURNING id, name
-	`, session.UserSub, data.GetName(), data.GetPurpose(), data.GetAllowedDomains(), data.GetDisplayName(), data.GetAi(), groupSub).Scan(&groupId, &groupName)
+	`, session.UserSub, data.GetName(), data.GetPurpose(), data.GetAllowedDomains(), data.GetDisplayName(), data.GetAi(), session.GroupSub).Scan(&groupId, &groupName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -160,21 +156,16 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.GroupSub))
-	if err != nil {
-		return nil, util.ErrCheck(err)
+	groupTxErr := tx.GroupTx(session, func() {
+		_, err = tx.Exec(`
+			UPDATE dbtable_schema.users
+			SET name = $2, updated_sub = $3, updated_on = $4
+			WHERE sub = $1
+		`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC(), data.GetAi())
+	})
+	if groupTxErr != nil {
+		return nil, util.ErrCheck(groupTxErr)
 	}
-
-	_, err = tx.Exec(`
-		UPDATE dbtable_schema.users
-		SET name = $2, updated_sub = $3, updated_on = $4
-		WHERE sub = $1
-	`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC(), data.GetAi())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.UserSub))
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -98,7 +98,7 @@ endef
 
 .PHONY: build clean test_gen \
 	ts_prep ts ts_test ts_protoc ts_dev \
-	go go_dev go_test go_test_main go_test_pkg go_coverage \
+	go_dev go_test go_test_main go_test_pkg go_coverage \
 	docker_up docker_down docker_build docker_start docker_stop \
 	docker_db docker_db_start docker_db_backup docker_db_restore docker_db_restore_op \
 	docker_redis \
@@ -154,16 +154,17 @@ go_protoc: $(GO_GEN_DIR)
 		--go_out=$(GO_SRC) \
 		$(PROTO_FILES)
 
-go: go_protoc
+go: $(BINARY_OUT) go_protoc
 	$(call set_local_unix_sock_dir)
-	go build -C $(GO_SRC) -o ../$(BINARY_OUT) .
+	echo ${PWD}/$(BINARY_OUT)
+	go build -C $(GO_SRC) -o ${PWD}/$(BINARY_OUT) .
 
 go_dev: go cert
 	exec ./$(BINARY_NAME) --debug
 
 go_test: docker_up go_test_main go_test_pkg
 
-go_test_main: go ts_test go_genmocks
+go_test_main: go
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
@@ -173,6 +174,8 @@ go_test_pkg: go go_genmocks
 
 go_coverage: go_protoc go_genmocks
 	go test -C $(GO_SRC) -coverpkg=./... ./...
+
+test_prep: ts_test go_genmocks
 
 test_gen:
 	npx playwright codegen --ignore-https-errors https://localhost:${GO_HTTPS_PORT}
