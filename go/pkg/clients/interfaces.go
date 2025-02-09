@@ -41,7 +41,7 @@ type IDatabaseTx interface {
 	Commit() error
 	Rollback() error
 	Exec(query string, args ...any) (sql.Result, error)
-	GroupTx(session *UserSession, execution func()) error
+	SetUserSub(string) error
 	QueryRow(query string, args ...any) IRow
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 }

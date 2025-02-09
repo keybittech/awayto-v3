@@ -36,15 +36,20 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	session.GroupSub = groupSub.String()
 
-	groupTxErr := tx.GroupTx(session, func() {
-		_, err = tx.Exec(`
+	err = tx.SetUserSub(session.GroupSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = tx.Exec(`
 		INSERT INTO dbtable_schema.users (sub, username, created_on, created_sub)
 		VALUES ($1::uuid, $2, $3, $1::uuid)
 	`, session.GroupSub, data.GetName(), time.Now().Local().UTC())
-	})
-	if groupTxErr != nil {
-		return nil, util.ErrCheck(groupTxErr)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
+
+	err = tx.SetUserSub(session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -156,16 +161,21 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	groupTxErr := tx.GroupTx(session, func() {
-		_, err = tx.Exec(`
-			UPDATE dbtable_schema.users
-			SET name = $2, updated_sub = $3, updated_on = $4
-			WHERE sub = $1
-		`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC(), data.GetAi())
-	})
-	if groupTxErr != nil {
-		return nil, util.ErrCheck(groupTxErr)
+	err = tx.SetUserSub(session.GroupSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
+
+	_, err = tx.Exec(`
+		UPDATE dbtable_schema.users
+		SET name = $2, updated_sub = $3, updated_on = $4
+		WHERE sub = $1
+	`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC(), data.GetAi())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = tx.SetUserSub(session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

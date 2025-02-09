@@ -15,7 +15,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 
 	var groupUsers []*types.IGroupUser
 
-	err := h.Database.QueryRows(&groupUsers, `
+	err := tx.QueryRows(&groupUsers, `
 		SELECT g.external_id as "groupExternalId", gu.external_id as "externalId", u.sub as "userSub"
 		FROM dbtable_schema.group_users gu
 		JOIN dbtable_schema.users u ON u.id = gu.user_id
@@ -33,7 +33,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 
 	var groupRoles []*types.IGroupRole
 
-	err = h.Database.QueryRows(&groupRoles, `
+	err = tx.QueryRows(&groupRoles, `
 		SELECT external_id as "externalId"
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
@@ -91,7 +91,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUsersResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := h.Database.QueryRows(&groupUsers, `
+	err := tx.QueryRows(&groupUsers, `
 		SELECT TO_JSONB(eu) as "userProfile", egu.id, r.id as "roleId", r.name as "roleName"
 		FROM dbview_schema.enabled_group_users egu
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = egu."userId"
@@ -110,7 +110,7 @@ func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserByIdResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := h.Database.QueryRows(&groupUsers, `
+	err := tx.QueryRows(&groupUsers, `
 		SELECT
 			eu.id,
 			egu.groupId,

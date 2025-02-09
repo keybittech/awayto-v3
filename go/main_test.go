@@ -47,7 +47,7 @@ func TestMain(t *testing.T) {
 		BaseURL:           playwright.String(originUrl),
 		IgnoreHttpsErrors: playwright.Bool(true),
 		ColorScheme:       playwright.ColorSchemeDark,
-		SlowMo:            playwright.Float(100),
+		SlowMo:            playwright.Float(200),
 		Headless:          playwright.Bool(false),
 		Devtools:          playwright.Bool(true),
 	})
@@ -158,20 +158,20 @@ func TestMain(t *testing.T) {
 
 	if !onSignInPage && !onHomePage {
 		page.GetByRole("link", playwright.PageGetByRoleOptions{Name: "Login"}).Click()
+	}
 
-		if !onHomePage {
-			// Login
-			page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Email"}).Fill(personA.Email)
-			page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Password"}).Fill(pwA)
-			page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Sign In"}).Click()
-		}
+	if !onHomePage {
+		// Login
+		page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Email"}).Fill(personA.Email)
+		page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Password"}).Fill(pwA)
+		page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Sign In"}).Click()
 	}
 
 	// Create a form
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Admin"}).Click()
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "forms"}).Click()
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Create"}).Click()
-	page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Name"}).Fill("test form bla")
+	page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Name"}).Fill("test form bla" + randId)
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "add row"}).Click()
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "add column"}).Click()
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "add column"}).Click()
@@ -190,7 +190,7 @@ func TestMain(t *testing.T) {
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Close"}).Click()
 	page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Submit"}).Click()
 
-	time.Sleep(6 * time.Second)
+	time.Sleep(300 * time.Second)
 
 	browser.Close()
 	pw.Stop()

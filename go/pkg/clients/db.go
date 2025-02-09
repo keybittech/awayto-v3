@@ -175,15 +175,8 @@ func (tx *TxWrapper) QueryRow(query string, args ...interface{}) IRow {
 	return tx.Tx.QueryRow(query, args...)
 }
 
-func (tx *TxWrapper) GroupTx(session *UserSession, execution func()) error {
-	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.GroupSub))
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	execution()
-
-	_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.UserSub))
+func (tx *TxWrapper) SetUserSub(sub string) error {
+	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", sub))
 	if err != nil {
 		return util.ErrCheck(err)
 	}

@@ -95,7 +95,6 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     </Dialog>
 
     <DataGrid {...formGridProps} />
-
   </>
 }
 

@@ -129,11 +129,24 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				util.ErrorLog.Println(util.ErrCheck(err))
 				return
 			}
+			if session.GroupId != "" {
+				_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.group_id = '%s'", session.GroupId))
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
+					return
+				}
+			}
 
 			defer func() {
 				_, err = tx.Exec(`SET SESSION app_session.user_sub = ''`)
 				if err != nil {
 					util.ErrorLog.Println(util.ErrCheck(reqErr))
+				}
+				if session.GroupId != "" {
+					_, err = tx.Exec(`SET SESSION app_session.group_id = ''`)
+					if err != nil {
+						util.ErrorLog.Println(util.ErrCheck(reqErr))
+					}
 				}
 
 				if p := recover(); p != nil {

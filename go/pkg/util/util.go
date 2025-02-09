@@ -72,7 +72,7 @@ func ErrCheck(err error) error {
 
 		function := runtime.FuncForPC(pc)
 		callers += fmt.Sprintf("%s:%d %s \n  ", file, line, function.Name())
-		if strings.Contains(function.Name(), "routes.go") {
+		if strings.Contains(function.Name(), "BuildProtoService") {
 			break
 		}
 	}

@@ -10,7 +10,6 @@ import (
 )
 
 func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFormResponse, error) {
-
 	var groupFormExists string
 
 	err := tx.QueryRow(`
@@ -18,7 +17,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
 		WHERE f.name = $1 AND gf.group_id = $2
 	`, data.GetName(), session.GroupId).Scan(&groupFormExists)
-	if err != nil {
+	if groupFormExists != "" && err != nil {
 		return nil, util.ErrCheck(err)
 	}
 	if groupFormExists != "" {
@@ -121,14 +120,12 @@ func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupFormByIdResponse{GroupForm: groupForms[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupForms(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupFormResponse, error) {
+func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupFormResponse, error) {
+
 	idsSplit := strings.Split(data.GetIds(), ",")
+
 	for _, formId := range idsSplit {
-		_, err := tx.Exec(`
-			DELETE FROM dbtable_schema.group_forms WHERE form_id = $1
-			DELETE FROM dbtable_schema.form_versions WHERE form_id = $1
-			DELETE FROM dbtable_schema.forms WHERE id = $1
-		`, formId)
+		_, err := tx.Exec(`DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
