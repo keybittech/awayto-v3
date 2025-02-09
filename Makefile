@@ -160,7 +160,7 @@ go: go_protoc
 	go build -C $(GO_SRC) -o ${PWD}/$(BINARY_OUT) .
 
 go_dev: go cert
-	exec ./$(BINARY_NAME) --debug
+	exec ./$(BINARY_NAME) --log debug
 
 go_test: docker_up go_test_main go_test_pkg
 

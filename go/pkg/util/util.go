@@ -15,6 +15,16 @@ import (
 	"golang.org/x/text/language"
 )
 
+var (
+	LoggingMode = flag.String("log", "", "Debug mode")
+	ErrorLog    *ErrLog
+	TitleCase   cases.Caser
+)
+
+const ForbiddenResponse = `{ "error": { "status": 403 } }`
+const InternalErrorResponse = `{ "error": { "status": 500 } }`
+const ErrorForUser = "ERROR_FOR_USER"
+
 type ErrLog struct {
 	Logger *log.Logger
 }
@@ -25,16 +35,10 @@ func (e *ErrLog) Println(v ...any) {
 	}
 	e.Logger.Println(v...)
 
-	if *DebugMode {
+	if *LoggingMode == "debug" {
 		fmt.Println(fmt.Sprintf("DEBUG: %s", v))
 	}
 }
-
-var (
-	DebugMode = flag.Bool("debug", false, "Debug mode")
-	ErrorLog  *ErrLog
-	TitleCase cases.Caser
-)
 
 func init() {
 	file, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -44,10 +48,6 @@ func init() {
 	ErrorLog = &ErrLog{log.New(file, "ERROR: ", log.Ldate|log.Ltime)}
 	TitleCase = cases.Title(language.Und)
 }
-
-const ForbiddenResponse = `{ "error": { "status": 403 } }`
-const InternalErrorResponse = `{ "error": { "status": 500 } }`
-const ErrorForUser = "ERROR_FOR_USER"
 
 func UserError(err string) error {
 	return errors.New(fmt.Sprintf("%s %s %s", ErrorForUser, err, ErrorForUser))
@@ -71,8 +71,10 @@ func ErrCheck(err error) error {
 		}
 
 		function := runtime.FuncForPC(pc)
-
 		callers += fmt.Sprintf("%s:%d %s \n  ", file, line, function.Name())
+		if strings.Contains(function.Name(), "routes.go") {
+			break
+		}
 	}
 
 	errStr := err.Error()
@@ -81,7 +83,7 @@ func ErrCheck(err error) error {
 		errStr = "SPAWNED FROM: " + errStr
 	}
 
-	return errors.New(fmt.Sprintf("%s %s", callers, errStr))
+	return errors.New(fmt.Sprintf("%s\n%s", errStr, callers))
 }
 
 func CastSlice[T any](items []interface{}) ([]T, bool) {

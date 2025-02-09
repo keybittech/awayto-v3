@@ -160,135 +160,138 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
 
   return <Grid container spacing={2}>
 
-    <Grid size="grow" sx={{ alignItems: 'start' }}>
-      <Grid container spacing={2}>
-        {Object.keys(rows).length < 3 && <Grid size={12}>
-          <Button variant="outlined" fullWidth onClick={addRow}>add row</Button>
-        </Grid>}
-        {Object.keys(rows).length > 0 && <Grid size={12}>
-          <Typography variant="caption">Click the <SettingsIcon fontSize="small" sx={{ verticalAlign: 'bottom' }} /> icon to edit fields.</Typography>
-        </Grid>}
-        {rowKeys.map((rowId, i) => <Grid key={`form_fields_row_${i}`} size={12}>
-          <Grid container spacing={2}>
-            {rows[rowId].length < 3 && <Grid size={{ xs: 12, md: 2 }}>
-              <Grid container direction="column" sx={{ placeItems: 'center', height: '100%' }}>
-                <Button fullWidth variant="outlined" color="warning" sx={{ alignItems: 'center', display: 'flex', flex: 1 }} onClick={() => addCol(rowId)}>add column</Button>
-                {/* <ButtonBase sx={{ display: 'flex', padding: '2px', backgroundColor: 'rgba(255, 0, 0, .1)' }} onClick={() => delRow(rowId)}>- row</ButtonBase> */}
-              </Grid>
-            </Grid>}
-            <Grid size={{ xs: 12, md: rows[rowId].length < 3 ? 10 : 12 }}>
-              <Grid container spacing={2}>
-                {rows[rowId].map((field, j) => {
-                  return <Grid size={12 / rows[rowId].length} key={`form_fields_cell_${i + 1}_${j}`}>
-                    <Field
-                      defaultDisplay
-                      field={field}
-                      settingsBtn={
-                        <IconButton sx={{ color: position.row == rowId && position.col == j ? 'white' : 'gray' }} onClick={() => {
-                          setCell(field);
-                          setPosition({ row: rowId, col: j })
-                        }}>
-                          <SettingsIcon />
-                        </IconButton>
-                      }
-                    />
-                  </Grid>
-                })}
-              </Grid>
+    {Object.keys(rows).length < 3 && <Grid size={12}>
+      <Button variant="outlined" fullWidth onClick={addRow}>add row</Button>
+    </Grid>}
+    {Object.keys(rows).length > 0 && <Grid size={12}>
+      <Typography variant="caption">Click the <SettingsIcon fontSize="small" sx={{ verticalAlign: 'bottom' }} /> icon to edit fields.</Typography>
+    </Grid>}
+
+    <Grid role="rowgroup" id="form-builder-fieldset" size="grow" container spacing={2} sx={{ alignItems: 'start' }}>
+      {rowKeys.map((rowId, i) => <Grid key={`form_fields_row_${i}`} size={12}>
+        <Grid role="row" container spacing={2}>
+          {rows[rowId].length < 3 && <Grid className="add-column-btn" size={{ xs: 12, md: 2 }}>
+            <Grid container direction="column" sx={{ placeItems: 'center', height: '100%' }}>
+              <Button fullWidth variant="outlined" color="warning" sx={{ alignItems: 'center', display: 'flex', flex: 1 }} onClick={() => addCol(rowId)}>add column</Button>
+              {/* <ButtonBase sx={{ display: 'flex', padding: '2px', backgroundColor: 'rgba(255, 0, 0, .1)' }} onClick={() => delRow(rowId)}>- row</ButtonBase> */}
+            </Grid>
+          </Grid>}
+          <Grid size={{ xs: 12, md: rows[rowId].length < 3 ? 10 : 12 }}>
+            <Grid container spacing={2}>
+              {rows[rowId].map((field, j) => {
+                return <Grid role="gridcell" size={12 / rows[rowId].length} key={`form_fields_cell_${i + 1}_${j}`}>
+                  <Field
+                    defaultDisplay
+                    field={field}
+                    settingsBtn={
+                      <IconButton sx={{ color: position.row == rowId && position.col == j ? 'white' : 'gray' }} onClick={() => {
+                        setCell(field);
+                        setPosition({ row: rowId, col: j })
+                      }}>
+                        <SettingsIcon />
+                      </IconButton>
+                    }
+                  />
+                </Grid>
+              })}
             </Grid>
           </Grid>
-        </Grid>)}
-      </Grid>
+        </Grid>
+      </Grid>)}
     </Grid>
 
-    {editable && cellSelected && <Grid>
-      <Divider orientation="vertical" />
-    </Grid>}
+    {
+      editable && cellSelected && <Grid>
+        <Divider orientation="vertical" />
+      </Grid>
+    }
 
-    {editable && cellSelected && <Grid size={4}>
-      <Grid container spacing={2} direction="column">
+    {
+      editable && cellSelected && <Grid size={4}>
+        <Grid container spacing={2} direction="column">
 
-        <Grid>
-          <Grid container alignItems="center">
-            <Grid sx={{ display: 'flex', flex: 1 }}>
-              <Typography variant="body2">Field Attributes</Typography>
+          <Grid>
+            <Grid container alignItems="center">
+              <Grid sx={{ display: 'flex', flex: 1 }}>
+                <Typography variant="body2">Field Attributes</Typography>
+              </Grid>
+              <Grid>
+                <Button variant="text" onClick={() => {
+                  setPosition({ row: '', col: 0 })
+                  setCell({} as IField);
+                }}>Close</Button>
+              </Grid>
             </Grid>
+          </Grid>
+
+          <Grid>
+            <TextField
+              fullWidth
+              select
+              label="Field Type"
+              value={cell.t}
+              onChange={e => setCellAttr(e.target.value, 't')}
+            >
+              <MenuItem key={1111} value={'text'}>Textfield</MenuItem>
+              <MenuItem key={23432423} value={'date'}>Date</MenuItem>
+              <MenuItem key={235325} value={'time'}>Time</MenuItem>
+              <MenuItem key={235324325} value={'labelntext'}>Label and Text</MenuItem>
+            </TextField>
+          </Grid>
+
+          <Grid>
+            <TextField fullWidth autoFocus id={`row_${position.row}_col_${position.col}_label_input`} label="Label" type="text" helperText="Required." value={cell.l} onChange={e => setCellAttr(e.target.value, 'l')} />
+          </Grid>
+
+          {'labelntext' === cell.t && <Grid>
+            <TextField fullWidth label="Text" type="text" value={cell.x} onChange={e => setCellAttr(e.target.value, 'x')} />
+          </Grid>}
+
+          {!inputTypes.includes(cell.t || '') ? <></> : <>
             <Grid>
-              <Button variant="text" onClick={() => {
-                setPosition({ row: '', col: 0 })
-                setCell({} as IField);
-              }}>Close</Button>
+              <TextField
+                fullWidth
+                label="Helper Text"
+                type="text"
+                value={cell.h}
+                onChange={e => setCellAttr(e.target.value, 'h')}
+              />
             </Grid>
-          </Grid>
-        </Grid>
 
-        <Grid>
-          <TextField
-            fullWidth
-            select
-            label="Field Type"
-            value={cell.t}
-            onChange={e => setCellAttr(e.target.value, 't')}
-          >
-            <MenuItem key={1111} value={'text'}>Textfield</MenuItem>
-            <MenuItem key={23432423} value={'date'}>Date</MenuItem>
-            <MenuItem key={235325} value={'time'}>Time</MenuItem>
-            <MenuItem key={235324325} value={'labelntext'}>Label and Text</MenuItem>
-          </TextField>
-        </Grid>
+            <Grid>
+              <TextField
+                fullWidth
+                label="Default Value"
+                type={cell.t}
+                value={cell.v}
+                onChange={e => setCellAttr(e.target.value, 'v')}
+                slotProps={{
+                  inputLabel: {
+                    shrink: true
+                  }
+                }}
+              />
+            </Grid>
 
-        <Grid>
-          <TextField fullWidth autoFocus id={`row_${position.row}_col_${position.col}_label_input`} label="Label" type="text" helperText="Required." value={cell.l} onChange={e => setCellAttr(e.target.value, 'l')} />
-        </Grid>
-
-        {'labelntext' === cell.t && <Grid>
-          <TextField fullWidth label="Text" type="text" value={cell.x} onChange={e => setCellAttr(e.target.value, 'x')} />
-        </Grid>}
-
-        {!inputTypes.includes(cell.t || '') ? <></> : <>
-          <Grid>
-            <TextField
-              fullWidth
-              label="Helper Text"
-              type="text"
-              value={cell.h}
-              onChange={e => setCellAttr(e.target.value, 'h')}
-            />
-          </Grid>
+            <Grid>
+              <Typography variant="body1">Required</Typography>
+              <Switch value={cell.r} checked={cell.r} onChange={() => {
+                rows[position.row][position.col].r = !cell.r;
+                updateData({ ...rows })
+              }} />
+            </Grid>
+          </>}
 
           <Grid>
-            <TextField
-              fullWidth
-              label="Default Value"
-              type={cell.t}
-              value={cell.v}
-              onChange={e => setCellAttr(e.target.value, 'v')}
-              slotProps={{
-                inputLabel: {
-                  shrink: true
-                }
-              }}
-            />
+            <Button fullWidth color="error" onClick={() => {
+              setPosition({ row: '', col: 0 })
+              delCol(position.row, position.col);
+              setCell({} as IField);
+            }}>Delete</Button>
           </Grid>
-
-          <Grid>
-            <Typography variant="body1">Required</Typography>
-            <Switch value={cell.r} checked={cell.r} onChange={() => {
-              rows[position.row][position.col].r = !cell.r;
-              updateData({ ...rows })
-            }} />
-          </Grid>
-        </>}
-
-        <Grid>
-          <Button fullWidth color="error" onClick={() => {
-            setPosition({ row: '', col: 0 })
-            delCol(position.row, position.col);
-            setCell({} as IField);
-          }}>Delete</Button>
         </Grid>
       </Grid>
-    </Grid>}
+    }
 
-  </Grid>;
+  </Grid >;
 }

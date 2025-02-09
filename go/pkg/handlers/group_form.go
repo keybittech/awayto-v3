@@ -10,6 +10,21 @@ import (
 )
 
 func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFormResponse, error) {
+
+	var groupFormExists string
+
+	err := tx.QueryRow(`
+		SELECT f.id FROM dbtable_schema.forms f
+		LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
+		WHERE f.name = $1 AND gf.group_id = $2
+	`, data.GetName(), session.GroupId).Scan(&groupFormExists)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	if groupFormExists != "" {
+		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
+	}
+
 	formResp, err := h.PostForm(w, req, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()}, &clients.UserSession{UserSub: session.GroupSub}, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)

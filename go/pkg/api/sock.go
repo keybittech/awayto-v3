@@ -61,6 +61,15 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 	mux.HandleFunc("GET /sock", middlewareHandler)
 }
 
+func PingPong(conn net.Conn) error {
+	pingBytes, _ := json.Marshal(&clients.SocketMessage{Payload: "PING"})
+	if err := util.WriteSocketConnectionMessage(pingBytes, conn); err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+		return err
+	}
+	return nil
+}
+
 func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 
 	defer conn.Close()
@@ -131,12 +140,13 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 	defer ticker.Stop()
 	lastPong := time.Now()
 
+	err = PingPong(conn)
+
 	for {
 		select {
 		case <-ticker.C:
-			pingBytes, _ := json.Marshal(&clients.SocketMessage{Payload: "PING"})
-			if err := util.WriteSocketConnectionMessage(pingBytes, conn); err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
+			err := PingPong(conn)
+			if err != nil {
 				return
 			}
 		case data := <-messages:

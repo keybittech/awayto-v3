@@ -176,7 +176,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 				errStr := results[1].Interface().(error).Error()
 
-				loggedErr := errors.New(fmt.Sprintf("RequestId: %s Error: %s Params:%s", requestId, errStr, reqParams))
+				loggedErr := errors.New(fmt.Sprintf("\n  RequestId: %s\n  Error: %s\n  Params:%s\n", requestId, errStr, reqParams))
 
 				util.ErrorLog.Println(loggedErr)
 

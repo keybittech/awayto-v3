@@ -4,6 +4,7 @@ import (
 	a "av3api/pkg/api"
 	c "av3api/pkg/clients"
 	h "av3api/pkg/handlers"
+	"flag"
 	"fmt"
 	"net/http"
 	"os"
@@ -12,7 +13,7 @@ import (
 
 func main() {
 
-	ParseFlags()
+	flag.Parse()
 
 	api := &a.API{
 		Server: &http.Server{

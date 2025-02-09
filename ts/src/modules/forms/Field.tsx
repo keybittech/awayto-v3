@@ -18,7 +18,7 @@ declare global {
   interface IComponent extends FieldProps { }
 }
 
-function Field({ settingsBtn, defaultDisplay, field, editable = false }: IComponent): React.JSX.Element {
+function Field({ settingsBtn, defaultDisplay, field, editable = false, ...props }: IComponent): React.JSX.Element {
   if (!field) return <></>;
 
   const FieldElement: (props: TextFieldProps) => JSX.Element = useMemo(() => {
@@ -63,6 +63,7 @@ function Field({ settingsBtn, defaultDisplay, field, editable = false }: ICompon
         shrink: true
       }
     }}
+    {...props}
   />;
 }
 

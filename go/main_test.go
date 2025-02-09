@@ -2,6 +2,7 @@ package main
 
 import (
 	"av3api/pkg/types"
+	"flag"
 	"fmt"
 	"log"
 	"os"
@@ -19,9 +20,15 @@ func Asset(path string) string {
 	}
 	return filepath.Join(cwd, path)
 }
+
 func TestMain(t *testing.T) {
 
 	go main()
+
+	err := flag.Set("log", "debug")
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	pw, err := playwright.Run()
 	if err != nil {
@@ -40,7 +47,7 @@ func TestMain(t *testing.T) {
 		BaseURL:           playwright.String(originUrl),
 		IgnoreHttpsErrors: playwright.Bool(true),
 		ColorScheme:       playwright.ColorSchemeDark,
-		SlowMo:            playwright.Float(500),
+		SlowMo:            playwright.Float(100),
 		Headless:          playwright.Bool(false),
 		Devtools:          playwright.Bool(true),
 	})
@@ -137,25 +144,27 @@ func TestMain(t *testing.T) {
 		}
 	}
 
+	time.Sleep(2 * time.Second)
+
 	onSignInPage, err := page.GetByText("Sign in to your account").IsVisible()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if !onSignInPage {
-		page.GetByRole("link", playwright.PageGetByRoleOptions{Name: "Login"}).Click()
-	}
-
-	onHomePage, err := page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "show mobile main menu"}).IsVisible()
+	onHomePage, err := page.GetByRole("menu").IsVisible()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	if !onHomePage {
-		// Login
-		page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Email"}).Fill(personA.Email)
-		page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Password"}).Fill(pwA)
-		page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Sign In"}).Click()
+	if !onSignInPage && !onHomePage {
+		page.GetByRole("link", playwright.PageGetByRoleOptions{Name: "Login"}).Click()
+
+		if !onHomePage {
+			// Login
+			page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Email"}).Fill(personA.Email)
+			page.GetByRole("textbox", playwright.PageGetByRoleOptions{Name: "Password"}).Fill(pwA)
+			page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Sign In"}).Click()
+		}
 	}
 
 	// Create a form
