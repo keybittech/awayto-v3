@@ -68,7 +68,7 @@ func (h *Handlers) PatchForm(w http.ResponseWriter, req *http.Request, data *typ
 func (h *Handlers) GetForms(w http.ResponseWriter, req *http.Request, data *types.GetFormsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetFormsResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(&forms, `
+	err := tx.QueryRows(&forms, `
 		SELECT * FROM dbview_schema.enabled_forms
 	`)
 	if err != nil {
@@ -81,7 +81,7 @@ func (h *Handlers) GetForms(w http.ResponseWriter, req *http.Request, data *type
 func (h *Handlers) GetFormById(w http.ResponseWriter, req *http.Request, data *types.GetFormByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetFormByIdResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(&forms, `
+	err := tx.QueryRows(&forms, `
 		SELECT * FROM dbview_schema.enabled_forms
 		WHERE id = $1
 	`, data.GetId())

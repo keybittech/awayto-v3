@@ -52,7 +52,7 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 
 func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetRolesResponse, error) {
 	var roles []*types.IRole
-	err := h.Database.QueryRows(&roles, `
+	err := tx.QueryRows(&roles, `
 		SELECT eur.id, er.name, eur."createdOn" 
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"

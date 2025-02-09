@@ -5,6 +5,7 @@ import (
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 )
@@ -83,7 +84,7 @@ func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data
 func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFormsResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(&forms, `
+	err := tx.QueryRows(&forms, `
 		SELECT es.*
 		FROM dbview_schema.enabled_group_forms eus
 		LEFT JOIN dbview_schema.enabled_forms es ON es.id = eus."formId"
@@ -104,7 +105,7 @@ func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFormByIdResponse, error) {
 	var groupForms []*types.IGroupForm
 
-	err := h.Database.QueryRows(&groupForms, `
+	err := tx.QueryRows(&groupForms, `
 		SELECT egfe.*
 		FROM dbview_schema.enabled_group_forms_ext egfe
 		WHERE egfe."groupId" = $1 and egfe."formId" = $2
@@ -122,9 +123,9 @@ func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, da
 
 func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupFormResponse, error) {
 
-	idsSplit := strings.Split(data.GetIds(), ",")
+	println(fmt.Sprintf("%+v", data))
 
-	for _, formId := range idsSplit {
+	for _, formId := range strings.Split(data.GetIds(), ",") {
 		_, err := tx.Exec(`DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)
 		if err != nil {
 			return nil, util.ErrCheck(err)

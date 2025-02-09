@@ -102,7 +102,7 @@ func (h *Handlers) GetUserProfileDetailsBySub(w http.ResponseWriter, req *http.R
 
 	var userProfiles []*types.IUserProfile
 
-	err := h.Database.QueryRows(&userProfiles, `
+	err := tx.QueryRows(&userProfiles, `
     SELECT * FROM dbview_schema.enabled_users
     WHERE sub = $1 
 	`, data.GetSub())
@@ -122,7 +122,7 @@ func (h *Handlers) GetUserProfileDetailsBySub(w http.ResponseWriter, req *http.R
 func (h *Handlers) GetUserProfileDetailsById(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetUserProfileDetailsByIdResponse, error) {
 	var userProfiles []*types.IUserProfile
 
-	err := h.Database.QueryRows(&userProfiles, `
+	err := tx.QueryRows(&userProfiles, `
     SELECT * FROM dbview_schema.enabled_users
     WHERE id = $1 
 	`, data.GetId())

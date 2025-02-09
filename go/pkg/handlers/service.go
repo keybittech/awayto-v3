@@ -152,7 +152,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *types.GetServicesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServicesResponse, error) {
 	var services []*types.IService
 
-	err := h.Database.QueryRows(&services, `
+	err := tx.QueryRows(&services, `
 		SELECT * FROM dbtable_schema.services
 		WHERE created_sub = $1
 	`, session.UserSub)
@@ -167,7 +167,7 @@ func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *t
 func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data *types.GetServiceByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceByIdResponse, error) {
 	var services []*types.IService
 
-	err := h.Database.QueryRows(&services, `
+	err := tx.QueryRows(&services, `
 		SELECT * FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
 	`, data.GetId())

@@ -12,7 +12,7 @@ import (
 func (h *Handlers) PostServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostServiceAddonRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostServiceAddonResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
-	err := h.Database.QueryRows(&serviceAddons, `
+	err := tx.QueryRows(&serviceAddons, `
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.service_addons (name, created_sub)
 			SELECT * FROM input_rows
@@ -57,7 +57,7 @@ func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceAddonsResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
-	err := h.Database.QueryRows(&serviceAddons, `
+	err := tx.QueryRows(&serviceAddons, `
 		SELECT * FROM dbview_schema.enabled_service_addons
 	`)
 	if err != nil {
@@ -70,7 +70,7 @@ func (h *Handlers) GetServiceAddons(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetServiceAddonById(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceAddonByIdResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
-	err := h.Database.QueryRows(&serviceAddons, `
+	err := tx.QueryRows(&serviceAddons, `
 		SELECT * FROM dbview_schema.enabled_service_addons
 		WHERE id = $1
 	`, data.GetId())

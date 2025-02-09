@@ -12,21 +12,21 @@ func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *ty
 	var timelines []*types.ILookup
 	var timeUnits []*types.ITimeUnit
 
-	err := h.Database.QueryRows(&budgets, `
+	err := tx.QueryRows(&budgets, `
 		SELECT id, name FROM dbtable_schema.budgets
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.QueryRows(&timelines, `
+	err = tx.QueryRows(&timelines, `
 		SELECT id, name FROM dbtable_schema.timelines
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.QueryRows(&timeUnits, `
+	err = tx.QueryRows(&timeUnits, `
 		SELECT id, name FROM dbtable_schema.time_units
 	`)
 	if err != nil {

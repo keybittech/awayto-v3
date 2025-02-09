@@ -46,7 +46,7 @@ func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, 
 
 func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupSchedulesResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
-	err := h.Database.QueryRows(&groupSchedules, `
+	err := tx.QueryRows(&groupSchedules, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
 		FROM dbview_schema.enabled_group_schedules egs
 		LEFT JOIN dbview_schema.enabled_schedules es ON es.id = egs."scheduleId"
@@ -63,7 +63,7 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
 
-	err := h.Database.QueryRows(&groupSchedules, `
+	err := tx.QueryRows(&groupSchedules, `
 		SELECT TO_JSONB(ese) as schedule, ese.name, true as master, ese.id as "scheduleId"
 		FROM dbview_schema.enabled_schedules_ext ese
 		JOIN dbtable_schema.schedules s ON s.id = ese.id
@@ -91,7 +91,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	}
 
 	var groupScheduleDateSlots []*types.IGroupScheduleDateSlots
-	err = h.Database.QueryRows(&groupScheduleDateSlots, `
+	err = tx.QueryRows(&groupScheduleDateSlots, `
 		SELECT * FROM dbfunc_schema.get_group_schedules($1, $2, $3)
 	`, data.GetDate(), data.GetGroupScheduleId(), tzString)
 	if err != nil {

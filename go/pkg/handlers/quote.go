@@ -108,7 +108,7 @@ func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *ty
 
 func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *types.GetQuotesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetQuotesResponse, error) {
 	var quotes []*types.IQuote
-	err := h.Database.QueryRows(&quotes, `
+	err := tx.QueryRows(&quotes, `
 		SELECT q.*
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q.schedule_bracket_slot_id
@@ -124,7 +124,7 @@ func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *typ
 func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *types.GetQuoteByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetQuoteByIdResponse, error) {
 	var quotes []*types.IQuote
 
-	err := h.Database.QueryRows(&quotes, `
+	err := tx.QueryRows(&quotes, `
 		SELECT * FROM dbview_schema.enabled_quotes_ext
 		WHERE id = $1
 	`, data.GetId())

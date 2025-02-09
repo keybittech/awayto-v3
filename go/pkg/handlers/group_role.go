@@ -226,7 +226,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 
 func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data *types.GetGroupRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupRolesResponse, error) {
 	var roles []*types.IGroupRole
-	err := h.Database.QueryRows(&roles, `
+	err := tx.QueryRows(&roles, `
 		SELECT 
 			TO_JSONB(er) as role,
 			egr.id,

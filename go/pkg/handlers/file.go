@@ -140,7 +140,7 @@ func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *typ
 
 func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *types.GetFilesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetFilesResponse, error) {
 	var files []*types.IFile
-	err := h.Database.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files")
+	err := tx.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files")
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -149,7 +149,7 @@ func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *type
 
 func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *types.GetFileByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetFileByIdResponse, error) {
 	var files []*types.IFile
-	err := h.Database.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files WHERE id = $1", data.GetId())
+	err := tx.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files WHERE id = $1", data.GetId())
 	if err != nil || len(files) == 0 {
 		return nil, util.ErrCheck(err)
 	}

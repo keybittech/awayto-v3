@@ -12,7 +12,7 @@ import (
 func (h *Handlers) PostContact(w http.ResponseWriter, req *http.Request, data *types.PostContactRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostContactResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(&contacts, `
+	err := tx.QueryRows(&contacts, `
 		INSERT INTO dbtable_schema.contacts (name, email, phone, created_sub)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, email, phone
@@ -45,7 +45,7 @@ func (h *Handlers) PatchContact(w http.ResponseWriter, req *http.Request, data *
 func (h *Handlers) GetContacts(w http.ResponseWriter, req *http.Request, data *types.GetContactsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetContactsResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(&contacts, `
+	err := tx.QueryRows(&contacts, `
 		SELECT * FROM dbview_schema.enabled_contacts
 	`)
 
@@ -59,7 +59,7 @@ func (h *Handlers) GetContacts(w http.ResponseWriter, req *http.Request, data *t
 func (h *Handlers) GetContactById(w http.ResponseWriter, req *http.Request, data *types.GetContactByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetContactByIdResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(&contacts, `
+	err := tx.QueryRows(&contacts, `
 		SELECT * FROM dbview_schema.enabled_contacts
 		WHERE id = $1
 	`, data.GetId())

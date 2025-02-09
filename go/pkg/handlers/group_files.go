@@ -44,7 +44,7 @@ func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data
 func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data *types.GetGroupFilesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFilesResponse, error) {
 	var groupFiles []*types.IGroupFile
 
-	err := h.Database.QueryRows(&groupFiles, `
+	err := tx.QueryRows(&groupFiles, `
 		SELECT * FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1
 	`, session.GroupId)
@@ -58,7 +58,7 @@ func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFileByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFileByIdResponse, error) {
 	var groupFiles []*types.IGroupFile
 
-	err := h.Database.QueryRows(&groupFiles, `
+	err := tx.QueryRows(&groupFiles, `
 		SELECT * FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1 AND id = $2
 	`, session.GroupId, data.GetId())

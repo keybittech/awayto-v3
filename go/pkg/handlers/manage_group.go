@@ -60,7 +60,7 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	existingRoleIDs := make(map[string]struct{})
 	dbRoles := []*types.IGroupRole{}
 
-	err = h.Database.QueryRows(&dbRoles, `
+	err = tx.QueryRows(&dbRoles, `
 		SELECT id, role_id as "roleId" FROM uuid_roles WHERE parent_uuid = $1
 	`, group.GetId())
 	if err != nil {
@@ -101,7 +101,7 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, data *types.GetManageGroupsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetManageGroupsResponse, error) {
 	groups := []*types.IGroup{}
 
-	err := h.Database.QueryRows(&groups, `
+	err := tx.QueryRows(&groups, `
 		SELECT * FROM dbview_schema.enabled_groups_ext
 	`)
 	if err != nil {

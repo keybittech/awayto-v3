@@ -12,7 +12,7 @@ import (
 func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, data *types.PostManageRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostManageRolesResponse, error) {
 	var roles []*types.IRole
 
-	err := h.Database.QueryRows(&roles, `
+	err := tx.QueryRows(&roles, `
 		INSERT INTO dbtable_schema.roles (name, created_sub)
 		VALUES ($1, $2::uuid)
 		RETURNING id, name
@@ -31,7 +31,7 @@ func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, data *types.PatchManageRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchManageRolesResponse, error) {
 	var roles []*types.IRole
 
-	err := h.Database.QueryRows(&roles, `
+	err := tx.QueryRows(&roles, `
 		UPDATE dbtable_schema.roles
 		SET name = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
@@ -51,7 +51,7 @@ func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data *types.GetManageRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetManageRolesResponse, error) {
 	var roles []*types.IRole
 
-	err := h.Database.QueryRows(&roles, `
+	err := tx.QueryRows(&roles, `
 		SELECT * FROM dbview_schema.enabled_roles
 	`)
 	if err != nil {

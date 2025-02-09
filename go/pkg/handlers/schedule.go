@@ -127,7 +127,7 @@ func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetSchedules(w http.ResponseWriter, req *http.Request, data *types.GetSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetSchedulesResponse, error) {
 	var schedules []*types.ISchedule
 
-	err := h.Database.QueryRows(&schedules, `
+	err := tx.QueryRows(&schedules, `
 		SELECT es.* 
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbtable_schema.schedules s ON s.id = es.id
@@ -144,7 +144,7 @@ func (h *Handlers) GetSchedules(w http.ResponseWriter, req *http.Request, data *
 func (h *Handlers) GetScheduleById(w http.ResponseWriter, req *http.Request, data *types.GetScheduleByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetScheduleByIdResponse, error) {
 	var schedules []*types.ISchedule
 
-	err := h.Database.QueryRows(&schedules, `
+	err := tx.QueryRows(&schedules, `
 		SELECT * FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -213,7 +213,7 @@ func (h *Handlers) DisableSchedule(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, scheduleId string, tx clients.IDatabaseTx) error {
 	var parts []*types.ScheduledParts
 
-	err := h.Database.QueryRows(&parts, `
+	err := tx.QueryRows(&parts, `
     SELECT * FROM dbfunc_schema.get_scheduled_parts($1);
   `, scheduleId)
 	if err != nil {

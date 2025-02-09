@@ -27,7 +27,7 @@ func (h *Handlers) PostGroupServiceAddon(w http.ResponseWriter, req *http.Reques
 func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetGroupServiceAddonsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupServiceAddonsResponse, error) {
 	var groupServiceAddons []*types.IGroupServiceAddon
 
-	err := h.Database.QueryRows(&groupServiceAddons, `
+	err := tx.QueryRows(&groupServiceAddons, `
 		SELECT eusa.id, eusa."parentUuid" as "groupId", TO_JSONB(esa.*) as "serviceAddon" 
 		FROM dbview_schema.enabled_uuid_service_addons eusa
 		LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = eusa."serviceAddonId"

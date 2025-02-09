@@ -31,7 +31,7 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 
 func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchBookingResponse, error) {
 	var updatedBookings []*types.IBooking
-	err := h.Database.QueryRows(&updatedBookings, `
+	err := tx.QueryRows(&updatedBookings, `
 		UPDATE dbtable_schema.bookings
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
@@ -47,7 +47,7 @@ func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *
 
 func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *types.GetBookingsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetBookingsResponse, error) {
 	bookings := []*types.IBooking{}
-	err := h.Database.QueryRows(&bookings, `
+	err := tx.QueryRows(&bookings, `
 		SELECT eb.*
 		FROM dbview_schema.enabled_bookings eb
 		JOIN dbtable_schema.bookings b ON b.id = eb.id
@@ -59,7 +59,7 @@ func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *t
 
 func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data *types.GetBookingByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetBookingByIdResponse, error) {
 	var bookings []*types.IBooking
-	err := h.Database.QueryRows(&bookings, `
+	err := tx.QueryRows(&bookings, `
 		SELECT * FROM dbview_schema.enabled_bookings
 		WHERE id = $1
 	`, data.GetId())
@@ -72,7 +72,7 @@ func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data
 
 func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, data *types.GetBookingFilesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetBookingFilesResponse, error) {
 	files := []*types.IFile{}
-	err := h.Database.QueryRows(&files, `
+	err := tx.QueryRows(&files, `
 		SELECT f.name, f.uuid, f."mimeType"
 		FROM dbview_schema.enabled_files f
 		JOIN dbtable_schema.quote_files qf ON qf.file_id = f.id

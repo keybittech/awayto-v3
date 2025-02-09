@@ -46,7 +46,7 @@ func (h *Handlers) PatchPayment(w http.ResponseWriter, req *http.Request, data *
 
 func (h *Handlers) GetPayments(w http.ResponseWriter, req *http.Request, data *types.GetPaymentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetPaymentsResponse, error) {
 	var payments []*types.IPayment
-	err := h.Database.QueryRows(&payments, `SELECT * FROM dbview_schema.enabled_payments`)
+	err := tx.QueryRows(&payments, `SELECT * FROM dbview_schema.enabled_payments`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -57,7 +57,7 @@ func (h *Handlers) GetPayments(w http.ResponseWriter, req *http.Request, data *t
 func (h *Handlers) GetPaymentById(w http.ResponseWriter, req *http.Request, data *types.GetPaymentByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetPaymentByIdResponse, error) {
 	var payments []*types.IPayment
 
-	err := h.Database.QueryRows(&payments, `
+	err := tx.QueryRows(&payments, `
 		SELECT * FROM dbview_schema.enabled_payments
 		WHERE id = $1
 	`, data.GetId())

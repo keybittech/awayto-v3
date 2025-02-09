@@ -25,7 +25,7 @@ func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFeedbackResponse, error) {
 	var feedback []*types.IFeedback
 
-	err := h.Database.QueryRows(&feedback, `
+	err := tx.QueryRows(&feedback, `
 		SELECT f.id, f.message as "feedbackMessage", f.created_on as "createdOn"
 		FROM dbtable_schema.group_feedback f
 		JOIN dbtable_schema.users u ON u.sub = f.created_sub

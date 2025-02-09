@@ -31,7 +31,7 @@ func (h *Handlers) PostServiceTier(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) PatchServiceTier(w http.ResponseWriter, req *http.Request, data *types.PatchServiceTierRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchServiceTierResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(&serviceTiers, `
+	err := tx.QueryRows(&serviceTiers, `
 		UPDATE dbtable_schema.service_tiers
 		SET name = $2, multiplier = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
@@ -46,7 +46,7 @@ func (h *Handlers) PatchServiceTier(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetServiceTiers(w http.ResponseWriter, req *http.Request, data *types.GetServiceTiersRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceTiersResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(&serviceTiers, `
+	err := tx.QueryRows(&serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers
 	`)
 	if err != nil {
@@ -59,7 +59,7 @@ func (h *Handlers) GetServiceTiers(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) GetServiceTierById(w http.ResponseWriter, req *http.Request, data *types.GetServiceTierByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceTierByIdResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(&serviceTiers, `
+	err := tx.QueryRows(&serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers_ext
 		WHERE id = $1
 	`, data.GetId())

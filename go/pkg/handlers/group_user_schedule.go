@@ -33,7 +33,7 @@ func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Reques
 func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserSchedulesResponse, error) {
 	var groupUserSchedules []*types.IGroupUserSchedule
 
-	err := h.Database.QueryRows(&groupUserSchedules, `
+	err := tx.QueryRows(&groupUserSchedules, `
 		SELECT egus.*
 		FROM dbview_schema.enabled_group_user_schedules_ext egus
 		WHERE egus."groupScheduleId" = $1
@@ -77,7 +77,7 @@ func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Re
 func (h *Handlers) GetGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubReplacementRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserScheduleStubReplacementResponse, error) {
 	var stubs []*types.IGroupUserScheduleStub
 
-	err := h.Database.QueryRows(&stubs, `
+	err := tx.QueryRows(&stubs, `
 		SELECT replacement FROM dbfunc_schema.get_peer_schedule_replacement($1::UUID[], $2::DATE, $3::INTERVAL, $4::TEXT)
 	`, data.GetUserScheduleId(), data.GetSlotDate(), data.GetStartTime(), data.GetTierName())
 	if err != nil {
@@ -106,7 +106,7 @@ func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(w http.ResponseWriter
 	for _, userScheduleId := range idsSplit {
 		var parts []*types.ScheduledParts
 
-		err := h.Database.QueryRows(&parts, `SELECT * FROM dbfunc_schema.get_scheduled_parts($1);`, userScheduleId)
+		err := tx.QueryRows(&parts, `SELECT * FROM dbfunc_schema.get_scheduled_parts($1);`, userScheduleId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

@@ -27,7 +27,7 @@ func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, data *types.GetGroupServicesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupServicesResponse, error) {
 	var groupServices []*types.IGroupService
 
-	err := h.Database.QueryRows(&groupServices, `
+	err := tx.QueryRows(&groupServices, `
 		SELECT TO_JSONB(es) as service, egs.id, egs."groupId", egs."serviceId"
 		FROM dbview_schema.enabled_group_services egs
 		LEFT JOIN dbview_schema.enabled_services es ON es.id = egs."serviceId"
