@@ -47,6 +47,7 @@ TS_BUILD_DIR=ts/build
 HOST_LOCAL_DIR=deployed/${PROJECT_PREFIX}
 GO_GEN_DIR=go/pkg/types
 GO_MOCKS_GEN_DIR=go/pkg/mocks
+export PLAYWRIGHT_CACHE_DIR=working/playwright
 
 # host locations
 
@@ -154,9 +155,8 @@ go_protoc: $(GO_GEN_DIR)
 		--go_out=$(GO_SRC) \
 		$(PROTO_FILES)
 
-go: $(BINARY_OUT) go_protoc
+go: go_protoc
 	$(call set_local_unix_sock_dir)
-	echo ${PWD}/$(BINARY_OUT)
 	go build -C $(GO_SRC) -o ${PWD}/$(BINARY_OUT) .
 
 go_dev: go cert
@@ -164,7 +164,7 @@ go_dev: go cert
 
 go_test: docker_up go_test_main go_test_pkg
 
-go_test_main: go
+go_test_main: $(PLAYWRIGHT_CACHE_DIR) go
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
@@ -177,11 +177,14 @@ go_coverage: go_protoc go_genmocks
 
 test_prep: ts_test go_genmocks
 
+test_clean:
+	rm -rf $(PLAYWRIGHT_CACHE_DIR)
+
 test_gen:
 	npx playwright codegen --ignore-https-errors https://localhost:${GO_HTTPS_PORT}
 
 clean:
-	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR)
+	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR) $(PLAYWRIGHT_CACHE_DIR)
 	rm -f $(BINARY_OUT) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD)
 
 ## Tests
@@ -411,7 +414,7 @@ host_deploy: host_predeploy build host_deploy_env host_deploy_sync host_deploy_d
 host_metric_cpu:
 	hcloud server metrics --type cpu $(APP_HOST)
 
-$(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR):
+$(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR) $(PLAYWRIGHT_CACHE_DIR):
 	mkdir -p $@
 
 # sed -i -e "/^\(#\|\)UNIX_SOCK_DIR=/s&^.*$$&UNIX_SOCK_DIR=local_tmp&;" $(ENVFILE)
