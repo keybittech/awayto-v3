@@ -6,8 +6,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net/http"
 	"os"
+	"reflect"
 	"runtime"
+	"slices"
 	"strings"
 	"time"
 
@@ -36,7 +39,7 @@ func (e *ErrLog) Println(v ...any) {
 	e.Logger.Println(v...)
 
 	if *LoggingMode == "debug" {
-		fmt.Println(fmt.Sprintf("DEBUG: %s", v))
+		fmt.Println(fmt.Sprintf("DEBUG: %s", v...))
 	}
 }
 
@@ -45,7 +48,7 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-	ErrorLog = &ErrLog{log.New(file, "ERROR: ", log.Ldate|log.Ltime)}
+	ErrorLog = &ErrLog{log.New(file, "", log.Ldate|log.Ltime)}
 	TitleCase = cases.Title(language.Und)
 }
 
@@ -57,33 +60,50 @@ func SnipUserError(err string) string {
 	return strings.TrimSpace(strings.Split(err, ErrorForUser)[1])
 }
 
+func RequestError(w http.ResponseWriter, requestId, givenErr string, ignoreFields []string, pbVal reflect.Value) error {
+	defaultErr := fmt.Sprintf("%s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
+
+	var reqParams string
+	if pbVal.IsValid() {
+		pbValType := pbVal.Type()
+		for j := 0; j < pbVal.NumField(); j++ {
+			field := pbVal.Field(j)
+
+			fName := pbValType.Field(j).Name
+
+			if !slices.Contains(ignoreFields, fName) {
+				reqParams += fmt.Sprintf("%s=%v", fName, field.Interface()) + " "
+			}
+		}
+	}
+
+	reqErr := errors.New(fmt.Sprintf("%s %s", requestId, givenErr))
+
+	if reqParams != "" {
+		reqErr = errors.New(fmt.Sprintf("%s %s", reqErr, reqParams))
+	}
+
+	ErrorLog.Println(reqErr)
+
+	errRes := defaultErr
+
+	if strings.Contains(reqErr.Error(), ErrorForUser) {
+		errRes = fmt.Sprintf("Request Id: %s\n%s", requestId, SnipUserError(reqErr.Error()))
+	}
+
+	http.Error(w, errRes, http.StatusInternalServerError)
+
+	return reqErr
+}
+
 func ErrCheck(err error) error {
 	if err == nil {
 		return nil
 	}
 
-	callers := ""
+	_, file, line, _ := runtime.Caller(1)
 
-	for i := 0; ; i++ {
-		pc, file, line, ok := runtime.Caller(i + 1)
-		if !ok {
-			break
-		}
-
-		function := runtime.FuncForPC(pc)
-		callers += fmt.Sprintf("%s:%d %s \n  ", file, line, function.Name())
-		if strings.Contains(function.Name(), "BuildProtoService") {
-			break
-		}
-	}
-
-	errStr := err.Error()
-
-	if strings.Contains(errStr, "SysErrMsg:") {
-		errStr = "SPAWNED FROM: " + errStr
-	}
-
-	return errors.New(fmt.Sprintf("%s\n%s", errStr, callers))
+	return errors.New(fmt.Sprintf("%s %s:%d", err.Error(), file, line))
 }
 
 func CastSlice[T any](items []interface{}) ([]T, bool) {

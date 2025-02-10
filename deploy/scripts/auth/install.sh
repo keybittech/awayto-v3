@@ -1,14 +1,11 @@
 #!/bin/sh
 
 while true; do
-
   if [ $(curl -o /dev/null -s -w "%{http_code}" "$KC_INTERNAL") = "303" ]; then
-    echo "Found <html> in the response."
+    echo "Keycloak available."
     break
   fi
-  
-  sleep 5 # sleep for 5 seconds before the next attempt
-
+  sleep 2 # sleep for 5 seconds before the next attempt
 done
 
 AUTH_CID=$($SUDO docker ps -aqf "name=auth")

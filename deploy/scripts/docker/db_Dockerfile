@@ -3,6 +3,13 @@
 FROM postgres:17.0-alpine
 EXPOSE 5432
 
+ENV USER_SUB="dbfunc_schema.uuid_or_nil(current_setting('app_session.user_sub'))"
+ENV GROUP_ID="dbfunc_schema.uuid_or_null(current_setting('app_session.group_id'))"
+ENV IS_WORKER="'worker' = current_setting('app_session.user_sub')"
+ENV IS_USER="sub = dbfunc_schema.uuid_or_null(current_setting('app_session.user_sub'))"
+ENV IS_CREATOR="created_sub = dbfunc_schema.uuid_or_null(current_setting('app_session.user_sub'))"
+ENV HAS_GROUP="group_id = dbfunc_schema.uuid_or_null(current_setting('app_session.group_id'))"
+
 COPY ./deploy/scripts/db /docker-entrypoint-initdb.d
 RUN chmod -R 755 /docker-entrypoint-initdb.d/
 

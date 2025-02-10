@@ -83,12 +83,12 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 
 	_, err := a.Handlers.Keycloak.GetUserInfoByToken(token[0])
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	userToken, err := clients.ParseJWT(token[0])
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	buildSession := true
@@ -97,13 +97,13 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 
 	session, err := a.Handlers.Redis.ReqSession(req)
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	if gidSelect == "" {
 		groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(ctx, session.GroupId)
 		if err != nil {
-			return nil, err
+			return nil, util.ErrCheck(err)
 		}
 
 		if session.GroupSessionVersion == groupVersion && session.GroupId != "" {
@@ -153,18 +153,40 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 			session.AvailableUserGroupRoles = append(session.AvailableUserGroupRoles, mapping.Name)
 		}
 
-		err = a.Handlers.Database.Client().QueryRow(`
+		tx, err := a.Handlers.Database.Client().Begin()
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		defer tx.Rollback()
+
+		err = tx.SetDbVar("user_sub", "worker")
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		err = tx.SetDbVar("group_id", "")
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		err = tx.QueryRow(`
 			SELECT id, ai, sub
 			FROM dbtable_schema.groups
 			WHERE external_id = $1
 		`, session.GroupExternalId).Scan(&session.GroupId, &session.GroupAi, &session.GroupSub)
 		if err != nil {
-			return nil, err
+			return nil, util.ErrCheck(err)
+		}
+
+		err = tx.Commit()
+		if err != nil {
+			return nil, util.ErrCheck(err)
 		}
 
 		groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(ctx, session.GroupId)
 		if err != nil {
-			return nil, err
+			return nil, util.ErrCheck(err)
 		} else {
 			session.GroupSessionVersion = groupVersion
 		}

@@ -53,16 +53,79 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 		protoHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 
+			var deferredError error
+			var pbVal reflect.Value
+
 			exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
+
+			requestId := uuid.NewString()
+
+			// Authorize the request
 
 			session, err := a.GetAuthorizedSession(req)
 			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
-				http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+				util.RequestError(w, requestId, util.ErrCheck(err).Error(), ignoreFields, pbVal)
 				return
 			}
 
-			requestId := uuid.NewString()
+			// Setup handler transaction
+
+			tx, err := a.Handlers.Database.Client().Begin()
+			if err != nil {
+				util.RequestError(w, requestId, util.ErrCheck(err).Error(), ignoreFields, pbVal)
+				return
+			}
+
+			// Setup handler deferrals
+
+			defer func() {
+				err = tx.SetDbVar("user_sub", "")
+				if err != nil {
+					deferredError = util.ErrCheck(err)
+				}
+
+				err = tx.SetDbVar("group_id", "")
+				if err != nil {
+					deferredError = util.ErrCheck(err)
+				}
+
+				if p := recover(); p != nil {
+					tx.Rollback()
+					panic(p)
+				} else if deferredError != nil {
+					tx.Rollback()
+				} else {
+					err = tx.Commit()
+					if err != nil {
+						deferredError = util.ErrCheck(err)
+					}
+				}
+
+				if deferredError != nil {
+					util.RequestError(w, requestId, deferredError.Error(), ignoreFields, pbVal)
+				}
+			}()
+
+			// Setup DB session values
+
+			if session.UserSub == "" {
+				deferredError = util.ErrCheck(errors.New("no user sub for request"))
+				return
+			}
+
+			err = tx.SetDbVar("user_sub", session.UserSub)
+			if err != nil {
+				deferredError = util.ErrCheck(err)
+				return
+			}
+
+			err = tx.SetDbVar("group_id", session.GroupId)
+			if err != nil {
+				deferredError = util.ErrCheck(err)
+				return
+			}
+
+			// Transform the request body to a protobuf struct
 
 			pb := serviceType.New().Interface()
 
@@ -90,8 +153,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 			} else {
 				body, err := io.ReadAll(req.Body)
 				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(err))
-					http.Error(w, "could not read proto handler body", http.StatusUnprocessableEntity)
+					deferredError = util.ErrCheck(err)
 					return
 				}
 				defer req.Body.Close()
@@ -99,14 +161,15 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				if len(body) > 0 {
 					err = json.Unmarshal(body, pb)
 					if err != nil {
-						util.ErrorLog.Println(util.ErrCheck(err))
-						http.Error(w, "could not unmarshal proto handler body", http.StatusUnprocessableEntity)
+						deferredError = util.ErrCheck(err)
 						return
 					}
 				}
 			}
 
-			pbVal := reflect.ValueOf(pb).Elem()
+			pbVal = reflect.ValueOf(pb).Elem()
+
+			// Parse query and path parameters
 
 			util.ParseProtoQueryParams(pbVal, req.URL.Query())
 			util.ParseProtoPathParams(
@@ -115,52 +178,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
 			)
 
-			var reqErr error
-
-			tx, err := a.Handlers.Database.Client().Begin()
-			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
-				return
-			}
-
-			// SET doesn't support parameters, and UserSub is sourced from the auth token for safety
-			_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", session.UserSub))
-			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
-				return
-			}
-			if session.GroupId != "" {
-				_, err = tx.Exec(fmt.Sprintf("SET SESSION app_session.group_id = '%s'", session.GroupId))
-				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(err))
-					return
-				}
-			}
-
-			defer func() {
-				_, err = tx.Exec(`SET SESSION app_session.user_sub = ''`)
-				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(reqErr))
-				}
-				if session.GroupId != "" {
-					_, err = tx.Exec(`SET SESSION app_session.group_id = ''`)
-					if err != nil {
-						util.ErrorLog.Println(util.ErrCheck(reqErr))
-					}
-				}
-
-				if p := recover(); p != nil {
-					tx.Rollback()
-					panic(p)
-				} else if reqErr != nil {
-					tx.Rollback()
-				} else {
-					reqErr = tx.Commit()
-					if reqErr != nil {
-						util.ErrorLog.Println(util.ErrCheck(reqErr))
-					}
-				}
-			}()
+			// Perform the handler function
 
 			results := handlerFunc.Call([]reflect.Value{
 				reflect.ValueOf(w),
@@ -170,51 +188,31 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				reflect.ValueOf(tx),
 			})
 
-			if len(results) != 2 || !results[1].IsNil() {
-				if len(results) != 2 {
-					util.ErrorLog.Println(util.ErrCheck(errors.New(fmt.Sprintf("bad api result for %s", pbVal.Type().Name()))))
-				}
+			// Handle errors
 
-				var reqParams string
-				pbValType := pbVal.Type()
-				for i = 0; i < pbVal.NumField(); i++ {
-					field := pbVal.Field(i)
-
-					fName := pbValType.Field(i).Name
-
-					if !slices.Contains(ignoreFields, fName) {
-						reqParams += " " + fmt.Sprintf("%s=%v", fName, field.Interface())
-					}
-				}
-
-				errStr := results[1].Interface().(error).Error()
-
-				loggedErr := errors.New(fmt.Sprintf("\n  RequestId: %s\n  Error: %s\n  Params:%s\n", requestId, errStr, reqParams))
-
-				util.ErrorLog.Println(loggedErr)
-
-				var errRes string
-
-				if strings.Contains(errStr, util.ErrorForUser) {
-					errRes = fmt.Sprintf("Request Id: %s\n%s", requestId, util.SnipUserError(errStr))
-				} else {
-					errRes = fmt.Sprintf("Request Id: %s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
-				}
-
-				reqErr = loggedErr
-				http.Error(w, errRes, http.StatusInternalServerError)
+			if len(results) != 2 {
+				deferredError = util.ErrCheck(errors.New("badly formed handler"))
 				return
 			}
 
+			if err, ok := results[1].Interface().(error); ok {
+				deferredError = err
+				return
+			}
+
+			// Transform the response
+
 			if req.Method == http.MethodGet && strings.Contains(req.URL.Path, "files/content") {
 				w.Header().Add("Content-Type", "application/octet-stream")
-				w.Write(*results[0].Interface().(*[]byte))
+				_, err := w.Write(*results[0].Interface().(*[]byte))
+				if err != nil {
+					deferredError = util.ErrCheck(err)
+					return
+				}
 			} else {
 				pbJsonBytes, err := protojson.Marshal(results[0].Interface().(protoreflect.ProtoMessage))
 				if err != nil {
-					reqErr = err
-					util.ErrorLog.Println(util.ErrCheck(err))
-					http.Error(w, "Response parse failure", http.StatusInternalServerError)
+					deferredError = util.ErrCheck(err)
 					return
 				}
 

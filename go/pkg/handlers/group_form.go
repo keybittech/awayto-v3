@@ -5,7 +5,6 @@ import (
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"errors"
-	"fmt"
 	"net/http"
 	"strings"
 )
@@ -25,7 +24,17 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
 	}
 
+	err = tx.SetDbVar("user_sub", session.GroupSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	formResp, err := h.PostForm(w, req, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()}, &clients.UserSession{UserSub: session.GroupSub}, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -122,8 +131,6 @@ func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, da
 }
 
 func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupFormResponse, error) {
-
-	println(fmt.Sprintf("%+v", data))
 
 	for _, formId := range strings.Split(data.GetIds(), ",") {
 		_, err := tx.Exec(`DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)

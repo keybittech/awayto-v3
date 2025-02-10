@@ -68,8 +68,6 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 			Prompt: content,
 		})
 
-		fmt.Println(fmt.Sprintf("str res %+v", resp.Choices))
-
 		if err != nil {
 			util.ErrCheck(err)
 			return ""
@@ -95,8 +93,6 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 			Model:    ai.Model,
 			Messages: messages,
 		})
-
-		fmt.Println(fmt.Sprintf("messages res %+v", resp.Choices))
 
 		if err != nil {
 			util.ErrCheck(err)

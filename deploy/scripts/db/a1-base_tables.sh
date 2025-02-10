@@ -2,8 +2,6 @@
 
 psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
 
-  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
-
   CREATE SCHEMA dbfunc_schema;
   CREATE SCHEMA dbtable_schema;
   CREATE SCHEMA dbview_schema;
@@ -17,10 +15,9 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   ALTER DEFAULT PRIVILEGES IN SCHEMA dbview_schema GRANT ALL ON TABLES TO $PG_WORKER;
 
   -- from https://gist.github.com/kjmph/5bd772b2c2df145aa645b837da7eca74
-  create or replace function dbfunc_schema.uuid_generate_v7()
-  returns uuid
-  as \$\$
-  begin
+  CREATE OR REPLACE FUNCTION dbfunc_schema.uuid_generate_v7() RETURNS uuid
+  AS \$\$
+  BEGIN
     -- use random v4 uuid as starting point (which has the same variant we need)
     -- then overlay timestamp
     -- then set version 7 by flipping the 2 and 1 bit in the version 4 string
@@ -36,10 +33,19 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
         53, 1
       ),
       'hex')::uuid;
-  end
-  \$\$
-  language plpgsql
-  volatile;
+  END;
+  \$\$ LANGUAGE PLPGSQL
+  VOLATILE;
+
+  -- from https://stackoverflow.com/questions/46433459/postgres-select-where-the-where-is-uuid-or-string/46433640#46433640
+  CREATE OR REPLACE FUNCTION dbfunc_schema.uuid_or_null(str text) RETURNS uuid
+  AS \$\$
+  BEGIN
+    RETURN str::uuid;
+  EXCEPTION WHEN invalid_text_representation THEN
+    RETURN NULL;
+  END;
+  \$\$ LANGUAGE PLPGSQL;
 
   CREATE TABLE dbtable_schema.users (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -58,15 +64,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
-
   CREATE INDEX user_sub_index ON dbtable_schema.users (sub);
-
   ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT WITH CHECK (true);
-  CREATE POLICY table_select ON dbtable_schema.users FOR SELECT USING (sub = current_setting('app_session.user_sub')::uuid);
-  CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE USING (sub = current_setting('app_session.user_sub')::uuid);
-  -- worker can get admin details on server start
-  CREATE POLICY worker_select ON dbtable_schema.users FOR SELECT USING (uuid_nil() = current_setting('app_session.user_sub')::uuid);
+  CREATE POLICY table_select ON dbtable_schema.users FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR);
+  CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT TO $PG_WORKER WITH CHECK (true);
+  CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE TO $PG_WORKER USING ($IS_USER);
 
   CREATE TABLE dbtable_schema.roles (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -77,6 +79,9 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.roles ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.roles FOR SELECT TO $PG_WORKER USING (true);
+  CREATE POLICY table_insert ON dbtable_schema.roles FOR INSERT TO $PG_WORKER WITH CHECK (true);
 
   DO \$\$
   DECLARE admin_id uuid;
@@ -97,10 +102,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (role_id, user_id)
   );
-
   ALTER TABLE dbtable_schema.user_roles ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY table_insert ON dbtable_schema.user_roles FOR INSERT WITH CHECK (created_sub = current_setting('app_session.user_sub')::uuid);
-  CREATE POLICY table_select ON dbtable_schema.user_roles FOR SELECT USING (created_sub = current_setting('app_session.user_sub')::uuid);
+  CREATE POLICY table_select ON dbtable_schema.user_roles FOR SELECT TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_insert ON dbtable_schema.user_roles FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.user_roles FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.file_types (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -111,6 +116,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.file_types ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.file_types FOR SELECT TO $PG_WORKER USING (true);
 
   INSERT INTO
     dbtable_schema.file_types (name)
@@ -129,6 +136,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.files ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.files FOR SELECT TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_insert ON dbtable_schema.files FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.files FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.file_contents (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -142,11 +153,15 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.file_contents ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.file_contents FOR SELECT TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_insert ON dbtable_schema.file_contents FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.file_contents FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.groups (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     external_id TEXT NOT NULL UNIQUE,
-    admin_external_id TEXT NOT NULL UNIQUE,
+    admin_role_external_id TEXT NOT NULL UNIQUE,
     default_role_id uuid REFERENCES dbtable_schema.roles (id) ON DELETE CASCADE,
     display_name VARCHAR (100) NOT NULL UNIQUE,
     name VARCHAR (50) NOT NULL UNIQUE,
@@ -161,6 +176,13 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.groups ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.groups FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR OR id = $GROUP_ID);
+  CREATE POLICY table_insert ON dbtable_schema.groups FOR INSERT TO $PG_WORKER WITH CHECK (
+    NOT EXISTS(SELECT 1 FROM dbtable_schema.groups WHERE $IS_CREATOR)
+  );
+  CREATE POLICY table_update ON dbtable_schema.groups FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR id = $GROUP_ID);
+  CREATE POLICY table_delete ON dbtable_schema.groups FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR id = $GROUP_ID);
 
   CREATE TABLE dbtable_schema.group_roles (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -174,6 +196,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (role_id, group_id)
   );
+  ALTER TABLE dbtable_schema.group_roles ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_roles FOR SELECT TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_roles FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR OR $HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_roles FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_roles FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
 
   CREATE TABLE dbtable_schema.group_users (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -188,6 +215,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (user_id, group_id)
   );
+  ALTER TABLE dbtable_schema.group_users ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_users FOR SELECT TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_users FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR OR $HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_users FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
 
   CREATE TABLE dbtable_schema.group_files (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -200,6 +232,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (created_sub, file_id)
   );
+  ALTER TABLE dbtable_schema.group_files ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_files FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_files FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_files FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_files FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.uuid_notes (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

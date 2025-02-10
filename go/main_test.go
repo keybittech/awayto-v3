@@ -134,8 +134,8 @@ func TestMain(t *testing.T) {
 		page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "Click here to confirm."}).Click()
 
 		// Logout
-		page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "show mobile main menu"}).WaitFor()
-		page.GetByRole("button", playwright.PageGetByRoleOptions{Name: "show mobile main menu"}).Click()
+		page.GetByRole("menu").WaitFor()
+		page.GetByRole("menu").Click()
 		page.GetByText("Logout").Click()
 
 	} else {

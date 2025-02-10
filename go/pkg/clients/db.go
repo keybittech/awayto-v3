@@ -20,7 +20,6 @@ type Database struct {
 	DatabaseClient      IDatabaseClient
 	DatabaseAdminSub    string
 	DatabaseAdminRoleId string
-	DatabaseNilUuid     string
 }
 
 type ColTypes struct {
@@ -49,6 +48,10 @@ func InitDatabase() IDatabase {
 		util.ErrorLog.Println(util.ErrCheck(err))
 	}
 
+	dbc := &Database{
+		DatabaseClient: &DBWrapper{db},
+	}
+
 	colTypes = &ColTypes{
 		reflect.TypeOf(sql.NullString{}),
 		reflect.TypeOf(sql.NullInt32{}),
@@ -58,21 +61,16 @@ func InitDatabase() IDatabase {
 		reflect.TypeOf(ProtoMapSerializer{}),
 	}
 
-	var adminRoleId, adminSub, nilUuid string
+	var adminRoleId, adminSub string
 
-	err = db.QueryRow(`SELECT uuid_nil()`).Scan(&nilUuid)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	tx, err := db.Begin()
+	tx, err := dbc.Client().Begin()
 	if err != nil {
 		log.Fatal(err)
 	}
 
 	defer tx.Rollback()
 
-	_, err = tx.Exec(fmt.Sprintf("SET app_session.user_sub = '%s'", nilUuid))
+	err = tx.SetDbVar("user_sub", "worker")
 	if err != nil {
 		log.Fatal(fmt.Sprintf("can't set app sub %s", err))
 	}
@@ -87,24 +85,15 @@ func InitDatabase() IDatabase {
 		log.Fatal(fmt.Sprintf("can't get admin role %s", err))
 	}
 
-	_, err = tx.Exec(`SET app_session.user_sub = ''`)
-	if err != nil {
-		log.Fatal(fmt.Sprintf("can't unset app sub %s", err))
-	}
-
 	err = tx.Commit()
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	println(fmt.Sprintf("Database Initialized\nAdmin Sub: %s\nAdmin Role Id: %s", adminSub, adminRoleId))
+	dbc.DatabaseAdminSub = adminSub
+	dbc.DatabaseAdminRoleId = adminRoleId
 
-	dbc := &Database{
-		&DBWrapper{db},
-		adminSub,
-		adminRoleId,
-		nilUuid,
-	}
+	println(fmt.Sprintf("Database Initialized\nAdmin Sub: %s\nAdmin Role Id: %s", dbc.AdminSub(), dbc.AdminRoleId()))
 
 	return dbc
 }
@@ -119,10 +108,6 @@ func (db *Database) AdminSub() string {
 
 func (db *Database) AdminRoleId() string {
 	return db.DatabaseAdminRoleId
-}
-
-func (db *Database) NilUuid() string {
-	return db.DatabaseNilUuid
 }
 
 // DB Wrappers
@@ -175,8 +160,8 @@ func (tx *TxWrapper) QueryRow(query string, args ...interface{}) IRow {
 	return tx.Tx.QueryRow(query, args...)
 }
 
-func (tx *TxWrapper) SetUserSub(sub string) error {
-	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.user_sub = '%s'", sub))
+func (tx *TxWrapper) SetDbVar(prop, sub string) error {
+	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.%s = '%s'", prop, sub))
 	if err != nil {
 		return util.ErrCheck(err)
 	}

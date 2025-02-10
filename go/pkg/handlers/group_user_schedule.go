@@ -48,7 +48,7 @@ func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Reques
 func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserScheduleStubsResponse, error) {
 	var groupUserScheduleStubs []*types.IGroupUserScheduleStub
 
-	err := tx.SetUserSub(session.GroupSub)
+	err := tx.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -66,7 +66,7 @@ func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Re
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetUserSub(session.UserSub)
+	err = tx.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

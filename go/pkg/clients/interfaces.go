@@ -41,7 +41,7 @@ type IDatabaseTx interface {
 	Commit() error
 	Rollback() error
 	Exec(query string, args ...any) (sql.Result, error)
-	SetUserSub(string) error
+	SetDbVar(string, string) error
 	QueryRow(query string, args ...any) IRow
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 }

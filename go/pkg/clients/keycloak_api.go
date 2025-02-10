@@ -445,8 +445,6 @@ func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName stri
 
 func (keycloakClient KeycloakClient) CreateGroup(name string) (string, error) {
 
-	println("CREATE GROUP REQ", keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups", `{ "name": "`+name+`" }`)
-
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"POST",

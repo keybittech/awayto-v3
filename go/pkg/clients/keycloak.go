@@ -3,7 +3,6 @@ package clients
 import (
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -354,7 +353,6 @@ func (k *Keycloak) CreateGroup(name string) (*KeycloakGroup, error) {
 	kcCreateGroupReply := <-kcCreateGroupReplyChan
 	close(kcCreateGroupReplyChan)
 
-	fmt.Printf("kc create group %+v\n", kcCreateGroupReply)
 	if kcCreateGroupReply.Error != nil {
 		return nil, kcCreateGroupReply.Error
 	}

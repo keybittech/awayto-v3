@@ -11,6 +11,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.budgets ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.budgets FOR SELECT TO $PG_WORKER USING (true);
 
   INSERT INTO
     dbtable_schema.budgets (name)
@@ -28,6 +30,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.timelines ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.timelines FOR SELECT TO $PG_WORKER USING (true);
 
   INSERT INTO
     dbtable_schema.timelines (name)
@@ -57,6 +61,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (group_id, form_id)
   );
+  ALTER TABLE dbtable_schema.group_forms ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_insert ON dbtable_schema.group_forms FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP);
+  CREATE POLICY table_select ON dbtable_schema.group_forms FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_forms FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.form_versions (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -105,6 +113,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (group_id, service_id)
   );
+  ALTER TABLE dbtable_schema.group_services ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_services FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_services FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_services FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_services FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.service_addons (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -214,6 +227,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (group_id, schedule_id)
   );
+  ALTER TABLE dbtable_schema.group_schedules ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_schedules FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_schedules FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_schedules FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.group_user_schedules (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -288,6 +306,14 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  CREATE POLICY table_select_2 ON dbtable_schema.file_contents FOR SELECT TO $PG_WORKER USING (
+    EXISTS(
+      SELECT 1 FROM dbtable_schema.quotes q
+      JOIN dbtable_schema.schedule_bracket_slots sbs ON q.schedule_bracket_slot_id = sbs.id
+      WHERE q.created_sub = file_contents.created_sub 
+      AND sbs.$IS_CREATOR
+    )
+  ); -- file can be read if the file creator requested a meeting with bracket owner
 
   CREATE TABLE dbtable_schema.quote_files (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -384,6 +410,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.group_feedback ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_feedback FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_feedback FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP); 
+  CREATE POLICY table_update ON dbtable_schema.group_feedback FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_feedback FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.group_seats (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -395,5 +426,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.group_seats ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_seats FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_seats FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_seats FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_seats FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 EOSQL

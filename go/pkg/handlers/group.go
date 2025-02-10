@@ -36,7 +36,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	session.GroupSub = groupSub.String()
 
-	err = tx.SetUserSub(session.GroupSub)
+	err = tx.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -49,7 +49,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetUserSub(session.UserSub)
+	err = tx.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -57,7 +57,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	// Create group in application db
 	// All the repeated $1 (UserSub) at the start are just placeholders until later in the method
 	err = tx.QueryRow(`
-		INSERT INTO dbtable_schema.groups (external_id, code, admin_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
+		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
 		VALUES ($1::uuid, $1, $1::uuid, $2, $3, $4, $1::uuid, $5, $6, $7)
 		RETURNING id, name
 	`, session.UserSub, data.GetName(), data.GetPurpose(), data.GetAllowedDomains(), data.GetDisplayName(), data.GetAi(), session.GroupSub).Scan(&groupId, &groupName)
@@ -117,7 +117,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	// Update the group with the keycloak reference id
 	_, err = tx.Exec(`
 		UPDATE dbtable_schema.groups 
-		SET external_id = $2, admin_external_id = $3, purpose = $4
+		SET external_id = $2, admin_role_external_id = $3, purpose = $4
 		WHERE id = $1
 	`, groupId, kcGroupExternalId, kcAdminSubgroupExternalId, data.GetPurpose())
 	if err != nil {
@@ -161,7 +161,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetUserSub(session.GroupSub)
+	err = tx.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -175,7 +175,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetUserSub(session.UserSub)
+	err = tx.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
