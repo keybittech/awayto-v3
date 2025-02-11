@@ -111,7 +111,10 @@ export const theme = createTheme({
         root: {
           // marginBottom: '4px',
           padding: '6px 8px 4px',
-          alignItems: 'baseline'
+          alignItems: 'baseline',
+          '&:hover': {
+            color: 'white'
+          }
         }
       }
     },
@@ -178,6 +181,7 @@ export const useStyles = (): { [key: string]: SxProps } => {
     green: { color: green[500] },
     red: { color: red[500] },
 
+    onboardingProgress: { width: { sm: '100px', md: '200px' }, height: '100%', alignItems: 'center' },
     audioButton: { cursor: 'pointer' },
 
     overflowEllipsis: { textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' },
