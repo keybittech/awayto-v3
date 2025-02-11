@@ -82,10 +82,10 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     {complete ? <CheckIcon /> : num}
   </Avatar>;
 
-  const CreateGroup = useAccordion('Create Group', false, expanded === 'create_group', openTip('create_group'), stepAvatar('create_group', 1, !!group.name));
-  const CreateRoles = useAccordion('Create Roles', false, expanded === 'create_roles', openTip(group.name ? 'create_roles' : ''), stepAvatar('create_roles', 2, !!group.defaultRoleId));
-  const CreateService = useAccordion('Create Service', false, expanded === 'create_service', openTip(group.defaultRoleId ? 'create_service' : ''), stepAvatar('create_service', 3, !!groupService?.service?.name));
-  const CreateSchedule = useAccordion('Create Schedule', false, expanded === 'create_schedule', openTip(groupService.service?.name ? 'create_schedule' : ''), stepAvatar('create_schedule', 4, !!groupSchedule.schedule?.name));
+  const CreateGroup = useAccordion('Group', false, expanded === 'create_group', openTip('create_group'), stepAvatar('create_group', 1, !!group.name));
+  const CreateRoles = useAccordion('Roles', false, expanded === 'create_roles', openTip(group.name ? 'create_roles' : ''), stepAvatar('create_roles', 2, !!group.defaultRoleId));
+  const CreateService = useAccordion('Service', false, expanded === 'create_service', openTip(group.defaultRoleId ? 'create_service' : ''), stepAvatar('create_service', 3, !!groupService?.service?.name));
+  const CreateSchedule = useAccordion('Schedule', false, expanded === 'create_schedule', openTip(groupService.service?.name ? 'create_schedule' : ''), stepAvatar('create_schedule', 4, !!groupSchedule.schedule?.name));
   const Review = useAccordion('Review', false, expanded === 'review', openTip(groupSchedule.schedule?.name ? 'review' : ''), stepAvatar('review', 5));
 
   useEffect(() => {

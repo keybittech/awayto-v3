@@ -91,7 +91,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
     <Grid sx={{ display: { xs: 'flex', md: true ? 'flex' : !props.forceSiteMenu ? 'none' : 'flex' } }}>
       <Tooltip title="Menu">
         <Button
-          role="menu"
+          role="navigation"
           aria-label="show mobile main menu"
           aria-controls={mobileMenuId}
           aria-haspopup="true"
