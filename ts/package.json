@@ -43,6 +43,7 @@
     "compression-webpack-plugin": "^10.0.0",
     "copy-webpack-plugin": "^12.0.2",
     "craco-esbuild": "^0.5.2",
+    "esbuild": ">=0.25.0",
     "import-glob": "^1.5.0",
     "react-scripts": "5.0.1",
     "typescript": "4.9.5"
