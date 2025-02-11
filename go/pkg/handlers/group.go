@@ -168,9 +168,9 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 
 	_, err = tx.Exec(`
 		UPDATE dbtable_schema.users
-		SET name = $2, updated_sub = $3, updated_on = $4
+		SET username = $2, updated_sub = $3, updated_on = $4
 		WHERE sub = $1
-	`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC(), data.GetAi())
+	`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

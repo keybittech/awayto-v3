@@ -76,35 +76,34 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
   const badName = useMemo(() => checkingName || (!isValid && !!group?.name && formatName(group.name) == checkedName) || (editedName && group.name.length == 0), [checkingName, isValid, group, checkedName]);
 
   const handleSubmit = useCallback(async () => {
-    let id = group.id;
-    const { name, displayName, purpose, ai } = group;
-
-    if (!name || !purpose) {
+    if (!group.name || !group.purpose) {
       setSnack({ snackType: 'error', snackOn: 'All fields are required.' });
       return;
     }
 
+    group.allowedDomains = allowedDomains.join(',');
+
     const newGroup = {
-      displayName,
-      name,
-      purpose,
+      name: group.name,
+      displayName: group.displayName,
+      purpose: group.purpose,
       allowedDomains: allowedDomains.join(','),
-      ai
+      ai: group.ai
     };
 
-    if (id) {
+    if (group.id) {
       await patchGroup({ patchGroupRequest: newGroup }).unwrap().catch(console.error);
     } else {
       await postGroup({ postGroupRequest: newGroup }).unwrap().then(resp => {
-        id = resp.id;
+        group.id = resp.id;
       }).catch(console.error);
     }
 
     await refreshToken(61).then(async () => {
       await getUserProfileDetails();
-      closeModal && closeModal({ ...newGroup, id });
+      closeModal && closeModal(group);
     }).catch(console.error);
-  }, [group]);
+  }, [group, editGroup]);
 
   const handleName = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
     setEditedName(true);

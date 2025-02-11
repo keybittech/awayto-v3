@@ -55,8 +55,6 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
-  const onboardTop = useRef<HTMLDivElement>(null);
-
   const { data: profileReq } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
   const [joinGroup] = siteApi.useGroupServiceJoinGroupMutation();
   const [attachUser] = siteApi.useGroupServiceAttachUserMutation();
@@ -147,10 +145,16 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
   const accordionProps = useMemo(() => accordions[currentAccordion], [currentAccordion, accordions]);
   const AccordionHelp = accordionProps.comp;
 
+  const savedMsg = useCallback(() => {
+    setSnack({ snackOn: `${accordionProps.name} Saved`, snackType: 'success' });
+  }, [accordionProps]);
+
   const OnboardingProgress = useCallback(() => <>
-    {accordions.map((acc, i) => <>
-      <Chip label={acc.name} color={i == currentAccordion ? "info" : acc.complete ? "success" : "primary"} /> {i + 1 < accordions.length ? '>' : ''}
-    </>)}
+    {accordions.map((acc, i) => <Chip
+      key={`acc-progress-${i}`}
+      label={`${i + 1}. ${acc.name}`}
+      color={i == currentAccordion ? "info" : acc.complete ? "success" : "primary"}
+    />)}
   </>, [currentAccordion, accordionProps]);
 
   useEffect(() => {
@@ -165,9 +169,9 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
 
   return <>
 
-    <Grid container spacing={1} sx={{ p: 4, minHeight: '100vh', bgcolor: 'secondary.main', placeContent: 'start' }}>
+    <Grid container spacing={2} sx={{ p: 4, minHeight: '100vh', bgcolor: 'secondary.main', placeContent: 'start', justifyContent: 'center' }}>
 
-      <Grid container alignItems="center" direction="row" spacing={1} size={12}>
+      <Grid container spacing={2} size={{ xs: 12, lg: 10, xl: 8 }} alignItems="center" direction="row">
         <Button sx={classes.onboardingProgress} disableRipple disableElevation variant="contained" color="warning" disabled={currentAccordion == 0} onClick={() => changePage(-1)}>Previous</Button>
 
         <Grid size="grow">
@@ -177,7 +181,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
               expandIcon={<ExpandMoreIcon color="secondary" />}
               aria-controls={`accordion-content-${currentAccordion}`}
             >
-              <Grid size="grow" container spacing={2} alignItems="center" justifyContent="center">
+              <Grid size="grow" container spacing={1} alignItems="center" justifyContent="center">
                 <OnboardingProgress />
               </Grid>
               <Grid alignSelf="center"><Chip label="Help" size="small" /></Grid>
@@ -197,14 +201,11 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
           </Accordion>
         </Grid>
 
-        <Tooltip title={accordionProps.complete ? "Next Page" : "Please save before continuing."}>
-          <Button sx={classes.onboardingProgress} disableRipple disableElevation variant="contained" color="warning" disabled={!accordionProps.complete || currentAccordion + 1 == accordions.length} onClick={() => changePage(1)}>Next</Button>
-        </Tooltip>
+        <Button sx={classes.onboardingProgress} disableRipple disableElevation variant="contained" color="warning" disabled={!accordionProps.complete || currentAccordion + 1 == accordions.length} onClick={() => changePage(1)}>Next</Button>
       </Grid>
-      <Suspense>
 
-        <Grid size={12} sx={{ minHeight: '80vh' }}>
-          <Box ref={onboardTop} />
+      <Grid container size={{ xs: 12, lg: 10, xl: 8 }} sx={{ minHeight: '80vh' }} direction="column">
+        <Suspense>
           {hasCode ? <Grid size={12} p={2}>
             <TextField
               fullWidth
@@ -220,14 +221,15 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
             </Grid>
           </Grid> :
             currentAccordion === 0 ? <>
-              <Grid container spacing={1}>
-                <Button fullWidth disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>I have a group code</Button>
+              <Button disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>I have a group code</Button>
+              <Grid container size="grow" spacing={2}>
                 <ManageGroupModal
                   {...props}
                   showCancel={false}
                   editGroup={group}
                   closeModal={(newGroup: IGroup) => {
                     setGroup({ ...group, ...newGroup });
+                    savedMsg();
                   }}
                 />
               </Grid>
@@ -238,6 +240,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                 editGroup={group}
                 closeModal={({ roles, defaultRoleId }: IGroup) => {
                   setGroup({ ...group, roles, defaultRoleId });
+                  savedMsg();
                 }}
               /> :
                 currentAccordion == 2 ? <ManageServiceModal
@@ -247,6 +250,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                   editService={groupService.service}
                   closeModal={(savedService: IService) => {
                     setGroupService({ service: savedService });
+                    savedMsg();
                     localStorage.setItem('onboarding_service', JSON.stringify({ service: savedService }));
                   }}
                 /> :
@@ -257,6 +261,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                     editGroupSchedule={groupSchedule}
                     closeModal={(savedSchedule: IGroupSchedule) => {
                       setGroupSchedule(savedSchedule);
+                      savedMsg();
                       localStorage.setItem('onboarding_schedule', JSON.stringify(savedSchedule));
                     }}
                   /> :
@@ -295,8 +300,8 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                       </Card>
                     </> : <></>}
 
-        </Grid>
-      </Suspense>
+        </Suspense>
+      </Grid>
     </Grid>
   </>
 }

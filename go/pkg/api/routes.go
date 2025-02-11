@@ -79,14 +79,16 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 			// Setup handler deferrals
 
 			defer func() {
+				var deferralError error
+
 				err = tx.SetDbVar("user_sub", "")
 				if err != nil {
-					deferredError = util.ErrCheck(err)
+					deferralError = util.ErrCheck(err)
 				}
 
 				err = tx.SetDbVar("group_id", "")
 				if err != nil {
-					deferredError = util.ErrCheck(err)
+					deferralError = util.ErrCheck(err)
 				}
 
 				if p := recover(); p != nil {
@@ -97,12 +99,16 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				} else {
 					err = tx.Commit()
 					if err != nil {
-						deferredError = util.ErrCheck(err)
+						deferralError = util.ErrCheck(err)
 					}
 				}
 
 				if deferredError != nil {
-					util.RequestError(w, requestId, deferredError.Error(), ignoreFields, pbVal)
+					loggedError := deferredError.Error()
+					if deferralError != nil {
+						loggedError = fmt.Sprintf("%s %s", deferredError.Error(), deferralError.Error())
+					}
+					util.RequestError(w, requestId, loggedError, ignoreFields, pbVal)
 				}
 			}()
 

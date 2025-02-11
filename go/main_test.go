@@ -177,7 +177,7 @@ func TestMain(t *testing.T) {
 		if _, err = page.Goto(""); err != nil {
 			log.Fatalf("could not goto: %v", err)
 		}
-		doEval()
+
 		// time.Sleep(30 * time.Second)
 		// Register user
 		page.ByRole("link", "Open Registration!").MouseOver().Click()
@@ -191,6 +191,19 @@ func TestMain(t *testing.T) {
 		page.ByLocator("#firstName").MouseOver().Fill(personA.FirstName)
 		page.ByLocator("#lastName").MouseOver().Fill(personA.LastName)
 		page.ByRole("button", "Register").MouseOver().Click()
+	} else {
+		if _, err = page.Goto("/app"); err != nil {
+			log.Fatalf("could not goto: %v", err)
+		}
+	}
+
+	onRegistration, err := page.ByRole("button", "Next").IsVisible()
+	if err != nil {
+		log.Fatalf("registration select err %v", err)
+	}
+
+	if onRegistration {
+		doEval()
 
 		// Fill out group details
 		page.ByText("Group").WaitFor()
@@ -199,6 +212,7 @@ func TestMain(t *testing.T) {
 		page.ByRole("textbox", "Group Description").MouseOver().Fill("Works with students and the public to teach writing")
 		page.ByRole("checkbox", "Use AI Suggestions").MouseOver().SetChecked(true)
 		page.ByRole("button", "Save Group").MouseOver().Click()
+		page.ByRole("button", "Next").MouseOver().Click()
 
 		// Add group roles
 		page.ByText("Roles").WaitFor()
@@ -209,6 +223,7 @@ func TestMain(t *testing.T) {
 		page.ByRole("combobox", "Default Role").MouseOver().Click()
 		page.ByRole("listbox").ByLocator("li").First().Click()
 		page.ByRole("button", "Save Roles").Click()
+		page.ByRole("button", "Next").MouseOver().Click()
 
 		// Create service
 		serviceNameSelections := page.ByText("Step 1. Provide details").ByLocator("..")
@@ -229,10 +244,12 @@ func TestMain(t *testing.T) {
 
 		// Add a second tier
 		tierNameSelections.ByRole("listitem").Nth(1).MouseOver().Click()
-		featuresBox := page.ByLabel("Features")
+		featuresBox := page.ByRole("combobox", "Features")
 		featuresBox.MouseOver().Click()
-		featuresBox.ByLocator("li").Nth(1).MouseOver().Click()
-		featuresBox.ByLocator("li").Nth(2).MouseOver().Click()
+		featuresList := page.ByRole("listbox", "Features")
+		featuresList.ByLocator("li").Nth(1).MouseOver().Click()
+		featuresList.ByLocator("li").Nth(2).MouseOver().Click()
+		page.Mouse().Click(float64(p.ViewportSize().Width)/2, float64(page.ViewportSize().Height)/2)
 		featureNameSelections.ByRole("listitem").Nth(2).MouseOver().Click()
 		featureNameSelections.ByRole("listitem").Nth(3).MouseOver().Click()
 		page.ByRole("button", "Add Tier to Service").MouseOver().Click()
@@ -242,6 +259,8 @@ func TestMain(t *testing.T) {
 		page.ByText("Step 3").MouseOver()
 		time.Sleep(2 * time.Second)
 		page.ByRole("button", "Save Service").MouseOver().Click()
+		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
+		page.ByRole("button", "Next").MouseOver().Click()
 
 		// Create schedule
 		page.ByRole("textbox", "Start Date").WaitFor()
@@ -249,6 +268,8 @@ func TestMain(t *testing.T) {
 		page.ByRole("textbox", "Start Date").MouseOver().Fill("2025-02-05")
 		page.ByRole("button", "Save Schedule").ScrollIntoViewIfNeeded()
 		page.ByRole("button", "Save Schedule").MouseOver().Click()
+		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
+		page.ByRole("button", "Next").MouseOver().Click()
 
 		// Review group creation
 		page.ByText("Review").WaitFor()
@@ -260,15 +281,11 @@ func TestMain(t *testing.T) {
 		page.ByRole("navigation").WaitFor()
 		page.ByRole("navigation").MouseOver().Click()
 		page.ByText("Logout").MouseOver().Click()
-	} else {
-		if _, err = page.Goto("/app"); err != nil {
-			log.Fatalf("could not goto: %v", err)
-		}
 	}
 
 	doEval()
 
-	time.Sleep(2 * time.Second)
+	time.Sleep(1 * time.Second)
 
 	onLandingPage, err := page.ByRole("link", "Login").IsVisible()
 	if err != nil {

@@ -183,7 +183,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
 
 
       <Grid container spacing={2}>
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 1. Provide details</legend>
             <Typography variant="caption">Services relate to the work performed during appointments. They can be specific or more broad. For example, a "Tutoring" service where all consultants handle all subjects, versus two separate "Math Tutoring" and "English Tutoring" services.</Typography>
@@ -198,14 +198,16 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
                   useSuggestTiers();
                 }}
                 helperText={
-                  <ServiceSuggestions
-                    staticSuggestions='Ex: Website Hosting, Yard Maintenance, Automotive Repair'
-                    handleSuggestion={suggestedService => {
-                      if (!group?.displayName) return;
-                      void suggestTiers({ id: IPrompts.SUGGEST_TIER, prompt: `${suggestedService.toLowerCase()} at ${group?.displayName}` });
-                      setNewService({ ...newService, name: suggestedService });
-                    }}
-                  />
+                  <Suspense>
+                    <ServiceSuggestions
+                      staticSuggestions='Ex: Website Hosting, Yard Maintenance, Automotive Repair'
+                      handleSuggestion={suggestedService => {
+                        if (!group?.displayName) return;
+                        void suggestTiers({ id: IPrompts.SUGGEST_TIER, prompt: `${suggestedService.toLowerCase()} at ${group?.displayName}` });
+                        setNewService({ ...newService, name: suggestedService });
+                      }}
+                    />
+                  </Suspense>
                 }
               />
             </Box>
@@ -248,7 +250,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
             </Suspense>}
           </Box>
         </Grid>
-        <Grid size={{ xs: 12, lg: 6 }}>
+        <Grid size={{ xs: 12, md: 6 }}>
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 2. Add a Tier</legend>
             <Typography variant="caption">Tiers describe the context and features that go along with a service. For example, a "bronze, silver, gold" ranking system, or subject categories like "English 1010, English 2010, etc.". At least 1 tier is required.</Typography>
@@ -263,68 +265,72 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
                   useSuggestAddons(`${newServiceTier.name} ${newService.name}`);
                 }}
                 helperText={
-                  <TierSuggestions
-                    hideSuggestions={!newService.name}
-                    staticSuggestions='Ex: Basic, Mid-Tier, Advanced'
-                    handleSuggestion={suggestedTier => {
-                      useSuggestAddons(`${suggestedTier} ${newService.name}`);
-                      setNewServiceTier({ ...newServiceTier, name: suggestedTier })
-                    }}
-                  />
+                  <Suspense>
+                    <TierSuggestions
+                      hideSuggestions={!newService.name}
+                      staticSuggestions='Ex: Basic, Mid-Tier, Advanced'
+                      handleSuggestion={suggestedTier => {
+                        useSuggestAddons(`${suggestedTier} ${newService.name}`);
+                        setNewServiceTier({ ...newServiceTier, name: suggestedTier })
+                      }}
+                    />
+                  </Suspense>
                 }
               />
             </Box>
 
             <Box my={2} flexDirection="column" sx={{ display: 'flex', alignItems: 'baseline' }}>
-              <SelectLookup
-                multiple
-                lookupName='Feature'
-                lookups={groupServiceAddonsRequest?.groupServiceAddons?.map(gsa => gsa.serviceAddon)}
-                lookupValue={serviceTierAddonIds}
-                helperText={
-                  <AddonSuggestions
-                    hideSuggestions={!newServiceTier.name}
-                    staticSuggestions='Ex: 24-Hour Support, Premium Access, Domain Registration, 20GB Storage'
-                    handleSuggestion={suggestedAddon => {
-                      const existingId = groupServiceAddonsRequest?.groupServiceAddons?.find(gsa => gsa.serviceAddon?.name === suggestedAddon)?.serviceAddon?.id;
-                      if (!existingId || (existingId && !serviceTierAddonIds.includes(existingId))) {
-                        if (existingId) {
-                          setServiceTierAddonIds([...serviceTierAddonIds, existingId])
-                        } else {
-                          postServiceAddon({ postServiceAddonRequest: { name: suggestedAddon } }).unwrap().then(({ id: serviceAddonId }) => {
-                            postGroupServiceAddon({ serviceAddonId }).unwrap().then(async () => {
-                              await getGroupServiceAddons();
-                              if (serviceAddonId) {
-                                !serviceTierAddonIds.includes(serviceAddonId) && setServiceTierAddonIds([...serviceTierAddonIds, serviceAddonId]);
-                              }
+              <Suspense>
+                <SelectLookup
+                  multiple
+                  lookupName='Feature'
+                  lookups={groupServiceAddonsRequest?.groupServiceAddons?.map(gsa => gsa.serviceAddon)}
+                  lookupValue={serviceTierAddonIds}
+                  helperText={
+                    <AddonSuggestions
+                      hideSuggestions={!newServiceTier.name}
+                      staticSuggestions='Ex: 24-Hour Support, Premium Access, Domain Registration, 20GB Storage'
+                      handleSuggestion={suggestedAddon => {
+                        const existingId = groupServiceAddonsRequest?.groupServiceAddons?.find(gsa => gsa.serviceAddon?.name === suggestedAddon)?.serviceAddon?.id;
+                        if (!existingId || (existingId && !serviceTierAddonIds.includes(existingId))) {
+                          if (existingId) {
+                            setServiceTierAddonIds([...serviceTierAddonIds, existingId])
+                          } else {
+                            postServiceAddon({ postServiceAddonRequest: { name: suggestedAddon } }).unwrap().then(({ id: serviceAddonId }) => {
+                              postGroupServiceAddon({ serviceAddonId }).unwrap().then(async () => {
+                                await getGroupServiceAddons();
+                                if (serviceAddonId) {
+                                  !serviceTierAddonIds.includes(serviceAddonId) && setServiceTierAddonIds([...serviceTierAddonIds, serviceAddonId]);
+                                }
+                              }).catch(console.error);
                             }).catch(console.error);
-                          }).catch(console.error);
+                          }
                         }
+                      }}
+                    />
+                  }
+                  lookupChange={(selectedAddonIds: string[]) => {
+                    setServiceTierAddonIds([...selectedAddonIds]);
+                  }}
+                  createAction={postServiceAddon}
+                  createActionBodyKey='postServiceAddonRequest'
+                  deleteAction={deleteGroupServiceAddon}
+                  deleteActionIdentifier='serviceAddonId'
+                  deleteComplete={(val: string) => {
+                    const tiers = { ...newService.tiers };
+                    Object.values(tiers).forEach(tier => {
+                      if (tier.addons) {
+                        delete tier.addons[val];
                       }
-                    }}
-                  />
-                }
-                lookupChange={(selectedAddonIds: string[]) => {
-                  setServiceTierAddonIds([...selectedAddonIds]);
-                }}
-                createAction={postServiceAddon}
-                createActionBodyKey='postServiceAddonRequest'
-                deleteAction={deleteGroupServiceAddon}
-                deleteActionIdentifier='serviceAddonId'
-                deleteComplete={(val: string) => {
-                  const tiers = { ...newService.tiers };
-                  Object.values(tiers).forEach(tier => {
-                    if (tier.addons) {
-                      delete tier.addons[val];
-                    }
-                  })
-                  setNewService({ ...newService, tiers });
-                }}
-                refetchAction={getGroupServiceAddons}
-                attachAction={postGroupServiceAddon}
-                attachName='serviceAddonId'
-                {...props}
-              />
+                    })
+                    setNewService({ ...newService, tiers });
+                  }}
+                  refetchAction={getGroupServiceAddons}
+                  attachAction={postGroupServiceAddon}
+                  attachName='serviceAddonId'
+                  {...props}
+                />
+              </Suspense>
             </Box>
 
             <FormControlLabel
