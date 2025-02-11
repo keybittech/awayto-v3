@@ -197,7 +197,10 @@ func TestMain(t *testing.T) {
 		}
 	}
 
-	onRegistration, err := page.ByRole("button", "Next").IsVisible()
+	time.Sleep(2 * time.Second)
+
+	registrationNext := page.ByRole("button", "I HAVE A GROUP CODE")
+	onRegistration, err := registrationNext.IsVisible()
 	if err != nil {
 		log.Fatalf("registration select err %v", err)
 	}

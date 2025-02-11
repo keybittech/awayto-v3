@@ -78,6 +78,9 @@ SITE_INSTALLER=deploy/scripts/host/install.sh
 
 # backup related
 DB_BACKUP_DIR=backups/db
+DOCKER_DB_CID := $(shell ${SUDO} docker ps -aqf "name=db")
+DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
+DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 LATEST_KEYCLOAK_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_app*" $(DB_BACKUP_DIR) | tail -n 1)
 LATEST_APP_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_keycloak*" $(DB_BACKUP_DIR) | tail -n 1)
 
@@ -101,7 +104,7 @@ endef
 	ts_prep ts ts_test ts_protoc ts_dev \
 	go_dev go_test go_test_main go_test_pkg go_coverage \
 	docker_up docker_down docker_build docker_start docker_stop \
-	docker_db docker_db_start docker_db_backup docker_db_restore docker_cycle docker_db_restore_op \
+	docker_db docker_db_start docker_db_restore docker_cycle docker_db_restore_op \
 	docker_redis \
 	host_status host_up host_gen host_ssh host_down \
 	host_service_stop host_service_start \
@@ -217,23 +220,22 @@ docker_stop:
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
 
 docker_db:
-	${SUDO} docker exec -it $(shell ${SUDO} docker ps -aqf "name=db") psql -U postgres -d ${PG_DB}
+	$(DOCKER_DB_EXEC) $(DOCKER_DB_CID) psql -U postgres -d ${PG_DB}
 
 docker_db_start:
 	${SUDO} docker $(DOCKER_COMPOSE) up -d db
 	sleep 5
 
-docker_db_backup: 
-	${SUDO} docker exec $(shell ${SUDO} docker ps -aqf "name=db") \
-		pg_dump -U postgres -Fc -N dbtable_schema -N dbview_schema -N dbfunc_schema ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_keycloak_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
-	${SUDO} docker exec $(shell ${SUDO} docker ps -aqf "name=db") \
-		pg_dump -U postgres --inserts --on-conflict-do-nothing -a -Fc -n dbtable_schema ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+docker_db_backup: $(DB_BACKUP_DIR)
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc keycloak > $(DB_BACKUP_DIR)/${PG_DB}_keycloak_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
-docker_db_restore:
-	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") \
-		pg_restore -U postgres -c -d ${PG_DB} < $(LATEST_KEYCLOAK_RESTORE)
-	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") \
-		pg_restore -U postgres -c -d ${PG_DB} < $(LATEST_APP_RESTORE) 
+docker_db_restore: docker_stop docker_db_start docker_db_restore_op docker_start
+
+docker_db_restore_op:
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) /bin/bash /docker-entrypoint-initdb.d/a0-permissions.sh
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d keycloak < $(LATEST_KEYCLOAK_RESTORE) || true
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d ${PG_DB} < $(LATEST_APP_RESTORE) || true
 
 # ${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") \
 # 	psql -U postgres -d ${PG_DB} -c "\
@@ -245,7 +247,6 @@ docker_db_restore:
 
 docker_cycle: docker_down docker_up
 
-docker_db_restore_op: docker_stop docker_db_start docker_db_restore docker_start
 
 docker_redis:
 	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass ${REDIS_PASS}

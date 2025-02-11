@@ -1,19 +1,6 @@
 #!/bin/bash
 
 psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
-
-  CREATE SCHEMA dbfunc_schema;
-  CREATE SCHEMA dbtable_schema;
-  CREATE SCHEMA dbview_schema;
-
-  GRANT USAGE ON SCHEMA dbfunc_schema TO $PG_WORKER;
-  GRANT USAGE ON SCHEMA dbtable_schema TO $PG_WORKER;
-  GRANT USAGE ON SCHEMA dbview_schema TO $PG_WORKER;
-
-  ALTER DEFAULT PRIVILEGES IN SCHEMA dbfunc_schema GRANT EXECUTE ON FUNCTIONS TO $PG_WORKER;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA dbtable_schema GRANT ALL ON TABLES TO $PG_WORKER;
-  ALTER DEFAULT PRIVILEGES IN SCHEMA dbview_schema GRANT ALL ON TABLES TO $PG_WORKER;
-
   -- from https://gist.github.com/kjmph/5bd772b2c2df145aa645b837da7eca74
   CREATE OR REPLACE FUNCTION dbfunc_schema.uuid_generate_v7() RETURNS uuid
   AS \$\$
