@@ -43,7 +43,6 @@
     "compression-webpack-plugin": "^10.0.0",
     "copy-webpack-plugin": "^12.0.2",
     "craco-esbuild": "^0.5.2",
-    "esbuild": ">=0.25.0",
     "import-glob": "^1.5.0",
     "react-scripts": "5.0.1",
     "typescript": "4.9.5"
@@ -52,9 +51,11 @@
     "overrides": {
       "braces": ">=3.0.3",
       "cookie": ">=0.7.0",
+      "esbuild": ">=0.25.0",
       "micromatch": ">=4.0.8",
       "nth-check": ">=2.0.1",
-      "postcss": ">=8.4.31"
+      "postcss": ">=8.4.31",
+      "serialize-javascript": ">=6.0.2"
     }
   },
   "resolutions": {
