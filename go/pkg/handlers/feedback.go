@@ -12,7 +12,7 @@ func (h *Handlers) PostSiteFeedback(w http.ResponseWriter, req *http.Request, da
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.feedback (message, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3)
-	`, data.GetFeedback(), session.UserSub, time.Now().Local().UTC())
+	`, data.GetFeedback().GetFeedbackMessage(), session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

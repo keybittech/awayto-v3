@@ -14,7 +14,7 @@ import { Document, Page } from 'react-pdf';
 
 import Box from '@mui/material/Box';
 
-import { IFile, Whiteboard, useWebSocketSubscribe, useFileContents, useComponents, useUtil, SocketActions } from 'awayto/hooks';
+import { IFile, IWhiteboard, useWebSocketSubscribe, useFileContents, useComponents, useUtil, SocketActions } from 'awayto/hooks';
 
 function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasElement>, canvas: HTMLCanvasElement) {
   const rect = canvas.getBoundingClientRect();
@@ -43,7 +43,7 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
   const fileScroller = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
 
-  const whiteboard = useRef<Whiteboard>({ lines: [], settings: { highlight: false, position: [0, 0] } });
+  const whiteboard = useRef<IWhiteboard>({ lines: [], settings: { highlight: false, position: [0, 0] } });
 
   const { openConfirm } = useUtil();
   const { WhiteboardOptionsMenu } = useComponents();
@@ -58,14 +58,14 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
   const [strokeColor, setStrokeColor] = useState('#aaaaaa');
   const [fileToggle, setFileToggle] = useState(false);
   const [selectedText, setSelectedText] = useState<Record<string, string>>({});
-  const [boards, setBoards] = useState<Record<string, Partial<Whiteboard>>>({});
+  const [boards, setBoards] = useState<Record<string, Partial<IWhiteboard>>>({});
 
   const {
     connectionId,
     userList,
     storeMessage: storeWhiteboardMessage,
     sendMessage: sendWhiteboardMessage
-  } = useWebSocketSubscribe<Whiteboard>(topicId, ({ sender, action, payload }) => {
+  } = useWebSocketSubscribe<IWhiteboard>(topicId, ({ sender, action, payload }) => {
     setBoards(b => {
       const board = { ...b[sender], ...payload };
       if (SocketActions.SET_POSITION === action) {
@@ -108,7 +108,7 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
     });
   });
 
-  const handleLines = (lines?: Whiteboard['lines'], settings?: Whiteboard['settings']) => {
+  const handleLines = (lines?: IWhiteboard['lines'], settings?: IWhiteboard['settings']) => {
     const draw = () => {
       // const canvas = whiteboardRef.current;
       // if (!canvas) return;

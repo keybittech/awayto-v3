@@ -2,8 +2,10 @@ package api
 
 import (
 	"av3api/pkg/util"
+	"compress/gzip"
 	"crypto/tls"
 	"fmt"
+	"io"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
@@ -24,6 +26,15 @@ func (a *API) StaticAuthCheckMiddleware(next http.Handler) http.HandlerFunc {
 			return
 		}
 	}
+}
+
+type StaticGzip struct {
+	io.Writer
+	http.ResponseWriter
+}
+
+func (g StaticGzip) Write(b []byte) (int, error) {
+	return g.Writer.Write(b)
 }
 
 type StaticRedirect struct {
@@ -69,7 +80,16 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 
 		mux.Handle("GET /app/", a.StaticAuthCheckMiddleware(http.StripPrefix("/app/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			redirect := &StaticRedirect{ResponseWriter: w}
-			fileServer.ServeHTTP(redirect, r)
+			// Ignore artificial register url, so keycloak-js can generate the register url
+			if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || r.URL.String() == "register" {
+				fileServer.ServeHTTP(redirect, r)
+			} else {
+				w.Header().Set("Content-Encoding", "gzip")
+				gz := gzip.NewWriter(w)
+				defer gz.Close()
+				gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
+				fileServer.ServeHTTP(gzr, r)
+			}
 			if redirect.StatusCode == http.StatusNotFound {
 				r.URL.Path = "/"
 				redirect.Header().Set("Content-Type", "text/html")

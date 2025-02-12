@@ -8,16 +8,12 @@ const fs = require('fs');
 const crypto = require('crypto');
 const glob = require('glob');
 
-const ModuleScopePlugin = require('react-dev-utils/ModuleScopePlugin');
 const CircularDependencyPlugin = require('circular-dependency-plugin');
 const CompressionWebpackPlugin = require('compression-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-const CracoEsbuildPlugin = require('craco-esbuild');
 
-const prodBuild = process.env.NODE_ENV == 'production'
-
-const { AWAYTO_WEBAPP_MODULES, AWAYTO_WEBAPP, AWAYTO_CORE } = process.env;
+const { AWAYTO_WEBAPP_MODULES, AWAYTO_WEBAPP } = process.env;
 
 /**
  * 
@@ -128,36 +124,9 @@ module.exports = {
         }
       });
 
-      webpackConfig.optimization.minimize = prodBuild
       webpackConfig.resolve.plugins.splice(scopePluginIdx, 1);
 
-      CracoEsbuildPlugin.overrideWebpackConfig({
-        webpackConfig,
-        pluginOptions: {
-          esbuildLoaderOptions: {
-            loader: 'tsx',
-            target: 'es2015'
-          },
-          includePaths: [
-            resolveApp(AWAYTO_WEBAPP),
-          ]
-        },
-        context: {
-          paths: {
-            appTsConfig: resolveApp('tsconfig.json'),
-            appSrc: resolveApp('src')
-          }
-        }
-      });
-
       webpackConfig.plugins.push(
-        new CompressionWebpackPlugin({
-          filename: '[path][base].gz',
-          algorithm: 'gzip',
-          test: /\.(js|css|html|svg)$/,
-          threshold: 10240,
-          minRatio: 0.8
-        }),
         new CircularDependencyPlugin({
           exclude: /a\.js|node_modules/,
           include: /src/,
@@ -172,7 +141,14 @@ module.exports = {
               to: 'static/js'
             }
           ]
-        })
+        }),
+        new CompressionWebpackPlugin({
+          filename: '[path][base].gz',
+          algorithm: 'gzip',
+          test: /\.(js|css|html|svg)$/,
+          threshold: 10240,
+          minRatio: 0.8
+        }),
       );
 
       // webpackConfig.module.rules.push({
@@ -204,3 +180,4 @@ module.exports = {
     }
   }
 };
+

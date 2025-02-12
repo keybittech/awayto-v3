@@ -1,24 +1,22 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
-import ThemeProvider from '@mui/material/styles/ThemeProvider';
-import CssBaseline from '@mui/material/CssBaseline';
+import { ThemeProvider } from '@mui/material/styles';
+import { useColorScheme, CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
-import { siteApi, useAppSelector, useComponents, theme, SiteRoles, refreshToken } from 'awayto/hooks';
+import { siteApi, useComponents, theme, SiteRoles, refreshToken } from 'awayto/hooks';
 
 import Layout from './Layout';
 import reportWebVitals from '../../reportWebVitals';
 import AuthContext from '../auth/AuthContext';
-import { PaletteMode, useColorScheme } from '@mui/material';
 
 const {
   REACT_APP_KC_CLIENT
 } = process.env as { [prop: string]: string };
 
 export default function App(props: IComponent): React.JSX.Element {
-  // const location = useLocation();
   const navigate = useNavigate();
 
   const { keycloak } = useContext(AuthContext) as AuthContextType;

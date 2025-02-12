@@ -14,7 +14,7 @@ import RecordVoiceOverIcon from '@mui/icons-material/RecordVoiceOver';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 
 import { SocketMessage, utcDTLocal } from 'awayto/hooks';
-import capitalize from '@mui/material/utils/capitalize';
+import { capitalize } from '@mui/material/utils';
 
 interface IComponent {
   topicMessages?: SocketMessage[];

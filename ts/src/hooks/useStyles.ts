@@ -1,6 +1,5 @@
-import { SxProps, createTheme } from '@mui/material/styles';
-import green from '@mui/material/colors/green';
-import red from '@mui/material/colors/red';
+import { SxProps, createTheme } from '@mui/material';
+import { red, green } from '@mui/material/colors';
 
 const drawerWidth = 175;
 

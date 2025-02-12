@@ -11,7 +11,7 @@ export enum ExchangeActions {
  * @category Exchange
  * @purpose tracks essential props between participants during whiteboard interactions
  */
-export interface Whiteboard {
+export interface IWhiteboard {
   selectedText?: string;
   sharedFile?: IFile;
   lines: {

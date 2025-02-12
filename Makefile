@@ -100,13 +100,13 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-.PHONY: build clean test_clean test_prep test_gen \
-	ts_prep ts ts_test ts_protoc ts_dev \
+.PHONY: build build_host clean test_clean test_gen \
+	ts_prep ts ts_protoc ts_dev \
 	go_dev go_test go_test_main go_test_pkg go_coverage \
 	docker_up docker_down docker_build docker_start docker_stop \
 	docker_db docker_db_start docker_db_restore docker_cycle docker_db_restore_op \
 	docker_redis \
-	host_status host_up host_gen host_ssh host_down \
+	host_status host_errors host_up host_gen host_ssh host_down \
 	host_service_stop host_service_start \
 	host_deploy host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down \
 	host_update_cert host_update_cert_op \
@@ -115,7 +115,9 @@ endef
 
 ## Builds
 
-build: clean cert java landing ts go
+build: clean cert build_host
+
+build_host: java landing ts go
 
 cert: $(CERTS_DIR)
 	chmod +x $(DEV_SCRIPTS)/cert.sh && exec $(DEV_SCRIPTS)/cert.sh
@@ -146,9 +148,6 @@ ts_prep: ts_protoc
 ts: ts_prep
 	pnpm run --dir $(TS_SRC) build
 
-ts_test: ts_prep
-	NODE_ENV=test pnpm run --dir $(TS_SRC) build
-
 ts_dev: ts
 	HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
 
@@ -177,8 +176,6 @@ go_test_pkg: go go_genmocks
 
 go_coverage: go_protoc go_genmocks
 	go test -C $(GO_SRC) -coverpkg=./... ./...
-
-test_prep: ts_test go_genmocks
 
 test_clean:
 	rm -rf $(PLAYWRIGHT_CACHE_DIR)
@@ -247,12 +244,14 @@ docker_db_restore_op:
 
 docker_cycle: docker_down docker_up
 
-
 docker_redis:
 	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass ${REDIS_PASS}
 
 host_status:
 	$(SSH) "sudo journalctl -u ${BINARY_SERVICE} -f"
+
+host_errors:
+	$(SSH) "tail -f $(H_REM_DIR)/errors.log"
 
 host_up: host_gen 
 	until ping -c1 $(APP_IP) ; do sleep 5; done
@@ -273,7 +272,7 @@ host_up: host_gen
 
 host_gen: $(HOST_LOCAL_DIR)
 	date >> "$(HOST_LOCAL_DIR)/start_time"
-	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ~/.ssh/id_rsa.pub)&g; s&ssh-port&${SSH_PORT}&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g;' $(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ${RSA_PUB})&g; s&ssh-port&${SSH_PORT}&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g;' $(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
 	sed -e 's&ssh-port&${SSH_PORT}&g;' $(DEPLOY_HOST_SCRIPTS)/public-firewall.json > "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud firewall create --name "${PROJECT_PREFIX}-public-firewall" --rules-file "$(HOST_LOCAL_DIR)/public-firewall.json" >/dev/null
 	hcloud firewall describe "${PROJECT_PREFIX}-public-firewall" -o json > "$(HOST_LOCAL_DIR)/public-firewall.json"
@@ -413,12 +412,13 @@ host_db_restore:
 
 host_db_restore_op: host_predeploy host_service_stop host_db_restore host_service_start host_postdeploy
 
-host_deploy: host_predeploy build host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
+host_deploy: host_predeploy build_host host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
 	$(SSH) " \
 		sudo systemctl enable $(BINARY_SERVICE); \
 		sudo systemctl stop $(BINARY_SERVICE); \
 		sudo systemctl start $(BINARY_SERVICE); \
 	"
+	make build_host
 
 host_metric_cpu:
 	hcloud server metrics --type cpu $(APP_HOST)

@@ -27,7 +27,7 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 
-import { SocketActions, useDebounce, useStyles, Whiteboard } from 'awayto/hooks';
+import { SocketActions, useDebounce, useStyles, IWhiteboard } from 'awayto/hooks';
 import type { PopoverOrigin } from '@mui/material';
 
 type WhiteBoardOptionsFns = { [props: string]: (...props: unknown[]) => void };
@@ -61,7 +61,7 @@ const directions = {
 
 declare global {
   interface IProps {
-    whiteboard?: Whiteboard;
+    whiteboard?: IWhiteboard;
     whiteboardRef?: HTMLCanvasElement;
     contextRef?: CanvasRenderingContext2D;
     canvasPointerEvents?: string;
