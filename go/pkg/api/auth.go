@@ -39,6 +39,9 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
 		// Copy the headers from the original request to the proxy request
 		for name, values := range r.Header {
+			if name == "X-Forwarded-For" || name == "X-Forwarded-Host" {
+				continue
+			}
 			for _, value := range values {
 				proxyReq.Header.Add(name, value)
 			}
@@ -46,6 +49,8 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
 		// Use remoteAddr for keycloak rate limiting
 		proxyReq.Header.Add("X-Forwarded-For", r.RemoteAddr)
+		proxyReq.Header.Add("X-Forwarded-Proto", "https")
+		proxyReq.Header.Add("X-Forwarded-Host", r.Host)
 
 		// Send the proxy request using the custom transport
 		resp, err := authTransport.RoundTrip(proxyReq)

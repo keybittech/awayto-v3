@@ -1,20 +1,22 @@
 #!/bin/sh
 
+AUTH_CID=$($SUDO docker ps -aqf "name=auth")
+kcadm() {
+  $SUDO docker exec $AUTH_CID /bin/sh opt/keycloak/bin/kcadm.sh "$@"
+}
+
+echo "Waiting for keycloak to start..."
+
 while true; do
-  if [ $(curl -o /dev/null -s -w "%{http_code}" "$KC_INTERNAL") = "303" ]; then
+  kcadm config credentials --server $KC_INTERNAL --realm master --user $KC_ADMIN --password $KC_PASS 2> /dev/null
+  if [ $? -eq 0 ]; then
     echo "Keycloak available."
     break
   fi
   sleep 2 # sleep for 5 seconds before the next attempt
 done
 
-AUTH_CID=$($SUDO docker ps -aqf "name=auth")
-kcadm() {
-  $SUDO docker exec $AUTH_CID /bin/sh opt/keycloak/bin/kcadm.sh "$@"
-}
-
-# Login
-kcadm config credentials --server $KC_INTERNAL --realm master --user $KC_ADMIN --password $KC_PASS
+echo "Logged in...deploying realm"
 
 EXISTING=$(kcadm get realms/$KC_REALM)
 
