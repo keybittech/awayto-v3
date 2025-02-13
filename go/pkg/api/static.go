@@ -80,8 +80,7 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 
 		mux.Handle("GET /app/", a.StaticAuthCheckMiddleware(http.StripPrefix("/app/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			redirect := &StaticRedirect{ResponseWriter: w}
-			// Ignore artificial register url, so keycloak-js can generate the register url
-			if !strings.Contains(r.Header.Get("Accept-Encoding"), "gzip") || r.URL.String() == "register" {
+			if !strings.HasSuffix(r.URL.Path, ".js") {
 				fileServer.ServeHTTP(redirect, r)
 			} else {
 				w.Header().Set("Content-Encoding", "gzip")
