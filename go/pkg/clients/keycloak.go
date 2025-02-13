@@ -13,7 +13,8 @@ import (
 )
 
 type Keycloak struct {
-	ch chan<- KeycloakCommand
+	C  *KeycloakClient
+	Ch chan<- KeycloakCommand
 }
 
 type KeycloakCommandType int
@@ -27,7 +28,7 @@ const (
 	MutateRoleCallKeycloakCommand
 	GetUserListKeycloakCommand
 	GetUserInfoByIdKeycloakCommand
-	GetUserInfoByTokenKeycloakCommand
+	GetUserTokenValidKeycloakCommand
 	UpdateUserKeycloakCommand
 	CreateGroupKeycloakCommand
 	DeleteGroupKeycloakCommand
@@ -63,6 +64,7 @@ type KeycloakResponse struct {
 	Roles    []KeycloakRole
 	Mappings []ClientRoleMappingRole
 	Error    error
+	Valid    bool
 }
 
 type KeycloakCommand struct {
@@ -99,7 +101,6 @@ type AuthEvent struct {
 }
 
 func InitKeycloak() IKeycloak {
-
 	cmds := make(chan KeycloakCommand)
 
 	kc := &KeycloakClient{
@@ -168,9 +169,9 @@ func InitKeycloak() IKeycloak {
 			case GetUserInfoByIdKeycloakCommand:
 				user, err := kc.GetUserInfoById(cmd.Params.UserId)
 				cmd.ReplyChan <- KeycloakResponse{User: user, Error: err}
-			case GetUserInfoByTokenKeycloakCommand:
-				user, err := kc.GetUserInfoByToken(cmd.Params.Token)
-				cmd.ReplyChan <- KeycloakResponse{User: user, Error: err}
+			case GetUserTokenValidKeycloakCommand:
+				valid, err := kc.ValidateToken(cmd.Params.Token)
+				cmd.ReplyChan <- KeycloakResponse{Valid: valid, Error: err}
 			case UpdateUserKeycloakCommand:
 				err := kc.UpdateUser(cmd.Params.UserId, cmd.Params.FirstName, cmd.Params.LastName)
 				cmd.ReplyChan <- KeycloakResponse{Error: err}
@@ -232,17 +233,24 @@ func InitKeycloak() IKeycloak {
 	cmds <- KeycloakCommand{Ty: SetKeycloakRealmClientsKeycloakCommand}
 	cmds <- KeycloakCommand{Ty: SetKeycloakRolesKeycloakCommand}
 
+	pk, err := kc.FetchPublicKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+	kc.PublicKey = pk
+
 	kcc := &Keycloak{}
-	kcc.SetChan(cmds)
+	kcc.C = kc
+	kcc.Ch = cmds
 	return kcc
 }
 
 func (k *Keycloak) Chan() chan<- KeycloakCommand {
-	return k.ch
+	return k.Ch
 }
 
-func (k *Keycloak) SetChan(c chan<- KeycloakCommand) {
-	k.ch = c
+func (k *Keycloak) Client() *KeycloakClient {
+	return k.C
 }
 
 func (k *Keycloak) RoleCall(method string, userId string) error {
@@ -285,10 +293,10 @@ func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
 	return nil
 }
 
-func (k *Keycloak) GetUserInfoByToken(token string) (*KeycloakUser, error) {
+func (k *Keycloak) GetUserTokenValid(token string) (bool, error) {
 	kcUserInfoTokenReplyChan := make(chan KeycloakResponse)
 	k.Chan() <- KeycloakCommand{
-		Ty:        GetUserInfoByTokenKeycloakCommand,
+		Ty:        GetUserTokenValidKeycloakCommand,
 		Params:    KeycloakParams{Token: token},
 		ReplyChan: kcUserInfoTokenReplyChan,
 	}
@@ -296,10 +304,10 @@ func (k *Keycloak) GetUserInfoByToken(token string) (*KeycloakUser, error) {
 	close(kcUserInfoTokenReplyChan)
 
 	if kcUserInfoTokenReply.Error != nil {
-		return nil, kcUserInfoTokenReply.Error
+		return false, kcUserInfoTokenReply.Error
 	}
 
-	return kcUserInfoTokenReply.User, nil
+	return kcUserInfoTokenReply.Valid, nil
 }
 
 func (k *Keycloak) GetUserInfoById(id string) (*KeycloakUser, error) {

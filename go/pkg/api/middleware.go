@@ -24,6 +24,8 @@ func ApplyMiddleware(h http.HandlerFunc, middlewares []Middleware) http.HandlerF
 func (a *API) CorsMiddleware(next http.HandlerFunc) http.HandlerFunc {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", os.Getenv("APP_HOST_URL"))
+		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+		w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH")
 
 		if req.Method == "OPTIONS" {
 			w.WriteHeader(http.StatusOK)

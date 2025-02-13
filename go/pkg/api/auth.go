@@ -5,76 +5,39 @@ import (
 	"av3api/pkg/util"
 	"errors"
 	"fmt"
-	"io"
+	"log"
 	"net/http"
+	"net/http/httputil"
 	"net/url"
 	"os"
 	"slices"
 	"strings"
 )
 
-var authTransport = http.DefaultTransport
-
 func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
-	kcInternal := os.Getenv("KC_INTERNAL")
+	kcInternal, err := url.Parse(os.Getenv("KC_INTERNAL"))
+	if err != nil {
+		log.Fatal("invalid keycloak url")
+	}
 
-	mux.Handle("/auth/*", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	authProxy := httputil.NewSingleHostReverseProxy(kcInternal)
+	adminRoutes := []string{"/admin", "/realms/master"}
 
-		proxyPath := fmt.Sprintf("%s%s", kcInternal, strings.TrimPrefix(r.URL.Path, "/auth"))
-		proxyURL, err := url.Parse(proxyPath)
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			http.Error(w, "bad request", http.StatusInternalServerError)
-			return
-		}
-		proxyURL.RawQuery = r.URL.RawQuery
-
-		proxyReq, err := http.NewRequest(r.Method, proxyURL.String(), r.Body)
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			http.Error(w, "Error creating proxy request", http.StatusInternalServerError)
-			return
-		}
-
-		// Copy the headers from the original request to the proxy request
-		for name, values := range r.Header {
-			if name == "X-Forwarded-For" || name == "X-Forwarded-Host" {
-				continue
-			}
-			for _, value := range values {
-				proxyReq.Header.Add(name, value)
+	mux.Handle("/auth/", http.StripPrefix("/auth", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for _, ar := range adminRoutes {
+			if strings.HasPrefix(r.URL.Path, ar) {
+				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+				return
 			}
 		}
 
-		// Use remoteAddr for keycloak rate limiting
-		proxyReq.Header.Add("X-Forwarded-For", r.RemoteAddr)
-		proxyReq.Header.Add("X-Forwarded-Proto", "https")
-		proxyReq.Header.Add("X-Forwarded-Host", r.Host)
+		r.Header.Add("X-Forwarded-For", r.RemoteAddr)
+		r.Header.Add("X-Forwarded-Proto", "https")
+		r.Header.Add("X-Forwarded-Host", r.Host)
 
-		// Send the proxy request using the custom transport
-		resp, err := authTransport.RoundTrip(proxyReq)
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			http.Error(w, "Error sending proxy request", http.StatusInternalServerError)
-			return
-		}
-		defer resp.Body.Close()
-
-		// Copy the headers from the proxy response to the original response
-		for name, values := range resp.Header {
-			for _, value := range values {
-				w.Header().Add(name, value)
-			}
-		}
-
-		// Set the status code of the original response to the status code of the proxy response
-		w.WriteHeader(resp.StatusCode)
-
-		// Copy the body of the proxy response to the original response
-		io.Copy(w, resp.Body)
-
-	}))
+		authProxy.ServeHTTP(w, r)
+	})))
 
 }
 
@@ -86,12 +49,12 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 		return nil, errors.New("no auth token")
 	}
 
-	_, err := a.Handlers.Keycloak.GetUserInfoByToken(token[0])
-	if err != nil {
-		return nil, util.ErrCheck(err)
+	valid, err := a.Handlers.Keycloak.GetUserTokenValid(token[0])
+	if !valid || err != nil {
+		return nil, util.ErrCheck(errors.New(err.Error() + fmt.Sprintf(" Validity check: %t", valid)))
 	}
 
-	userToken, err := clients.ParseJWT(token[0])
+	userToken, _, err := clients.ParseJWT(token[0])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

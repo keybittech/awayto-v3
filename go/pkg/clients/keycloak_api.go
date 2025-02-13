@@ -6,9 +6,12 @@ import (
 	// Error Handling
 	"av3api/pkg/util"
 	"bytes"
+	"crypto/rsa"
+	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -17,6 +20,9 @@ import (
 	// Encoding
 
 	"encoding/json"
+	"encoding/pem"
+
+	"github.com/golang-jwt/jwt"
 )
 
 const (
@@ -49,6 +55,14 @@ type KeycloakClient struct {
 	RoleCall        KeycloakRole
 	GroupAdminRoles []KeycloakRole
 	Token           *OIDCToken
+	PublicKey       *rsa.PublicKey
+}
+
+type JWKSInfo struct {
+	Alg string   `json:"alg"`
+	Typ string   `json:"typ"`
+	Kid string   `json:"kid"`
+	X5c []string `json:"x5c"`
 }
 
 type KeycloakUser struct {
@@ -81,6 +95,17 @@ type KeycloakUser struct {
 		Impersonate           bool `json:"impersonate,omitempty"`
 		Manage                bool `json:"manage,omitempty"`
 	} `json:"access,omitempty"`
+}
+
+type KeycloakUserSession struct {
+	Id            string            `json:"id"`
+	Clients       map[string]string `json:""`
+	IpAddress     string            `json:"ipAddress"`
+	LastAccess    int               `json:"lastAccess"`
+	Start         int               `json:"start"`
+	UserId        string            `json:"userId"`
+	Username      string            `json:"username"`
+	TransientUser bool              `json:"transientUser"`
 }
 
 type KeycloakUserGroup struct {
@@ -132,41 +157,48 @@ type KeycloakRealmClient struct {
 	ClientID string `json:"clientId"`
 }
 
-type KeycloakUserSession struct {
-	Id            string            `json:"id"`
-	Clients       map[string]string `json:""`
-	IpAddress     string            `json:"ipAddress"`
-	LastAccess    int               `json:"lastAccess"`
-	Start         int               `json:"start"`
-	UserId        string            `json:"userId"`
-	Username      string            `json:"username"`
-	TransientUser bool              `json:"transientUser"`
+type KeycloakRealmInfo struct {
+	Realm           string `json:"realm"`
+	PublicKey       string `json:"public_key"`
+	TokenService    string `json:"token-service"`
+	AccountService  string `json:"account-service"`
+	TokensNotBefore int    `json:"tokens-not-before"`
 }
 
-func ParseJWT(token string) (*KeycloakUser, error) {
+func ParseJWT(token string) (*KeycloakUser, *JWKSInfo, error) {
 
 	bearerParts := strings.Split(token, " ")
 
 	if len(bearerParts) != 2 {
-		return nil, util.ErrCheck(errors.New("bad token split"))
+		return nil, nil, util.ErrCheck(errors.New("bad token split"))
 	}
 
 	tokenParts := strings.Split(bearerParts[1], ".")
 	if len(tokenParts) != 3 {
-		return nil, util.ErrCheck(errors.New(fmt.Sprintf("invalid JWT, expected 3 parts but got %d", len(tokenParts))))
+		return nil, nil, util.ErrCheck(errors.New(fmt.Sprintf("invalid JWT, expected 3 parts but got %d", len(tokenParts))))
 	}
 
 	payloadBytes, err := util.Base64UrlDecode(tokenParts[1])
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return nil, nil, util.ErrCheck(err)
 	}
 
 	var payload KeycloakUser
 	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
-		return nil, util.ErrCheck(err)
+		return nil, nil, util.ErrCheck(err)
 	}
 
-	return &payload, nil
+	jwksBytes, err := util.Base64UrlDecode(tokenParts[0])
+	if err != nil {
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	var jwksInfo JWKSInfo
+	if err := json.Unmarshal(jwksBytes, &jwksInfo); err != nil {
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	return &payload, &jwksInfo, nil
 }
 
 func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
@@ -175,6 +207,56 @@ func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
 		"Authorization": {"Bearer " + keycloakClient.Token.AccessToken},
 	}
 	return headers
+}
+
+func (keycloakClient KeycloakClient) FetchPublicKey() (*rsa.PublicKey, error) {
+
+	resp, err := util.Get(
+		keycloakClient.Server+"/realms/"+keycloakClient.Realm,
+		keycloakClient.BasicHeaders(),
+	)
+	if err != nil {
+		return nil, err
+	}
+
+	var result KeycloakRealmInfo
+	if err := json.Unmarshal(resp, &result); err != nil {
+		return nil, err
+	}
+
+	block, _ := pem.Decode([]byte(fmt.Sprintf("-----BEGIN PUBLIC KEY-----\n%s\n-----END PUBLIC KEY-----", result.PublicKey)))
+	if block == nil {
+		log.Fatal("empty pem block")
+	}
+
+	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	if parsed, ok := pubKey.(*rsa.PublicKey); ok {
+		return parsed, nil
+	}
+
+	return nil, errors.New("key could not be parsed")
+}
+
+func (keycloakClient KeycloakClient) ValidateToken(token string) (bool, error) {
+	if strings.Contains(token, "Bearer") {
+		token = strings.Split(token, " ")[1]
+	}
+
+	parsedToken, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, errors.New("bad signing method")
+		}
+		return keycloakClient.PublicKey, nil
+	})
+	if err != nil {
+		return false, util.ErrCheck(err)
+	}
+
+	return parsedToken.Valid, nil
 }
 
 func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*OIDCToken, error) {
@@ -244,51 +326,6 @@ func (keycloakClient KeycloakClient) GetUserListInRealm() (*[]KeycloakUser, erro
 	if err := json.Unmarshal(resp, &result); err != nil {
 		return nil, err
 	}
-
-	return &result, nil
-}
-
-func (keycloakClient KeycloakClient) GetUserInfoByToken(token string) (*KeycloakUser, error) {
-
-	client := &http.Client{}
-	req, err := http.NewRequest(
-		"GET",
-		keycloakClient.Server+"/realms/"+keycloakClient.Realm+"/protocol/openid-connect/userinfo",
-		nil,
-	)
-
-	if err != nil {
-		return nil, err
-	}
-
-	req.Header = http.Header{
-		"Content-Type":  {"application/json"},
-		"Authorization": {token},
-	}
-
-	do, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-
-	defer do.Body.Close()
-
-	if do.StatusCode != 200 {
-		return nil, util.ErrCheck(errors.New(fmt.Sprintf("kc user info status %d", do.StatusCode)))
-	}
-
-	resp, err := io.ReadAll(do.Body)
-	if err != nil {
-		return nil, err
-	}
-
-	var result KeycloakUser
-	if err := json.Unmarshal(resp, &result); err != nil {
-		fmt.Printf("user info unmarshal body: %s", string(resp))
-		return nil, err
-	}
-
-	result.Id = result.Sub
 
 	return &result, nil
 }

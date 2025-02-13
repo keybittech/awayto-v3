@@ -211,7 +211,6 @@ docker_build:
 
 docker_start: docker_build
 	${SUDO} docker $(DOCKER_COMPOSE) up -d
-	@while true; do if [ $$(curl -o /dev/null -s -w "%{http_code}" "${KC_INTERNAL}") = "303" ]; then break; fi; echo "waiting for keycloak..." && sleep 5; done
 
 docker_stop:
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
@@ -385,9 +384,7 @@ host_deploy_docker:
 	"
 
 host_predeploy:
-	# was \[APP_IP\[
 	sed -i -e "/^\(#\|\)APP_HOST_NAME=/s/^.*$$/APP_HOST_NAME=${DOMAIN_NAME}/;" $(ENVFILE)
-	# was APP_IP_B
 	$(eval APP_HOST_NAME=${DOMAIN_NAME})
 	sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=/etc/letsencrypt/live/${DOMAIN_NAME}&;" $(ENVFILE)
 	$(eval CERTS_DIR=/etc/letsencrypt/live/${DOMAIN_NAME})

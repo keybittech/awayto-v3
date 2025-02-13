@@ -36,6 +36,14 @@ services:
     ports:
       - 8080:8080
       - 8443:8443
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: '1'
+    #       memory: 512M
+    #     reservations:
+    #       cpus: '0.5'
+    #       memory: 256M
     build:
       context: ../../../
       dockerfile: ./deploy/scripts/docker/auth_Dockerfile
@@ -45,9 +53,10 @@ services:
       - KC_UNIX_SOCK_DIR=/unix_sock
       - KC_UNIX_SOCK_FILE=${UNIX_SOCK_FILE}
       - KC_API_CLIENT_ID=${KC_CLIENT}
-      - KC_HTTP_ENABLED=true
       - KC_PROXY_HEADERS=xforwarded
-      - KC_HOSTNAME=${KC_PATH}
+      - KC_HTTP_ENABLED=true
+      - KC_HOSTNAME_STRICT=false
+      - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN} #SECRET
       - KC_BOOTSTRAP_ADMIN_PASSWORD=${KC_PASS} #SECRET
       - KC_DB_URL=jdbc:postgresql://db:${PG_PORT}/keycloak #NONSECRET

@@ -90,10 +90,10 @@ type IRedisClient interface {
 
 type IKeycloak interface {
 	Chan() chan<- KeycloakCommand
-	SetChan(chan<- KeycloakCommand)
+	Client() *KeycloakClient
 	RoleCall(method string, userId string) error
 	UpdateUser(id, firstName, lastName string) error
-	GetUserInfoByToken(token string) (*KeycloakUser, error)
+	GetUserTokenValid(token string) (bool, error)
 	GetUserInfoById(id string) (*KeycloakUser, error)
 	GetGroupAdminRoles() []KeycloakRole
 	GetGroupSiteRoles(groupId string) []ClientRoleMappingRole

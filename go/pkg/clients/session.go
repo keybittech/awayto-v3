@@ -81,7 +81,7 @@ func (r *Redis) ReqSession(req *http.Request) (*UserSession, error) {
 		return nil, errors.New("no auth token")
 	}
 
-	userToken, err := ParseJWT(token[0])
+	userToken, _, err := ParseJWT(token[0])
 	if err != nil {
 		return nil, err
 	}
