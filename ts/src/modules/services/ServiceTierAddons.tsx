@@ -9,17 +9,18 @@ import CheckIcon from '@mui/icons-material/Check';
 
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 
-import { useGrid, useStyles, IService } from 'awayto/hooks';
+import { useGrid, useStyles, IService, IServiceTier } from 'awayto/hooks';
 import Box from '@mui/material/Box';
 
 declare global {
   interface IComponent {
     service?: IService;
     showFormChips?: boolean;
+    onClickHeader?: (tier: IServiceTier) => void;
   }
 }
 
-export function ServiceTierAddons({ service, showFormChips }: IComponent): React.JSX.Element {
+export function ServiceTierAddons({ service, showFormChips, onClickHeader }: IComponent): React.JSX.Element {
 
   const serviceTiers = useMemo(() => Object.values(service?.tiers || {}), [service?.tiers]);
 
@@ -65,12 +66,15 @@ export function ServiceTierAddons({ service, showFormChips }: IComponent): React
           field: `sta_col_${st.id}`,
           headerName: st.name,
           cellClassName: 'vertical-parent',
+          sortable: false,
           renderHeader: col => {
             return !showFormChips ? col.colDef.headerName : <Box mt={-2}>
               <Typography mt={2}>{col.colDef.headerName}</Typography>
-              {st.formId && <Chip color="info" size="small" label="Intake Form" />} &nbsp;
-              {st.surveyId && <Chip color="warning" size="small" label="Survey Form" />}
-              {!hasFormOrSurvey && <Chip size="small" label="No Forms" />}
+              <Grid container mt={1} spacing={1}>
+                {st.formId && <Chip color="info" size="small" label="Intake" />}
+                {st.surveyId && <Chip color="warning" size="small" label="Survey" />}
+                {!hasFormOrSurvey && <Chip size="small" label="No Forms" />}
+              </Grid>
             </Box>;
           },
           renderCell: params => {
@@ -86,7 +90,25 @@ export function ServiceTierAddons({ service, showFormChips }: IComponent): React
     ]
   });
 
-  return <DataGrid {...tierGridProps} />;
+  return <>
+    {onClickHeader && <Box mb={1} sx={{ textAlign: 'right' }}>
+      <Typography variant="caption">Tiers may be edited by clicking their corresponding header cell.</Typography>
+    </Box>}
+    <DataGrid
+      onColumnHeaderClick={e => onClickHeader && onClickHeader(serviceTiers.find(x => x.name == e.colDef.headerName) || {})}
+      {...tierGridProps}
+      {...{
+        sx: {
+          '.MuiDataGrid-columnHeader': {
+            cursor: 'pointer',
+            '[role="presentation"]': {
+              gap: 'unset !important'
+            }
+          }
+        }
+      }}
+    />
+  </>;
 }
 
 export default ServiceTierAddons;

@@ -377,6 +377,11 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 		}
 	}
 
+	err = tx.SetDbVar("group_id", groupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	var kcSubgroupExternalId string
 	err = tx.QueryRow(`
 		SELECT external_id

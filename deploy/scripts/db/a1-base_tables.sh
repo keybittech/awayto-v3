@@ -147,7 +147,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
 
   CREATE TABLE dbtable_schema.groups (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-    external_id TEXT NOT NULL UNIQUE,
+    external_id uuid NOT NULL UNIQUE,
     admin_role_external_id TEXT NOT NULL UNIQUE,
     default_role_id uuid REFERENCES dbtable_schema.roles (id) ON DELETE CASCADE,
     display_name VARCHAR (100) NOT NULL UNIQUE,
@@ -164,7 +164,9 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true
   );
   ALTER TABLE dbtable_schema.groups ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY table_select ON dbtable_schema.groups FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR OR id = $GROUP_ID);
+  CREATE POLICY table_select ON dbtable_schema.groups FOR SELECT TO $PG_WORKER USING (
+    $IS_WORKER OR $IS_CREATOR OR id = $GROUP_ID OR external_id = $GROUP_ID OR code IS NOT NULL
+  );
   CREATE POLICY table_insert ON dbtable_schema.groups FOR INSERT TO $PG_WORKER WITH CHECK (
     NOT EXISTS(SELECT 1 FROM dbtable_schema.groups WHERE $IS_CREATOR)
   );

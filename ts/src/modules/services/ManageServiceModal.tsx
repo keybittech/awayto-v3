@@ -333,40 +333,42 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
               </Suspense>
             </Box>
 
-            <FormControlLabel
-              label="Include Tier Forms"
-              control={
-                <Checkbox
-                  checked={hasTierFormOrSurvey}
-                  onChange={() => setHasTierFormOrSurvey(!hasTierFormOrSurvey)}
-                />
-              }
-            />
+            <Box>
+              <FormControlLabel
+                label="Include Tier Forms"
+                control={
+                  <Checkbox
+                    checked={hasTierFormOrSurvey}
+                    onChange={() => setHasTierFormOrSurvey(!hasTierFormOrSurvey)}
+                  />
+                }
+              />
 
-            {hasTierFormOrSurvey && <Suspense>
-              <>
-                <Box my={2}>
-                  <FormPicker
-                    formId={newServiceTier.formId}
-                    label="Intake Form"
-                    helperText="Optional. Shown during appointment creation."
-                    onSelectForm={(formId: string) => {
-                      setNewServiceTier({ ...newServiceTier, formId });
-                    }}
-                  />
-                </Box>
-                <Box my={2}>
-                  <FormPicker
-                    formId={newServiceTier.surveyId}
-                    label="Survey Form"
-                    helperText="Optional. Shown during post-appointment summary."
-                    onSelectForm={(surveyId: string) => {
-                      setNewServiceTier({ ...newServiceTier, surveyId });
-                    }}
-                  />
-                </Box>
-              </>
-            </Suspense>}
+              {hasTierFormOrSurvey && <Suspense>
+                <>
+                  <Box my={2}>
+                    <FormPicker
+                      formId={newServiceTier.formId}
+                      label="Intake Form"
+                      helperText="Optional. Shown during appointment creation."
+                      onSelectForm={(formId: string) => {
+                        setNewServiceTier({ ...newServiceTier, formId });
+                      }}
+                    />
+                  </Box>
+                  <Box my={2}>
+                    <FormPicker
+                      formId={newServiceTier.surveyId}
+                      label="Survey Form"
+                      helperText="Optional. Shown during post-appointment summary."
+                      onSelectForm={(surveyId: string) => {
+                        setNewServiceTier({ ...newServiceTier, surveyId });
+                      }}
+                    />
+                  </Box>
+                </>
+              </Suspense>}
+            </Box>
 
             {/* <Box>
               <Typography variant="h6">Multiplier</Typography>
@@ -375,61 +377,82 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
                 <Slider value={parseFloat(newServiceTier.multiplier)} onChange={(e, val) => setNewServiceTier({ ...newServiceTier, multiplier: parseFloat(val.toString()).toFixed(2) })} step={.01} min={1} max={5} />
               </Box>
             </Box> */}
-            <CardActionArea onClick={() => {
-              let st = { ...newServiceTier };
-              if (st.name && newService.tiers) {
-                const existingTier = serviceTiers.find(x => x.name == st.name);
-                if (existingTier) {
-                  st = { ...st, ...existingTier };
-                }
-
-                if (!st.id) {
-                  const created = (new Date()).getTime().toString();
-                  st.id = created;
-                  st.createdOn = created;
-                  st.order = Object.keys(newService.tiers).length + 1;
-                }
-                setNewServiceTier({ ...serviceTierSchema });
-                setServiceTierAddonIds([]);
-                setNewService({ ...newService, tiers: { ...newService.tiers, [st.id]: st } });
-                setHasTierFormOrSurvey(false);
-              } else {
-                void setSnack({ snackOn: 'Provide a unique tier name.', snackType: 'info' });
-              }
-            }}>
-              <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography color="secondary" variant="button">{newServiceTier.id ? 'Edit' : 'Add'} Service Tier</Typography>
-              </Box>
-            </CardActionArea>
-            <Box sx={{ display: !serviceTiers.length ? 'none' : 'flex', py: 1, flexWrap: 'wrap', flexDirection: 'column' }}>
-              <Typography variant="caption">Click to edit or remove existing tiers.</Typography>
-              <Grid container size="grow">
-                {serviceTiers.sort((a, b) => new Date(a.createdOn!).getTime() - new Date(b.createdOn!).getTime()).map((tier, i) => {
-                  return <Box key={`service-tier-chip${i + 1}new`} m={1}>
-                    <Chip
-                      sx={classes.chipRoot}
-                      label={
-                        <Typography sx={classes.chipLabel}>
-                          {`#${i + 1} ` + tier.name} {/*  + ' (' + (tier.multiplier || 100) / 100 + 'x)'} */}
-                        </Typography>
+            <Grid container size="grow" justifyContent="space-between">
+              {newServiceTier.id ? <Button
+                color="error"
+                onClick={() => {
+                  const tiers = { ...newService.tiers };
+                  if (newServiceTier.id) {
+                    delete tiers[newServiceTier.id];
+                    setNewService({ ...newService, tiers });
+                    setNewServiceTier({ ...serviceTierSchema });
+                    setServiceTierAddonIds([]);
+                  }
+                }}
+              >
+                Delete
+              </Button> : <Box />}
+              <Button
+                color="secondary"
+                onClick={() => {
+                  let st = { ...newServiceTier };
+                  if (st.name && newService.tiers) {
+                    const et = serviceTiers.find(x => x.name == st.name);
+                    if (et) {
+                      if (et.id != st.id) {
+                        setSnack({ snackType: "warning", snackOn: "This tier already exists. Click on " });
+                        return
                       }
-                      onDelete={() => {
-                        const tiers = { ...newService.tiers };
-                        if (tier.id) {
-                          delete tiers[tier.id];
-                          setNewService({ ...newService, tiers });
-                        }
-                      }}
-                      onClick={() => {
-                        setNewServiceTier({ ...tier });
-                        useSuggestAddons(`${tier.name} ${newService.name}`);
-                        setServiceTierAddonIds(Object.keys(tier.addons || {}));
-                      }}
-                    />
-                  </Box>
-                })}
-              </Grid>
-            </Box>
+                      st = { ...st, id: et.id, createdOn: et.createdOn, order: et.order, addons: st.addons };
+                    }
+
+                    if (!st.id) {
+                      const created = (new Date()).getTime().toString();
+                      st.id = created;
+                      st.createdOn = created;
+                      st.order = serviceTiers.length + 1;
+                    }
+                    setNewServiceTier({ ...serviceTierSchema });
+                    setServiceTierAddonIds([]);
+                    setNewService({ ...newService, tiers: { ...newService.tiers, [st.id]: st } });
+                    setHasTierFormOrSurvey(false);
+                  } else {
+                    void setSnack({ snackOn: 'Provide a unique tier name.', snackType: 'info' });
+                  }
+                }}
+              >
+                {newServiceTier.id ? 'Save Changes' : 'Add Service Tier'}
+              </Button>
+            </Grid>
+            {/* <Box sx={{ display: !serviceTiers.length ? 'none' : 'flex', py: 1, flexWrap: 'wrap', flexDirection: 'column' }}> */}
+            {/*   <Typography variant="caption">Click to edit or remove existing tiers.</Typography> */}
+            {/*   <Grid container size="grow"> */}
+            {/*     {serviceTiers.sort((a, b) => new Date(a.createdOn!).getTime() - new Date(b.createdOn!).getTime()).map((tier, i) => { */}
+            {/*       return <Box key={`service-tier-chip${i + 1}new`} m={1}> */}
+            {/*         <Chip */}
+            {/*           sx={classes.chipRoot} */}
+            {/*           label={ */}
+            {/*             <Typography sx={classes.chipLabel}> */}
+            {/*               {`#${i + 1} ` + tier.name + ' (' + (tier.multiplier || 100) / 100 + 'x)'} */}
+            {/*             </Typography> */}
+            {/*           } */}
+            {/*           onDelete={() => { */}
+            {/*             const tiers = { ...newService.tiers }; */}
+            {/*             if (tier.id) { */}
+            {/*               delete tiers[tier.id]; */}
+            {/*               setNewService({ ...newService, tiers }); */}
+            {/*             } */}
+            {/*           }} */}
+            {/*           onClick={() => { */}
+            {/*             setNewServiceTier({ ...tier }); */}
+            {/*             useSuggestAddons(`${tier.name} ${newService.name}`); */}
+            {/*             setServiceTierAddonIds(Object.keys(tier.addons || {})); */}
+            {/*           }} */}
+            {/*         /> */}
+            {/*       </Box> */}
+            {/*     })} */}
+            {/*   </Grid> */}
+            {/* </Box> */}
           </Box>
         </Grid>
         <Grid size={12}>
@@ -443,7 +466,17 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
               {!(newService.surveyId || newService.formId) && <Chip size="small" label="No Forms" />}
             </Box>
             <Suspense>
-              <ServiceTierAddons service={newService} showFormChips />
+              <ServiceTierAddons
+                service={newService}
+                showFormChips
+                onClickHeader={(tier: IServiceTier) => {
+                  if (tier.id) {
+                    setNewServiceTier({ ...tier });
+                    useSuggestAddons(`${tier.name} ${newService.name}`);
+                    setServiceTierAddonIds(Object.keys(tier.addons || {}));
+                  }
+                }}
+              />
             </Suspense>
           </Box>
         </Grid>

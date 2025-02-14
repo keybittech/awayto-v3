@@ -60,14 +60,6 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 			requestId := uuid.NewString()
 
-			// Authorize the request
-
-			session, err := a.GetAuthorizedSession(req)
-			if err != nil {
-				util.RequestError(w, requestId, util.ErrCheck(err).Error(), ignoreFields, pbVal)
-				return
-			}
-
 			// Setup handler transaction
 
 			tx, err := a.Handlers.Database.Client().Begin()
@@ -112,22 +104,11 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 				}
 			}()
 
-			// Setup DB session values
+			// Authorize the request
 
-			if session.UserSub == "" {
-				deferredError = util.ErrCheck(errors.New("no user sub for request"))
-				return
-			}
-
-			err = tx.SetDbVar("user_sub", session.UserSub)
+			session, err := a.GetAuthorizedSession(req, tx)
 			if err != nil {
-				deferredError = util.ErrCheck(err)
-				return
-			}
-
-			err = tx.SetDbVar("group_id", session.GroupId)
-			if err != nil {
-				deferredError = util.ErrCheck(err)
+				util.RequestError(w, requestId, util.ErrCheck(err).Error(), ignoreFields, pbVal)
 				return
 			}
 

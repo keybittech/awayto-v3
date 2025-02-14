@@ -41,7 +41,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
 }
 
-func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, error) {
+func (a *API) GetAuthorizedSession(req *http.Request, tx clients.IDatabaseTx) (*clients.UserSession, error) {
 	ctx := req.Context()
 
 	token, ok := req.Header["Authorization"]
@@ -79,6 +79,21 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 		} else {
 			session.GroupSessionVersion = groupVersion
 		}
+	}
+
+	err = tx.SetDbVar("user_sub", session.UserSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	groupId := session.GroupExternalId
+	if session.GroupId != "" {
+		groupId = session.GroupId
+	}
+
+	err = tx.SetDbVar("group_id", groupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	if buildSession && len(session.SubGroups) > 0 {
@@ -121,23 +136,6 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 			session.AvailableUserGroupRoles = append(session.AvailableUserGroupRoles, mapping.Name)
 		}
 
-		tx, err := a.Handlers.Database.Client().Begin()
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
-		defer tx.Rollback()
-
-		err = tx.SetDbVar("user_sub", "worker")
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
-		err = tx.SetDbVar("group_id", "")
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
 		err = tx.QueryRow(`
 			SELECT id, ai, sub
 			FROM dbtable_schema.groups
@@ -147,7 +145,7 @@ func (a *API) GetAuthorizedSession(req *http.Request) (*clients.UserSession, err
 			return nil, util.ErrCheck(err)
 		}
 
-		err = tx.Commit()
+		err = tx.SetDbVar("group_id", session.GroupId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
