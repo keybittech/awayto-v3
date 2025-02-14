@@ -14,31 +14,47 @@ import (
 	"strings"
 )
 
+func SetForwardingHeadersAndServe(prox *httputil.ReverseProxy, w http.ResponseWriter, r *http.Request) {
+	r.Header.Add("X-Forwarded-For", r.RemoteAddr)
+	r.Header.Add("X-Forwarded-Proto", "https")
+	r.Header.Add("X-Forwarded-Host", r.Host)
+	prox.ServeHTTP(w, r)
+}
+
 func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
+	kcRealm := os.Getenv("KC_REALM")
 	kcInternal, err := url.Parse(os.Getenv("KC_INTERNAL"))
 	if err != nil {
 		log.Fatal("invalid keycloak url")
 	}
 
 	authProxy := httputil.NewSingleHostReverseProxy(kcInternal)
-	adminRoutes := []string{"/admin", "/realms/master"}
 
-	mux.Handle("/auth/", http.StripPrefix("/auth", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		for _, ar := range adminRoutes {
-			if strings.HasPrefix(r.URL.Path, ar) {
-				http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-				return
-			}
-		}
+	userRoutes := []string{
+		"login-actions/registration",
+		"login-actions/authenticate",
+		"login-actions/reset-credentials",
+		"protocol/openid-connect/3p-cookies/step1.html",
+		"protocol/openid-connect/3p-cookies/step2.html",
+		"protocol/openid-connect/login-status-iframe.html",
+		"protocol/openid-connect/login-status-iframe.html/init",
+		"protocol/openid-connect/registrations",
+		"protocol/openid-connect/auth",
+		"protocol/openid-connect/token",
+		"protocol/openid-connect/logout",
+	}
 
-		r.Header.Add("X-Forwarded-For", r.RemoteAddr)
-		r.Header.Add("X-Forwarded-Proto", "https")
-		r.Header.Add("X-Forwarded-Host", r.Host)
+	for _, ur := range userRoutes {
+		authRoute := fmt.Sprintf("/auth/realms/%s/%s", kcRealm, ur)
+		mux.Handle(authRoute, http.StripPrefix("/auth", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			SetForwardingHeadersAndServe(authProxy, w, r)
+		})))
+	}
 
-		authProxy.ServeHTTP(w, r)
+	mux.Handle("/auth/resources/", http.StripPrefix("/auth", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		SetForwardingHeadersAndServe(authProxy, w, r)
 	})))
-
 }
 
 func (a *API) GetAuthorizedSession(req *http.Request, tx clients.IDatabaseTx) (*clients.UserSession, error) {

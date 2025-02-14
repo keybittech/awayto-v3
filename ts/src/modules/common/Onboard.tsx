@@ -216,7 +216,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
             </Grid>
           </Grid> :
             currentAccordion === 0 ? <>
-              <Button disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>I have a group code</Button>
+              {!group.id && <Button disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>I have a group code</Button>}
               <Grid container size="grow" spacing={2}>
                 <ManageGroupModal
                   {...props}
