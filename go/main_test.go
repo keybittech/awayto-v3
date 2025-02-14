@@ -4,9 +4,14 @@ import (
 	"av3api/pkg/types"
 	"flag"
 	"fmt"
+	"io"
 	"log"
+	"math/rand/v2"
 	"os"
+	"os/exec"
+	"strconv"
 	"strings"
+	"syscall"
 	"testing"
 	"time"
 
@@ -89,6 +94,43 @@ func (p *Page) ByLocator(selector string) Locator {
 	return Locator{p.Locator(selector)}
 }
 
+var recording bool
+var recStdout io.ReadCloser
+var recs map[string]*exec.Cmd
+
+func init() {
+	recording = true
+	recs = make(map[string]*exec.Cmd)
+}
+
+func startRec(title string) {
+	if !recording {
+		return
+	}
+
+	recCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ffmpeg -video_size 1920x890 -framerate 25 -f x11grab -i :1.0+3840,120 -y working/test_%s.mp4", title))
+	if err := recCmd.Start(); err != nil {
+		log.Fatal(err)
+	}
+
+	recs[title] = recCmd
+}
+
+func stopRec(title string) {
+	output, _ := exec.Command("ps", "-o", "pid=", "--ppid", fmt.Sprintf("%d", recs[title].Process.Pid)).Output()
+	fields := strings.Fields(string(output))
+	for i := 0; i < len(fields); i++ {
+		pid, err := strconv.Atoi(fields[i])
+		if err != nil {
+			log.Fatal(err)
+		}
+		syscall.Kill(pid, syscall.SIGTERM)
+	}
+
+	recs[title].Process.Kill()
+	delete(recs, title)
+}
+
 func TestMain(t *testing.T) {
 
 	go main()
@@ -165,8 +207,12 @@ func TestMain(t *testing.T) {
 		page.ByText("Home").MouseOver().Click()
 	}
 
+	time.Sleep(5 * time.Second)
+
+	randId := rand.IntN(1000000)
+
 	personA := &types.IUserProfile{
-		Email:     "jsmith@myschool.edu",
+		Email:     fmt.Sprintf("jsmith%d@myschool.edu", randId),
 		FirstName: "John",
 		LastName:  "Smith",
 	}
@@ -178,6 +224,7 @@ func TestMain(t *testing.T) {
 			log.Fatalf("could not goto: %v", err)
 		}
 
+		startRec("registration")
 		// time.Sleep(30 * time.Second)
 		// Register user
 		page.ByRole("link", "Open Registration!").MouseOver().Click()
@@ -191,6 +238,9 @@ func TestMain(t *testing.T) {
 		page.ByLocator("#firstName").MouseOver().Fill(personA.FirstName)
 		page.ByLocator("#lastName").MouseOver().Fill(personA.LastName)
 		page.ByRole("button", "Register").MouseOver().Click()
+
+		time.Sleep(2 * time.Second)
+		stopRec("registration")
 	} else {
 		if _, err = page.Goto("/app"); err != nil {
 			log.Fatalf("could not goto: %v", err)
@@ -206,20 +256,22 @@ func TestMain(t *testing.T) {
 	}
 
 	if onRegistration {
-		doEval()
+		startRec("onboarding")
 
 		// Fill out group details
+		startRec("create_group")
 		page.ByText("Group").WaitFor()
 		doEval()
-		page.ByRole("textbox", "Group Name").MouseOver().Fill("Downtown Writing Center")
+		page.ByRole("textbox", "Group Name").MouseOver().Fill(fmt.Sprintf("Downtown Writing Center %d", randId))
 		page.ByRole("textbox", "Group Description").MouseOver().Fill("Works with students and the public to teach writing")
 		page.ByRole("checkbox", "Use AI Suggestions").MouseOver().SetChecked(true)
 		page.ByRole("button", "Save Group").MouseOver().Click()
 		page.ByRole("button", "Next").MouseOver().Click()
+		stopRec("create_group")
 
 		// Add group roles
+		startRec("create_roles")
 		page.ByText("Roles").WaitFor()
-
 		page.ByRole("listitem").WaitFor()
 		page.ByRole("listitem").First().MouseOver().Click()
 		page.ByRole("listitem").Last().MouseOver().Click()
@@ -227,8 +279,10 @@ func TestMain(t *testing.T) {
 		page.ByRole("listbox").ByLocator("li").First().Click()
 		page.ByRole("button", "Save Roles").Click()
 		page.ByRole("button", "Next").MouseOver().Click()
+		stopRec("create_roles")
 
 		// Create service
+		startRec("create_service")
 		serviceNameSelections := page.ByText("Step 1. Provide details").ByLocator("..")
 		serviceNameSelections.ByRole("listitem").WaitFor()
 		serviceNameSelections.ByRole("listitem").First().MouseOver().Click()
@@ -243,7 +297,7 @@ func TestMain(t *testing.T) {
 		featureNameSelections.ByRole("listitem").First().WaitFor()
 		featureNameSelections.ByRole("listitem").First().MouseOver().Click()
 		featureNameSelections.ByRole("listitem").Nth(1).MouseOver().Click()
-		page.ByRole("button", "Add Tier to Service").MouseOver().Click()
+		page.ByRole("button", "Add service tier").MouseOver().Click()
 
 		// Add a second tier
 		tierNameSelections.ByRole("listitem").Nth(1).MouseOver().Click()
@@ -255,7 +309,7 @@ func TestMain(t *testing.T) {
 		page.Mouse().Click(float64(p.ViewportSize().Width)/2, float64(page.ViewportSize().Height)/2)
 		featureNameSelections.ByRole("listitem").Nth(2).MouseOver().Click()
 		featureNameSelections.ByRole("listitem").Nth(3).MouseOver().Click()
-		page.ByRole("button", "Add Tier to Service").MouseOver().Click()
+		page.ByRole("button", "Add service tier").MouseOver().Click()
 
 		// Review and save service
 		page.ByRole("button", "Save Service").ScrollIntoViewIfNeeded()
@@ -264,8 +318,10 @@ func TestMain(t *testing.T) {
 		page.ByRole("button", "Save Service").MouseOver().Click()
 		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
 		page.ByRole("button", "Next").MouseOver().Click()
+		stopRec("create_service")
 
 		// Create schedule
+		startRec("create_schedule")
 		page.ByRole("textbox", "Start Date").WaitFor()
 		page.ByRole("textbox", "Name").MouseOver().Fill("Fall 2025 Learning Center")
 		page.ByRole("textbox", "Start Date").MouseOver().Fill("2025-02-05")
@@ -273,12 +329,17 @@ func TestMain(t *testing.T) {
 		page.ByRole("button", "Save Schedule").MouseOver().Click()
 		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
 		page.ByRole("button", "Next").MouseOver().Click()
+		stopRec("create_schedule")
 
 		// Review group creation
 		page.ByText("Review").WaitFor()
 		time.Sleep(2 * time.Second)
 		page.ByRole("button", "Create group").MouseOver().Click()
 		page.ByRole("button", "Click here to confirm.").MouseOver().Click()
+
+		time.Sleep(2 * time.Second)
+
+		stopRec("onboarding")
 
 		// Logout
 		page.ByRole("navigation").WaitFor()
