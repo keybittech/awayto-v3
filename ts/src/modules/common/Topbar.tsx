@@ -254,7 +254,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
 
           <MenuItem aria-label="logout of the application" onClick={() => {
             async function go() {
-              // localStorage.clear();
+              localStorage.clear();
               await keycloak.logout({ redirectUri: REACT_APP_APP_HOST_URL });
             }
             void go();

@@ -2,7 +2,6 @@ import React, { useCallback, useState, useEffect, Suspense, useRef, useMemo, use
 import { useNavigate, useLocation } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
-import Avatar from '@mui/material/Avatar';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -12,18 +11,14 @@ import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import CardHeader from '@mui/material/CardHeader';
 import Alert from '@mui/material/Alert';
-import Badge from '@mui/material/Badge';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
-import Icon from '@mui/material/Icon';
 
-import CheckIcon from '@mui/icons-material/Check';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, IService, useStyles } from 'awayto/hooks';
 import Chip from '@mui/material/Chip';
-import Tooltip from '@mui/material/Tooltip';
 
 declare global {
   interface IProps {
@@ -287,6 +282,8 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                                     schedule: groupSchedule.schedule!
                                   }
                                 }).unwrap().then(() => {
+                                  localStorage.removeItem('onboarding_service');
+                                  localStorage.removeItem('onboarding_schedule');
                                   reloadProfile && reloadProfile().catch(console.error);
                                 }).catch(console.error);
                               }

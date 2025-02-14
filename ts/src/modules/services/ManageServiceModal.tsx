@@ -11,11 +11,9 @@ import CardHeader from '@mui/material/CardHeader';
 import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
-import Link from '@mui/material/Link';
 
 import { useComponents, useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IServiceAddon } from 'awayto/hooks';
 import { Checkbox, FormControlLabel } from '@mui/material';
-import { SettingsEthernetSharp } from '@mui/icons-material';
 
 const serviceSchema = {
   name: '',
@@ -85,6 +83,8 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
   const [patchService] = siteApi.useServiceServicePatchServiceMutation();
   const [postService] = siteApi.useServiceServicePostServiceMutation();
   const [postGroupService] = siteApi.useGroupServiceServicePostGroupServiceMutation();
+
+  const serviceTiers = useMemo(() => Object.values(newService.tiers || {}), [newService.tiers]);
 
   const handleSubmit = useCallback(async () => {
     if (!newService.name || !Object.keys(newService?.tiers || {}).length) {
@@ -376,52 +376,59 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
               </Box>
             </Box> */}
             <CardActionArea onClick={() => {
-              if (newServiceTier.name && newService.tiers) {
-                const existingTierNames = Object.values(newService.tiers).flatMap(t => t.name);
-                if (!newServiceTier.id || !existingTierNames.includes(newServiceTier.name)) {
+              let st = { ...newServiceTier };
+              if (st.name && newService.tiers) {
+                const existingTier = serviceTiers.find(x => x.name == st.name);
+                if (existingTier) {
+                  st = { ...st, ...existingTier };
+                }
+
+                if (!st.id) {
                   const created = (new Date()).getTime().toString();
-                  newServiceTier.id = created;
-                  newServiceTier.createdOn = created;
-                  newServiceTier.order = Object.keys(newService.tiers).length + 1;
+                  st.id = created;
+                  st.createdOn = created;
+                  st.order = Object.keys(newService.tiers).length + 1;
                 }
                 setNewServiceTier({ ...serviceTierSchema });
                 setServiceTierAddonIds([]);
-                setNewService({ ...newService, tiers: { ...newService.tiers, [newServiceTier.id]: newServiceTier } });
+                setNewService({ ...newService, tiers: { ...newService.tiers, [st.id]: st } });
                 setHasTierFormOrSurvey(false);
               } else {
                 void setSnack({ snackOn: 'Provide a unique tier name.', snackType: 'info' });
               }
             }}>
               <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
-                <Typography color="secondary" variant="button">Add Tier to Service</Typography>
+                <Typography color="secondary" variant="button">{newServiceTier.id ? 'Edit' : 'Add'} Service Tier</Typography>
               </Box>
             </CardActionArea>
-            <Typography variant="caption">Click to edit or remove existing tiers.</Typography>
-            <Box sx={{ py: 1, display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-              {Object.values(newService.tiers || {}).sort((a, b) => new Date(a.createdOn!).getTime() - new Date(b.createdOn!).getTime()).map((tier, i) => {
-                return <Box key={`service-tier-chip${i + 1}new`} m={1}>
-                  <Chip
-                    sx={classes.chipRoot}
-                    label={
-                      <Typography sx={classes.chipLabel}>
-                        {`#${i + 1} ` + tier.name} {/*  + ' (' + (tier.multiplier || 100) / 100 + 'x)'} */}
-                      </Typography>
-                    }
-                    onDelete={() => {
-                      const tiers = { ...newService.tiers };
-                      if (tier.id) {
-                        delete tiers[tier.id];
-                        setNewService({ ...newService, tiers });
+            <Box sx={{ display: !serviceTiers.length ? 'none' : 'flex', py: 1, flexWrap: 'wrap', flexDirection: 'column' }}>
+              <Typography variant="caption">Click to edit or remove existing tiers.</Typography>
+              <Grid container size="grow">
+                {serviceTiers.sort((a, b) => new Date(a.createdOn!).getTime() - new Date(b.createdOn!).getTime()).map((tier, i) => {
+                  return <Box key={`service-tier-chip${i + 1}new`} m={1}>
+                    <Chip
+                      sx={classes.chipRoot}
+                      label={
+                        <Typography sx={classes.chipLabel}>
+                          {`#${i + 1} ` + tier.name} {/*  + ' (' + (tier.multiplier || 100) / 100 + 'x)'} */}
+                        </Typography>
                       }
-                    }}
-                    onClick={() => {
-                      setNewServiceTier({ ...tier });
-                      useSuggestAddons(`${tier.name} ${newService.name}`);
-                      setServiceTierAddonIds(Object.keys(tier.addons || {}));
-                    }}
-                  />
-                </Box>
-              })}
+                      onDelete={() => {
+                        const tiers = { ...newService.tiers };
+                        if (tier.id) {
+                          delete tiers[tier.id];
+                          setNewService({ ...newService, tiers });
+                        }
+                      }}
+                      onClick={() => {
+                        setNewServiceTier({ ...tier });
+                        useSuggestAddons(`${tier.name} ${newService.name}`);
+                        setServiceTierAddonIds(Object.keys(tier.addons || {}));
+                      }}
+                    />
+                  </Box>
+                })}
+              </Grid>
             </Box>
           </Box>
         </Grid>
