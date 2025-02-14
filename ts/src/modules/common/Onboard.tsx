@@ -206,6 +206,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
               fullWidth
               sx={{ mb: 2 }}
               value={groupCode}
+              required
               onChange={e => setGroupCode(e.target.value)}
               label="Group Code"
             />

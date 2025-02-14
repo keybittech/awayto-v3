@@ -145,6 +145,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
           label="Name"
           helperText="Ex: Spring 2022 Campaign, Q1 Offering"
           value={schedule?.name || ''}
+          required
           onChange={e => setGroupSchedule({ schedule: { ...schedule, name: e.target.value } })}
         />
       </Box>
@@ -158,6 +159,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
               label="Start Date"
               type="date"
               value={schedule?.startTime || ''}
+              required
               helperText="Schedule is active after this date. Clear this date to deactivate the schedule. Deactivated schedules do not allow new bookings to be made."
               onChange={e => setGroupSchedule({ schedule: { ...schedule, startTime: e.target.value } })}
               InputLabelProps={{
@@ -284,7 +286,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
     <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-        <Button disabled={!schedule?.name} onClick={handleSubmit}>Save Schedule</Button>
+        <Button disabled={!schedule?.name || !schedule?.startTime} onClick={handleSubmit}>Save Schedule</Button>
       </Grid>
     </CardActions>
   </Card>

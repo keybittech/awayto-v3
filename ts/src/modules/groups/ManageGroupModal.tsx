@@ -146,6 +146,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
               name="name"
               onChange={handleName}
               multiline
+              required
               helperText="Group names can only contain letters, numbers, and underscores. Max 50 characters."
               error={badName}
               InputProps={{
@@ -183,6 +184,7 @@ export function ManageGroupModal({ children, editGroup, showCancel = true, close
               inputProps={{ maxLength: 100 }}
               helperText={'Enter a short phrase about the function of your group (max. 100 characters).'}
               label={`Group Description`}
+              required
               error={editedPurpose && !!group.purpose && group.purpose.length > 100}
               onBlur={() => setEditedPurpose(true)}
               onFocus={() => setEditedPurpose(false)}

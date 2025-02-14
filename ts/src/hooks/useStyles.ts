@@ -125,6 +125,15 @@ export const theme = createTheme({
           }
         }
       }
+    },
+    MuiFormLabel: {
+      styleOverrides: {
+        asterisk: {
+          color: 'red',
+          fontSize: '32px',
+          float: 'right'
+        }
+      }
     }
   }
 });

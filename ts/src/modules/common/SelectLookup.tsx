@@ -16,6 +16,7 @@ type CreateActionBody = Record<string, string | Record<string, string>>;
 declare global {
   interface IComponent {
     multiple?: boolean;
+    required?: boolean;
     disabled?: boolean;
     noEmptyValue?: boolean;
     lookups?: ILookup[];
@@ -42,7 +43,7 @@ function isStringArray(str?: string | string[]): str is string[] {
   return (str as string[]).forEach !== undefined;
 }
 
-export function SelectLookup({ lookupChange, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, createActionBodyKey, deleteAction, deleteComplete, deleteActionIdentifier }: IComponent): React.JSX.Element {
+export function SelectLookup({ lookupChange, required = false, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, createActionBodyKey, deleteAction, deleteComplete, deleteActionIdentifier }: IComponent): React.JSX.Element {
 
   const classes = useStyles();
 
@@ -152,6 +153,7 @@ export function SelectLookup({ lookupChange, disabled = false, invalidValues = [
           }}
         /> : <TextField
           select
+          required={required}
           disabled={disabled}
           autoFocus={!!lookupUpdater}
           id={`${lookupName}-lookup-selection`}

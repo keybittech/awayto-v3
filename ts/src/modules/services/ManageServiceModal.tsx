@@ -190,7 +190,8 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
             <Box my={2}>
               <TextField
                 fullWidth
-                label="Name"
+                label="Service Name"
+                required
                 value={newService.name}
                 onChange={e => setNewService({ ...newService, name: e.target.value })}
                 onBlur={() => {
@@ -253,11 +254,15 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
         <Grid size={{ xs: 12, md: 6 }}>
           <Box p={2} component="fieldset" sx={classes.legendBox}>
             <legend>Step 2. Add a Tier</legend>
-            <Typography variant="caption">Tiers describe the context and features that go along with a service. For example, a "bronze, silver, gold" ranking system, or subject categories like "English 1010, English 2010, etc.". At least 1 tier is required.</Typography>
+            <Typography variant="caption">Tiers describe the context and features that go along with a service. For example, a "bronze, silver, gold" ranking system, or subject categories like "English 1010, English 2010, etc.".</Typography>
+            <Box my={1}>
+              <Typography variant="body1"> At least 1 tier is required.</Typography>
+            </Box>
             <Box my={2}>
               <TextField
                 fullWidth
-                label="Name"
+                label="Tier Name"
+                required
                 value={newServiceTier.name}
                 onChange={e => setNewServiceTier({ ...newServiceTier, name: e.target.value })}
                 onBlur={() => {

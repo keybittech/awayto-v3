@@ -74,6 +74,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
           <Grid size={12}>
             <SelectLookup
               multiple
+              required
               helperText={
                 <RoleSuggestions
                   staticSuggestions='Ex: Consultant, Project Manager, Advisor, Business Analyst'
@@ -122,6 +123,7 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
               fullWidth
               helperText={'Set the group default role. When members join the group, this role will be assigned.'}
               label={`Default Role`}
+              required
               onChange={e => setDefaultRoleId(e.target.value)}
               value={defaultRoleId}
             >
