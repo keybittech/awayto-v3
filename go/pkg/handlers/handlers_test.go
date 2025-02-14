@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/mocks"
 	"net/http"
 	"net/http/httptest"
@@ -23,6 +24,7 @@ type HandlersTestSetup struct {
 	MockKeycloak       *mocks.MockIKeycloak
 	MockSocket         *mocks.MockISocket
 	Handlers           *Handlers
+	UserSession        *clients.UserSession
 }
 
 func SetupHandlersTest(t *testing.T) *HandlersTestSetup {
@@ -52,6 +54,13 @@ func SetupHandlersTest(t *testing.T) *HandlersTestSetup {
 		Socket:   mockSock,
 	}
 
+	session := &clients.UserSession{
+		UserSub:   "test-user-sub",
+		UserEmail: "test@email.com",
+		GroupId:   "test-group-id",
+		GroupSub:  "test-group-sub",
+	}
+
 	return &HandlersTestSetup{
 		MockCtrl:           ctrl,
 		MockAi:             mockAi,
@@ -65,6 +74,7 @@ func SetupHandlersTest(t *testing.T) *HandlersTestSetup {
 		MockKeycloak:       mockKeycloak,
 		MockSocket:         mockSock,
 		Handlers:           handlers,
+		UserSession:        session,
 	}
 }
 
@@ -75,7 +85,7 @@ func (hts *HandlersTestSetup) TearDown() {
 type HandlersTestCase struct {
 	name        string
 	setupMocks  func(*HandlersTestSetup)
-	handlerFunc func(h *Handlers, w http.ResponseWriter, r *http.Request) (interface{}, error)
+	handlerFunc func(h *Handlers, w http.ResponseWriter, r *http.Request, session *clients.UserSession, tx *mocks.MockIDatabaseTx) (interface{}, error)
 	expectedRes interface{}
 	expectedErr error
 }
@@ -94,7 +104,7 @@ func RunHandlerTests(t *testing.T, tests []HandlersTestCase) {
 
 			req := httptest.NewRequest("GET", "/testing", nil)
 
-			res, err := tt.handlerFunc(hts.Handlers, rr, req)
+			res, err := tt.handlerFunc(hts.Handlers, rr, req, hts.UserSession, hts.MockDatabaseTx)
 
 			assert.Equal(t, tt.expectedErr, err)
 			assert.Equal(t, tt.expectedRes, res)

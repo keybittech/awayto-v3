@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"av3api/pkg/clients"
+	"av3api/pkg/mocks"
 	"av3api/pkg/types"
 	"net/http"
 	"testing"
@@ -20,13 +21,13 @@ func TestBooking(t *testing.T) {
 			name: "PostBooking success",
 			setupMocks: func(hts *HandlersTestSetup) {
 				// Configure userSession
-				mockSession := &clients.UserSession{UserSub: "user-sub"}
-				hts.MockRedis.EXPECT().ReqSession(gomock.Any()).Return(mockSession)
+				// mockSession := &clients.UserSession{UserSub: "user-sub"}
+				// hts.MockRedis.EXPECT().ReqSession(gomock.Any()).Return(mockSession)
 
 				// Do DB Tx
-				hts.MockDatabase.EXPECT().Client().Return(hts.MockDatabaseClient)
-				hts.MockDatabaseClient.EXPECT().Begin().Return(hts.MockDatabaseTx, nil)
-				hts.MockDatabaseTx.EXPECT().Rollback().Return(nil).AnyTimes()
+				// hts.MockDatabase.EXPECT().Client().Return(hts.MockDatabaseClient)
+				// hts.MockDatabaseClient.EXPECT().Begin().Return(hts.MockDatabaseTx, nil)
+				// hts.MockDatabaseTx.EXPECT().Rollback().Return(nil).AnyTimes()
 				hts.MockDatabaseTx.EXPECT().QueryRow(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(hts.MockDatabaseRow)
 				hts.MockDatabaseRow.EXPECT().Scan(gomock.Any()).DoAndReturn(func(dest ...interface{}) error {
 					if len(dest) > 0 {
@@ -40,9 +41,9 @@ func TestBooking(t *testing.T) {
 				hts.MockRedisClient.EXPECT().Del(gomock.Any(), gomock.Any())
 
 				// Commit TX
-				hts.MockDatabaseTx.EXPECT().Commit().Return(nil)
+				// hts.MockDatabaseTx.EXPECT().Commit().Return(nil)
 			},
-			handlerFunc: func(h *Handlers, w http.ResponseWriter, r *http.Request) (interface{}, error) {
+			handlerFunc: func(h *Handlers, w http.ResponseWriter, r *http.Request, session *clients.UserSession, tx *mocks.MockIDatabaseTx) (interface{}, error) {
 				data := &types.PostBookingRequest{
 					Bookings: []*types.IBooking{
 						{
@@ -55,7 +56,7 @@ func TestBooking(t *testing.T) {
 					},
 				}
 
-				return h.PostBooking(w, r, data)
+				return h.PostBooking(w, r, data, session, tx)
 			},
 			expectedRes: &types.PostBookingResponse{
 				Bookings: []*types.IBooking{
