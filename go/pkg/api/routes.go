@@ -95,11 +95,14 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 					}
 				}
 
+				var loggedError string
 				if deferredError != nil {
-					loggedError := deferredError.Error()
-					if deferralError != nil {
-						loggedError = fmt.Sprintf("%s %s", deferredError.Error(), deferralError.Error())
-					}
+					loggedError = deferredError.Error()
+				}
+				if deferralError != nil {
+					loggedError = fmt.Sprintf("%s %s", loggedError, deferralError.Error())
+				}
+				if loggedError != "" {
 					util.RequestError(w, requestId, loggedError, ignoreFields, pbVal)
 				}
 			}()

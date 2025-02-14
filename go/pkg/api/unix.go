@@ -50,11 +50,12 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 	handler := reflect.ValueOf(a.Handlers).MethodByName("AuthWebhook_" + authEvent.WebhookName)
 
 	if handler.IsValid() {
+		var deferralError error
 
 		// Create fake context so we can use our regular http handlers
 		fakeReq, err := http.NewRequest("GET", "unix://auth", nil)
 		if err != nil {
-			util.ErrCheck(err)
+			deferralError = util.ErrCheck(err)
 			return
 		}
 
@@ -66,20 +67,52 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 
 		tx, err := a.Handlers.Database.Client().Begin()
 		if err != nil {
-			util.ErrCheck(err)
+			deferralError = util.ErrCheck(err)
 			return
 		}
 
-		var reqErr error
+		err = tx.SetDbVar("user_sub", "worker")
+		if err != nil {
+			deferralError = util.ErrCheck(err)
+			return
+		}
+
+		err = tx.SetDbVar("group_id", "")
+		if err != nil {
+			deferralError = util.ErrCheck(err)
+			return
+		}
 
 		defer func() {
+			var deferredError error
+
+			err = tx.SetDbVar("user_sub", "")
+			if err != nil {
+				deferredError = util.ErrCheck(err)
+			}
+
 			if p := recover(); p != nil {
 				tx.Rollback()
 				panic(p)
-			} else if reqErr != nil {
+			} else if deferralError != nil {
 				tx.Rollback()
 			} else {
-				util.ErrCheck(tx.Commit())
+				err = tx.Commit()
+				if err != nil {
+					deferralError = util.ErrCheck(err)
+				}
+			}
+
+			var loggedError string
+			if deferredError != nil {
+				loggedError = deferredError.Error()
+			}
+			if deferralError != nil {
+				loggedError = fmt.Sprintf("%s %s", loggedError, deferralError.Error())
+			}
+			if loggedError != "" {
+				util.ErrorLog.Println(loggedError)
+				fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, loggedError))
 			}
 		}()
 
@@ -91,14 +124,12 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		})
 
 		if len(results) != 2 {
-			reqErr = errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName)
-			util.ErrorLog.Println(util.ErrCheck(reqErr))
+			deferralError = util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
 			return
 		}
 
 		if !results[1].IsNil() {
-			reqErr = results[1].Interface().(error)
-			util.ErrorLog.Println(util.ErrCheck(reqErr))
+			deferralError = util.ErrCheck(results[1].Interface().(error))
 			return
 		}
 

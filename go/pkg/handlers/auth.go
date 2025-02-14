@@ -39,7 +39,6 @@ func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent clients.Aut
 func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent clients.AuthEvent, session *clients.UserSession, tx clients.IDatabaseTx) (string, error) {
 
 	group := &types.IGroup{}
-
 	err := tx.QueryRow(`
 		SELECT id, default_role_id, name, allowed_domains
 		FROM dbtable_schema.groups
@@ -51,6 +50,11 @@ func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent cl
 
 	if group.Name == "" {
 		return `{ "success": false, "reason": "invalid group code" }`, nil
+	}
+
+	err = tx.SetDbVar("group_id", group.GetId())
+	if err != nil {
+		return "", util.ErrCheck(err)
 	}
 
 	var kcRoleSubgroupExternalId string

@@ -440,11 +440,21 @@ func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *ty
 func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *types.AttachUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.AttachUserResponse, error) {
 	var groupId, kcGroupExternalId, kcRoleSubgroupExternalId, defaultRoleId, createdSub string
 
-	err := tx.QueryRow(`
-		SELECT g.id, g.external_id, g.default_role_id, g.created_sub, gr.external_id FROM dbtable_schema.groups g
+	err := tx.QueryRow(`SELECT g.id FROM dbtable_schema.groups g WHERE g.code = $1`, data.GetCode()).Scan(&groupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("group_id", groupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = tx.QueryRow(`
+		SELECT g.external_id, g.default_role_id, g.created_sub, gr.external_id FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
-		WHERE g.code = $1
-	`, data.GetCode()).Scan(&groupId, &kcGroupExternalId, &defaultRoleId, &createdSub, &kcRoleSubgroupExternalId)
+		WHERE g.id = $1
+	`, groupId).Scan(&kcGroupExternalId, &defaultRoleId, &createdSub, &kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
