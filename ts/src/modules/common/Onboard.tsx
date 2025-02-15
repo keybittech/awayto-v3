@@ -1,6 +1,7 @@
 import React, { useCallback, useState, useEffect, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
+import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Grid';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
@@ -16,9 +17,12 @@ import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 
 import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, IService, useStyles } from 'awayto/hooks';
 import Chip from '@mui/material/Chip';
+import { Breadcrumbs } from '@mui/material';
 
 declare global {
   interface IProps {
@@ -143,14 +147,12 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     setSnack({ snackOn: `${accordionProps.name} Saved`, snackType: 'success' });
   }, [accordionProps]);
 
-  const OnboardingProgress = useCallback(() => <>
-    {accordions.map((acc, i) => <Chip
+  const OnboardingProgress = useCallback(() => <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
+    {accordions.map((acc, i) => <Typography
       key={`acc-progress-${i}`}
-      label={`${i + 1}. ${acc.name}`}
       color={i == currentAccordion ? "info" : acc.complete ? "success" : "primary"}
-    />)}
-    Complete the above steps for onboarding.
-  </>, [currentAccordion, accordionProps]);
+    >{`${i + 1}. ${acc.name}`}</Typography>)}
+  </Breadcrumbs>, [currentAccordion, accordionProps]);
 
   useEffect(() => {
     const userGroups = Object.values(profileReq?.userProfile?.groups || {});
@@ -182,14 +184,18 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
         <Grid size="grow">
           <Accordion sx={{ position: 'relative' }} disableGutters variant='outlined'>
             <AccordionSummary
-              sx={{ alignItems: 'center' }}
-              expandIcon={<ExpandMoreIcon color="secondary" />}
+              sx={{ alignItems: 'center', pointerEvents: 'none' }}
+              expandIcon={<ExpandMoreIcon sx={{ pointerEvents: 'auto' }} color="secondary" />}
               aria-controls={`accordion-content-${currentAccordion}`}
             >
-              <Grid size="grow" container spacing={1} alignItems="center" justifyContent="center">
+              <Grid size="grow" container spacing={1} alignItems="left" justifyContent="left">
                 <OnboardingProgress />
               </Grid>
-              <Grid alignSelf="center"><Chip label="Help" size="small" /></Grid>
+              <Grid sx={{ pointerEvents: 'auto' }} alignSelf="center">
+                <Avatar sx={{ width: 24, height: 24, bgcolor: 'yellow' }}>
+                  <QuestionMarkIcon fontSize="small" />
+                </Avatar>
+              </Grid>
             </AccordionSummary>
 
             <AccordionDetails
@@ -219,7 +225,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
         </Button>
       </Grid>
 
-      <Grid container size={{ xs: 12, lg: 10, xl: 8 }} sx={{ minHeight: '80vh' }} direction="column">
+      <Grid container size={{ xs: 12, lg: 10, xl: 8 }} direction="column">
         <Suspense>
           {hasCode ? <Grid size={12} p={2}>
             <TextField

@@ -58,6 +58,7 @@ JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_TARGET=${PWD}/$(BINARY_NAME)
+GO_MOCK_TARGET=$(GO_MOCKS_GEN_DIR)/clients.go
 
 # host locations
 
@@ -110,7 +111,7 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-DIRS=$(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR) $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)  
+DIRS=$(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR) $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)
 
 $(shell mkdir -p $(DIRS))
 
@@ -171,29 +172,29 @@ go_dev:
 	exec ./$(BINARY_NAME) --log debug
 
 ## Tests
-$(GO_MOCKS_GEN_DIR)/clients.go: 
-	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCKS_GEN_DIR)/clients.go -package=mocks
+$(GO_MOCK_TARGET): 
+	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCK_TARGET) -package=mocks
 
 .PHONY: go_test
 go_test: docker_up go_test_main go_test_pkg
 
 .PHONY: go_test_main
-go_test_main: $(PLAYWRIGHT_CACHE_DIR) $(GO_TARGET)
+go_test_main: $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
 .PHONY: go_test_pkg
-go_test_pkg: $(GO_TARGET) $(GO_MOCKS_GEN_DIR)/clients.go
+go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v ./...
 
 .PHONY: go_coverage
-go_coverage: $(GO_TARGET) $(GO_MOCKS_GEN_DIR)/clients.go
+go_coverage: $(GO_TARGET) $(GO_MOCK_TARGET)
 	go test -C $(GO_SRC) -coverpkg=./... ./...
 
 .PHONY: test_clean
 test_clean:
-	rm -rf $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)
+	rm -rf $(PLAYWRIGHT_CACHE_DIR)
 
 .PHONY: test_gen
 test_gen:

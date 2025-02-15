@@ -117,6 +117,9 @@ func startRec(title string) {
 }
 
 func stopRec(title string) {
+	if recs[title] == nil {
+		return
+	}
 	output, _ := exec.Command("ps", "-o", "pid=", "--ppid", fmt.Sprintf("%d", recs[title].Process.Pid)).Output()
 	fields := strings.Fields(string(output))
 	for i := 0; i < len(fields); i++ {
