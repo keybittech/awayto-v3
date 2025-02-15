@@ -1,9 +1,9 @@
 import { SxProps, createTheme } from '@mui/material';
 import { red, green } from '@mui/material/colors';
 
-const drawerWidth = 175;
 
-export const theme = createTheme({
+const drawerWidth = 175;
+const paletteTheme = createTheme({
   colorSchemes: {
     light: {
       palette: {
@@ -28,7 +28,11 @@ export const theme = createTheme({
         }
       }
     }
-  },
+  }
+});
+
+
+export const theme = createTheme(paletteTheme, {
   components: {
     // MuiPickersDay: {
     //   styleOverrides: {
@@ -61,7 +65,8 @@ export const theme = createTheme({
     //       }
     //     }
     //   }
-    // },
+    // },,
+
     MuiDrawer: {
       styleOverrides: {
         paper: {
@@ -113,7 +118,7 @@ export const theme = createTheme({
           alignItems: 'baseline',
           '&:hover': {
             color: 'white'
-          }
+          },
         }
       }
     },
@@ -145,6 +150,14 @@ export const useStyles = (): { [key: string]: SxProps } => {
     position: 'absolute',
     width: '100%',
     height: '100%'
+  };
+
+  const disabledOverride = {
+    '&.Mui-disabled': {
+      color: '#111',
+      backgroundColor: '#aaa',
+      opacity: '0.8'
+    }
   };
 
   return {
@@ -189,7 +202,7 @@ export const useStyles = (): { [key: string]: SxProps } => {
     green: { color: green[500] },
     red: { color: red[500] },
 
-    onboardingProgress: { width: { sm: '100px', md: '200px' }, height: '100%', alignItems: 'center' },
+    onboardingProgress: { ...disabledOverride, width: { sm: '100px', md: '200px' }, height: '100%', alignItems: 'center' },
     audioButton: { cursor: 'pointer' },
 
     overflowEllipsis: { textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' },

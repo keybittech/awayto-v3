@@ -1,4 +1,4 @@
-import React, { useCallback, useState, useEffect, Suspense, useRef, useMemo, useContext } from 'react';
+import React, { useCallback, useState, useEffect, Suspense, useMemo } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
@@ -31,12 +31,11 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
   window.INT_SITE_LOAD = true;
 
   const location = useLocation();
-  const navigate = useNavigate();
   const classes = useStyles();
 
   const { setSnack, openConfirm } = useUtil();
 
-  const { ManageGroupModal, ManageGroupRolesModal, ManageServiceModal, ManageSchedulesModal, AccordionWrap } = useComponents();
+  const { ManageGroupModal, ManageGroupRolesModal, ManageServiceModal, ManageSchedulesModal } = useComponents();
 
   const [group, setGroup] = useState({} as IGroup);
   const [groupService, setGroupService] = useState(JSON.parse(localStorage.getItem('onboarding_service') || '{}') as IGroupService);
@@ -150,6 +149,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
       label={`${i + 1}. ${acc.name}`}
       color={i == currentAccordion ? "info" : acc.complete ? "success" : "primary"}
     />)}
+    Complete the above steps for onboarding.
   </>, [currentAccordion, accordionProps]);
 
   useEffect(() => {
@@ -167,7 +167,17 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     <Grid container spacing={2} sx={{ p: 4, minHeight: '100vh', bgcolor: 'secondary.main', placeContent: 'start', justifyContent: 'center' }}>
 
       <Grid container spacing={2} size={{ xs: 12, lg: 10, xl: 8 }} alignItems="center" direction="row">
-        <Button sx={classes.onboardingProgress} disableRipple disableElevation variant="contained" color="warning" disabled={currentAccordion == 0} onClick={() => changePage(-1)}>Previous</Button>
+        <Button
+          sx={classes.onboardingProgress}
+          color="warning"
+          disableRipple
+          disableElevation
+          variant="contained"
+          disabled={currentAccordion == 0}
+          onClick={() => changePage(-1)}
+        >
+          Previous
+        </Button>
 
         <Grid size="grow">
           <Accordion sx={{ position: 'relative' }} disableGutters variant='outlined'>
@@ -196,7 +206,17 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
           </Accordion>
         </Grid>
 
-        <Button sx={classes.onboardingProgress} disableRipple disableElevation variant="contained" color="warning" disabled={!accordionProps.complete || currentAccordion + 1 == accordions.length} onClick={() => changePage(1)}>Next</Button>
+        <Button
+          sx={classes.onboardingProgress}
+          color="warning"
+          disableRipple
+          disableElevation
+          variant="contained"
+          disabled={!accordionProps.complete || currentAccordion + 1 == accordions.length}
+          onClick={() => changePage(1)}
+        >
+          Next
+        </Button>
       </Grid>
 
       <Grid container size={{ xs: 12, lg: 10, xl: 8 }} sx={{ minHeight: '80vh' }} direction="column">
