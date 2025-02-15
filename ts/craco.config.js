@@ -12,7 +12,6 @@ const CircularDependencyPlugin = require('circular-dependency-plugin');
 const CompressionWebpackPlugin = require('compression-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
 
-
 const { AWAYTO_WEBAPP_MODULES, AWAYTO_WEBAPP } = process.env;
 
 /**

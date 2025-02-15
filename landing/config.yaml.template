@@ -4,6 +4,7 @@ languageCode: en-us
 enableRobotsTXT: true
 
 Params:
+  lastUpdated: last-updated
   docsUrl: https://awayto.dev
   gitUrl: https://github.com/keybittech/awayto_exchange
 

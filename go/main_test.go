@@ -108,7 +108,7 @@ func startRec(title string) {
 		return
 	}
 
-	recCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ffmpeg -video_size 1920x890 -framerate 25 -f x11grab -i :1.0+3840,120 -y working/test_%s.mp4", title))
+	recCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ffmpeg -video_size 1920x890 -framerate 25 -f x11grab -i :1.0+3840,120 -y ts/demos/%s.mp4", title))
 	if err := recCmd.Start(); err != nil {
 		log.Fatal(err)
 	}

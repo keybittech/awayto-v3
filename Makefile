@@ -1,3 +1,5 @@
+SHELL := /bin/bash
+
 ENVFILE?=./.env
 include $(ENVFILE)
 export $(shell sed 's/=.*//' $(ENVFILE))
@@ -26,7 +28,6 @@ endif
 
 # go build output
 
-BINARY_OUT=$(BINARY_NAME)
 BINARY_TEST=$(BINARY_NAME).test
 BINARY_SERVICE=$(BINARY_NAME).service
 
@@ -47,7 +48,16 @@ TS_BUILD_DIR=ts/build
 HOST_LOCAL_DIR=deployed/${PROJECT_PREFIX}
 GO_GEN_DIR=go/pkg/types
 GO_MOCKS_GEN_DIR=go/pkg/mocks
-export PLAYWRIGHT_CACHE_DIR=working/playwright
+export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
+DEMOS_DIR=ts/demos
+
+# build targets
+
+CERTS_TARGET=$(CERTS_DIR)/cert.pem
+JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
+LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
+TS_TARGET=$(TS_BUILD_DIR)/index.html
+GO_TARGET=${PWD}/$(BINARY_NAME)
 
 # host locations
 
@@ -100,99 +110,98 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-.PHONY: build build_host clean test_clean test_gen \
-	ts_prep ts ts_protoc ts_dev \
-	go_dev go_test go_test_main go_test_pkg go_coverage \
-	docker_up docker_down docker_build docker_start docker_stop \
-	docker_db docker_db_start docker_db_restore docker_cycle docker_db_restore_op \
-	docker_redis \
-	host_status host_errors host_up host_gen host_ssh host_down \
-	host_service_stop host_service_start \
-	host_deploy host_deploy_env host_deploy_sync host_deploy_docker host_predeploy host_postdeploy host_deploy_compose_up host_deploy_compose_down \
-	host_update_cert host_update_cert_op \
-	host_db host_db_backup host_db_restore host_db_restore_op \
-	host_redis
+DIRS=$(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR) $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)  
+
+$(shell mkdir -p $(DIRS))
+
+clean:
+	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR) $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD)
 
 ## Builds
 
-build: clean cert build_host
+build: $(CERTS_TARGET) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
 
-build_host: java landing ts go
+$(CERTS_TARGET): 
+	if [ ! -f $(CERTS_TARGET) ]; then \
+		openssl req -nodes -new -x509 -keyout "${KEY_LOC}" -out "${CERT_LOC}" -days 365 -subj "/CN=${APP_HOST_NAME}"; \
+		echo "pwd required to update cert chain"; \
+		sudo cp "${CERT_LOC}" /usr/local/share/ca-certificates; \
+		sudo update-ca-certificates; \
+	fi
 
-cert: $(CERTS_DIR)
-	chmod +x $(DEV_SCRIPTS)/cert.sh && exec $(DEV_SCRIPTS)/cert.sh
-
-java: $(JAVA_TARGET_DIR)
+$(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	mvn -f $(JAVA_SRC) install
 
-# using npm here as pnpm symlinks just hugo and doesn't build correctly
-landing: $(LANDING_BUILD_DIR)
+# using npm here as pnpm symlinks just hugo and doesn't build correctly 
+$(LANDING_TARGET): 
 	npm --prefix ./landing i
-	sed -e 's&project-title&${PROJECT_TITLE}&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
+	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%d-%m-%Y)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
 	npm run --prefix ./landing build
 
-landing_dev: landing
+.PHONY: landing_dev
+landing_dev: build
 	chmod +x $(LANDING_SRC)/server.sh && pnpm run --dir $(LANDING_SRC) start
 
-ts_protoc: 
+$(TS_TARGET): $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,settings.application.env} -type f) 
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--openapi_out=$(TS_SRC) \
 		$(PROTO_FILES)
 	npx @rtk-query/codegen-openapi $(TS_CONFIG_API)
-
-ts_prep: ts_protoc
 	pnpm --dir $(TS_SRC) i
 	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/settings.application.env.template" > "$(TS_SRC)/settings.application.env"
-
-ts: ts_prep
 	pnpm run --dir $(TS_SRC) build
 
-ts_dev: ts
+.PHONY: ts_dev
+ts_dev:
 	HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
 
-go_protoc: $(GO_GEN_DIR)
+$(GO_TARGET):
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_SRC) \
 		$(PROTO_FILES)
-
-go: go_protoc
 	$(call set_local_unix_sock_dir)
-	go build -C $(GO_SRC) -o ${PWD}/$(BINARY_OUT) .
+	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
-go_dev: go cert
+.PHONY: go_dev
+go_dev:
+	$(call set_local_unix_sock_dir)
 	exec ./$(BINARY_NAME) --log debug
 
+## Tests
+$(GO_MOCKS_GEN_DIR)/clients.go: 
+	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCKS_GEN_DIR)/clients.go -package=mocks
+
+.PHONY: go_test
 go_test: docker_up go_test_main go_test_pkg
 
-go_test_main: $(PLAYWRIGHT_CACHE_DIR) go
+.PHONY: go_test_main
+go_test_main: $(PLAYWRIGHT_CACHE_DIR) $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
-go_test_pkg: go go_genmocks
+.PHONY: go_test_pkg
+go_test_pkg: $(GO_TARGET) $(GO_MOCKS_GEN_DIR)/clients.go
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v ./...
 
-go_coverage: go_protoc go_genmocks
+.PHONY: go_coverage
+go_coverage: $(GO_TARGET) $(GO_MOCKS_GEN_DIR)/clients.go
 	go test -C $(GO_SRC) -coverpkg=./... ./...
 
+.PHONY: test_clean
 test_clean:
-	rm -rf $(PLAYWRIGHT_CACHE_DIR)
+	rm -rf $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)
 
+.PHONY: test_gen
 test_gen:
 	npx playwright codegen --ignore-https-errors https://localhost:${GO_HTTPS_PORT}
 
-clean:
-	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(BINARY_OUT) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD)
-
-## Tests
-go_genmocks: $(GO_MOCKS_GEN_DIR)
-	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCKS_GEN_DIR)/clients.go -package=mocks
-
 ## Utilities
 
+.PHONY: docker_up
 docker_up:
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA)
@@ -200,34 +209,43 @@ docker_up:
 	${SUDO} docker $(DOCKER_COMPOSE) up -d --build
 	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 
+.PHONY: docker_down
 docker_down:
 	${SUDO} docker $(DOCKER_COMPOSE) down 
 	${SUDO} docker volume remove $(PG_DATA) || true
 	${SUDO} docker volume remove $(REDIS_DATA) || true
 
+.PHONY: docker_build
 docker_build:
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker $(DOCKER_COMPOSE) build
 
+.PHONY: docker_start
 docker_start: docker_build
 	${SUDO} docker $(DOCKER_COMPOSE) up -d
 
+.PHONY: docker_stop
 docker_stop:
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
 
+.PHONY: docker_db
 docker_db:
 	$(DOCKER_DB_EXEC) $(DOCKER_DB_CID) psql -U postgres -d ${PG_DB}
 
+.PHONY: docker_db_start
 docker_db_start:
 	${SUDO} docker $(DOCKER_COMPOSE) up -d db
 	sleep 5
 
+.PHONY: docker_db_backup
 docker_db_backup: $(DB_BACKUP_DIR)
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc keycloak > $(DB_BACKUP_DIR)/${PG_DB}_keycloak_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
+.PHONY: docker_db_restore
 docker_db_restore: docker_stop docker_db_start docker_db_restore_op docker_start
 
+.PHONY: docker_db_restore_op
 docker_db_restore_op:
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) /bin/bash /docker-entrypoint-initdb.d/a0-permissions.sh
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d keycloak < $(LATEST_KEYCLOAK_RESTORE) || true
@@ -241,17 +259,22 @@ docker_db_restore_op:
 # 		TRUNCATE TABLE dbtable_schema.timelines CASCADE; \
 # 	"
 
+.PHONY: docker_cycle
 docker_cycle: docker_down docker_up
 
+.PHONY: docker_redis
 docker_redis:
 	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass ${REDIS_PASS}
 
+.PHONY: host_status
 host_status:
 	$(SSH) "sudo journalctl -u ${BINARY_SERVICE} -f"
 
+.PHONY: host_errors
 host_errors:
 	$(SSH) "tail -f $(H_REM_DIR)/errors.log"
 
+.PHONY: host_up
 host_up: host_gen 
 	until ping -c1 $(APP_IP) ; do sleep 5; done
 	until ssh-keyscan -p ${SSH_PORT} -H $(APP_IP) >> ~/.ssh/known_hosts; do sleep 5; done
@@ -269,6 +292,7 @@ host_up: host_gen
 
 # cd $(H_REM_DIR) && mkdir $(UNIX_SOCK_DIR) && sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} $(UNIX_SOCK_DIR); \
 
+.PHONY: host_gen
 host_gen: $(HOST_LOCAL_DIR)
 	date >> "$(HOST_LOCAL_DIR)/start_time"
 	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ${RSA_PUB})&g; s&ssh-port&${SSH_PORT}&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g;' $(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
@@ -282,31 +306,38 @@ host_gen: $(HOST_LOCAL_DIR)
 	hcloud server describe "${APP_HOST}" -o json > "$(HOST_LOCAL_DIR)/app.json"
 	jq -r '.public_net.ipv6.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip"
 
+.PHONY: host_down
 host_down:
-	# was APP_IP_B
 	ssh-keygen -f ~/.ssh/known_hosts -R "$(APP_IP):${SSH_PORT}"
 	hcloud server delete "${APP_HOST}"
 	hcloud firewall delete "${PROJECT_PREFIX}-public-firewall"
 	rm -rf $(HOST_LOCAL_DIR)
 
+.PHONY: host_ssh
 host_ssh:
 	ssh -p ${SSH_PORT} ${HOST_OPERATOR}@$(APP_IP)
 
+.PHONY: host_db
 host_db:
 	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="db") psql -U postgres ${PG_DB}
 
+.PHONY: host_redis
 host_redis:
 	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="redis") redis-cli --pass ${REDIS_PASS}
 
+.PHONY: host_cmd
 host_cmd:
 	$(SSH) $(CMD)
 
+.PHONY: host_service_start
 host_service_start:
 	$(SSH) sudo systemctl start $(BINARY_SERVICE)
 
+.PHONY: host_service_stop
 host_service_stop:
 	$(SSH) sudo systemctl stop $(BINARY_SERVICE)
 
+.PHONY: host_deploy_env
 host_deploy_env:
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > "$(HOST_LOCAL_DIR)/${BINARY_NAME}.service"
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > "$(HOST_LOCAL_DIR)/start.sh"
@@ -351,6 +382,7 @@ host_deploy_env:
 	"
 	echo "properties set"
 
+.PHONY: host_update_cert
 host_update_cert:
 	$(SSH) " \
 		sudo certbot certificates; \
@@ -366,6 +398,7 @@ host_update_cert:
 		sudo systemctl is-active $(BINARY_SERVICE); \
 	"
 
+.PHONY: host_update_cert_op
 host_update_cert_op: host_predeploy host_update_cert host_postdeploy
 
 host_deploy_sync:
@@ -376,6 +409,7 @@ host_deploy_sync:
 	rsync ${RSYNC_FLAGS} "$(TS_BUILD_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(TS_BUILD_DIR)/"
 	rsync ${RSYNC_FLAGS} "$(LANDING_BUILD_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(LANDING_BUILD_DIR)/"
 
+.PHONY: host_deploy_docker
 host_deploy_docker:
 	$(SSH) " \
 		if ! command -v docker >/dev/null 2>&1; then \
@@ -383,32 +417,40 @@ host_deploy_docker:
 		fi \
 	"
 
+.PHONY: host_predeploy
 host_predeploy:
 	sed -i -e "/^\(#\|\)APP_HOST_NAME=/s/^.*$$/APP_HOST_NAME=${DOMAIN_NAME}/;" $(ENVFILE)
 	$(eval APP_HOST_NAME=${DOMAIN_NAME})
 	sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=/etc/letsencrypt/live/${DOMAIN_NAME}&;" $(ENVFILE)
 	$(eval CERTS_DIR=/etc/letsencrypt/live/${DOMAIN_NAME})
 
+.PHONY: host_postdeploy
 host_postdeploy:
 	sed -i -e '/^\(#\|\)APP_HOST_NAME=/s/^.*$$/APP_HOST_NAME=localhost:${GO_HTTPS_PORT}/;' $(ENVFILE)
 	$(eval APP_HOST_NAME=localhost:${GO_HTTPS_PORT})
 	sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=certs&;" $(ENVFILE)
 	$(eval CERTS_DIR=certs)
 
+.PHONY: host_deploy_compose_up
 host_deploy_compose_up:
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_up"
 
+.PHONY: host_deploy_compose_down
 host_deploy_compose_down:
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_down"
 
+.PHONY: host_db_backup
 host_db_backup:
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_backup"
 
+.PHONY: host_db_restore
 host_db_restore:
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_restore_op"
 
+.PHONY: host_db_restore_op
 host_db_restore_op: host_predeploy host_service_stop host_db_restore host_service_start host_postdeploy
 
+.PHONY: host_deploy
 host_deploy: host_predeploy build_host host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
 	$(SSH) " \
 		sudo systemctl enable $(BINARY_SERVICE); \
@@ -417,11 +459,10 @@ host_deploy: host_predeploy build_host host_deploy_env host_deploy_sync host_dep
 	"
 	make build_host
 
+.PHONY: host_metric_cpu
 host_metric_cpu:
 	hcloud server metrics --type cpu $(APP_HOST)
 
-$(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR) $(PLAYWRIGHT_CACHE_DIR):
-	mkdir -p $@
 
 # sed -i -e "/^\(#\|\)UNIX_SOCK_DIR=/s&^.*$$&UNIX_SOCK_DIR=local_tmp&;" $(ENVFILE)
 # $(eval UNIX_SOCK_DIR=local_tmp)
