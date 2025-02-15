@@ -293,7 +293,7 @@ host_ssh:
 	ssh -p ${SSH_PORT} ${HOST_OPERATOR}@$(APP_IP)
 
 host_db:
-	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="db") psql -U ${PG_USER} ${PG_DB}
+	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="db") psql -U postgres ${PG_DB}
 
 host_redis:
 	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="redis") redis-cli --pass ${REDIS_PASS}
