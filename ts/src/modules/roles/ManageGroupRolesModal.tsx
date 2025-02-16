@@ -17,10 +17,12 @@ declare global {
   interface IComponent {
     showCancel?: boolean;
     editGroup?: IGroup;
+    setEditGroup?: React.Dispatch<React.SetStateAction<IGroup>>;
+    saveToggle?: number;
   }
 }
 
-export function ManageGroupRolesModal({ children, editGroup, showCancel = true, closeModal, ...props }: IComponent): React.JSX.Element {
+export function ManageGroupRolesModal({ children, editGroup, setEditGroup, saveToggle = 0, showCancel = true, closeModal, ...props }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -42,21 +44,32 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
 
   const roleValues = useMemo(() => Object.values(profileRequest?.userProfile?.roles || {}), [profileRequest]);
 
+  const newRoles = useMemo(() => Object.fromEntries(roleIds.map(id => [id, roleValues.find(r => r.id === id)] as [string, IRole])), [roleIds, roleValues]);
+
   const handleSubmit = useCallback(() => {
     if (!roleIds.length || !defaultRoleId) {
       setSnack({ snackType: 'error', snackOn: 'All fields are required.' });
       return;
     }
 
-    const newRoles = {
-      roles: Object.fromEntries(roleIds.map(id => [id, roleValues.find(r => r.id === id)] as [string, IRole])),
-      defaultRoleId
-    }
-
-    void patchGroupRoles({ patchGroupRolesRequest: newRoles }).unwrap().then(() => {
+    void patchGroupRoles({ patchGroupRolesRequest: { roles: newRoles, defaultRoleId } }).unwrap().then(() => {
       closeModal && closeModal(newRoles);
     });
-  }, [roleIds, defaultRoleId]);
+  }, [roleIds, newRoles, defaultRoleId]);
+
+  // Onboarding handling
+  useEffect(() => {
+    if (setEditGroup) {
+      setEditGroup({ ...editGroup, roles: newRoles, defaultRoleId });
+    }
+  }, [newRoles, defaultRoleId]);
+
+  // Onboarding handling
+  useEffect(() => {
+    if (saveToggle > 0) {
+      handleSubmit();
+    }
+  }, [saveToggle]);
 
   useEffect(() => {
     if (editGroup) {
@@ -135,12 +148,12 @@ export function ManageGroupRolesModal({ children, editGroup, showCancel = true, 
           </Grid>
         </Grid>
       </CardContent>
-      <CardActions>
+      {!setEditGroup && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button onClick={closeModal}>Cancel</Button>}
           <Button disabled={!defaultRoleId} onClick={handleSubmit}>Save Roles</Button>
         </Grid>
-      </CardActions>
+      </CardActions>}
     </Card>
   </>
 }

@@ -19,10 +19,12 @@ declare global {
     showCancel?: boolean;
     editGroup?: IGroup;
     editGroupSchedule?: IGroupSchedule;
+    setEditGroupSchedule?: React.Dispatch<React.SetStateAction<IGroupSchedule>>;
+    saveToggle?: number;
   }
 }
 
-export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, showCancel = true, closeModal, ...props }: IComponent): React.JSX.Element {
+export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, setEditGroupSchedule, saveToggle = 0, showCancel = true, closeModal, ...props }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -101,13 +103,10 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
 
     if (!editGroup) {
       if (groupSchedule.scheduleId) {
-
         patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap().then(() => {
           closeModal && closeModal();
         }).catch(console.error);
-
       } else {
-
         postGroupSchedule({ postGroupScheduleRequest: { groupSchedule } }).unwrap().then(() => {
           closeModal && closeModal();
         }).catch(console.error);
@@ -116,6 +115,20 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       closeModal && closeModal(groupSchedule);
     }
   }, [groupSchedule, schedule]);
+
+  // Onboarding handling
+  useEffect(() => {
+    if (setEditGroupSchedule) {
+      setEditGroupSchedule({ schedule: groupSchedule.schedule });
+    }
+  }, [groupSchedule.schedule?.name, groupSchedule.schedule?.startTime]);
+
+  // Onboarding handling
+  useEffect(() => {
+    if (saveToggle > 0) {
+      handleSubmit();
+    }
+  }, [saveToggle]);
 
   useEffect(() => {
     async function go() {
@@ -283,12 +296,12 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
         </Box>
       </Box>
     </CardContent>
-    <CardActions>
+    {!setEditGroupSchedule && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
         <Button disabled={!schedule?.name || !schedule?.startTime} onClick={handleSubmit}>Save Schedule</Button>
       </Grid>
-    </CardActions>
+    </CardActions>}
   </Card>
 }
 

@@ -121,7 +121,7 @@ clean:
 
 ## Builds
 
-build: $(CERTS_TARGET) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
+build: $(CERTS_TARGET) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_MOCK_TARGET) $(GO_TARGET)
 
 $(CERTS_TARGET): 
 	if [ ! -f $(CERTS_TARGET) ]; then \
@@ -179,7 +179,7 @@ $(GO_MOCK_TARGET):
 go_test: docker_up go_test_main go_test_pkg
 
 .PHONY: go_test_main
-go_test_main: $(GO_TARGET)
+go_test_main: build $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 

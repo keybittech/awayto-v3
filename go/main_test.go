@@ -9,6 +9,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"os/exec"
+	"os/signal"
 	"strconv"
 	"strings"
 	"syscall"
@@ -99,8 +100,26 @@ var recStdout io.ReadCloser
 var recs map[string]*exec.Cmd
 
 func init() {
-	recording = true
+	recording = false
 	recs = make(map[string]*exec.Cmd)
+}
+
+func killRec(title string) {
+	rec := recs[title]
+	output, _ := exec.Command("ps", "-o", "pid=", "--ppid", fmt.Sprintf("%d", rec.Process.Pid)).Output()
+	fields := strings.Fields(string(output))
+	for i := 0; i < len(fields); i++ {
+		pid, err := strconv.Atoi(fields[i])
+		if err != nil {
+			log.Fatal(err)
+		}
+		println("killing spawn", pid)
+		syscall.Kill(pid, syscall.SIGTERM)
+	}
+
+	println("killing", title)
+	recs[title].Process.Kill()
+	delete(recs, title)
 }
 
 func startRec(title string) {
@@ -120,21 +139,49 @@ func stopRec(title string) {
 	if recs[title] == nil {
 		return
 	}
-	output, _ := exec.Command("ps", "-o", "pid=", "--ppid", fmt.Sprintf("%d", recs[title].Process.Pid)).Output()
-	fields := strings.Fields(string(output))
-	for i := 0; i < len(fields); i++ {
-		pid, err := strconv.Atoi(fields[i])
-		if err != nil {
-			log.Fatal(err)
-		}
-		syscall.Kill(pid, syscall.SIGTERM)
-	}
-
-	recs[title].Process.Kill()
-	delete(recs, title)
+	killRec(title)
 }
 
 func TestMain(t *testing.T) {
+	runTest()
+}
+
+func catchErr(err error) {
+	if err != nil {
+		panic(err)
+	}
+}
+
+func runTest() {
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, syscall.SIGSTOP, syscall.SIGTTOU, syscall.SIGSTOP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT, syscall.SIGHUP, syscall.SIGABRT, syscall.SIGSEGV)
+
+	go func() {
+		<-c
+		fmt.Println("Program killed!")
+		for title := range recs {
+			killRec(title)
+		}
+		os.Exit(1)
+	}()
+
+	defer func() {
+		if r := recover(); r != nil {
+			println("did recover")
+			fmt.Println("Program killed!")
+			for title := range recs {
+				killRec(title)
+			}
+			os.Exit(1)
+		}
+
+		fmt.Println("Program killed!")
+		for title := range recs {
+			killRec(title)
+		}
+		os.Exit(1)
+	}()
 
 	go main()
 
@@ -210,8 +257,6 @@ func TestMain(t *testing.T) {
 		page.ByText("Home").MouseOver().Click()
 	}
 
-	time.Sleep(5 * time.Second)
-
 	randId := rand.IntN(1000000)
 
 	personA := &types.IUserProfile{
@@ -228,18 +273,16 @@ func TestMain(t *testing.T) {
 		}
 
 		startRec("registration")
-		// time.Sleep(30 * time.Second)
 		// Register user
 		page.ByRole("link", "Open Registration!").MouseOver().Click()
-		// MoveToBoundingBox(page.Locator(".header-btns > a.register-btn"))
-		// page.Locator(".header-btns > a.register-btn").Click()
 		page.ByText("Register").WaitFor()
 		doEval()
-		page.ByLocator("#email").MouseOver().Fill(personA.Email)
+		catchErr(page.ByLocator("#email").MouseOver().Fill(personA.Email))
 		page.ByLocator("#password").MouseOver().Fill(pwA)
 		page.ByLocator("#password-confirm").MouseOver().Fill(pwA)
 		page.ByLocator("#firstName").MouseOver().Fill(personA.FirstName)
 		page.ByLocator("#lastName").MouseOver().Fill(personA.LastName)
+
 		page.ByRole("button", "Register").MouseOver().Click()
 
 		time.Sleep(2 * time.Second)
@@ -263,62 +306,56 @@ func TestMain(t *testing.T) {
 
 		// Fill out group details
 		startRec("create_group")
-		page.ByText("Group").WaitFor()
 		doEval()
 		page.ByRole("textbox", "Group Name").MouseOver().Fill(fmt.Sprintf("Downtown Writing Center %d", randId))
 		page.ByRole("textbox", "Group Description").MouseOver().Fill("Works with students and the public to teach writing")
 		page.ByRole("checkbox", "Use AI Suggestions").MouseOver().SetChecked(true)
-		page.ByRole("button", "Save Group").MouseOver().Click()
 		page.ByRole("button", "Next").MouseOver().Click()
 		stopRec("create_group")
 
 		// Add group roles
 		startRec("create_roles")
-		page.ByText("Roles").WaitFor()
-		page.ByRole("listitem").WaitFor()
-		page.ByRole("listitem").First().MouseOver().Click()
-		page.ByRole("listitem").Last().MouseOver().Click()
+		time.Sleep(2 * time.Second)
+		page.ByText("Edit Roles").MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(0).MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(1).MouseOver().Click()
 		page.ByRole("combobox", "Default Role").MouseOver().Click()
 		page.ByRole("listbox").ByLocator("li").First().Click()
-		page.ByRole("button", "Save Roles").Click()
 		page.ByRole("button", "Next").MouseOver().Click()
 		stopRec("create_roles")
 
 		// Create service
 		startRec("create_service")
-		serviceNameSelections := page.ByText("Step 1. Provide details").ByLocator("..")
-		serviceNameSelections.ByRole("listitem").WaitFor()
-		serviceNameSelections.ByRole("listitem").First().MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).First().WaitFor() // service name suggestion
+
+		page.ByLocator(`span[id^="suggestion-"]`).First().MouseOver().Click()
 
 		// Select a tier name
-		tierNameSelections := page.ByText("Step 2. Add a tier").ByLocator("..").ByText("AI:").First()
-		tierNameSelections.ByRole("listitem").First().WaitFor()
-		tierNameSelections.ByRole("listitem").First().MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(5).WaitFor() // tier name suggestion
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(5).MouseOver().Click()
 
 		// Add features to the tier
-		featureNameSelections := page.ByText("Step 2. Add a tier").ByLocator("..").ByText("AI:").Last()
-		featureNameSelections.ByRole("listitem").First().WaitFor()
-		featureNameSelections.ByRole("listitem").First().MouseOver().Click()
-		featureNameSelections.ByRole("listitem").Nth(1).MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(10).WaitFor() // feature name suggestion
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(10).MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(11).MouseOver().Click()
 		page.ByRole("button", "Add service tier").MouseOver().Click()
 
 		// Add a second tier
-		tierNameSelections.ByRole("listitem").Nth(1).MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(5).MouseOver().Click() // tier name suggestion
 		featuresBox := page.ByRole("combobox", "Features")
 		featuresBox.MouseOver().Click()
 		featuresList := page.ByRole("listbox", "Features")
 		featuresList.ByLocator("li").Nth(1).MouseOver().Click()
 		featuresList.ByLocator("li").Nth(2).MouseOver().Click()
 		page.Mouse().Click(float64(p.ViewportSize().Width)/2, float64(page.ViewportSize().Height)/2)
-		featureNameSelections.ByRole("listitem").Nth(2).MouseOver().Click()
-		featureNameSelections.ByRole("listitem").Nth(3).MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(12).MouseOver().Click()
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(13).MouseOver().Click()
 		page.ByRole("button", "Add service tier").MouseOver().Click()
 
 		// Review and save service
 		page.ByRole("button", "Save Service").ScrollIntoViewIfNeeded()
 		page.ByText("Step 3").MouseOver()
 		time.Sleep(2 * time.Second)
-		page.ByRole("button", "Save Service").MouseOver().Click()
 		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
 		page.ByRole("button", "Next").MouseOver().Click()
 		stopRec("create_service")
@@ -328,9 +365,6 @@ func TestMain(t *testing.T) {
 		page.ByRole("textbox", "Start Date").WaitFor()
 		page.ByRole("textbox", "Name").MouseOver().Fill("Fall 2025 Learning Center")
 		page.ByRole("textbox", "Start Date").MouseOver().Fill("2025-02-05")
-		page.ByRole("button", "Save Schedule").ScrollIntoViewIfNeeded()
-		page.ByRole("button", "Save Schedule").MouseOver().Click()
-		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
 		page.ByRole("button", "Next").MouseOver().Click()
 		stopRec("create_schedule")
 

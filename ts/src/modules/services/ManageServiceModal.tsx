@@ -12,7 +12,7 @@ import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 
-import { useComponents, useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IServiceAddon } from 'awayto/hooks';
+import { useComponents, useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IServiceAddon, IGroupService } from 'awayto/hooks';
 import { Checkbox, FormControlLabel } from '@mui/material';
 
 const serviceSchema = {
@@ -39,18 +39,20 @@ declare global {
   interface IComponent {
     showCancel?: boolean;
     editGroup?: IGroup;
-    editService?: IService;
+    editGroupService?: IGroupService;
+    setEditGroupService?: React.Dispatch<React.SetStateAction<IGroupService>>;
+    saveToggle?: number;
   }
 }
 
-export function ManageServiceModal({ editGroup, editService, showCancel = true, closeModal, ...props }: IComponent) {
+export function ManageServiceModal({ editGroup, editGroupService, setEditGroupService, saveToggle = 0, showCancel = true, closeModal, ...props }: IComponent) {
 
   const classes = useStyles();
   const { SelectLookup, ServiceTierAddons, FormPicker } = useComponents();
 
   const { setSnack } = useUtil();
 
-  const [newService, setNewService] = useState({ ...serviceSchema, ...editService });
+  const [newService, setNewService] = useState({ ...serviceSchema, ...editGroupService?.service });
   const [newServiceTier, setNewServiceTier] = useState({ ...serviceTierSchema });
   const [serviceTierAddonIds, setServiceTierAddonIds] = useState<string[]>([]);
   const [hasServiceFormOrSurvey, setHasServiceFormOrSurvey] = useState(!!newService.formId || !!newService.surveyId);
@@ -59,7 +61,7 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
   const group = useMemo(() => editGroup || Object.values(profileRequest?.userProfile?.groups || {}).find(g => g.active), [profileRequest?.userProfile, editGroup]);
 
-  const { data: existingServiceRequest, refetch: getExistingService } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editService?.id || newService?.id || '' }, { skip: !editService?.id });
+  const { data: existingServiceRequest, refetch: getExistingService } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editGroupService?.id || newService?.id || '' }, { skip: !editGroupService?.id });
   const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery(undefined, { skip: !group?.id });
 
   const {
@@ -133,6 +135,20 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
     void suggestAddons({ id: IPrompts.SUGGEST_FEATURE, prompt });
   }, []);
 
+  // Onboarding handling
+  useEffect(() => {
+    if (setEditGroupService) {
+      setEditGroupService({ service: newService });
+    }
+  }, [newService.name, newService.tiers]);
+
+  // Onboarding handling
+  useEffect(() => {
+    if (saveToggle > 0) {
+      handleSubmit();
+    }
+  }, [saveToggle]);
+
   useEffect(() => {
     if (newServiceTier.name && serviceTierAddonIds.length) {
       const existingIds = Object.keys(newServiceTier.addons || {});
@@ -178,9 +194,8 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
   }, [newServiceTier]);
 
   return <Card>
-    <CardHeader title={`${editService ? 'Edit' : 'Create'} Service`} />
+    <CardHeader title={`${editGroupService ? 'Edit' : 'Create'} Service`} />
     <CardContent>
-
 
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>
@@ -488,12 +503,12 @@ export function ManageServiceModal({ editGroup, editService, showCancel = true, 
       </Grid>
 
     </CardContent>
-    <CardActions>
+    {!setEditGroupService && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
         <Button disabled={!newService.name || newService.tiers && !Object.keys(newService.tiers).length} onClick={handleSubmit}>Save Service</Button>
       </Grid>
-    </CardActions>
+    </CardActions>}
   </Card >;
 }
 

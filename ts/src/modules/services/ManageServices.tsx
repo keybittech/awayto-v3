@@ -95,7 +95,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
       <Suspense>
         <Grid container>
           <Grid size={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
-            <ManageServiceModal {...props} editService={groupService} closeModal={() => {
+            <ManageServiceModal {...props} editGroupService={groupService} closeModal={() => {
               setDialog('')
               void getGroupServices();
             }} />

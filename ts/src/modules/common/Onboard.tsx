@@ -45,6 +45,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
   const [groupService, setGroupService] = useState(JSON.parse(localStorage.getItem('onboarding_service') || '{}') as IGroupService);
   const [groupSchedule, setGroupSchedule] = useState(JSON.parse(localStorage.getItem('onboarding_schedule') || '{}') as IGroupSchedule);
   const [hasCode, setHasCode] = useState(false);
+  const [saveToggle, setSaveToggle] = useState(0);
 
   const [groupCode, setGroupCode] = useState('');
   const [currentAccordion, setCurrentAccordion] = useState(0);
@@ -74,7 +75,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
   const accordions = useMemo(() => [
     {
       name: 'Group',
-      complete: Boolean(group.name),
+      complete: Boolean(group.name && group.purpose),
       comp: () => <>
         <Typography variant="subtitle1">
           <p>Start by providing a unique name for your group; a url-safe version is generated alongside. Group name can be changed later.</p>
@@ -101,7 +102,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     },
     {
       name: 'Services',
-      complete: Boolean(groupService.service?.name),
+      complete: Boolean(groupService.service?.name && Object.keys(groupService.service?.tiers || {}).length),
       comp: () => <>
         <Typography variant="subtitle1">
           <p>Services define the context of the appointments that happen within your group. You can add forms and tiers to distinguish the details of your service.</p>
@@ -113,7 +114,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
     },
     {
       name: 'Schedule',
-      complete: Boolean(groupSchedule.schedule?.name),
+      complete: Boolean(groupSchedule.schedule?.name && groupSchedule.schedule?.startTime),
       comp: () => <>
         <Typography variant="subtitle1">
           <p>Next we create a group schedule. Start by providing basic details about the schedule and when it should be active.</p>
@@ -131,7 +132,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
         </Typography>
       </>
     },
-  ], [group.name, group.defaultRoleId, groupService.service?.name, groupSchedule.schedule?.name]);
+  ], [group.name, group.purpose, group.defaultRoleId, groupService.service?.name, groupService.service?.tiers, groupSchedule.schedule?.name, groupSchedule.schedule?.startTime]);
 
   const changePage = (dir: number) => {
     const nextPage = dir + currentAccordion;
@@ -219,7 +220,7 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
           disableElevation
           variant="contained"
           disabled={!accordionProps.complete || currentAccordion + 1 == accordions.length}
-          onClick={() => changePage(1)}
+          onClick={() => { setSaveToggle((new Date()).getTime()); }}
         >
           Next
         </Button>
@@ -249,9 +250,11 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                   {...props}
                   showCancel={false}
                   editGroup={group}
-                  closeModal={(newGroup: IGroup) => {
-                    setGroup({ ...group, ...newGroup });
-                    savedMsg();
+                  setEditGroup={setGroup}
+                  saveToggle={saveToggle}
+                  closeModal={() => {
+                    changePage(1);
+                    setSaveToggle(0);
                   }}
                 />
               </Grid>
@@ -260,20 +263,24 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                 {...props}
                 showCancel={false}
                 editGroup={group}
-                closeModal={({ roles, defaultRoleId }: IGroup) => {
-                  setGroup({ ...group, roles, defaultRoleId });
-                  savedMsg();
+                setEditGroup={setGroup}
+                saveToggle={saveToggle}
+                closeModal={() => {
+                  changePage(1);
+                  setSaveToggle(0);
                 }}
               /> :
                 currentAccordion == 2 ? <ManageServiceModal
                   {...props}
                   showCancel={false}
                   editGroup={group}
-                  editService={groupService.service}
-                  closeModal={(savedService: IService) => {
-                    setGroupService({ service: savedService });
-                    savedMsg();
-                    localStorage.setItem('onboarding_service', JSON.stringify({ service: savedService }));
+                  editGroupService={groupService}
+                  setEditGroupService={setGroupService}
+                  saveToggle={saveToggle}
+                  closeModal={(savedService: IGroupService) => {
+                    changePage(1);
+                    setSaveToggle(0);
+                    localStorage.setItem('onboarding_service', JSON.stringify(savedService));
                   }}
                 /> :
                   currentAccordion == 3 ? <ManageSchedulesModal
@@ -281,9 +288,11 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
                     showCancel={false}
                     editGroup={group}
                     editGroupSchedule={groupSchedule}
+                    setEditGroupSchedule={setGroupSchedule}
+                    saveToggle={saveToggle}
                     closeModal={(savedSchedule: IGroupSchedule) => {
-                      setGroupSchedule(savedSchedule);
-                      savedMsg();
+                      changePage(1);
+                      setSaveToggle(0);
                       localStorage.setItem('onboarding_schedule', JSON.stringify(savedSchedule));
                     }}
                   /> :
