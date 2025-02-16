@@ -23,7 +23,7 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
   const { GroupedMessages, SubmitMessageForm } = useComponents();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const lastMessage = useRef<string>();
+  const lastMessage = useRef<string>(undefined);
 
   const [hasMore, setHasMore] = useState(false);
   const [page, setPage] = useState(1);

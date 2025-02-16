@@ -33,7 +33,7 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: ICompone
   const [streamsUpdated, setStreamsUpdated] = useState('');
   const [audioOnly, setAudioOnly] = useState(false);
   const [canStartStop, setCanStartStop] = useState('start');
-  const localStream = useRef<MediaStream>();
+  const localStream = useRef<MediaStream>(undefined);
   const pingInit = useRef(false);
   const callOptionRef = useRef<string[]>([]);
   const senderStreamsRef = useRef<SenderStreams>({});

@@ -8,10 +8,12 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Grid from '@mui/material/Grid';
 import ClearIcon from '@mui/icons-material/Clear';
 import CheckIcon from '@mui/icons-material/Check';
-import { MutationTrigger } from '@reduxjs/toolkit/dist/query/react/buildHooks';
-import { SiteMutation, useUtil, ILookup, useStyles } from 'awayto/hooks';
+import { useUtil, ILookup, SiteQuery } from 'awayto/hooks';
+import { QueryActionCreatorResult } from '@reduxjs/toolkit/query';
 
 type CreateActionBody = Record<string, string | Record<string, string>>;
+
+type MutatorFn<T, R> = (p: T) => QueryActionCreatorResult<SiteQuery<T, R>>
 
 declare global {
   interface IComponent {
@@ -27,10 +29,10 @@ declare global {
     defaultValue?: string | string[];
     invalidValues?: string[];
     refetchAction?: (props?: { [prop: string]: string }) => void;
-    attachAction?: MutationTrigger<SiteMutation<{ [prop: string]: string }, ILookup>>;
-    createAction?: MutationTrigger<SiteMutation<CreateActionBody, ILookup>>;
+    attachAction?: MutatorFn<{ [prop: string]: string }, ILookup>;
+    createAction?: MutatorFn<CreateActionBody, ILookup>;
     createActionBodyKey?: string;
-    deleteAction?: MutationTrigger<SiteMutation<{ [prop: string]: string }, ILookup[]>>;
+    deleteAction?: MutatorFn<{ [prop: string]: string }, ILookup[]>;
     deleteComplete?(value: string | string[]): void;
     parentUuidName?: string;
     parentUuid?: string;
@@ -44,8 +46,6 @@ function isStringArray(str?: string | string[]): str is string[] {
 }
 
 export function SelectLookup({ lookupChange, required = false, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, createActionBodyKey, deleteAction, deleteComplete, deleteActionIdentifier }: IComponent): React.JSX.Element {
-
-  const classes = useStyles();
 
   const { setSnack } = useUtil();
 

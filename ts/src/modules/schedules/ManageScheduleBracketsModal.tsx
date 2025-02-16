@@ -52,8 +52,8 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
 
   const [schedule, setSchedule] = useState(editSchedule);
 
-  if (groupSchedule.schedule && !editSchedule && (!schedule || groupSchedule.schedule.id !== schedule.id)) {
-    setSchedule({ ...groupSchedule.schedule, brackets: {} });
+  if (groupSchedule?.schedule && !editSchedule && (!schedule || groupSchedule.schedule.id !== schedule.id)) {
+    setSchedule({ ...groupSchedule?.schedule, brackets: {} });
   }
 
   const scheduleTimeUnitName = useTimeName(schedule?.scheduleTimeUnitId);

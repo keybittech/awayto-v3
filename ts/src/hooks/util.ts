@@ -94,7 +94,7 @@ export const utilSlice = createSlice(utilConfig);
 let arbitraryCounter = 0;
 
 export function nid(uuid?: string) {
-  if ('v4' === uuid) {
+  if ('random' === uuid) {
     return v4();
   }
   arbitraryCounter++;

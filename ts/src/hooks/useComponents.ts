@@ -1,4 +1,4 @@
-import { ComponentType, FunctionComponent, ReactNode, LazyExoticComponent, createElement, useMemo, lazy } from 'react';
+import React, { ComponentType, FunctionComponent, ReactNode, LazyExoticComponent, createElement, useMemo, lazy } from 'react';
 
 import buildOutput from '../build.json';
 import rolesOutput from '../roles.json';
@@ -24,7 +24,7 @@ export type IBaseComponent = FunctionComponent<IProps | IComponent> & ComponentT
 /**
  * @category Awayto React
  */
-export type IDefaultedComponent = LazyExoticComponent<IBaseComponent> | ((props?: IProps) => JSX.Element);
+export type IDefaultedComponent = LazyExoticComponent<IBaseComponent> | ((props?: IProps) => React.JSX.Element);
 
 /**
  * @category Awayto React
@@ -64,7 +64,7 @@ export function useComponents(): IBaseComponents {
 
   const comps = useMemo(() => {
     return new Proxy(components, {
-      get: function(target: IBaseComponents, prop: string): LazyExoticComponent<IBaseComponent> | (() => JSX.Element) {
+      get: function(target: IBaseComponents, prop: string): LazyExoticComponent<IBaseComponent> | (() => React.JSX.Element) {
         if (profileRequest?.userProfile?.availableUserGroupRoles && roles[views[prop]]?.length && !hasRole(profileRequest.userProfile.availableUserGroupRoles, roles[views[prop]])) {
           components[prop] = ((): React.JSX.Element => createElement('div'));
         }

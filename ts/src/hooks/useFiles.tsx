@@ -5,7 +5,7 @@ import { IFile } from 'awayto/hooks';
 
 export function useFiles(): {
   files: IFile[];
-  comp: (props: IComponent) => JSX.Element;
+  comp: (props: IComponent) => React.JSX.Element;
 } {
   const { FileManager } = useComponents();
   const [files, setFiles] = useState<IFile[]>([]);

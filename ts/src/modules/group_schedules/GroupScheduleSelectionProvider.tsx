@@ -22,7 +22,7 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
     groupScheduleId: groupSchedule?.schedule?.id || '',
     date: startOfMonth.format("YYYY-MM-DD"),
     timezone: tz,
-  }, { skip: !groupSchedule.schedule?.id });
+  }, { skip: !groupSchedule?.schedule?.id });
 
   if (dateSlots?.groupScheduleDateSlots?.length && !firstAvailable.scheduleBracketSlotId) {
     const [slot] = dateSlots.groupScheduleDateSlots as Required<IGroupScheduleDateSlots>[];

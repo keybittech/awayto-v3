@@ -89,7 +89,7 @@ function FileManager({ files, setFiles }: Required<IComponent>): React.JSX.Eleme
             const uploadedFiles: IFile[] = newFiles.filter(f => !existingFiles.includes(f.name)).map(f => {
               const idx = newFiles.findIndex(ff => f.name == ff.name);
               return {
-                id: nid('v4') as string,
+                id: nid('random') as string,
                 uuid: newFileIds[idx],
                 name: f.name,
                 mimeType: f.type

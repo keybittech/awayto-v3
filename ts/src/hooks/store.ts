@@ -5,7 +5,7 @@ import { siteApi } from './api';
 import { ConfirmActionProps, encodeVal, IUtil, utilSlice } from './util';
 import { authSlice } from './auth';
 import { CustomBaseQuery } from './api.template';
-import { UseQueryHookResult } from '@reduxjs/toolkit/dist/query/react/buildHooks';
+import { TypedUseQueryHookResult } from '@reduxjs/toolkit/query/react';
 
 export type ConfirmActionType = (...props: ConfirmActionProps) => void | Promise<void>;
 export type ActionRegistry = Record<string, ConfirmActionType>;
@@ -18,13 +18,13 @@ function registerAction(id: string, action: ConfirmActionType): void {
 export function getUtilRegisteredAction(id: string): ConfirmActionType {
   return actionRegistry[id];
 }
-
-const customUtilMiddleware: Middleware = _ => next => (action: { type: string, payload: Partial<IUtil> }) => {
-  if (action.type.includes('openConfirm')) {
-    const { confirmEffect, confirmAction } = action.payload;
+const customUtilMiddleware: Middleware = _ => next => action => {
+  const a = action as { type: string, payload: Partial<IUtil> };
+  if (a.type.includes('openConfirm')) {
+    const { confirmEffect, confirmAction } = a.payload;
     if (confirmEffect && confirmAction) {
       registerAction(encodeVal(confirmEffect), confirmAction)
-      action.payload.confirmAction = undefined;
+      a.payload.confirmAction = undefined;
     }
   }
 
@@ -56,6 +56,4 @@ export const useAppSelector: TypedUseSelectorHook<RootState> = useSelector;
 export type SiteMutation<TQueryArg, TResultType> = MutationDefinition<TQueryArg, CustomBaseQuery, 'Root', TResultType, 'api'>;
 export type SiteQuery<TQueryArg, TResultType> = QueryDefinition<TQueryArg, CustomBaseQuery, 'Root', TResultType, 'api'>;
 
-export type UseSiteQuery<T, R> = UseQueryHookResult<SiteQuery<T, R>>;
-// export type UseSiteMutation<T, R> = MutationDefinition<T, CustomBaseQuery, string, R, string>;
-
+export type UseSiteQuery<T, R> = TypedUseQueryHookResult<R, T, CustomBaseQuery>

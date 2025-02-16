@@ -7,7 +7,7 @@ import { deepClone } from './util';
 
 type UseGroupFormResponse = {
   form?: IForm,
-  comp: () => JSX.Element,
+  comp: () => React.JSX.Element,
   valid: boolean
 };
 

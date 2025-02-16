@@ -27,7 +27,7 @@ function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasE
 
 declare global {
   interface IProps {
-    optionsMenu?: JSX.Element;
+    optionsMenu?: React.JSX.Element;
     sharedFile?: IFile;
     topicId?: string;
     openFileSelect?: () => void;

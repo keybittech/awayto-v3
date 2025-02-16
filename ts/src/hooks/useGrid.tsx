@@ -12,7 +12,7 @@ type UseScheduleProps<T extends GridValidRowModel> = {
   selected?: GridRowSelectionModel;
   disableRowSelectionOnClick?: boolean;
   onSelected?: (value: GridRowSelectionModel) => void;
-  toolbar?: () => JSX.Element;
+  toolbar?: () => React.JSX.Element;
 };
 
 export function useGrid<T extends GridValidRowModel>({ rows, columns, columnHeaderHeight, rowId, noPagination, selected, onSelected, toolbar, disableRowSelectionOnClick = true }: UseScheduleProps<T>) {

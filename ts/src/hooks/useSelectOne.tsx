@@ -1,21 +1,18 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
-import { UseQuery } from '@reduxjs/toolkit/dist/query/react/buildHooks';
+import React, { useEffect, useState } from 'react';
 
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 
 import { ILookup } from './api';
-import { SiteQuery } from './store';
-
-type UseSelectOneProps<T> = { data?: T[] } & Partial<ReturnType<UseQuery<SiteQuery<{ readonly [prop: string]: string }, T[]>>>>;
+import { UseSiteQuery } from './store';
 
 export type UseSelectOneResponse<T> = {
-  item: T;
+  item?: T;
   setId: (id: string) => void;
   comp: (props?: IComponent) => React.JSX.Element;
 };
 
-export function useSelectOne<T extends Partial<ILookup>>(label: string, { data: items }: UseSelectOneProps<T>): UseSelectOneResponse<T> {
+export function useSelectOne<T extends Partial<ILookup>>(label: string, { data: items }: { data?: T[] }): UseSelectOneResponse<T> {
   const [itemId, setItemId] = useState(Array.isArray(items) && items.length ? items[0].id : '');
 
   useEffect(() => {
@@ -37,7 +34,7 @@ export function useSelectOne<T extends Partial<ILookup>>(label: string, { data: 
   };
 
   return {
-    item: (items?.find(it => it.id === itemId) || {}) as T,
+    item: (items ? items?.find(it => it.id === itemId) : {}) as T,
     setId: setItemId,
     comp: (props) => items?.length ? <TextField
       label={label}

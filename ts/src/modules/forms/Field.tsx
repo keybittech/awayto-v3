@@ -21,7 +21,7 @@ declare global {
 function Field({ settingsBtn, defaultDisplay, field, editable = false, ...props }: IComponent): React.JSX.Element {
   if (!field) return <></>;
 
-  const FieldElement: (props: TextFieldProps) => JSX.Element = useMemo(() => {
+  const FieldElement: (props: TextFieldProps) => React.JSX.Element = useMemo(() => {
     switch (field.t) {
       case 'date':
       case 'time':

@@ -15,8 +15,8 @@ export function GroupScheduleProvider({ children }: IComponent): React.JSX.Eleme
   });
 
   const getGroupUserSchedules = siteApi.useGroupUserScheduleServiceGetGroupUserSchedulesQuery(
-    { groupScheduleId: selectGroupSchedule.item.schedule?.id || '' },
-    { skip: !selectGroupSchedule.item.schedule?.id }
+    { groupScheduleId: selectGroupSchedule.item?.schedule?.id || '' },
+    { skip: !selectGroupSchedule.item?.schedule?.id }
   );
 
   const selectGroupScheduleService = useSelectOne('Service', {

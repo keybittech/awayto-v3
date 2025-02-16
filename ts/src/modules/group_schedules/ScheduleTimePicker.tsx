@@ -22,7 +22,7 @@ export function ScheduleTimePicker(): React.JSX.Element {
     bracketSlotDateDayDiff
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
-  const { bracketTimeUnitId, slotTimeUnitId, slotDuration } = groupSchedule.schedule || {};
+  const { bracketTimeUnitId, slotTimeUnitId, slotDuration } = groupSchedule?.schedule || {};
   const bracketTimeUnitName = useTimeName(bracketTimeUnitId);
   const slotTimeUnitName = useTimeName(slotTimeUnitId);
 

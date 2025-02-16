@@ -75,7 +75,7 @@ export function useSuggestions(refName: string): {
   }, [helpText]);
 
   const comp = useCallback(({ staticSuggestions, handleSuggestion, hideSuggestions }: SuggestionsComp) => {
-    const compId = nid('v4');
+    const compId = nid('random');
     return suggestions.length && allowSuggestions && !hideSuggestions ? <>
       AI: {suggestions.filter(s => s.toLowerCase() !== 'admin').map((suggestion, i) => {
         return <span id={`suggestion-${compId}${i}-selection`} style={{ display: 'inline-block' }} key={`${compId}-selection-${i}`}>
