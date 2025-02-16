@@ -26,6 +26,7 @@ type UserSession struct {
 	RoleName                string   `json:"roleName"`
 	AnonIp                  string   `json:"anonIp"`
 	AvailableUserGroupRoles []string `json:"availableUserGroupRoles"`
+	Timezone                string   `json:"timezone"`
 }
 
 func (r *Redis) SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error) {

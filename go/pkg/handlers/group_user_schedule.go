@@ -13,11 +13,11 @@ func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Reques
 	var groupUserScheduleId string
 
 	err := tx.QueryRow(`
-		INSERT INTO dbtable_schema.group_user_schedules (group_schedule_id, user_schedule_id, created_sub)
-		VALUES ($1::uuid, $2::uuid, $3::uuid)
+		INSERT INTO dbtable_schema.group_user_schedules (group_schedule_id, user_schedule_id, created_sub, group_id)
+		VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid)
 		ON CONFLICT (group_schedule_id, user_schedule_id) DO NOTHING
 		RETURNING id
-	`, data.GetGroupScheduleId(), data.GetUserScheduleId(), session.UserSub).Scan(&groupUserScheduleId)
+	`, data.GetGroupScheduleId(), data.GetUserScheduleId(), session.UserSub, session.GroupId).Scan(&groupUserScheduleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

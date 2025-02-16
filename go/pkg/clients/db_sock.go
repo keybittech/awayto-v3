@@ -8,28 +8,36 @@ import (
 	"time"
 )
 
-func (db *Database) InitDBSocketConnection(userSub string, connId string) (func(), error) {
-	_, err := db.Client().Exec(`
+func (db *Database) InitDBSocketConnection(tx IDatabaseTx, userSub string, connId string) (func(), error) {
+	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
 		VALUES ($1::uuid, $2)
 	`, userSub, connId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	return func() {
-		db.Client().Exec(`
-			DELETE FROM dbtable_schema.sock_connections
-			USING dbtable_schema.sock_connections sc
-			LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
-			WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL AND sc.connection_id = $1 
-		`, connId)
+		err := db.TxExec(func(itx IDatabaseTx) error {
+			_, txErr := itx.Exec(`
+				DELETE FROM dbtable_schema.sock_connections
+				USING dbtable_schema.sock_connections sc
+				LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
+				WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL AND sc.connection_id = $1 
+			`, connId)
+			if txErr != nil {
+				return util.ErrCheck(err)
+			}
+			return nil
+		}, "worker")
+		if err != nil {
+			util.ErrorLog.Println(err)
+		}
 	}, nil
 }
 
-func (db *Database) GetSocketAllowances(userSub string) ([]util.IdStruct, error) {
-	rows, err := db.Client().Query(`
+func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.IdStruct, error) {
+	rows, err := tx.Query(`
 		SELECT b.id
 		FROM dbtable_schema.bookings b
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = b.schedule_bracket_slot_id
@@ -56,7 +64,12 @@ func (db *Database) GetSocketAllowances(userSub string) ([]util.IdStruct, error)
 	return ids, nil
 }
 
-func (db *Database) GetTopicMessageParticipants(topic string) SocketParticipants {
+func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (SocketParticipants, error) {
+
+	err := tx.SetDbVar("sock_topic", topic)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	participants := make(SocketParticipants)
 
@@ -69,8 +82,12 @@ func (db *Database) GetTopicMessageParticipants(topic string) SocketParticipants
 		GROUP BY created_sub
 	`, topic)
 	if err != nil {
-		util.ErrCheck(err)
-		return participants
+		return nil, util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("sock_topic", "")
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	for topicRows.Next() {
@@ -80,14 +97,12 @@ func (db *Database) GetTopicMessageParticipants(topic string) SocketParticipants
 
 		err = topicRows.Scan(&scid, &cidsBytes)
 		if err != nil {
-			util.ErrCheck(err)
-			continue
+			return nil, util.ErrCheck(err)
 		}
 
 		err = json.Unmarshal(cidsBytes, &cids)
 		if err != nil {
-			util.ErrCheck(err)
-			continue
+			return nil, util.ErrCheck(err)
 		}
 
 		if participant, ok := participants[scid]; ok {
@@ -104,14 +119,14 @@ func (db *Database) GetTopicMessageParticipants(topic string) SocketParticipants
 		}
 	}
 
-	return participants
+	return participants, nil
 }
 
-func (db *Database) GetSocketParticipantDetails(participants SocketParticipants) SocketParticipants {
+func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants SocketParticipants) (SocketParticipants, error) {
 
 	for userSub, details := range participants {
 		// Get user anon info
-		err := db.Client().QueryRow(`
+		err := tx.QueryRow(`
 			SELECT
 				LEFT(u.first_name, 1) || LEFT(u.last_name, 1) as name,
 				r.name as role
@@ -122,14 +137,14 @@ func (db *Database) GetSocketParticipantDetails(participants SocketParticipants)
 			WHERE u.sub = $1
 		`, userSub).Scan(&details.Name, &details.Role)
 		if err != nil {
-			util.ErrCheck(err)
+			return nil, util.ErrCheck(err)
 		}
 	}
 
-	return participants
+	return participants, nil
 }
 
-func (db *Database) StoreTopicMessage(connId, topic string, message SocketMessage) {
+func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId, topic string, message SocketMessage) error {
 
 	message.Store = false
 	message.Historical = true
@@ -137,11 +152,10 @@ func (db *Database) StoreTopicMessage(connId, topic string, message SocketMessag
 
 	socketMessage, err := json.Marshal(message)
 	if err != nil {
-		util.ErrCheck(err)
-		return
+		return util.ErrCheck(err)
 	}
 
-	_, err = db.Client().Exec(`
+	_, err = tx.Exec(`
 		INSERT INTO dbtable_schema.topic_messages (created_sub, topic, message, connection_id)
 		SELECT created_sub, $2, $3, $1
 		FROM dbtable_schema.sock_connections
@@ -149,26 +163,35 @@ func (db *Database) StoreTopicMessage(connId, topic string, message SocketMessag
 	`, connId, topic, socketMessage)
 
 	if err != nil {
-		util.ErrCheck(err)
-		return
+		return util.ErrCheck(err)
 	}
+
+	return nil
 }
 
-func (db *Database) GetTopicMessages(topic string, page, pageSize int) [][]byte {
+func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error) {
+
+	err := tx.SetDbVar("sock_topic", topic)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	messages := make([][]byte, pageSize)
 
 	paginatedQuery := util.WithPagination(`
-		SELECT message
-		FROM dbtable_schema.topic_messages
+		SELECT message FROM dbtable_schema.topic_messages
 		WHERE topic = $1
 		ORDER BY created_on DESC 
 	`, page, pageSize)
 
-	rows, err := db.Client().Query(paginatedQuery, topic)
+	rows, err := tx.Query(paginatedQuery, topic)
 	if err != nil {
-		util.ErrCheck(err)
-		return nil
+		return nil, util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("sock_topic", "")
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	i := 0
@@ -176,8 +199,7 @@ func (db *Database) GetTopicMessages(topic string, page, pageSize int) [][]byte 
 		var smBytes []byte
 		err := rows.Scan(&smBytes)
 		if err != nil {
-			util.ErrCheck(err)
-			break
+			return nil, util.ErrCheck(err)
 		}
 		messages[i] = smBytes
 		i++
@@ -191,5 +213,5 @@ func (db *Database) GetTopicMessages(topic string, page, pageSize int) [][]byte 
 		messages = append(messages, msgStatusBytes)
 	}
 
-	return messages
+	return messages, nil
 }

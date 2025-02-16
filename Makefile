@@ -132,6 +132,7 @@ $(CERTS_TARGET):
 	fi
 
 $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
+	rm -rf $(JAVA_SRC)/target
 	mvn -f $(JAVA_SRC) install
 
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
@@ -144,7 +145,7 @@ $(LANDING_TARGET):
 landing_dev: build
 	chmod +x $(LANDING_SRC)/server.sh && pnpm run --dir $(LANDING_SRC) start
 
-$(TS_TARGET): $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,settings.application.env} -type f) 
+$(TS_TARGET): $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,settings.application.env} -type f) $(shell find proto/ -type f)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--openapi_out=$(TS_SRC) \
@@ -158,7 +159,7 @@ $(TS_TARGET): $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.js
 ts_dev:
 	HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
 
-$(GO_TARGET): $(shell find $(GO_SRC)/{main.go,flags.go,pkg} -type f) 
+$(GO_TARGET): $(shell find $(GO_SRC)/{main.go,flags.go,pkg} -type f) $(shell find proto/ -type f)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_SRC) \

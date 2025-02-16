@@ -16,7 +16,7 @@
 				<label for="groupCode" class="${properties.kcLabelClass!}">${msg("groupCode")}</label>
 
 				<input type="text" id="groupCode" class="${properties.kcInputClass!}" name="groupCode"
-								value="${(register.formData.groupCode!'')}" autocomplete="groupCode"
+                value="${(register.formData.groupCode!'')}" autocomplete="groupCode"
 								aria-invalid="<#if messagesPerField.existsError('groupCode')>true</#if>"
 				/>
 				
@@ -32,6 +32,7 @@
                 <#if callback = "afterField">
                 <#-- render password fields just under the username or email (if used as username) -->
                     <#if passwordRequired?? && (attribute.name == 'username' || (attribute.name == 'email' && realm.registrationEmailAsUsername))>
+                        <input type="hidden" id="timezone" name="timezone" />
                         <div class="${properties.kcFormGroupClass!}">
                             <div class="${properties.kcLabelWrapperClass!}">
                                 <label for="password" class="${properties.kcLabelClass!}">${msg("password")}</label> *
@@ -125,5 +126,8 @@
             </div>
         </form>
         <script type="module" src="${url.resourcesPath}/js/passwordVisibility.js"></script>
+        <script>
+          document.getElementById('timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone
+        </script>
     </#if>
 </@layout.registrationLayout>

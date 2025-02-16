@@ -173,6 +173,11 @@ func (a *API) GetAuthorizedSession(req *http.Request, tx clients.IDatabaseTx) (*
 			session.GroupSessionVersion = groupVersion
 		}
 
+		err = tx.QueryRow(`SELECT timezone FROM dbtable_schema.users WHERE sub = $1`, session.UserSub).Scan(&session.Timezone)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
 		a.Handlers.Redis.SetSession(ctx, userToken.Sub, session)
 	}
 

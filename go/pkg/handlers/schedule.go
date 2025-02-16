@@ -51,10 +51,10 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 		var bracket types.IScheduleBracket
 
 		err := tx.QueryRow(`
-			INSERT INTO dbtable_schema.schedule_brackets (schedule_id, duration, multiplier, automatic, created_sub)
-			VALUES ($1, $2, $3, $4, $5::uuid)
+			INSERT INTO dbtable_schema.schedule_brackets (schedule_id, duration, multiplier, automatic, created_sub, group_id)
+			VALUES ($1, $2, $3, $4, $5::uuid, $6)
 			RETURNING id
-		`, data.GetScheduleId(), b.Duration, b.Multiplier, b.Automatic, session.UserSub).Scan(&bracket.Id)
+		`, data.GetScheduleId(), b.Duration, b.Multiplier, b.Automatic, session.UserSub, session.GroupId).Scan(&bracket.Id)
 
 		if err != nil {
 			return nil, util.ErrCheck(err)
@@ -62,9 +62,9 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 
 		for _, serv := range b.Services {
 			_, err = tx.Exec(`
-				INSERT INTO dbtable_schema.schedule_bracket_services (schedule_bracket_id, service_id, created_sub)
-				VALUES ($1, $2, $3::uuid)
-			`, bracket.Id, serv.Id, session.UserSub)
+				INSERT INTO dbtable_schema.schedule_bracket_services (schedule_bracket_id, service_id, created_sub, group_id)
+				VALUES ($1, $2, $3::uuid, $4::uuid)
+			`, bracket.Id, serv.Id, session.UserSub, session.GroupId)
 
 			if err != nil {
 				return nil, util.ErrCheck(err)
@@ -85,10 +85,10 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 			var slotId string
 
 			err = tx.QueryRow(`
-				INSERT INTO dbtable_schema.schedule_bracket_slots (schedule_bracket_id, start_time, created_sub)
-				VALUES ($1, $2::interval, $3::uuid)
+				INSERT INTO dbtable_schema.schedule_bracket_slots (schedule_bracket_id, start_time, created_sub, group_id)
+				VALUES ($1, $2::interval, $3::uuid, $4::uuid)
 				RETURNING id
-			`, bracket.Id, slot.StartTime, session.UserSub).Scan(&slotId)
+			`, bracket.Id, slot.StartTime, session.UserSub, session.GroupId).Scan(&slotId)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -102,6 +102,7 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules/"+data.GetScheduleId())
 	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules/"+data.GetScheduleId())
 	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules")
 

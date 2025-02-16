@@ -6,6 +6,7 @@ import (
 	"av3api/pkg/util"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -95,11 +96,20 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 	}
 	defer deferSockClose()
 
-	deferSockDbClose, err := a.Handlers.Database.InitDBSocketConnection(subscriber.UserSub, connId)
+	var deferSockDbClose func()
+	err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		var txErr error
+		deferSockDbClose, txErr = a.Handlers.Database.InitDBSocketConnection(tx, subscriber.UserSub, connId)
+		if txErr != nil {
+			return util.ErrCheck(txErr)
+		}
+		return nil
+	}, subscriber.UserSub)
 	if err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
+		util.ErrorLog.Println(err)
 		return
 	}
+
 	defer deferSockDbClose()
 
 	err = a.Handlers.Redis.InitRedisSocketConnection(socketId)
@@ -181,11 +191,18 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 }
 
 func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId string) {
+	var err error
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
-	defer cancel()
+	defer func() {
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+		}
+		cancel()
+	}()
 
 	if sm.Topic == "" {
+		err = errors.New(fmt.Sprintf("empty topic in socket message handler %s", connId))
 		return
 	}
 
@@ -199,10 +216,21 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 	switch sm.Action {
 	case types.SocketActions_SUBSCRIBE:
 
-		allowances, err := a.Handlers.Database.GetSocketAllowances(userSub)
+		allowances := []util.IdStruct{}
+
+		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+			var txErr error
+			allowances, txErr = a.Handlers.Database.GetSocketAllowances(tx, userSub)
+			if txErr != nil {
+				return util.ErrCheck(txErr)
+			}
+			return nil
+		}, userSub)
 		if err != nil {
+			util.ErrorLog.Println(err)
 			return
 		}
+
 		subscribed := false
 
 		for _, allowance := range allowances {
@@ -250,28 +278,45 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 	case types.SocketActions_LOAD_SUBSCRIBERS:
 
 		cachedParticipants := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
-		topicMessageParticipants := a.Handlers.Database.GetTopicMessageParticipants(sm.Topic)
 
+		topicMessageParticipants := make(clients.SocketParticipants)
 		mergedParticipants := make(clients.SocketParticipants)
 
-		for _, participants := range []clients.SocketParticipants{cachedParticipants, topicMessageParticipants} {
-			for userSub, participant := range participants {
-				if mergedP, ok := mergedParticipants[userSub]; ok {
-					for _, cid := range participant.Cids {
-						if !slices.Contains(mergedP.Cids, cid) {
-							mergedP.Cids = append(mergedP.Cids, cid)
+		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+			var txErr error
+
+			topicMessageParticipants, txErr = a.Handlers.Database.GetTopicMessageParticipants(tx, sm.Topic)
+			if txErr != nil {
+				return util.ErrCheck(txErr)
+			}
+
+			for _, participants := range []clients.SocketParticipants{cachedParticipants, topicMessageParticipants} {
+				for userSub, participant := range participants {
+					if mergedP, ok := mergedParticipants[userSub]; ok {
+						for _, cid := range participant.Cids {
+							if !slices.Contains(mergedP.Cids, cid) {
+								mergedP.Cids = append(mergedP.Cids, cid)
+							}
 						}
+						if !mergedP.Online && participant.Online {
+							mergedP.Online = true
+						}
+					} else {
+						mergedParticipants[userSub] = participant
 					}
-					if !mergedP.Online && participant.Online {
-						mergedP.Online = true
-					}
-				} else {
-					mergedParticipants[userSub] = participant
 				}
 			}
-		}
 
-		mergedParticipants = a.Handlers.Database.GetSocketParticipantDetails(mergedParticipants)
+			mergedParticipants, txErr = a.Handlers.Database.GetSocketParticipantDetails(tx, mergedParticipants)
+			if txErr != nil {
+				return util.ErrCheck(txErr)
+			}
+			return nil
+		}, userSub)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
 
 		targets := a.Handlers.Redis.GetParticipantTargets(cachedParticipants)
 		a.Handlers.Socket.SendMessage(targets, clients.SocketMessage{
@@ -286,7 +331,21 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 		if a.Handlers.Socket.HasTopicSubscription(userSub, sm.Topic) {
 			targets := []string{connId}
 			pageInfo := sm.Payload.(map[string]interface{})
-			messages := a.Handlers.Database.GetTopicMessages(sm.Topic, int(pageInfo["page"].(float64)), int(pageInfo["pageSize"].(float64)))
+			messages := [][]byte{}
+
+			err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+				var txErr error
+				messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, int(pageInfo["page"].(float64)), int(pageInfo["pageSize"].(float64)))
+				if txErr != nil {
+					return util.ErrCheck(txErr)
+				}
+				return nil
+			}, userSub)
+			if err != nil {
+				util.ErrorLog.Println(err)
+				return
+			}
+
 			for _, messageBytes := range messages {
 				if messageBytes != nil {
 					a.Handlers.Socket.SendMessageBytes(targets, messageBytes)
@@ -303,6 +362,18 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 	}
 
 	if sm.Store && a.Handlers.Socket.HasTopicSubscription(userSub, sm.Topic) {
-		a.Handlers.Database.StoreTopicMessage(connId, sm.Topic, sm)
+		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+			var txErr error
+
+			txErr = a.Handlers.Database.StoreTopicMessage(tx, connId, sm.Topic, sm)
+			if txErr != nil {
+				return util.ErrCheck(txErr)
+			}
+			return nil
+		}, userSub)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
 	}
 }

@@ -63,6 +63,7 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 			UserSub:   authEvent.UserId,
 			UserEmail: authEvent.Email,
 			AnonIp:    util.AnonIp(authEvent.IpAddress),
+			Timezone:  authEvent.Timezone,
 		}
 
 		tx, err := a.Handlers.Database.Client().Begin()

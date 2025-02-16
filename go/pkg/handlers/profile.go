@@ -11,9 +11,9 @@ import (
 
 func (h *Handlers) PostUserProfile(w http.ResponseWriter, req *http.Request, data *types.PostUserProfileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostUserProfileResponse, error) {
 	_, err := tx.Exec(`
-		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_on, created_sub, ip_address)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid, $9)
-	`, session.UserSub, data.GetUsername(), data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC(), session.UserSub, req.Context().Value("SourceIp"))
+		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_on, created_sub, ip_address, timezone)
+		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid, $9, $10)
+	`, session.UserSub, data.GetUsername(), data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC(), session.UserSub, session.AnonIp, session.Timezone)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)

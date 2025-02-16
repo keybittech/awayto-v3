@@ -85,6 +85,11 @@ func InitDatabase() IDatabase {
 		log.Fatal(fmt.Sprintf("can't get admin role %s", err))
 	}
 
+	err = tx.SetDbVar("user_sub", "")
+	if err != nil {
+		log.Fatal(fmt.Sprintf("can't set app sub %s", err))
+	}
+
 	err = tx.Commit()
 	if err != nil {
 		log.Fatal(err)
@@ -156,6 +161,10 @@ func (tx *TxWrapper) Exec(query string, args ...interface{}) (sql.Result, error)
 	return tx.Tx.Exec(query, args...)
 }
 
+func (tx *TxWrapper) Query(query string, args ...interface{}) (IRows, error) {
+	return tx.Tx.Query(query, args...)
+}
+
 func (tx *TxWrapper) QueryRow(query string, args ...interface{}) IRow {
 	return tx.Tx.QueryRow(query, args...)
 }
@@ -225,6 +234,58 @@ func (pms *ProtoMapSerializer) Scan(src interface{}) error {
 	}
 
 	*pms = source
+
+	return nil
+}
+
+func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error {
+
+	hasUserSub := len(ids) > 0 && ids[0] != ""
+	hasGroupId := len(ids) > 1 && ids[1] != ""
+
+	tx, err := db.Client().Begin()
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+	defer tx.Rollback()
+
+	if hasUserSub {
+		err = tx.SetDbVar("user_sub", ids[0])
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+	}
+
+	if hasGroupId {
+		err = tx.SetDbVar("group_id", ids[1])
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+	}
+
+	err = doFunc(tx)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	if hasUserSub {
+		err = tx.SetDbVar("user_sub", "")
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+	}
+
+	if hasGroupId {
+		err = tx.SetDbVar("group_id", "")
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return util.ErrCheck(err)
+	}
 
 	return nil
 }

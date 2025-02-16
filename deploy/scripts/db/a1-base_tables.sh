@@ -43,6 +43,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     last_name VARCHAR (255),
     email VARCHAR (255),
     ip_address VARCHAR (40),
+    timezone VARCHAR (50),
     locked BOOLEAN NOT NULL DEFAULT false,
     active BOOLEAN NOT NULL DEFAULT false,
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),

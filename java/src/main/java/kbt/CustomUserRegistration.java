@@ -123,6 +123,8 @@ public class CustomUserRegistration extends RegistrationUserCreation {
       return;
     } else {
 
+      session.setAttribute("timezone", formData.getFirst("timezone"));
+
       if (formData.containsKey("groupCode")) {
         String groupCode = formData.getFirst("groupCode");
         String email = formData.getFirst("email");
@@ -205,6 +207,7 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     AbstractUserRepresentation up = profile.toRepresentation();
 
     Object groupIdObj = session.getAttribute("groupId");
+    String timezone = session.getAttribute("timezone").toString();
 
     String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Forwarded-For").split(":")[0];
 
@@ -221,6 +224,7 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     registrationSuccessPayload.put("lastName", up.getLastName());
     registrationSuccessPayload.put("email", up.getEmail());
     registrationSuccessPayload.put("ipAddress", xForwardedFor);
+    registrationSuccessPayload.put("timezone", timezone);
 
     BackchannelAuth.sendUnixMessage("REGISTER", registrationSuccessPayload);
   }

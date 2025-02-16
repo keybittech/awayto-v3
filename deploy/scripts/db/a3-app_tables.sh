@@ -216,7 +216,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true
   );
 
-  CREATE TABLE dbtable_schema.group_schedules (
+  CREATE TABLE dbtable_schema.group_schedules ( -- master schedules tied to the group, created sub is group db user
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
     schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
@@ -242,8 +242,9 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE POLICY table_delete ON dbtable_schema.schedules FOR DELETE TO $PG_WORKER USING (
     $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.group_schedules gs WHERE gs.schedule_id = dbtable_schema.schedules.id AND gs.$HAS_GROUP));
 
-  CREATE TABLE dbtable_schema.group_user_schedules (
+  CREATE TABLE dbtable_schema.group_user_schedules ( -- user schedules based off the masters
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+    group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
     group_schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
     user_schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -253,9 +254,15 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (group_schedule_id, user_schedule_id)
   );
+  ALTER TABLE dbtable_schema.group_user_schedules ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.group_user_schedules FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.group_user_schedules FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR AND $HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_user_schedules FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR AND $HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_user_schedules FOR DELETE TO $PG_WORKER USING ($IS_CREATOR AND $HAS_GROUP);
 
   CREATE TABLE dbtable_schema.schedule_brackets (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+    group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
     schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
     duration INTEGER NOT NULL,
     multiplier INTEGER NOT NULL,
@@ -266,9 +273,15 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.schedule_brackets ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.schedule_brackets FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.schedule_brackets FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_brackets FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_brackets FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.schedule_bracket_slots (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+    group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
     schedule_bracket_id uuid NOT NULL REFERENCES dbtable_schema.schedule_brackets (id) ON DELETE CASCADE,
     start_time INTERVAL NOT NULL,
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -278,9 +291,15 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (schedule_bracket_id, start_time)
   );
+  ALTER TABLE dbtable_schema.schedule_bracket_slots ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.schedule_bracket_slots FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.schedule_bracket_slots FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slots FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slots FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.schedule_bracket_slot_exclusions (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+    group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
     exclusion_date DATE NOT NULL,
     schedule_bracket_slot_id uuid REFERENCES dbtable_schema.schedule_bracket_slots (id) ON DELETE CASCADE,
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -289,9 +308,15 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.schedule_bracket_slot_exclusions ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.schedule_bracket_slot_exclusions FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.schedule_bracket_slot_exclusions FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slot_exclusions FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slot_exclusions FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.schedule_bracket_services (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+    group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
     schedule_bracket_id uuid NOT NULL REFERENCES dbtable_schema.schedule_brackets (id) ON DELETE CASCADE,
     service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -301,9 +326,15 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true,
     UNIQUE (schedule_bracket_id, service_id)
   );
+  ALTER TABLE dbtable_schema.schedule_bracket_services ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.schedule_bracket_services FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_insert ON dbtable_schema.schedule_bracket_services FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_services FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_services FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.quotes (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+    group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
     slot_date DATE NOT NULL,
     schedule_bracket_slot_id uuid NOT NULL REFERENCES dbtable_schema.schedule_bracket_slots (id),
     service_tier_id uuid NOT NULL REFERENCES dbtable_schema.service_tiers (id),
@@ -315,12 +346,27 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.quotes ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.quotes FOR SELECT TO $PG_WORKER USING (
+    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.schedule_bracket_slots sbs WHERE sbs.$IS_CREATOR));
+  CREATE POLICY table_insert ON dbtable_schema.quotes FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.quotes FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+
+  CREATE POLICY table_select_2 ON dbtable_schema.files FOR SELECT TO $PG_WORKER USING (
+    EXISTS(
+      SELECT 1 FROM dbtable_schema.quotes q
+      JOIN dbtable_schema.schedule_bracket_slots sbs ON q.schedule_bracket_slot_id = sbs.id
+      WHERE q.created_sub = dbtable_schema.files.created_sub -- file belongs to user who made the quote
+      AND sbs.$IS_CREATOR -- this user made the sbs for the quote
+    )
+  ); -- file can be read if the file creator requested a meeting with bracket owner
+
   CREATE POLICY table_select_2 ON dbtable_schema.file_contents FOR SELECT TO $PG_WORKER USING (
     EXISTS(
       SELECT 1 FROM dbtable_schema.quotes q
       JOIN dbtable_schema.schedule_bracket_slots sbs ON q.schedule_bracket_slot_id = sbs.id
-      WHERE q.created_sub = file_contents.created_sub 
-      AND sbs.$IS_CREATOR
+      WHERE q.created_sub = dbtable_schema.file_contents.created_sub -- file belongs to user who made the quote
+      AND sbs.$IS_CREATOR -- this user made the sbs for the quote
     )
   ); -- file can be read if the file creator requested a meeting with bracket owner
 
@@ -334,6 +380,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.quote_files ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.quote_files FOR SELECT TO $PG_WORKER USING (
+    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.schedule_bracket_slots sbs WHERE sbs.$IS_CREATOR));
+  CREATE POLICY table_insert ON dbtable_schema.quote_files FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.bookings (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -349,6 +399,11 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.bookings ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.bookings FOR SELECT TO $PG_WORKER USING (
+    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.schedule_bracket_slots sbs WHERE sbs.$IS_CREATOR));
+  CREATE POLICY table_insert ON dbtable_schema.bookings FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.bookings FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.sock_connections (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -359,6 +414,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.sock_connections ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.sock_connections FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR);
+  CREATE POLICY table_insert ON dbtable_schema.sock_connections FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_delete ON dbtable_schema.sock_connections FOR DELETE TO $PG_WORKER USING ($IS_WORKER);
 
   CREATE TABLE dbtable_schema.topic_messages (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -371,6 +430,9 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
     enabled BOOLEAN NOT NULL DEFAULT true
   );
+  ALTER TABLE dbtable_schema.topic_messages ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.topic_messages FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR topic = current_setting('app_session.sock_topic'));
+  CREATE POLICY table_insert ON dbtable_schema.topic_messages FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
 
   CREATE INDEX topic_index ON dbtable_schema.topic_messages (topic);
 

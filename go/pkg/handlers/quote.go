@@ -45,10 +45,10 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 	var quoteId string
 
 	err := tx.QueryRow(`
-		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub)
-		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid)
+		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub, group_id)
+		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7::uuid)
 		RETURNING id
-	`, data.GetSlotDate(), data.GetScheduleBracketSlotId(), data.GetServiceTierId(), serviceFormId, tierFormId, session.UserSub).Scan(&quoteId)
+	`, data.GetSlotDate(), data.GetScheduleBracketSlotId(), data.GetServiceTierId(), serviceFormId, tierFormId, session.UserSub, session.GroupId).Scan(&quoteId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -20,13 +20,14 @@ type IDatabase interface {
 	Client() IDatabaseClient
 	AdminSub() string
 	AdminRoleId() string
-	InitDBSocketConnection(userSub string, connId string) (func(), error)
-	GetSocketAllowances(userSub string) ([]util.IdStruct, error)
-	GetTopicMessageParticipants(topic string) SocketParticipants
-	GetSocketParticipantDetails(participants SocketParticipants) SocketParticipants
-	StoreTopicMessage(connId, topic string, message SocketMessage)
-	GetTopicMessages(topic string, page, pageSize int) [][]byte
+	InitDBSocketConnection(tx IDatabaseTx, userSub string, connId string) (func(), error)
+	GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.IdStruct, error)
+	GetTopicMessageParticipants(tx IDatabaseTx, topic string) (SocketParticipants, error)
+	GetSocketParticipantDetails(tx IDatabaseTx, participants SocketParticipants) (SocketParticipants, error)
+	StoreTopicMessage(tx IDatabaseTx, connId, topic string, message SocketMessage) error
+	GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error)
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
+	TxExec(doFunc func(IDatabaseTx) error, ids ...string) error
 }
 
 type IDatabaseClient interface {
@@ -42,6 +43,7 @@ type IDatabaseTx interface {
 	Rollback() error
 	Exec(query string, args ...any) (sql.Result, error)
 	SetDbVar(string, string) error
+	Query(query string, args ...any) (IRows, error)
 	QueryRow(query string, args ...any) IRow
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 }
@@ -86,6 +88,7 @@ type IRedisClient interface {
 	SAdd(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
 	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
 	SRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
+	Scan(ctx context.Context, cursor uint64, match string, count int64) *redis.ScanCmd
 }
 
 type IKeycloak interface {

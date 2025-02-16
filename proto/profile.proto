@@ -97,6 +97,7 @@ message PostUserProfileRequest {
   string email = 4 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
   string image = 5 [(google.api.field_behavior) = REQUIRED];
   string sub = 6 [(google.api.field_behavior) = REQUIRED];
+  string timezone = 7 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostUserProfileResponse {

@@ -15,6 +15,7 @@ func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent clients.Aut
 		LastName:  authEvent.LastName,
 		Username:  authEvent.Email,
 		Email:     authEvent.Email,
+		Timezone:  authEvent.Timezone,
 	}, session, tx)
 	if err != nil {
 		return "", util.ErrCheck(err)

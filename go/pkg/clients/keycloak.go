@@ -98,6 +98,7 @@ type AuthEvent struct {
 	LastName    string           `json:"lastName"`
 	Username    string           `json:"username"`
 	Details     AuthEventDetails `json:"details"`
+	Timezone    string           `json:"timezone"`
 }
 
 func InitKeycloak() IKeycloak {
