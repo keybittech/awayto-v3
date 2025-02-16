@@ -158,7 +158,7 @@ $(TS_TARGET): $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.js
 ts_dev:
 	HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
 
-$(GO_TARGET):
+$(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg,flags} -type f) 
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_SRC) \
@@ -167,7 +167,7 @@ $(GO_TARGET):
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
 .PHONY: go_dev
-go_dev:
+go_dev: $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
 	exec ./$(BINARY_NAME) --log debug
 

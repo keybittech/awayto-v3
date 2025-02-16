@@ -38,7 +38,8 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
 
   const [groupSchedule, setGroupSchedule] = useState({
     schedule: {
-      ...scheduleSchema
+      ...scheduleSchema,
+      timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     },
     ...editGroupSchedule
   } as IGroupSchedule);
@@ -99,9 +100,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       return;
     }
 
-    schedule.timezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
-
-    if (!editGroup) {
+    if (!editGroupSchedule) {
       if (groupSchedule.scheduleId) {
         patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap().then(() => {
           closeModal && closeModal();
@@ -119,9 +118,9 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
   // Onboarding handling
   useEffect(() => {
     if (setEditGroupSchedule) {
-      setEditGroupSchedule({ schedule: groupSchedule.schedule });
+      setEditGroupSchedule({ schedule });
     }
-  }, [groupSchedule.schedule?.name, groupSchedule.schedule?.startTime]);
+  }, [schedule?.name, schedule?.startTime]);
 
   // Onboarding handling
   useEffect(() => {

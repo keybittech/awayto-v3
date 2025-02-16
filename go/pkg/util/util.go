@@ -150,6 +150,7 @@ func StringOut(s string, ss []string) []string {
 }
 
 func ExeTime(name string) func(info string) {
+	fmt.Printf("beginning execution for %s\n", name)
 	start := time.Now()
 	return func(info string) {
 		fmt.Printf("%s execution time: %v %s\n", name, time.Since(start), info)

@@ -12,6 +12,11 @@ import (
 
 func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupScheduleResponse, error) {
 
+	err := tx.SetDbVar("user_sub", session.GroupSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, &clients.UserSession{UserSub: session.GroupSub}, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -23,6 +28,11 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 	`, session.GroupId, scheduleId, session.GroupSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -48,8 +58,8 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 	var groupSchedules []*types.IGroupSchedule
 	err := tx.QueryRows(&groupSchedules, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
-		FROM dbview_schema.enabled_group_schedules egs
-		LEFT JOIN dbview_schema.enabled_schedules es ON es.id = egs."scheduleId"
+		FROM dbview_schema.enabled_schedules es
+		JOIN dbview_schema.enabled_group_schedules egs ON egs."scheduleId" = es.id
 		WHERE egs."groupId" = $1
 	`, session.GroupId)
 
@@ -66,11 +76,8 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 	err := tx.QueryRows(&groupSchedules, `
 		SELECT TO_JSONB(ese) as schedule, ese.name, true as master, ese.id as "scheduleId"
 		FROM dbview_schema.enabled_schedules_ext ese
-		JOIN dbtable_schema.schedules s ON s.id = ese.id
-		JOIN dbtable_schema.users u ON u.sub = s.created_sub
-		WHERE ese.id = $1 AND u.sub = $2
-	`, data.GetGroupScheduleId(), session.GroupSub)
-
+		WHERE ese.id = $1
+	`, data.GetGroupScheduleId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

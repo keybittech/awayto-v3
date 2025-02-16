@@ -148,10 +148,7 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
 
   return <>
     <Card>
-      <CardHeader title={`${editGroup ? 'Edit' : 'Create'} Group`} action={
-
-        <Button variant="outlined" color="info" size="large" disabled={true} onClick={handleSubmit}>Save Group</Button>
-      }></CardHeader>
+      <CardHeader title={`${editGroup ? 'Edit' : 'Create'} Group`}></CardHeader>
       <CardContent>
         {!!children && children}
 

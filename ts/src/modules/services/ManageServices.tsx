@@ -34,7 +34,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
     const acts = length == 1 ? [
       <Tooltip key={'manage_service'} title="Edit">
         <Button onClick={() => {
-          setGroupService(groupServicesRequest?.groupServices.find(gs => gs.id === selected[0])?.service);
+          setGroupService(groupServicesRequest?.groupServices.find(gs => gs.serviceId === selected[0]));
           setDialog('manage_service');
           setSelected([]);
         }}>
