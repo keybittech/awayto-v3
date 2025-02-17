@@ -15,7 +15,7 @@ export const keycloak = new Keycloak({
 });
 
 export const refreshToken = async (dur?: number) => {
-  await keycloak.updateToken(dur || 50);
+  await keycloak.updateToken(dur);
   return true;
 }
 

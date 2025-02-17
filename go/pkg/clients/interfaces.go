@@ -115,7 +115,6 @@ type IKeycloak interface {
 
 type ISocket interface {
 	Chan() chan<- SocketCommand
-	SetChan(chan<- SocketCommand)
 	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
 	GetSocketTicket(sub string) (string, error)
 	SendMessageBytes(targets []string, messageBytes []byte)

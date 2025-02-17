@@ -5,7 +5,6 @@ import Grid from '@mui/material/Grid';
 
 
 import { useComponents } from 'awayto/hooks';
-import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 
 const Layout = (props: IComponent): React.JSX.Element => {
@@ -18,7 +17,6 @@ const Layout = (props: IComponent): React.JSX.Element => {
     TopLevelProviders,
     Profile,
     GroupPaths,
-    ServiceHome,
     ScheduleHome,
     RequestQuote
   } = useComponents();

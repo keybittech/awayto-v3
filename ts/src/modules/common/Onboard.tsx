@@ -1,5 +1,5 @@
 import React, { useCallback, useState, useEffect, Suspense, useMemo } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Grid';
@@ -20,20 +20,14 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 
-import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, IService, useStyles } from 'awayto/hooks';
-import Chip from '@mui/material/Chip';
+import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken } from 'awayto/hooks';
 import { Breadcrumbs } from '@mui/material';
 
-declare global {
-  interface IProps {
-    reloadProfile?(): Promise<void>;
-  }
-}
-
-export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element {
+export function Onboard(props: IProps): React.JSX.Element {
 
   window.INT_SITE_LOAD = true;
 
+  const navigate = useNavigate();
   const location = useLocation();
   const classes = useStyles();
 
@@ -54,11 +48,18 @@ export function Onboard({ reloadProfile, ...props }: IProps): React.JSX.Element 
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
-  const { data: profileReq } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
+  const { data: profileReq, refetch: getUserProfileDetails } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
   const [joinGroup] = siteApi.useGroupServiceJoinGroupMutation();
   const [attachUser] = siteApi.useGroupServiceAttachUserMutation();
   const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
   const [completeOnboarding] = siteApi.useGroupServiceCompleteOnboardingMutation();
+
+  const reloadProfile = async (): Promise<void> => {
+    await refreshToken(61).then(async () => {
+      await getUserProfileDetails().unwrap();
+      navigate('/');
+    }).catch(console.error);
+  }
 
   const joinGroupCb = useCallback(() => {
     if (!groupCode || !/^[a-zA-Z0-9]{8}$/.test(groupCode)) {

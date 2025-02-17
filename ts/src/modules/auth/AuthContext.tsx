@@ -1,12 +1,7 @@
 import { createContext } from 'react';
-import Keycloak from 'keycloak-js';
 
 declare global {
-  type AuthContextType = {
-    authenticated: boolean;
-    keycloak: Keycloak;
-    token?: string;
-  }
+  type AuthContextType = {}
 }
 
 export const AuthContext = createContext<AuthContextType | null>(null);

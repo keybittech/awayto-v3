@@ -157,7 +157,7 @@ $(TS_TARGET): $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.js
 
 .PHONY: ts_dev
 ts_dev:
-	HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
+	BROWSER=none HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
 
 $(GO_TARGET): $(shell find $(GO_SRC)/{main.go,flags.go,pkg} -type f) $(shell find proto/ -type f)
 	protoc --proto_path=proto \

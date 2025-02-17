@@ -57,7 +57,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 	})))
 }
 
-func (a *API) GetAuthorizedSession(req *http.Request, tx clients.IDatabaseTx) (*clients.UserSession, error) {
+func (a *API) GetAuthorizedSession(w http.ResponseWriter, req *http.Request, tx clients.IDatabaseTx) (*clients.UserSession, error) {
 	ctx := req.Context()
 
 	token, ok := req.Header["Authorization"]
@@ -67,6 +67,7 @@ func (a *API) GetAuthorizedSession(req *http.Request, tx clients.IDatabaseTx) (*
 
 	valid, err := a.Handlers.Keycloak.GetUserTokenValid(token[0])
 	if !valid || err != nil {
+		http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 		return nil, util.ErrCheck(errors.New(err.Error() + fmt.Sprintf(" Validity check: %t", valid)))
 	}
 

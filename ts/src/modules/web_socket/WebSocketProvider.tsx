@@ -3,6 +3,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useUtil, SocketResponse, SocketResponseHandler, siteApi, SocketActions } from 'awayto/hooks';
 
 import WebSocketContext from './WebSocketContext';
+import RoleCall from './RoleCall';
 
 const {
   REACT_APP_APP_HOST_NAME,
@@ -43,7 +44,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       ws.onclose = () => {
         console.log('socket closed. reconnecting...');
         if (!reconnectSnackShown.current) {
-          setSnack({ snackOn: 'Connection lost, please wait...', snackType: 'warning' });
+          setSnack({ snackOn: 'Bad connection. Attempting to reconnect.', snackType: 'info' });
           reconnectSnackShown.current = true;
         }
         setTimeout(() => {
@@ -78,17 +79,9 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
           }
         }
       };
-    }).catch(error => {
-      if (!reconnectSnackShown.current) {
-        setSnack({ snackOn: 'Could not connect to socket, please wait...', snackType: 'warning' });
-        reconnectSnackShown.current = true;
-      }
-      setTimeout(() => {
-        connect();
-      }, 5000);
-      const err = error as Error;
-      setSnack({ snackOn: err.message, snackType: 'error' });
-      console.error(err);
+    }).catch(() => {
+      setSnack({ snackOn: 'Connection lost. Please refresh the page.', snackType: 'warning' });
+      reconnectSnackShown.current = true;
     });
   }
 
@@ -128,7 +121,9 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
   return useMemo(() => !initialConnectionMade.current ? <></> :
     <WebSocketContext.Provider value={webSocketContext}>
-      {children}
+      <RoleCall>
+        {children}
+      </RoleCall>
     </WebSocketContext.Provider>,
     [initialConnectionMade.current, webSocketContext]
   );

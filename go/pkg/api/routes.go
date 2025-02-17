@@ -109,7 +109,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 			// Authorize the request
 
-			session, err := a.GetAuthorizedSession(req, tx)
+			session, err := a.GetAuthorizedSession(w, req, tx)
 			if err != nil {
 				util.RequestError(w, requestId, util.ErrCheck(err).Error(), ignoreFields, pbVal)
 				return

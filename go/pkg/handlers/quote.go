@@ -79,12 +79,17 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
+	h.Redis.Client().Del(req.Context(), staffSub+"quotes")
+	h.Redis.Client().Del(req.Context(), staffSub+"profile/details")
+
+	h.Socket.SendMessage(
+		h.Socket.GetSubscribedTopicTargets(staffSub, "group:role_call"),
+		clients.SocketMessage{Action: types.SocketActions_ROLE_CALL},
+	)
+
 	if err := h.Keycloak.RoleCall(http.MethodPost, staffSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Redis.Client().Del(req.Context(), staffSub+"quotes")
-	h.Redis.Client().Del(req.Context(), staffSub+"profile/details")
 
 	return &types.PostQuoteResponse{Quote: &types.IQuote{
 		Id:                             quoteId,

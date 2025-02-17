@@ -22,6 +22,7 @@ export enum SocketActions {
   CHANGE_SETTING = 20,
   SUBSCRIBE_INIT = 21,
   SET_SELECTED_TEXT = 22,
+  ROLE_CALL = 23,
 }
 
 /**

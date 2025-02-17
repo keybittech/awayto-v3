@@ -218,17 +218,11 @@ func InitSocket() ISocket {
 		}
 	}()
 
-	sc := &Socket{}
-	sc.SetChan(cmds)
-	return sc
+	return &Socket{cmds}
 }
 
 func (s *Socket) Chan() chan<- SocketCommand {
 	return s.ch
-}
-
-func (s *Socket) SetChan(c chan<- SocketCommand) {
-	s.ch = c
 }
 
 func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (func(), error) {

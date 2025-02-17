@@ -1,4 +1,4 @@
-import { FetchArgs, BaseQueryFn, createApi, fetchBaseQuery, FetchBaseQueryError } from '@reduxjs/toolkit/query/react'
+import { FetchArgs, BaseQueryFn, createApi, fetchBaseQuery, FetchBaseQueryError, retry } from '@reduxjs/toolkit/query/react'
 
 import { keycloak, authSlice, refreshToken } from './auth';
 import { utilSlice } from './util';
@@ -10,7 +10,7 @@ const {
 const setAuthenticated = authSlice.actions.setAuthenticated;
 const setSnack = utilSlice.actions.setSnack;
 
-const baseQuery = fetchBaseQuery({
+const baseQuery = retry(fetchBaseQuery({
   baseUrl: REACT_APP_APP_HOST_URL + "/api",
   prepareHeaders(headers) {
     if (!keycloak.token) {
@@ -20,21 +20,16 @@ const baseQuery = fetchBaseQuery({
     headers.set('Authorization', 'Bearer ' + keycloak.token);
     return headers
   },
-})
+}));
 
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = async (args, api) => {
+
+  await refreshToken();
+
   let result = await baseQuery(args, api, {});
 
-  if (result.error) {
-    if (result.error.status === "FETCH_ERROR") {
-      await refreshToken(61);
-      result = await baseQuery(args, api, {});
-      if (result.error) {
-        api.dispatch(setAuthenticated({ authenticated: false }))
-      }
-    } else if (result.error.data) {
-      api.dispatch(setSnack({ snackOn: result.error.data as string }));
-    }
+  if (result.error?.data) {
+    api.dispatch(setSnack({ snackOn: result.error.data as string }));
   }
 
   return result;
@@ -46,3 +41,5 @@ export const siteApiTemplate = createApi({
   baseQuery: customBaseQuery,
   endpoints: () => ({}),
 });
+
+

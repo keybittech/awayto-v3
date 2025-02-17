@@ -58,16 +58,23 @@ const components = {} as IBaseComponents;
  */
 export function useComponents(): IBaseComponents {
 
-  const { authenticated } = useAppSelector(state => state.auth);
-
-  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(undefined, { skip: !authenticated || isExternal(window.location.pathname) });
+  // const { authenticated } = useAppSelector(state => state.auth);
+  //
+  // const { currentData } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(undefined, {
+  //   skip: !authenticated || isExternal(window.location.pathname)
+  // });
+  //
+  // const availableRoles = useMemo(() => {
+  //   console.log('updating roles');
+  //   return currentData?.userProfile?.availableUserGroupRoles || []
+  // }, [currentData]);
 
   const comps = useMemo(() => {
     return new Proxy(components, {
       get: function(target: IBaseComponents, prop: string): LazyExoticComponent<IBaseComponent> | (() => React.JSX.Element) {
-        if (profileRequest?.userProfile?.availableUserGroupRoles && roles[views[prop]]?.length && !hasRole(profileRequest.userProfile.availableUserGroupRoles, roles[views[prop]])) {
-          components[prop] = ((): React.JSX.Element => createElement('div'));
-        }
+        // if (availableRoles.length && roles[views[prop]]?.length && !hasRole(availableRoles, roles[views[prop]])) {
+        //   components[prop] = ((): React.JSX.Element => createElement('div'));
+        // }
 
         if (!components[prop]) components[prop] = lazy<IBaseComponent>(() => import(`../${views[prop]}`) as Promise<{ default: IBaseComponent }>);
 
@@ -76,7 +83,7 @@ export function useComponents(): IBaseComponents {
         return Reflect.get(target, prop);
       }
     });
-  }, [profileRequest?.userProfile]);
+  }, []);
 
   return comps;
 }

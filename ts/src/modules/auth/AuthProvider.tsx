@@ -1,21 +1,21 @@
-import React, { useEffect, useMemo, useState } from 'react';
-import { useLocation, useParams } from 'react-router-dom';
+import React, { startTransition, useEffect, useMemo, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 
-import { keycloak, refreshToken, useAppSelector, useAuth, useComponents } from 'awayto/hooks';
+import { keycloak, authSlice, useAppDispatch } from 'awayto/hooks';
 
 import AuthContext from './AuthContext';
+import App from '../common/App';
 
 function AuthProvider(): React.JSX.Element {
+
+  const dispatch = useAppDispatch();
   const location = useLocation();
 
-  const { App } = useComponents();
-
   const [init, setInit] = useState(false);
-  const { authenticated } = useAppSelector(state => state.auth);
-  const { setAuthenticated } = useAuth();
 
   useEffect(() => {
-    async function go() {
+    startTransition(async () => {
+
       if (location.pathname == '/join' && location.search.includes('groupCode')) {
         void keycloak.init({}).then(async () => {
           const redirectUri = window.location.toString().split('?')[0].replace('/join', '');
@@ -29,30 +29,21 @@ function AuthProvider(): React.JSX.Element {
         }).catch(console.error);
       } else {
         try {
-          const authenticated = await keycloak.init({
-            onLoad: 'login-required',
-          });
-
-          setInterval(refreshToken, 55 * 1000);
-          setAuthenticated({ authenticated });
+          const authenticated = await keycloak.init({ onLoad: 'login-required' });
+          dispatch(authSlice.actions.setAuthenticated({ authenticated }));
           setInit(true);
         } catch (e) {
           console.log(e);
         }
       }
-    }
-    void go();
+
+    })
   }, []);
 
-  const authContext = {
-    authenticated,
-    keycloak
-  } as AuthContextType;
-
   return useMemo(() => !init ? <></> :
-    <AuthContext.Provider value={authContext}>
+    <AuthContext.Provider value={{}}>
       <App />
-    </AuthContext.Provider>, [authContext, init]);
+    </AuthContext.Provider>, [init]);
 }
 
 export default AuthProvider;
