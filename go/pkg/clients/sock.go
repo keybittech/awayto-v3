@@ -422,9 +422,11 @@ func (s *Socket) RoleCall(userSub string) error {
 	reply := <-replyChan
 	close(replyChan)
 
-	if reply.Error != nil {
-		return util.ErrCheck(reply.Error)
+	if len(reply.Targets) > 0 {
+		if err := s.SendMessage(reply.Targets, SocketMessage{Action: types.SocketActions_ROLE_CALL}); err != nil {
+			return util.ErrCheck(reply.Error)
+		}
 	}
 
-	return s.SendMessage(reply.Targets, SocketMessage{Action: types.SocketActions_ROLE_CALL})
+	return nil
 }

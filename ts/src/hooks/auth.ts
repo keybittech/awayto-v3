@@ -140,13 +140,13 @@ export const getTokenHeaders = function(): { headers: Record<string, string> } {
 }
 
 export type IAuth = {
-  authenticated: boolean;
+  authenticated?: boolean;
 }
 
 export const authConfig = {
   name: 'auth',
   initialState: {
-    authenticated: false
+    authenticated: undefined
   } as IAuth,
   reducers: {
     setAuthenticated: (state: IAuth, action: { payload: IAuth }) => {

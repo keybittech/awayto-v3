@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useContext, useEffect, ChangeEvent, useMemo } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -10,14 +10,9 @@ import CardHeader from '@mui/material/CardHeader';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import CircularProgress from '@mui/material/CircularProgress';
-import InputAdornment from '@mui/material/InputAdornment';
 import Checkbox from '@mui/material/Checkbox';
 import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
-
-import ArrowRightAlt from '@mui/icons-material/ArrowRightAlt';
-import NotInterestedIcon from '@mui/icons-material/NotInterested';
 
 import { useDebounce, useUtil, refreshToken, siteApi, IGroup } from 'awayto/hooks';
 
@@ -43,39 +38,18 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
     ...editGroup
   } as Required<IGroup>);
 
-  const initialized = useRef(false);
   const debouncedName = useDebounce(group.name || '', 1000);
-  const [skipQuery, setSkipQuery] = useState(true);
+  const [debouncedPrev, setDebouncedPrev] = useState(debouncedName);
 
-  const { data: nameCheck } = siteApi.useGroupServiceCheckGroupNameQuery({ name: debouncedName }, { skip: !debouncedName || skipQuery });
-  const { isValid } = nameCheck || { isValid: false };
+  const [checkName, checkState] = siteApi.useLazyGroupServiceCheckGroupNameQuery();
 
-  const [editedName, setEditedName] = useState(false);
   const [editedPurpose, setEditedPurpose] = useState(false);
   const [allowedDomains, setAllowedDomains] = useState([] as string[]);
   const [allowedDomain, setAllowedDomain] = useState('');
-  const [{ checkedName, checkingName }, setChecker] = useState<Partial<{
-    checkedName: string,
-    checkingName: boolean
-  }>>({
-    checkedName: '',
-    checkingName: false
-  });
 
   const [getUserProfileDetails] = siteApi.useLazyUserProfileServiceGetUserProfileDetailsQuery();
   const [postGroup] = siteApi.useGroupServicePostGroupMutation();
   const [patchGroup] = siteApi.useGroupServicePatchGroupMutation();
-
-  const progressMemo = useMemo(() => <CircularProgress size="20px" />, []);
-
-  const formatName = (name: string) => name
-    .replaceAll(/__+/g, '_')
-    .replaceAll(/\s/g, '_')
-    .replaceAll(/[\W]+/g, '_')
-    .replaceAll(/__+/g, '_')
-    .replaceAll(/__+/g, '').toLowerCase(); // Enforce a name like this_is_a_name
-
-  const badName = useMemo(() => checkingName || (!isValid && !!group?.name && formatName(group.name) == checkedName) || (editedName && group.name.length == 0), [checkingName, isValid, group, checkedName]);
 
   const handleSubmit = useCallback(async () => {
     if (!group.name || !group.purpose) {
@@ -87,7 +61,11 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
 
     const newGroup = {
       name: group.name,
-      displayName: group.displayName,
+      displayName: group.name.replaceAll(/__+/g, '_')
+        .replaceAll(/\s/g, '_')
+        .replaceAll(/[\W]+/g, '_')
+        .replaceAll(/__+/g, '_')
+        .replaceAll(/__+/g, '').toLowerCase(),
       purpose: group.purpose,
       allowedDomains: allowedDomains.join(','),
       ai: group.ai
@@ -107,29 +85,27 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
     }).catch(console.error);
   }, [group, editGroup]);
 
-  const handleName = useCallback((event: ChangeEvent<HTMLTextAreaElement>) => {
-    setEditedName(true);
-    setChecker({ checkingName: true });
-    const displayName = event.target.value;
-    const name = formatName(displayName);
-    if (name.length <= 50) {
-      setGroup({ ...group, displayName, name });
-      setChecker({ checkedName: name });
-    } else if (isValid) {
-      setChecker({ checkingName: false });
-    }
-  }, [group, editGroup]);
+  const badName = group.name != debouncedName || checkState.isFetching || checkState.isError;
 
-  if (!initialized.current) {
-    initialized.current = true;
-  }
+  useEffect(() => {
+    async function go() {
+      if (debouncedName != debouncedPrev) {
+        const { data: check } = await checkName({ name: debouncedName });
+        if (check?.isValid) {
+          setDebouncedPrev(debouncedName);
+        }
+        setGroup({ ...group, isValid: !!check?.isValid });
+      }
+    }
+    void go();
+  }, [debouncedName, debouncedPrev]);
 
   // Onboarding handling
   useEffect(() => {
     if (setEditGroup) {
-      setEditGroup(group);
+      setEditGroup({ ...group, isValid: !badName });
     }
-  }, [group.name, group.purpose]);
+  }, [group, badName]);
 
   // Onboarding handling
   useEffect(() => {
@@ -137,14 +113,6 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
       handleSubmit();
     }
   }, [saveToggle]);
-
-  useEffect(() => {
-    if (initialized.current && editGroup && debouncedName !== editGroup.name) {
-      setSkipQuery(false);
-    } else if (!initialized.current) {
-      initialized.current = true;
-    }
-  }, [debouncedName, editGroup]);
 
   return <>
     <Card>
@@ -158,41 +126,16 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
               fullWidth
               id="name"
               label="Group Name"
-              value={group.displayName}
+              value={group.name}
+              error={badName}
               name="name"
-              onChange={handleName}
+              onChange={e => { setGroup({ ...group, name: e.target.value }); }}
               multiline
               required
               helperText="Group names can only contain letters, numbers, and underscores. Max 50 characters."
-              error={badName}
-              InputProps={{
-                endAdornment: group.name && (
-                  <InputAdornment
-                    component={({ children }) =>
-                      <Grid container style={{ width: 'calc(100% + 5em)', maxWidth: 'calc(100% + 5em)' }}>
-                        {children}
-                      </Grid>
-                    }
-                    position="start"
-                  >
-                    <Grid style={{ alignSelf: 'center' }}>
-                      {checkingName ? progressMemo :
-                        badName ? <NotInterestedIcon color="error" /> : <ArrowRightAlt />}
-                    </Grid>
-                    <Grid size="grow" style={{ wordBreak: 'break-all' }}>
-                      <Typography style={{
-                        padding: '2px 4px',
-                        border: `1px solid #666`,
-                        lineHeight: '1.15em'
-                      }}>
-                        {formatName(group.name)}
-                      </Typography>
-                    </Grid>
-                  </InputAdornment>
-                ),
-              }}
             />
           </Grid>
+
           <Grid size={12}>
             <TextField
               id={`group-purpose-entry`}
@@ -265,7 +208,7 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
       {!setEditGroup && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-          <Button color="info" size="large" disabled={!editGroup?.id && (group.purpose.length > 100 || !isValid || checkingName || badName)} onClick={handleSubmit}>
+          <Button color="info" size="large" disabled={!editGroup?.id && (group.purpose.length > 100 || badName)} onClick={handleSubmit}>
             Save Group
           </Button>
         </Grid>

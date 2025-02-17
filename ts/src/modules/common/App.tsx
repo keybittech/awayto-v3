@@ -1,12 +1,12 @@
-import React, { useContext, useEffect, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import React from 'react';
+
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
-import { theme, useAppSelector } from 'awayto/hooks';
+import { siteApi, theme, useAppSelector } from 'awayto/hooks';
 
 import Layout from './Layout';
 
@@ -18,6 +18,8 @@ export default function App(props: IComponent): React.JSX.Element {
 
   const { authenticated } = useAppSelector(state => state.auth);
 
+  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
+
   return <>
     <LocalizationProvider dateAdapter={AdapterDayjs}>
       <ThemeProvider theme={theme}>
@@ -25,7 +27,7 @@ export default function App(props: IComponent): React.JSX.Element {
 
         <SnackAlert />
         <ConfirmAction />
-        {authenticated ? <Layout {...props} /> : <Onboard {...props} />}
+        {authenticated && profileRequest?.userProfile?.active ? <Layout {...props} /> : <Onboard {...props} />}
       </ThemeProvider>
     </LocalizationProvider>
   </>

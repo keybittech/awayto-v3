@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from 'react-router-dom';
 
 import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Grid';
+import Chip from '@mui/material/Chip';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -12,6 +13,7 @@ import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import CardHeader from '@mui/material/CardHeader';
 import Alert from '@mui/material/Alert';
+import Link from '@mui/material/Link';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
@@ -21,7 +23,9 @@ import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 
 import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken } from 'awayto/hooks';
-import { Breadcrumbs } from '@mui/material';
+import { Breadcrumbs, Dialog } from '@mui/material';
+
+import Icon from '../../img/kbt-icon.png';
 
 export function Onboard(props: IProps): React.JSX.Element {
 
@@ -41,6 +45,7 @@ export function Onboard(props: IProps): React.JSX.Element {
   const [hasCode, setHasCode] = useState(false);
   const [saveToggle, setSaveToggle] = useState(0);
 
+  const [assist, setAssist] = useState('');
   const [groupCode, setGroupCode] = useState('');
   const [currentAccordion, setCurrentAccordion] = useState(0);
   const [currPage, setCurrPage] = useState<string | false>(location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
@@ -48,7 +53,7 @@ export function Onboard(props: IProps): React.JSX.Element {
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
-  const { data: profileReq, refetch: getUserProfileDetails } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
+  const { data: profileReq, refetch: getUserProfileDetails, isSuccess } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
   const [joinGroup] = siteApi.useGroupServiceJoinGroupMutation();
   const [attachUser] = siteApi.useGroupServiceAttachUserMutation();
   const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
@@ -76,7 +81,7 @@ export function Onboard(props: IProps): React.JSX.Element {
   const accordions = useMemo(() => [
     {
       name: 'Group',
-      complete: Boolean(group.name && group.purpose),
+      complete: Boolean(group.name && group.purpose && group.isValid),
       comp: () => <>
         <Typography variant="subtitle1">
           <p>Start by providing a unique name for your group; a url-safe version is generated alongside. Group name can be changed later.</p>
@@ -133,7 +138,7 @@ export function Onboard(props: IProps): React.JSX.Element {
         </Typography>
       </>
     },
-  ], [group.name, group.purpose, group.defaultRoleId, groupService.service?.name, groupService.service?.tiers, groupSchedule.schedule?.name, groupSchedule.schedule?.startTime]);
+  ], [group.name, group.purpose, group.isValid, group.defaultRoleId, groupService.service?.name, groupService.service?.tiers, groupSchedule.schedule?.name, groupSchedule.schedule?.startTime]);
 
   const changePage = (dir: number) => {
     const nextPage = dir + currentAccordion;
@@ -143,11 +148,7 @@ export function Onboard(props: IProps): React.JSX.Element {
   }
 
   const accordionProps = useMemo(() => accordions[currentAccordion], [currentAccordion, accordions]);
-  const AccordionHelp = accordionProps.comp;
-
-  const savedMsg = useCallback(() => {
-    setSnack({ snackOn: `${accordionProps.name} Saved`, snackType: 'success' });
-  }, [accordionProps]);
+  const Help = accordionProps.comp;
 
   const OnboardingProgress = useCallback(() => <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
     {accordions.map((acc, i) => <Typography
@@ -157,20 +158,23 @@ export function Onboard(props: IProps): React.JSX.Element {
   </Breadcrumbs>, [currentAccordion, accordionProps]);
 
   useEffect(() => {
-    const userGroups = Object.values(profileReq?.userProfile?.groups || {});
-    if (userGroups.length) {
-      const gr = userGroups.find(g => g.ldr) || userGroups.find(g => g.active);
-      if (gr) {
-        setGroup(gr);
+    if (isSuccess) {
+      const userGroups = Object.values(profileReq?.userProfile?.groups || {});
+      if (userGroups.length) {
+        const gr = userGroups.find(g => g.ldr) || userGroups.find(g => g.active);
+        if (gr) {
+          setGroup({ ...gr, isValid: true });
+        }
       }
     }
-  }, [profileReq]);
+  }, [profileReq, isSuccess]);
 
   return <>
 
-    <Grid container spacing={2} sx={{ p: 4, minHeight: '100vh', bgcolor: 'secondary.main', placeContent: 'start', justifyContent: 'center' }}>
+    <Grid container spacing={2} p={2} sx={{ bgcolor: 'secondary.main', height: '100vh', alignContent: 'flex-start', overflow: 'auto' }}>
 
-      <Grid container spacing={2} size={{ xs: 12, lg: 10, xl: 8 }} alignItems="center" direction="row">
+      <Grid container size={12} direction="row" sx={{ alignItems: "center" }}>
+
         <Button
           sx={classes.onboardingProgress}
           color="warning"
@@ -183,35 +187,11 @@ export function Onboard(props: IProps): React.JSX.Element {
           Previous
         </Button>
 
-        <Grid size="grow">
-          <Accordion sx={{ position: 'relative' }} disableGutters variant='outlined'>
-            <AccordionSummary
-              sx={{ alignItems: 'center', pointerEvents: 'none' }}
-              expandIcon={<ExpandMoreIcon sx={{ pointerEvents: 'auto' }} color="secondary" />}
-              aria-controls={`accordion-content-${currentAccordion}`}
-            >
-              <Grid size="grow" container spacing={1} alignItems="left" justifyContent="left">
-                <OnboardingProgress />
-              </Grid>
-              <Grid sx={{ pointerEvents: 'auto' }} alignSelf="center">
-                <Avatar sx={{ width: 24, height: 24, bgcolor: 'yellow' }}>
-                  <QuestionMarkIcon fontSize="small" />
-                </Avatar>
-              </Grid>
-            </AccordionSummary>
-
-            <AccordionDetails
-              sx={{
-                position: 'absolute',
-                zIndex: 100,
-                bgcolor: 'primary.dark',
-                overflow: 'hidden',
-                transition: 'max-height 0.32s ease'
-              }}
-            >
-              <AccordionHelp />
-            </AccordionDetails>
-          </Accordion>
+        <Grid container size="grow" direction="row" sx={{ alignItems: 'center', backgroundColor: '#000', borderRadius: '4px', p: '8px 12px' }}>
+          <Grid size="grow">
+            <Typography>Onboarding Progress</Typography>
+            <OnboardingProgress />
+          </Grid>
         </Grid>
 
         <Button
@@ -226,8 +206,14 @@ export function Onboard(props: IProps): React.JSX.Element {
           Next
         </Button>
       </Grid>
-
-      <Grid container size={{ xs: 12, lg: 10, xl: 8 }} direction="column">
+      <Grid size={12}>
+        <Alert severity="info">
+          Need help?
+          &nbsp; <Link sx={{ cursor: 'pointer' }} onClick={() => { setAssist('demo'); }}>Watch the tutorial</Link> or&nbsp;
+          <Link sx={{ cursor: 'pointer' }} onClick={() => { setAssist('help'); }}>read about this page</Link>.
+        </Alert>
+      </Grid>
+      <Grid size={12}>
         <Suspense>
           {hasCode ? <Grid size={12} p={2}>
             <TextField
@@ -245,9 +231,11 @@ export function Onboard(props: IProps): React.JSX.Element {
             </Grid>
           </Grid> :
             currentAccordion === 0 ? <>
-              {!group.id && <Button disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>I have a group code</Button>}
               <Grid container size="grow" spacing={2}>
-                <ManageGroupModal
+                {!group.id && <Button fullWidth disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>
+                  I have a group code
+                </Button>}
+                {isSuccess && <ManageGroupModal
                   {...props}
                   showCancel={false}
                   editGroup={group}
@@ -257,7 +245,7 @@ export function Onboard(props: IProps): React.JSX.Element {
                     changePage(1);
                     setSaveToggle(0);
                   }}
-                />
+                />}
               </Grid>
             </> :
               currentAccordion == 1 ? <ManageGroupRolesModal
@@ -337,6 +325,12 @@ export function Onboard(props: IProps): React.JSX.Element {
         </Suspense>
       </Grid>
     </Grid>
+
+    <Dialog open={!!assist} onClose={() => { setAssist(''); }} fullWidth maxWidth="xl">
+      <Grid size="grow">
+        {'demo' == assist ? <img src={Icon} alt="kbt-icon" width="100%" /> : <Help />}
+      </Grid>
+    </Dialog>
   </>
 }
 
