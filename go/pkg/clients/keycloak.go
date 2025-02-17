@@ -2,7 +2,6 @@ package clients
 
 import (
 	"encoding/json"
-	"errors"
 	"log"
 	"net/http"
 	"os"
@@ -24,8 +23,6 @@ const (
 	SetKeycloakRealmClientsKeycloakCommand
 	SetKeycloakRolesKeycloakCommand
 	GetGroupAdminRolesKeycloakCommand
-	GetGroupRoleActionsKeycloakCommand
-	MutateRoleCallKeycloakCommand
 	GetUserListKeycloakCommand
 	GetUserInfoByIdKeycloakCommand
 	GetUserTokenValidKeycloakCommand
@@ -150,7 +147,7 @@ func InitKeycloak() IKeycloak {
 				} else {
 					for _, role := range *roles {
 						if role.Name == "APP_ROLE_CALL" {
-							kc.RoleCall = role
+							continue
 						} else {
 							groupAdminRoles = append(groupAdminRoles, role)
 						}
@@ -159,11 +156,6 @@ func InitKeycloak() IKeycloak {
 				}
 			case GetGroupAdminRolesKeycloakCommand:
 				cmd.ReplyChan <- KeycloakResponse{Roles: kc.GroupAdminRoles}
-			case GetGroupRoleActionsKeycloakCommand:
-
-			case MutateRoleCallKeycloakCommand:
-				err := kc.MutateRoleCall(cmd.Params.Method, cmd.Params.UserId)
-				cmd.ReplyChan <- KeycloakResponse{Error: err}
 			case GetUserListKeycloakCommand:
 				users, err := kc.GetUserListInRealm()
 				cmd.ReplyChan <- KeycloakResponse{Users: users, Error: err}
@@ -252,25 +244,6 @@ func (k *Keycloak) Chan() chan<- KeycloakCommand {
 
 func (k *Keycloak) Client() *KeycloakClient {
 	return k.C
-}
-
-func (k *Keycloak) RoleCall(method string, userId string) error {
-	if method != http.MethodPost && method != http.MethodDelete {
-		return errors.New("RoleCall only with POST or DELETE")
-	}
-	kcRoleCallReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
-		Ty:        MutateRoleCallKeycloakCommand,
-		Params:    KeycloakParams{Method: method, UserId: userId},
-		ReplyChan: kcRoleCallReplyChan,
-	}
-
-	kcRoleCallReply := <-kcRoleCallReplyChan
-
-	if kcRoleCallReply.Error != nil {
-		return kcRoleCallReply.Error
-	}
-	return nil
 }
 
 func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {

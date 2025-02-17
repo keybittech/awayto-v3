@@ -3,9 +3,7 @@ import { Route, Outlet, Routes } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
 
-
 import { useComponents } from 'awayto/hooks';
-import Topbar from './Topbar';
 
 const Layout = (props: IComponent): React.JSX.Element => {
 
@@ -18,7 +16,8 @@ const Layout = (props: IComponent): React.JSX.Element => {
     Profile,
     GroupPaths,
     ScheduleHome,
-    RequestQuote
+    RequestQuote,
+    Topbar
   } = useComponents();
 
   useEffect(() => {

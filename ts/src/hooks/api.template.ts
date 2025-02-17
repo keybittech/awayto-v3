@@ -1,16 +1,15 @@
 import { FetchArgs, BaseQueryFn, createApi, fetchBaseQuery, FetchBaseQueryError, retry } from '@reduxjs/toolkit/query/react'
 
-import { keycloak, authSlice, refreshToken } from './auth';
+import { keycloak, refreshToken } from './auth';
 import { utilSlice } from './util';
 
 const {
   REACT_APP_APP_HOST_URL,
 } = process.env as { [prop: string]: string };
 
-const setAuthenticated = authSlice.actions.setAuthenticated;
 const setSnack = utilSlice.actions.setSnack;
 
-const baseQuery = retry(fetchBaseQuery({
+const baseQuery = fetchBaseQuery({
   baseUrl: REACT_APP_APP_HOST_URL + "/api",
   prepareHeaders(headers) {
     if (!keycloak.token) {
@@ -20,7 +19,7 @@ const baseQuery = retry(fetchBaseQuery({
     headers.set('Authorization', 'Bearer ' + keycloak.token);
     return headers
   },
-}));
+});
 
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = async (args, api) => {
 
@@ -28,8 +27,14 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = as
 
   let result = await baseQuery(args, api, {});
 
-  if (result.error?.data) {
-    api.dispatch(setSnack({ snackOn: result.error.data as string }));
+  switch (result.error?.status) {
+    case "PARSING_ERROR":
+      api.dispatch(setSnack({ snackOn: result.error.data as string }));
+      break
+    case "FETCH_ERROR":
+      result = await retry(baseQuery)(args, api, {});
+      break
+    default:
   }
 
   return result;

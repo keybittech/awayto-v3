@@ -52,7 +52,6 @@ type KeycloakClient struct {
 	Realm           string
 	AppClient       *KeycloakRealmClient
 	ApiClient       *KeycloakRealmClient
-	RoleCall        KeycloakRole
 	GroupAdminRoles []KeycloakRole
 	Token           *OIDCToken
 	PublicKey       *rsa.PublicKey
@@ -434,22 +433,6 @@ func (keycloakClient KeycloakClient) GetRealmClients() (*[]KeycloakRealmClient, 
 	}
 
 	return &result, nil
-}
-
-func (keycloakClient KeycloakClient) MutateRoleCall(method, userId string) error {
-
-	_, err := util.Mutate(
-		method,
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/users/"+userId+"/role-mappings/clients/"+keycloakClient.AppClient.Id,
-		keycloakClient.BasicHeaders(),
-		[]byte(`[{ "id": "`+keycloakClient.RoleCall.Id+`", "name": "`+keycloakClient.RoleCall.Name+`" }]`),
-	)
-
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName string) error {

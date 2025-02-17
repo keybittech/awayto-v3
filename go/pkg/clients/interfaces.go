@@ -94,7 +94,6 @@ type IRedisClient interface {
 type IKeycloak interface {
 	Chan() chan<- KeycloakCommand
 	Client() *KeycloakClient
-	RoleCall(method string, userId string) error
 	UpdateUser(id, firstName, lastName string) error
 	GetUserTokenValid(token string) (bool, error)
 	GetUserInfoById(id string) (*KeycloakUser, error)
@@ -117,8 +116,8 @@ type ISocket interface {
 	Chan() chan<- SocketCommand
 	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
 	GetSocketTicket(sub string) (string, error)
-	SendMessageBytes(targets []string, messageBytes []byte)
-	SendMessage(targets []string, message SocketMessage)
+	SendMessageBytes(targets []string, messageBytes []byte) error
+	SendMessage(targets []string, message SocketMessage) error
 	SendMessageWithReply(targets []string, message SocketMessage, replyChan chan SocketResponse) error
 	GetSubscriberByTicket(ticket string) (*Subscriber, error)
 	AddSubscribedTopic(userSub, topic string, existingCids []string)
@@ -126,4 +125,5 @@ type ISocket interface {
 	DeleteSubscribedTopic(userSub, topic string)
 	HasTopicSubscription(userSub, topic string) bool
 	NotifyTopicUnsub(topic, socketId string, targets []string)
+	RoleCall(userSub string) error
 }

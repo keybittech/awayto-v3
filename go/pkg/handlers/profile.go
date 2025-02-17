@@ -89,7 +89,7 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 
 	userProfile.AvailableUserGroupRoles = session.AvailableUserGroupRoles
 
-	if err := h.Keycloak.RoleCall(http.MethodDelete, session.UserSub); err != nil {
+	if err := h.Socket.RoleCall(session.UserSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 

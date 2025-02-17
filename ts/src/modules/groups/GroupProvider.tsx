@@ -6,7 +6,7 @@ import GroupContext from './GroupContext';
 
 export function GroupProvider({ children }: IComponent): React.JSX.Element {
 
-  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(undefined, { skip: isExternal(window.location.pathname) });
+  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
   const groups = useMemo(() => Object.values(profileRequest?.userProfile?.groups || {}) as Required<IGroup>[], [profileRequest?.userProfile.groups]);
 
@@ -19,7 +19,7 @@ export function GroupProvider({ children }: IComponent): React.JSX.Element {
 
   const groupContext = {
     groups,
-    group,
+    group: group || {},
     groupSchedules: groupSchedulesRequest?.groupSchedules,
     groupServices: groupServicesRequest?.groupServices,
     groupForms: groupFormsRequest?.groupForms,

@@ -27,6 +27,7 @@ const (
 	GetSubscriberSocketCommand
 	SendSocketMessageSocketCommand
 	AddSubscribedTopicSocketCommand
+	GetSubscribedTargetsSocketCommand
 	GetSubscribedTopicTargetsSocketCommand
 	DeleteSubscribedTopicSocketCommand
 	HasSubscribedTopicSocketCommand
@@ -160,22 +161,30 @@ func InitSocket() ISocket {
 			case SendSocketMessageSocketCommand:
 				sent := []string{}
 				failed := []string{}
+				var sendErr error
 				for _, target := range cmd.Params.Targets {
 					if conn, ok := connections[target]; ok {
-						err := util.WriteSocketConnectionMessage(cmd.Params.MessageBytes, conn)
-						if err != nil {
+						sendErr = util.WriteSocketConnectionMessage(cmd.Params.MessageBytes, conn)
+						if sendErr != nil {
 							failed = append(failed, target)
 						} else {
 							sent = append(sent, target)
 						}
 					}
 				}
-				cmd.ReplyChan <- SocketResponse{Total: len(cmd.Params.Targets), Sent: sent, Failed: failed}
+				cmd.ReplyChan <- SocketResponse{Total: len(cmd.Params.Targets), Sent: sent, Failed: failed, Error: sendErr}
 
 			case AddSubscribedTopicSocketCommand:
 				// Do not remove the _ here as we want to directly modify the original subscribers object
 				if _, ok := subscribers[cmd.Params.UserSub]; ok {
 					subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic] = cmd.Params.Targets
+				}
+
+			case GetSubscribedTargetsSocketCommand:
+				if subscriber, ok := subscribers[cmd.Params.UserSub]; ok {
+					cmd.ReplyChan <- SocketResponse{Targets: subscriber.ConnectionIds}
+				} else {
+					cmd.ReplyChan <- SocketResponse{Error: errors.New("subscriber not found")}
 				}
 
 			case GetSubscribedTopicTargetsSocketCommand:
@@ -272,7 +281,7 @@ func (s *Socket) GetSocketTicket(sub string) (string, error) {
 	return reply.Ticket, nil
 }
 
-func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) {
+func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) error {
 	replyChan := make(chan SocketResponse)
 	s.Chan() <- SocketCommand{
 		Ty: SendSocketMessageSocketCommand,
@@ -286,30 +295,25 @@ func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) {
 	close(replyChan)
 
 	fmt.Println(fmt.Sprintf("Sent message bytes messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed)))
+
+	if reply.Error != nil {
+		return util.ErrCheck(reply.Error)
+	}
+
+	return nil
 }
 
-func (s *Socket) SendMessage(targets []string, message SocketMessage) {
+func (s *Socket) SendMessage(targets []string, message SocketMessage) error {
 	if len(targets) == 0 {
-		return
-	}
-	messageBytes, err := json.Marshal(message)
-	if err != nil {
-		util.ErrCheck(err)
-		return
+		return util.ErrCheck(errors.New("no targets to send message to"))
 	}
 
-	replyChan := make(chan SocketResponse)
-	s.Chan() <- SocketCommand{
-		Ty: SendSocketMessageSocketCommand,
-		Params: SocketParams{
-			Targets:      targets,
-			MessageBytes: messageBytes,
-		},
-		ReplyChan: replyChan,
+	messageBytes, err := json.Marshal(message)
+	if err != nil {
+		return util.ErrCheck(err)
 	}
-	reply := <-replyChan
-	close(replyChan)
-	fmt.Println(fmt.Sprintf("Sent normal messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed)))
+
+	return s.SendMessageBytes(targets, messageBytes)
 }
 
 func (s *Socket) SendMessageWithReply(targets []string, message SocketMessage, replyChan chan SocketResponse) error {
@@ -404,4 +408,23 @@ func (s *Socket) NotifyTopicUnsub(topic, socketId string, targets []string) {
 		Topic:   topic,
 		Payload: socketId,
 	})
+}
+
+func (s *Socket) RoleCall(userSub string) error {
+	replyChan := make(chan SocketResponse)
+	s.Chan() <- SocketCommand{
+		Ty: GetSubscribedTargetsSocketCommand,
+		Params: SocketParams{
+			UserSub: userSub,
+		},
+		ReplyChan: replyChan,
+	}
+	reply := <-replyChan
+	close(replyChan)
+
+	if reply.Error != nil {
+		return util.ErrCheck(reply.Error)
+	}
+
+	return s.SendMessage(reply.Targets, SocketMessage{Action: types.SocketActions_ROLE_CALL})
 }

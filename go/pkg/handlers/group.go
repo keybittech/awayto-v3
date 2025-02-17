@@ -141,10 +141,10 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Keycloak.RoleCall(http.MethodPost, session.UserSub)
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
 	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	h.Redis.SetGroupSessionVersion(req.Context(), groupId)
+	h.Socket.RoleCall(session.UserSub)
 
 	undos = nil
 	return &types.PostGroupResponse{Id: groupId}, nil
@@ -464,7 +464,7 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	if err := h.Keycloak.RoleCall(http.MethodPost, session.UserSub); err != nil {
+	if err := h.Socket.RoleCall(session.UserSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 

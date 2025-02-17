@@ -3,7 +3,6 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useUtil, SocketResponse, SocketResponseHandler, siteApi, SocketActions } from 'awayto/hooks';
 
 import WebSocketContext from './WebSocketContext';
-import RoleCall from './RoleCall';
 
 const {
   REACT_APP_APP_HOST_NAME,
@@ -12,6 +11,7 @@ const {
 function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
   const [getTicket] = siteApi.useLazySockServiceGetSocketTicketQuery();
+  const [getUserProfileDetails] = siteApi.useLazyUserProfileServiceGetUserProfileDetailsQuery();
 
   const { setSnack } = useUtil();
 
@@ -67,8 +67,11 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
           historical
         } = JSON.parse(event.data) as SocketResponse<string>;
 
+
         if (payload == "PING") {
           ws.send(JSON.stringify({ sender: connectionId, payload: "PONG" }));
+        } else if (SocketActions.ROLE_CALL == action) {
+          await getUserProfileDetails();
         } else {
           const listeners = messageListeners.current.get(topic);
 
@@ -121,9 +124,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
   return useMemo(() => !initialConnectionMade.current ? <></> :
     <WebSocketContext.Provider value={webSocketContext}>
-      <RoleCall>
-        {children}
-      </RoleCall>
+      {children}
     </WebSocketContext.Provider>,
     [initialConnectionMade.current, webSocketContext]
   );
