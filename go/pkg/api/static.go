@@ -66,6 +66,9 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 		fmt.Printf("please set TS_DEV_SERVER_URL %s", err.Error())
 	}
 
+	// Attach demos
+	mux.Handle("/demos/", http.StripPrefix("/demos/", http.FileServer(http.Dir("demos/final/"))))
+
 	// Attach landing/ to domain url root /
 	mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("landing/public/"))))
 

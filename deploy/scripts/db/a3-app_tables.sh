@@ -257,8 +257,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   ALTER TABLE dbtable_schema.group_user_schedules ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.group_user_schedules FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.group_user_schedules FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR AND $HAS_GROUP);
-  CREATE POLICY table_update ON dbtable_schema.group_user_schedules FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR AND $HAS_GROUP);
-  CREATE POLICY table_delete ON dbtable_schema.group_user_schedules FOR DELETE TO $PG_WORKER USING ($IS_CREATOR AND $HAS_GROUP);
+  CREATE POLICY table_update ON dbtable_schema.group_user_schedules FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_user_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.schedule_brackets (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -276,8 +276,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   ALTER TABLE dbtable_schema.schedule_brackets ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.schedule_brackets FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.schedule_brackets FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
-  CREATE POLICY table_update ON dbtable_schema.schedule_brackets FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
-  CREATE POLICY table_delete ON dbtable_schema.schedule_brackets FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_brackets FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_brackets FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.schedule_bracket_slots (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -294,8 +294,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   ALTER TABLE dbtable_schema.schedule_bracket_slots ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.schedule_bracket_slots FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.schedule_bracket_slots FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
-  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slots FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
-  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slots FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slots FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slots FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.schedule_bracket_slot_exclusions (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -311,8 +311,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   ALTER TABLE dbtable_schema.schedule_bracket_slot_exclusions ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.schedule_bracket_slot_exclusions FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.schedule_bracket_slot_exclusions FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
-  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slot_exclusions FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
-  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slot_exclusions FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slot_exclusions FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slot_exclusions FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.schedule_bracket_services (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -329,8 +329,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   ALTER TABLE dbtable_schema.schedule_bracket_services ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.schedule_bracket_services FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.schedule_bracket_services FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
-  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_services FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
-  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_services FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedule_bracket_services FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_services FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE TABLE dbtable_schema.quotes (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

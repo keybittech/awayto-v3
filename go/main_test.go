@@ -127,7 +127,7 @@ func startRec(title string) {
 		return
 	}
 
-	recCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ffmpeg -video_size 1920x890 -framerate 25 -f x11grab -i :1.0+3840,120 -y ts/demos/%s.mp4", title))
+	recCmd := exec.Command("/bin/sh", "-c", fmt.Sprintf("ffmpeg -video_size 1920x890 -framerate 10 -f x11grab -i :1.0+3840,120 -vf \"crop=iw*0.6:ih:iw*0.2:0\" -y demos/%s.mp4", title))
 	if err := recCmd.Start(); err != nil {
 		log.Fatal(err)
 	}
@@ -140,6 +140,7 @@ func stopRec(title string) {
 		return
 	}
 	killRec(title)
+	exec.Command("/bin/sh", "-c", fmt.Sprintf("ffmpeg -ss 30 -i demos/%s.mp4 -vf \"fps=10:-1:flags=lanczos,split[s0][s1];[s0]palettegen[p];[s1][p]paletteuse\" demos/%s.gif", title, title)).Start()
 }
 
 func TestMain(t *testing.T) {
@@ -236,6 +237,8 @@ func runTest() {
 
 	page := &Page{p}
 
+	time.Sleep(5 * time.Second)
+
 	doEval := func() {
 		page.Evaluate(`
 			const style = document.createElement("style");
@@ -306,6 +309,9 @@ func runTest() {
 
 		// Fill out group details
 		startRec("create_group")
+
+		time.Sleep(3 * time.Second)
+
 		doEval()
 		page.ByRole("textbox", "Group Name").MouseOver().Fill(fmt.Sprintf("Downtown Writing Center %d", randId))
 		page.ByRole("textbox", "Group Description").MouseOver().Fill("Works with students and the public to teach writing")
@@ -327,7 +333,6 @@ func runTest() {
 		// Create service
 		startRec("create_service")
 		page.ByLocator(`span[id^="suggestion-"]`).First().WaitFor() // service name suggestion
-
 		page.ByLocator(`span[id^="suggestion-"]`).First().MouseOver().Click()
 
 		// Select a tier name
@@ -341,20 +346,19 @@ func runTest() {
 		page.ByRole("button", "Add service tier").MouseOver().Click()
 
 		// Add a second tier
-		page.ByLocator(`span[id^="suggestion-"]`).Nth(5).MouseOver().Click() // tier name suggestion
+		page.ByLocator(`span[id^="suggestion-"]`).Nth(6).MouseOver().Click() // tier name suggestion
 		featuresBox := page.ByRole("combobox", "Features")
 		featuresBox.MouseOver().Click()
 		featuresList := page.ByRole("listbox", "Features")
 		featuresList.ByLocator("li").Nth(1).MouseOver().Click()
 		featuresList.ByLocator("li").Nth(2).MouseOver().Click()
-		page.Mouse().Click(float64(p.ViewportSize().Width)/2, float64(page.ViewportSize().Height)/2)
+		page.Mouse().Click(500, 500)
 		page.ByLocator(`span[id^="suggestion-"]`).Nth(12).MouseOver().Click()
 		page.ByLocator(`span[id^="suggestion-"]`).Nth(13).MouseOver().Click()
 		page.ByRole("button", "Add service tier").MouseOver().Click()
 
 		// Review and save service
-		page.ByRole("button", "Save Service").ScrollIntoViewIfNeeded()
-		page.ByText("Step 3").MouseOver()
+		page.Mouse().Wheel(0, 500)
 		time.Sleep(2 * time.Second)
 		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
 		page.ByRole("button", "Next").MouseOver().Click()

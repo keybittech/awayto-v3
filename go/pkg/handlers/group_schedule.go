@@ -110,15 +110,24 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 
 func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupScheduleResponse, error) {
 
-	for _, scheduleId := range strings.Split(data.GetIds(), ",") {
-		_, err := tx.Exec(`
-			DELETE FROM dbtable_schema.group_schedules
-			WHERE group_id = $1 AND schedule_id = $2
-		`, session.GroupId, scheduleId)
+	err := tx.SetDbVar("user_sub", session.GroupSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
+	for _, groupScheduleId := range strings.Split(data.GetGroupScheduleIds(), ",") {
+		_, err = tx.Exec(`
+			DELETE FROM dbtable_schema.group_schedules
+			WHERE group_id = $1 AND id = $2
+		`, session.GroupId, groupScheduleId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
+	}
+
+	err = tx.SetDbVar("user_sub", session.UserSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")

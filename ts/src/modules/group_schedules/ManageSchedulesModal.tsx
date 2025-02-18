@@ -44,7 +44,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
     ...editGroupSchedule
   } as IGroupSchedule);
 
-  const schedule = useMemo(() => groupSchedule.schedule, [groupSchedule]);
+  const schedule = useMemo(() => groupSchedule.schedule, [groupSchedule.schedule]);
 
   const scheduleTimeUnitName = useTimeName(schedule?.scheduleTimeUnitId);
   const bracketTimeUnitName = useTimeName(schedule?.bracketTimeUnitId);
@@ -94,33 +94,29 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
     return factors;
   }, [bracketTimeUnitName, slotTimeUnitName, scheduleTimeUnitName]);
 
-  const handleSubmit = useCallback(() => {
-    if (!schedule || !schedule.name) {
+  const handleSubmit = useCallback(async () => {
+    if (!groupSchedule.schedule || !groupSchedule.schedule?.name) {
       setSnack({ snackOn: 'A name must be provided.', snackType: 'warning' });
       return;
     }
 
-    if (!editGroupSchedule) {
+    if (!setEditGroupSchedule) {
       if (groupSchedule.scheduleId) {
-        patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap().then(() => {
-          closeModal && closeModal();
-        }).catch(console.error);
+        await patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap();
       } else {
-        postGroupSchedule({ postGroupScheduleRequest: { groupSchedule } }).unwrap().then(() => {
-          closeModal && closeModal();
-        }).catch(console.error);
+        await postGroupSchedule({ postGroupScheduleRequest: { groupSchedule } }).unwrap();
       }
-    } else {
-      closeModal && closeModal(groupSchedule);
     }
-  }, [groupSchedule, schedule]);
+
+    closeModal && closeModal(groupSchedule);
+  }, [groupSchedule]);
 
   // Onboarding handling
   useEffect(() => {
     if (setEditGroupSchedule) {
-      setEditGroupSchedule({ schedule });
+      setEditGroupSchedule({ schedule: groupSchedule.schedule });
     }
-  }, [schedule?.name, schedule?.startTime]);
+  }, [groupSchedule]);
 
   // Onboarding handling
   useEffect(() => {
@@ -132,21 +128,21 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
   useEffect(() => {
     async function go() {
       if (lookupsRetrieved) {
-        if (editGroupSchedule?.schedule?.id) {
-          const { groupSchedule } = await getGroupScheduleMasterById({ groupScheduleId: editGroupSchedule.schedule.id }).unwrap();
+        if (schedule?.id) {
+          const { groupSchedule } = await getGroupScheduleMasterById({ groupScheduleId: schedule.id }).unwrap();
           setGroupSchedule(groupSchedule);
-        } else {
+        } else if (!editGroupSchedule?.schedule?.name) {
           setDefault('hoursweekly30minsessions');
         }
       }
     }
     void go();
-  }, [lookupsRetrieved, editGroupSchedule]);
+  }, [lookupsRetrieved, schedule?.id]);
 
   if (!lookups?.timeUnits) return <></>;
 
   return <Card>
-    <CardHeader title={`${editGroupSchedule ? 'Edit' : 'Create'} Schedule`}></CardHeader>
+    <CardHeader title={`${schedule?.id ? 'Edit' : 'Create'} Schedule`}></CardHeader>
     <CardContent>
       {!!children && children}
 

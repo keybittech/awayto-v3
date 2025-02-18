@@ -94,32 +94,29 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
       return;
     }
 
-    if (editGroup) {
-      closeModal && closeModal(newService);
-      return;
-    }
-
-    if (newService?.id) {
-      await patchService({ patchServiceRequest: { service: newService } }).unwrap();
-    } else {
-      const { id: serviceId } = await postService({
-        postServiceRequest: {
-          service: {
-            name: newService.name,
-            cost: newService.cost,
-            formId: newService.formId,
-            surveyId: newService.surveyId,
+    if (!setEditGroupService) {
+      if (editGroupService?.serviceId) {
+        await patchService({ patchServiceRequest: { service: newService } }).unwrap();
+      } else {
+        const { id: serviceId } = await postService({
+          postServiceRequest: {
+            service: {
+              name: newService.name,
+              cost: newService.cost,
+              formId: newService.formId,
+              surveyId: newService.surveyId,
+            }
           }
-        }
-      }).unwrap();
-      const newServiceRef = {
-        ...newService,
-        id: serviceId
-      };
-      await patchService({ patchServiceRequest: { service: newServiceRef } }).unwrap();
-      await postGroupService({ postGroupServiceRequest: { serviceId } }).unwrap();
-      setNewService(newServiceRef);
-      // await getExistingService();
+        }).unwrap();
+        const newServiceRef = {
+          ...newService,
+          id: serviceId
+        };
+        await patchService({ patchServiceRequest: { service: newServiceRef } }).unwrap();
+        await postGroupService({ postGroupServiceRequest: { serviceId } }).unwrap();
+        setNewService(newServiceRef);
+        // await getExistingService();
+      }
     }
 
     closeModal && closeModal(newService);

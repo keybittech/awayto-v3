@@ -5,6 +5,7 @@ import (
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 )
@@ -45,22 +46,47 @@ func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data 
 		promptParts := strings.Split(data.GetPrompt(), "!$")
 		promptType, err := strconv.Atoi(data.GetId())
 		if err != nil {
-			util.ErrCheck(err)
 			return nil, util.ErrCheck(err)
 		}
 
-		resp := h.Ai.GetPromptResponse(req.Context(), promptParts, types.IPrompts(promptType))
+		tryRequest := func() ([]string, error) {
 
-		if strings.Contains(resp, "Result:") {
-			resp = strings.Split(resp, "Result:")[1]
+			for i := 0; i < 3; i++ {
+
+				resp, err := h.Ai.GetPromptResponse(req.Context(), promptParts, types.IPrompts(promptType))
+				if err != nil {
+					continue
+				}
+
+				if strings.Contains(resp, "Result:") {
+					resp = strings.Split(resp, "Result:")[1]
+				}
+
+				r, err := regexp.Compile(`[-:\.]`)
+				if err != nil {
+					continue
+				}
+				if r.MatchString(resp) {
+					continue
+				}
+
+				suggestions := strings.Split(resp, "|")
+				for _, str := range suggestions {
+					str = strings.TrimSpace(str)
+				}
+
+				return suggestions, nil
+			}
+
+			return nil, nil
 		}
 
-		suggestions := []string{}
-		for _, str := range strings.Split(resp, "|") {
-			suggestions = append(suggestions, strings.TrimSpace(str))
+		suggestionResults, err := tryRequest()
+		if err != nil {
+			return nil, util.ErrCheck(err)
 		}
 
-		return &types.GetSuggestionResponse{PromptResult: suggestions}, nil
+		return &types.GetSuggestionResponse{PromptResult: suggestionResults}, nil
 	}
 
 	return &types.GetSuggestionResponse{PromptResult: []string{}}, nil

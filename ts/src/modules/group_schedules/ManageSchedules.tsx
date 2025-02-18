@@ -54,7 +54,7 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
             isConfirming: true,
             confirmEffect: 'Are you sure you want to delete these schedules? This cannot be undone.',
             confirmAction: async () => {
-              await deleteGroupSchedule({ ids: selected.join(',') }).unwrap();
+              await deleteGroupSchedule({ groupScheduleIds: selected.join(',') }).unwrap();
               void getGroupSchedules();
               setSelected([]);
             }

@@ -37,12 +37,11 @@ func InitAi() IAi {
 	return aic
 }
 
-func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promptType types.IPrompts) string {
+func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promptType types.IPrompts) (string, error) {
 
 	openAIKey := os.Getenv("OPENAI_API_KEY")
 	if openAIKey == "" {
-		util.ErrCheck(errors.New("No OpenAI Key"))
-		return ""
+		return "", util.ErrCheck(errors.New("No OpenAI Key"))
 	}
 
 	client := openai.NewClient(openAIKey)
@@ -67,13 +66,11 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 			Model:  ai.Model,
 			Prompt: content,
 		})
-
 		if err != nil {
-			util.ErrCheck(err)
-			return ""
+			return "", util.ErrCheck(err)
 		}
 
-		return resp.Choices[0].Text
+		return resp.Choices[0].Text, nil
 
 	case []openai.ChatCompletionMessage:
 		messages := []openai.ChatCompletionMessage{}
@@ -95,16 +92,13 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 		})
 
 		if err != nil {
-			util.ErrCheck(err)
-			return ""
+			return "", util.ErrCheck(err)
 		}
 
-		return resp.Choices[0].Message.Content
+		return resp.Choices[0].Message.Content, nil
 
 	default:
-		err := errors.New("unsupported prompt type")
-		util.ErrCheck(err)
-		return ""
+		return "", util.ErrCheck(errors.New("unsupported prompt type"))
 	}
 }
 

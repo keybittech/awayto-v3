@@ -2,7 +2,7 @@ import React, { useContext, useMemo } from 'react';
 import { Duration, DurationUnitType } from 'dayjs/plugin/duration';
 
 import TextField from '@mui/material/TextField';
-import { TimePicker } from '@mui/x-date-pickers/TimePicker';
+import { DigitalClock } from '@mui/x-date-pickers/DigitalClock';
 
 import { useTimeName, dayjs, getRelativeDuration, TimeUnit } from 'awayto/hooks';
 
@@ -35,6 +35,7 @@ export function ScheduleTimePicker(): React.JSX.Element {
 
     for (let factor = 1; factor < sessionDuration; factor++) {
       const modRes = sessionDuration % factor;
+
       if (modRes === 0 || modRes === slotDuration) {
         sf.push(factor);
       }
@@ -43,12 +44,9 @@ export function ScheduleTimePicker(): React.JSX.Element {
     return sf;
   }, [bracketTimeUnitName, slotTimeUnitName, slotDuration]);
 
-  return <TimePicker
-    label="Time"
+  return <DigitalClock
     value={selectedTime}
     onChange={time => setSelectedTime(time)}
-    ampmInClock={true}
-    onAccept={time => setSelectedTime(time)}
     shouldDisableTime={(time, clockType) => {
       if (dateSlots?.length) {
         const currentSlotTime = selectedTime;

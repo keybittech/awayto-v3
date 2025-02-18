@@ -49,7 +49,7 @@ export function useSuggestions(refName: string): {
       }
 
       getSuggestion({ id: id.toString(), prompt }).unwrap().then(({ promptResult }) => {
-        if (promptResult.length > 0) {
+        if (promptResult && promptResult.length > 0) {
           setSuggestions(promptResult);
           const newHistory = { ...history, [promptKey]: promptResult };
           setHistory(newHistory);

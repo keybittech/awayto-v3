@@ -62,7 +62,7 @@ export const utilConfig = {
     snackOn: '',
     isLoading: false,
     loadingMessage: '',
-    isConfirming: false
+    isConfirming: false,
   } as IUtil,
   reducers: {
     openConfirm: (...[state, { payload: { confirmAction, confirmEffect, confirmSideEffect } }]: UtilPayload) => {

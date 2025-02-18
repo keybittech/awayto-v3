@@ -1,4 +1,4 @@
-ts/demos
+demos/
 landing/config.yaml
 landing/public/
 ts/settings.application.env

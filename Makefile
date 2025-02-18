@@ -49,7 +49,7 @@ HOST_LOCAL_DIR=deployed/${PROJECT_PREFIX}
 GO_GEN_DIR=go/pkg/types
 GO_MOCKS_GEN_DIR=go/pkg/mocks
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
-DEMOS_DIR=ts/demos
+DEMOS_DIR=demos/final
 
 # build targets
 
@@ -116,7 +116,7 @@ DIRS=$(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JA
 $(shell mkdir -p $(DIRS))
 
 clean:
-	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR) $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)
+	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(JAVA_TARGET_DIR) $(LANDING_BUILD_DIR) $(CERTS_DIR) $(PLAYWRIGHT_CACHE_DIR)
 	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD)
 
 ## Builds
@@ -145,12 +145,14 @@ $(LANDING_TARGET):
 landing_dev: build
 	chmod +x $(LANDING_SRC)/server.sh && pnpm run --dir $(LANDING_SRC) start
 
-$(TS_TARGET): $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,settings.application.env} -type f) $(shell find proto/ -type f)
+$(TS_API_BUILD): $(shell find proto/ -type f)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--openapi_out=$(TS_SRC) \
 		$(PROTO_FILES)
 	npx @rtk-query/codegen-openapi $(TS_CONFIG_API)
+
+$(TS_TARGET): $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,settings.application.env} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i
 	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/settings.application.env.template" > "$(TS_SRC)/settings.application.env"
 	pnpm run --dir $(TS_SRC) build
@@ -289,6 +291,7 @@ host_up: host_gen
 		$(H_REM_DIR)/$(JAVA_TARGET_DIR) \
 		$(H_REM_DIR)/$(JAVA_THEMES_DIR) \
 		$(H_REM_DIR)/$(TS_BUILD_DIR) \
+		$(H_REM_DIR)/$(DEMOS_DIR) \
 		$(H_REM_DIR)/$(LANDING_BUILD_DIR); \
 	"
 
@@ -403,12 +406,14 @@ host_update_cert:
 .PHONY: host_update_cert_op
 host_update_cert_op: host_predeploy host_update_cert host_postdeploy
 
+.PHONY: host_deploy_sync
 host_deploy_sync:
 	rsync ${RSYNC_FLAGS} Makefile "$(SSH_OP_B):$(H_REM_DIR)/Makefile"
 	rsync ${RSYNC_FLAGS} "$(DEPLOY_SCRIPTS)/" "$(SSH_OP_B):$(H_REM_DIR)/$(DEPLOY_SCRIPTS)/"
 	rsync ${RSYNC_FLAGS} "$(JAVA_TARGET_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(JAVA_TARGET_DIR)/"
 	rsync ${RSYNC_FLAGS} "$(JAVA_THEMES_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(JAVA_THEMES_DIR)/"
 	rsync ${RSYNC_FLAGS} "$(TS_BUILD_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(TS_BUILD_DIR)/"
+	rsync ${RSYNC_FLAGS} "$(DEMOS_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(DEMOS_DIR)/"
 	rsync ${RSYNC_FLAGS} "$(LANDING_BUILD_DIR)/" "$(SSH_OP_B):$(H_REM_DIR)/$(LANDING_BUILD_DIR)/"
 
 .PHONY: host_deploy_docker

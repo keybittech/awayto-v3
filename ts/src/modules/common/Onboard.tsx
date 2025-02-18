@@ -4,6 +4,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
+import IconButton from '@mui/material/IconButton';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -20,6 +23,7 @@ import AccordionDetails from '@mui/material/AccordionDetails';
 
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
+import CloseIcon from '@mui/icons-material/Close';
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 
 import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken } from 'awayto/hooks';
@@ -84,7 +88,7 @@ export function Onboard(props: IProps): React.JSX.Element {
       complete: Boolean(group.name && group.purpose && group.isValid),
       comp: () => <>
         <Typography variant="subtitle1">
-          <p>Start by providing a unique name for your group; a url-safe version is generated alongside. Group name can be changed later.</p>
+          <p>Start by providing a unique name for your group. Group name can be changed later.</p>
           <p>If AI Suggestions are enabled, the group name and description will be used to generate custom suggestions for naming roles, services, and other elements on the site.</p>
           <p>Restrict who can join your group by adding an email to the list of allowed domains. For example, site.com is the domain for the email user@site.com. To ensure only these email accounts can join the group, enter site.com into the Allowed Email Domains and press Add. Multiple domains can be added. Leave empty to allow users with any email address.</p>
           <p>To make onboarding easier, we'll use the example of creating an online learning center. For this step, we give our group a name and description which reflect the group's purpose.</p>
@@ -100,7 +104,7 @@ export function Onboard(props: IProps): React.JSX.Element {
       comp: () => <>
         <Typography variant="subtitle1">
           <p>Roles allow access to different functionality on the site. Each user is assigned 1 role. You have the Admin role.</p>
-          <p>Some role name suggestions have been provided based on your group details. You can add them to your group by clicking on them. Otherwise, click the dropdown to add your own roles.</p>
+          <p>If AI is enabled, some role name suggestions have been provided based on your group details. You can add them to your group by clicking on them. Otherwise, click the dropdown to add your own roles.</p>
           <p>Once you've created some roles, set the default role as necessary. This role will automatically be assigned to new users who join your group. Normally you would choose the role which you plan to have the least amount of access.</p>
           <p>For example, our learning center might have Student and Tutor roles. By default, everyone that joins is a Student. If a Tutor joins the group, the Admin can manually change their role in the user list.</p>
         </Typography>
@@ -151,10 +155,14 @@ export function Onboard(props: IProps): React.JSX.Element {
   const Help = accordionProps.comp;
 
   const OnboardingProgress = useCallback(() => <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
-    {accordions.map((acc, i) => <Typography
-      key={`acc-progress-${i}`}
-      color={i == currentAccordion ? "info" : acc.complete ? "success" : "primary"}
-    >{`${i + 1}. ${acc.name}`}</Typography>)}
+    {accordions.map((acc, i) => {
+      const curr = i == currentAccordion;
+      return <Typography
+        key={`acc-progress-${i}`}
+        color={acc.complete ? "success" : "primary"}
+        sx={{ textDecoration: curr ? 'underline' : 'none' }}
+      >{`${i + 1}. ${acc.name}`}</Typography>
+    })}
   </Breadcrumbs>, [currentAccordion, accordionProps]);
 
   useEffect(() => {
@@ -171,71 +179,84 @@ export function Onboard(props: IProps): React.JSX.Element {
 
   return <>
 
-    <Grid container spacing={2} p={2} sx={{ bgcolor: 'secondary.main', height: '100vh', alignContent: 'flex-start', overflow: 'auto' }}>
+    <Grid container spacing={2} p={2} sx={{ justifyContent: 'center', bgcolor: 'secondary.main', height: '100vh', alignContent: 'flex-start', overflow: 'auto' }}>
 
-      <Grid container size={12} direction="row" sx={{ alignItems: "center" }}>
-
-        <Button
-          sx={classes.onboardingProgress}
-          color="warning"
-          disableRipple
-          disableElevation
-          variant="contained"
-          disabled={currentAccordion == 0}
-          onClick={() => changePage(-1)}
-        >
-          Previous
-        </Button>
+      <Grid container size={{ xs: 12, md: 8, xl: 7 }}>
 
         <Grid container size="grow" direction="row" sx={{ alignItems: 'center', backgroundColor: '#000', borderRadius: '4px', p: '8px 12px' }}>
-          <Grid size="grow">
+          <Grid size="grow" justifyItems="center">
             <Typography>Onboarding Progress</Typography>
             <OnboardingProgress />
           </Grid>
         </Grid>
+        <Grid container size={12} direction="row" sx={{ alignItems: "center" }}>
 
-        <Button
-          sx={classes.onboardingProgress}
-          color="warning"
-          disableRipple
-          disableElevation
-          variant="contained"
-          disabled={!accordionProps.complete || currentAccordion + 1 == accordions.length}
-          onClick={() => { setSaveToggle((new Date()).getTime()); }}
-        >
-          Next
-        </Button>
-      </Grid>
-      <Grid size={12}>
-        <Alert severity="info">
-          Need help?
-          &nbsp; <Link sx={{ cursor: 'pointer' }} onClick={() => { setAssist('demo'); }}>Watch the tutorial</Link> or&nbsp;
-          <Link sx={{ cursor: 'pointer' }} onClick={() => { setAssist('help'); }}>read about this page</Link>.
-        </Alert>
-      </Grid>
-      <Grid size={12}>
-        <Suspense>
-          {hasCode ? <Grid size={12} p={2}>
-            <TextField
-              fullWidth
-              sx={{ mb: 2 }}
-              value={groupCode}
-              required
-              onChange={e => setGroupCode(e.target.value)}
-              label="Group Code"
-            />
+          <Button
+            sx={classes.onboardingProgress}
+            color="warning"
+            disableRipple
+            disableElevation
+            variant="contained"
+            disabled={currentAccordion == 0}
+            onClick={() => changePage(-1)}
+          >
+            Back
+          </Button>
+          <Grid size="grow" >
+            <Alert severity="info" color="success" variant="standard" sx={{ alignItems: 'center' }} >
+              <Typography>Need help?</Typography>
+              <Link sx={{ cursor: 'pointer' }} onClick={() => { setAssist('demo'); }}>Watch the tutorial</Link> or&nbsp;
+              <Link sx={{ cursor: 'pointer' }} onClick={() => { setAssist('help'); }}>read about the {accordionProps.name} page</Link>.
+            </Alert>
+          </Grid>
+          <Button
+            sx={classes.onboardingProgress}
+            color="warning"
+            disableRipple
+            disableElevation
+            variant="contained"
+            disabled={!accordionProps.complete || currentAccordion + 1 == accordions.length}
+            onClick={() => { setSaveToggle((new Date()).getTime()); }}
+          >
+            Next
+          </Button>
+        </Grid>
+        <Grid size={12}>
+          <Suspense>
+            {hasCode ? <Grid size={12} p={2}>
+              <TextField
+                fullWidth
+                sx={{ mb: 2 }}
+                value={groupCode}
+                required
+                onChange={e => setGroupCode(e.target.value)}
+                label="Group Code"
+              />
 
-            <Grid container justifyContent="space-between">
-              <Button onClick={() => setHasCode(false)}>Cancel</Button>
-              <Button onClick={joinGroupCb}>Join Group</Button>
-            </Grid>
-          </Grid> :
-            currentAccordion === 0 ? <>
-              <Grid container size="grow" spacing={2}>
-                {!group.id && <Button fullWidth disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>
-                  I have a group code
-                </Button>}
-                {isSuccess && <ManageGroupModal
+              <Grid container justifyContent="space-between">
+                <Button onClick={() => setHasCode(false)}>Cancel</Button>
+                <Button onClick={joinGroupCb}>Join Group</Button>
+              </Grid>
+            </Grid> :
+              currentAccordion === 0 ? <>
+                <Grid container size="grow" spacing={2}>
+                  {!group.id && <Button fullWidth disableRipple disableElevation variant="contained" color="primary" onClick={() => setHasCode(true)}>
+                    I have a group code
+                  </Button>}
+                  {isSuccess && <ManageGroupModal
+                    {...props}
+                    showCancel={false}
+                    editGroup={group}
+                    setEditGroup={setGroup}
+                    saveToggle={saveToggle}
+                    closeModal={() => {
+                      changePage(1);
+                      setSaveToggle(0);
+                    }}
+                  />}
+                </Grid>
+              </> :
+                currentAccordion == 1 ? <ManageGroupRolesModal
                   {...props}
                   showCancel={false}
                   editGroup={group}
@@ -245,90 +266,94 @@ export function Onboard(props: IProps): React.JSX.Element {
                     changePage(1);
                     setSaveToggle(0);
                   }}
-                />}
-              </Grid>
-            </> :
-              currentAccordion == 1 ? <ManageGroupRolesModal
-                {...props}
-                showCancel={false}
-                editGroup={group}
-                setEditGroup={setGroup}
-                saveToggle={saveToggle}
-                closeModal={() => {
-                  changePage(1);
-                  setSaveToggle(0);
-                }}
-              /> :
-                currentAccordion == 2 ? <ManageServiceModal
-                  {...props}
-                  showCancel={false}
-                  editGroup={group}
-                  editGroupService={groupService}
-                  setEditGroupService={setGroupService}
-                  saveToggle={saveToggle}
-                  closeModal={(savedService: IGroupService) => {
-                    changePage(1);
-                    setSaveToggle(0);
-                    localStorage.setItem('onboarding_service', JSON.stringify(savedService));
-                  }}
                 /> :
-                  currentAccordion == 3 ? <ManageSchedulesModal
+                  currentAccordion == 2 ? <ManageServiceModal
                     {...props}
                     showCancel={false}
                     editGroup={group}
-                    editGroupSchedule={groupSchedule}
-                    setEditGroupSchedule={setGroupSchedule}
+                    editGroupService={groupService}
+                    setEditGroupService={setGroupService}
                     saveToggle={saveToggle}
-                    closeModal={(savedSchedule: IGroupSchedule) => {
+                    closeModal={(savedService: IGroupService) => {
                       changePage(1);
                       setSaveToggle(0);
-                      localStorage.setItem('onboarding_schedule', JSON.stringify(savedSchedule));
+
+                      localStorage.setItem('onboarding_service', JSON.stringify({ ...groupService, service: savedService }));
                     }}
                   /> :
-                    currentAccordion == 4 ? <>
-                      <Card>
-                        <CardHeader title="Review" />
-                        <CardContent>
-                          <Typography variant="caption">Group Name</Typography> <Typography mb={2} variant="h5">{group.displayName}</Typography>
-                          <Typography variant="caption">Roles</Typography> <Typography mb={2} variant="h5">{groupRoleValues.map(r => r.name).join(', ')}</Typography>
-                          <Typography variant="caption">Default Role</Typography> <Typography mb={2} variant="h5">{groupRoleValues.find(r => r.id === group.defaultRoleId)?.name || ''}</Typography>
-                          <Typography variant="caption">Service Name</Typography> <Typography mb={2} variant="h5">{groupService.service?.name}</Typography>
-                          <Typography variant="caption">Schedule Name</Typography> <Typography mb={2} variant="h5">{groupSchedule.schedule?.name}</Typography>
-                        </CardContent>
-                        <CardActionArea onClick={() => {
-                          openConfirm({
-                            isConfirming: true,
-                            confirmEffect: `Create the group ${group.displayName}.`,
-                            confirmAction: submit => {
-                              if (submit) {
-                                completeOnboarding({
-                                  completeOnboardingRequest: {
-                                    service: groupService.service!,
-                                    schedule: groupSchedule.schedule!
-                                  }
-                                }).unwrap().then(() => {
-                                  localStorage.removeItem('onboarding_service');
-                                  localStorage.removeItem('onboarding_schedule');
-                                  reloadProfile && reloadProfile().catch(console.error);
-                                }).catch(console.error);
+                    currentAccordion == 3 ? <ManageSchedulesModal
+                      {...props}
+                      showCancel={false}
+                      editGroup={group}
+                      editGroupSchedule={groupSchedule}
+                      setEditGroupSchedule={setGroupSchedule}
+                      saveToggle={saveToggle}
+                      closeModal={(savedSchedule: IGroupSchedule) => {
+                        changePage(1);
+                        setSaveToggle(0);
+                        localStorage.setItem('onboarding_schedule', JSON.stringify(savedSchedule));
+                      }}
+                    /> :
+                      currentAccordion == 4 ? <>
+                        <Card>
+                          <CardHeader title="Review" />
+                          <CardContent>
+                            <Typography variant="caption">Group Name</Typography> <Typography mb={2} variant="h5">{group.displayName}</Typography>
+                            <Typography variant="caption">Roles</Typography> <Typography mb={2} variant="h5">{groupRoleValues.map(r => r.name).join(', ')}</Typography>
+                            <Typography variant="caption">Default Role</Typography> <Typography mb={2} variant="h5">{groupRoleValues.find(r => r.id === group.defaultRoleId)?.name || ''}</Typography>
+                            <Typography variant="caption">Service Name</Typography> <Typography mb={2} variant="h5">{groupService.service?.name}</Typography>
+                            <Typography variant="caption">Schedule Name</Typography> <Typography mb={2} variant="h5">{groupSchedule.schedule?.name}</Typography>
+                          </CardContent>
+                          <CardActionArea onClick={() => {
+                            openConfirm({
+                              isConfirming: true,
+                              confirmEffect: `Create the group ${group.displayName}.`,
+                              confirmAction: submit => {
+                                if (submit) {
+                                  completeOnboarding({
+                                    completeOnboardingRequest: {
+                                      service: groupService.service!,
+                                      schedule: groupSchedule.schedule!
+                                    }
+                                  }).unwrap().then(() => {
+                                    localStorage.removeItem('onboarding_service');
+                                    localStorage.removeItem('onboarding_schedule');
+                                    reloadProfile && reloadProfile().catch(console.error);
+                                  }).catch(console.error);
+                                }
                               }
-                            }
-                          });
-                        }}>
-                          <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
-                            <Typography color="secondary" variant="button">Create Group</Typography>
-                          </Box>
-                        </CardActionArea>
-                      </Card>
-                    </> : <></>}
+                            });
+                          }}>
+                            <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
+                              <Typography color="secondary" variant="button">Create Group</Typography>
+                            </Box>
+                          </CardActionArea>
+                        </Card>
+                      </> : <></>}
 
-        </Suspense>
+          </Suspense>
+        </Grid>
       </Grid>
     </Grid>
 
-    <Dialog open={!!assist} onClose={() => { setAssist(''); }} fullWidth maxWidth="xl">
-      <Grid size="grow">
-        {'demo' == assist ? <img src={Icon} alt="kbt-icon" width="100%" /> : <Help />}
+    <Dialog slotProps={{ paper: { elevation: 8 } }} open={!!assist} onClose={() => { setAssist(''); }} fullWidth maxWidth="md">
+      <Grid size="grow" p={4}>
+        <Typography ml={3} variant="body1">{'demo' == assist ? 'Onboarding' : accordionProps.name} Help</Typography>
+        <IconButton
+          aria-label="close"
+          onClick={() => { setAssist(''); }}
+          sx={(theme) => ({
+            position: 'absolute',
+            right: 8,
+            top: 8,
+            color: theme.palette.grey[500],
+          })}
+        >
+          <CloseIcon />
+        </IconButton>
+        <DialogContent sx={{ m: 3 }} dividers>
+          {'demo' == assist ? <video controls loop poster={Icon} src="/demos/onboarding.mp4" width="100%" /> : <Help />}
+        </DialogContent>
       </Grid>
     </Dialog>
   </>

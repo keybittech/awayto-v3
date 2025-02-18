@@ -63,6 +63,6 @@ message GetSuggestionRequest {
 }
 
 message GetSuggestionResponse {
-  repeated string promptResult = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated string promptResult = 1;
 }
 

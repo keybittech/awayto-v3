@@ -13,7 +13,7 @@ import (
 )
 
 type IAi interface {
-	GetPromptResponse(ctx context.Context, promptParts []string, promptType types.IPrompts) string
+	GetPromptResponse(ctx context.Context, promptParts []string, promptType types.IPrompts) (string, error)
 }
 
 type IDatabase interface {

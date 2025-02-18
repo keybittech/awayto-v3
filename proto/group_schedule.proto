@@ -52,7 +52,7 @@ service GroupScheduleService {
 
   rpc DeleteGroupSchedule(DeleteGroupScheduleRequest) returns (DeleteGroupScheduleResponse) {
     option (google.api.http) = {
-      delete: "/v1/group/schedules/{ids}"
+      delete: "/v1/group/schedules/{groupScheduleIds}"
     };
   }
 }
@@ -125,7 +125,7 @@ message GetGroupScheduleByDateResponse {
 }
 
 message DeleteGroupScheduleRequest {
-  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+  string groupScheduleIds = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message DeleteGroupScheduleResponse {

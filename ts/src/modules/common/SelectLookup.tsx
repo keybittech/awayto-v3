@@ -124,6 +124,7 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
       addingNew ?
         <TextField
           autoFocus
+          fullWidth
           label={`New ${lookupName}`}
           value={newLookup.name}
           onChange={e => {
@@ -135,31 +136,29 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
           InputProps={{
             endAdornment: (
               <InputAdornment position="end">
-                <Box mb={2}>
-                  <IconButton aria-label="close new record" onClick={() => {
-                    setAddingNew(false);
-                    setNewLookup({ ...newLookup, name: '' });
-                  }}>
-                    <ClearIcon style={{ color: 'red' }} />
-                  </IconButton>
-                  <IconButton aria-label="create new record" onClick={() => {
-                    newLookup.name ? handleSubmit() : void setSnack({ snackOn: 'Provide a name for the record.', snackType: 'info' });
-                  }}>
-                    <CheckIcon style={{ color: 'green' }} />
-                  </IconButton>
-                </Box>
+                <IconButton aria-label="close new record" onClick={() => {
+                  setAddingNew(false);
+                  setNewLookup({ ...newLookup, name: '' });
+                }}>
+                  <ClearIcon style={{ color: 'red' }} />
+                </IconButton>
+                <IconButton aria-label="create new record" onClick={() => {
+                  newLookup.name ? handleSubmit() : void setSnack({ snackOn: 'Provide a name for the record.', snackType: 'info' });
+                }}>
+                  <CheckIcon style={{ color: 'green' }} />
+                </IconButton>
               </InputAdornment>
             ),
           }}
         /> : <TextField
           select
+          fullWidth
           required={required}
           disabled={disabled}
           autoFocus={!!lookupUpdater}
           id={`${lookupName}-lookup-selection`}
           helperText={helperText || ''}
           label={`${lookupName}s`}
-          fullWidth
           onChange={e => {
             const { value } = e.target as { value: string | string[] };
             if (isStringArray(value) && value.indexOf('new') > -1) {
