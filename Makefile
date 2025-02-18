@@ -121,7 +121,12 @@ clean:
 
 ## Builds
 
-build: $(CERTS_TARGET) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_MOCK_TARGET) $(GO_TARGET)
+build: .env $(CERTS_TARGET) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_MOCK_TARGET) $(GO_TARGET)
+
+.env:
+	if [ ! -f $(CERTS_TARGET) ]; then \
+		cp .env.template .env; \
+	fi
 
 $(CERTS_TARGET): 
 	if [ ! -f $(CERTS_TARGET) ]; then \
@@ -131,12 +136,12 @@ $(CERTS_TARGET):
 		sudo update-ca-certificates; \
 	fi
 
-$(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
+$(JAVA_TARGET): .env $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
 	mvn -f $(JAVA_SRC) install
 
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
-$(LANDING_TARGET): 
+$(LANDING_TARGET): .env 
 	npm --prefix ./landing i
 	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%d-%m-%Y)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
 	npm run --prefix ./landing build
@@ -152,7 +157,7 @@ $(TS_API_BUILD): $(shell find proto/ -type f)
 		$(PROTO_FILES)
 	npx @rtk-query/codegen-openapi $(TS_CONFIG_API)
 
-$(TS_TARGET): $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,settings.application.env} -type f) $(shell find proto/ -type f)
+$(TS_TARGET): .env $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,settings.application.env} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i
 	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/settings.application.env.template" > "$(TS_SRC)/settings.application.env"
 	pnpm run --dir $(TS_SRC) build
@@ -161,7 +166,7 @@ $(TS_TARGET): $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,tsconfig.json,t
 ts_dev:
 	BROWSER=none HTTPS=true WDS_SOCKET_PORT=${GO_HTTPS_PORT} pnpm run --dir $(TS_SRC) start
 
-$(GO_TARGET): $(shell find $(GO_SRC)/{main.go,flags.go,pkg} -type f) $(shell find proto/ -type f)
+$(GO_TARGET): .env $(shell find $(GO_SRC)/{main.go,flags.go,pkg} -type f) $(shell find proto/ -type f)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_SRC) \
@@ -430,6 +435,7 @@ host_predeploy:
 	$(eval APP_HOST_NAME=${DOMAIN_NAME})
 	sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=/etc/letsencrypt/live/${DOMAIN_NAME}&;" $(ENVFILE)
 	$(eval CERTS_DIR=/etc/letsencrypt/live/${DOMAIN_NAME})
+	make build
 
 .PHONY: host_postdeploy
 host_postdeploy:
@@ -437,6 +443,7 @@ host_postdeploy:
 	$(eval APP_HOST_NAME=localhost:${GO_HTTPS_PORT})
 	sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=certs&;" $(ENVFILE)
 	$(eval CERTS_DIR=certs)
+	make build
 
 .PHONY: host_deploy_compose_up
 host_deploy_compose_up:
@@ -458,13 +465,12 @@ host_db_restore:
 host_db_restore_op: host_predeploy host_service_stop host_db_restore host_service_start host_postdeploy
 
 .PHONY: host_deploy
-host_deploy: host_predeploy build_host host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
+host_deploy: host_predeploy host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
 	$(SSH) " \
 		sudo systemctl enable $(BINARY_SERVICE); \
 		sudo systemctl stop $(BINARY_SERVICE); \
 		sudo systemctl start $(BINARY_SERVICE); \
 	"
-	make build_host
 
 .PHONY: host_metric_cpu
 host_metric_cpu:
