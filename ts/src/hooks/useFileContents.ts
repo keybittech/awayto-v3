@@ -1,15 +1,11 @@
 import { useCallback, useMemo, useState } from 'react';
 import { IFile } from './api';
-import { keycloak } from './auth';
+import { keycloak, refreshToken } from './auth';
 import { UseFileContents } from './util';
 
 export const useFileContents: UseFileContents = () => {
 
   const [fileContents, setFileContents] = useState<IFile | undefined>();
-
-  const headers = {
-    'Authorization': `Bearer ${keycloak.token as string}`
-  }
 
   // postFileContents and getFileContents are implemented manually instead of using RTK Query generated methods, in order to support binary transfer
 
@@ -18,6 +14,12 @@ export const useFileContents: UseFileContents = () => {
 
     for (const f of fileRef) {
       fd.append('contents', f);
+    }
+
+    await refreshToken();
+
+    const headers = {
+      'Authorization': `Bearer ${keycloak.token as string}`
     }
 
     const res = await fetch('/api/v1/files/content', {
@@ -33,6 +35,12 @@ export const useFileContents: UseFileContents = () => {
 
   const getFileContents = useCallback<ReturnType<UseFileContents>['getFileContents']>(async (fileRef, download) => {
     if (!fileRef.uuid || !fileRef.mimeType) return undefined;
+
+    await refreshToken();
+
+    const headers = {
+      'Authorization': `Bearer ${keycloak.token as string}`
+    }
 
     const response = await fetch(`/api/v1/files/content/${fileRef.uuid}`, {
       headers

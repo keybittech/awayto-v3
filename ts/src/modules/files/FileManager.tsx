@@ -51,13 +51,13 @@ function FileManager({ files, setFiles }: Required<IComponent>): React.JSX.Eleme
     selected,
     onSelected: selection => setSelected(selection as string[]),
     toolbar: () => <>
-      <Grid container>
+      <Grid container alignItems="baseline">
         <Button onClick={addFiles}>Add File</Button>
+        <Box ml={1}>
+          <Typography variant="caption">{allowedFileExt}</Typography>
+        </Box>
         {!!selected.length && <Box sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Box>}
       </Grid>
-      <Box ml={1}>
-        <Typography variant="caption">{allowedFileExt}</Typography>
-      </Box>
     </>
   });
 
@@ -72,7 +72,6 @@ function FileManager({ files, setFiles }: Required<IComponent>): React.JSX.Eleme
         isConfirming: true,
         confirmEffect: `Upload ${newFiles.length} files` + (fileOverwrites.length ? `, overwriting ${fileOverwrites.length}` : '') + '.',
         confirmAction: async () => {
-
           const newFileIds = await postFileContents(newFiles);
 
           setFiles(oldFiles => {
