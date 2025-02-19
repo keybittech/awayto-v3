@@ -4,11 +4,6 @@ import { ExchangeSessionAttributes, SenderStreams, SocketMessage, SocketActions,
 
 import WSCallContext from './WSCallContext';
 
-const {
-  REACT_APP_TURN_NAME,
-  REACT_APP_TURN_PASS
-} = process.env as { [prop: string]: string };
-
 const peerConnectionConfig = {
   'iceServers': [
     { urls: `turn:${location.hostname}:3478`, credential: 'turnpass', username: 'turnuser' },

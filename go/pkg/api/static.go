@@ -106,9 +106,9 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
-		mux.Handle("GET /app/", a.StaticAuthCheckMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mux.Handle("GET /app/", a.StaticAuthCheckMiddleware(http.StripPrefix("/app/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			proxy.ServeHTTP(w, r)
-		})))
+		}))))
 
 		var wsDevProxy *httputil.ReverseProxy
 		wsDevProxy = httputil.NewSingleHostReverseProxy(devServerUrl)

@@ -18,7 +18,7 @@ export default function App(props: IComponent): React.JSX.Element {
 
   const { authenticated } = useAppSelector(state => state.auth);
 
-  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
+  const { data: profileRequest, isSuccess } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
   return <>
     <LocalizationProvider dateAdapter={AdapterDayjs}>
@@ -27,7 +27,7 @@ export default function App(props: IComponent): React.JSX.Element {
 
         <SnackAlert />
         <ConfirmAction />
-        {authenticated && profileRequest?.userProfile?.active ? <Layout {...props} /> : <Onboard {...props} />}
+        {isSuccess ? authenticated && profileRequest?.userProfile?.active ? <Layout {...props} /> : <Onboard {...props} /> : <></>}
       </ThemeProvider>
     </LocalizationProvider>
   </>

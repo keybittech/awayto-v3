@@ -1,14 +1,10 @@
 import React, { startTransition, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { keycloak, authSlice, useAppDispatch, siteApi, SiteRoles } from 'awayto/hooks';
+import { keycloak, authSlice, useAppDispatch } from 'awayto/hooks';
 
 import AuthContext from './AuthContext';
 import App from '../common/App';
-
-const {
-  REACT_APP_KC_CLIENT,
-} = process.env as { [prop: string]: string };
 
 function AuthProvider(): React.JSX.Element {
 
@@ -16,8 +12,6 @@ function AuthProvider(): React.JSX.Element {
   const location = useLocation();
 
   const [init, setInit] = useState(false);
-
-  const [getUserProfileDetails] = siteApi.useLazyUserProfileServiceGetUserProfileDetailsQuery();
 
   useEffect(() => {
     startTransition(async () => {

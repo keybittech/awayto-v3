@@ -5,8 +5,8 @@ import { useUtil, SocketResponse, SocketResponseHandler, siteApi, SocketActions 
 import WebSocketContext from './WebSocketContext';
 
 const {
-  REACT_APP_APP_HOST_NAME,
-} = process.env as { [prop: string]: string };
+  VITE_REACT_APP_APP_HOST_NAME,
+} = import.meta.env;
 
 function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
@@ -28,7 +28,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       const { ticket } = res;
       const [_, connectionId] = ticket.split(":");
 
-      const ws = new WebSocket(`wss://${REACT_APP_APP_HOST_NAME}/sock?ticket=${ticket}`)
+      const ws = new WebSocket(`wss://${VITE_REACT_APP_APP_HOST_NAME}/sock?ticket=${ticket}`)
 
       ws.onopen = () => {
         console.log('socket open', connectionId);

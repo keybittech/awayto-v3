@@ -9,8 +9,8 @@ import { DataGrid } from '@mui/x-data-grid';
 import { useFileContents, useGrid, IFile, nid, useUtil } from 'awayto/hooks';
 
 const {
-  REACT_APP_ALLOWED_FILE_EXT,
-} = process.env as { [prop: string]: string };
+  VITE_REACT_APP_ALLOWED_FILE_EXT,
+} = import.meta.env;
 
 
 declare global {
@@ -20,7 +20,7 @@ declare global {
   }
 }
 
-const allowedFileExt = "." + REACT_APP_ALLOWED_FILE_EXT.split(" ").join(", .");
+const allowedFileExt = "." + VITE_REACT_APP_ALLOWED_FILE_EXT.split(" ").join(", .");
 
 function FileManager({ files, setFiles }: Required<IComponent>): React.JSX.Element {
 

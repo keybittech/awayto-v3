@@ -1,35 +1,32 @@
-import React, { ComponentType, FunctionComponent, ReactNode, LazyExoticComponent, createElement, useMemo, lazy } from 'react';
+import React, { ComponentType, FunctionComponent, LazyExoticComponent, createElement, useMemo, lazy } from 'react';
 
 import buildOutput from '../build.json';
-import rolesOutput from '../roles.json';
-import { siteApi } from './api';
-import { hasRole, SiteRoles } from './auth';
-import { useAppSelector } from './store';
-import { isExternal } from './util';
+// import rolesOutput from '../roles.json';
+// import { SiteRoles } from './auth';
 
 
 const { views } = buildOutput as Record<string, Record<string, string>>;
-const { roles } = rolesOutput as {
-  roles: {
-    [prop: string]: SiteRoles[]
-  }
-};
+// const { roles } = rolesOutput as {
+//   roles: {
+//     [prop: string]: SiteRoles[]
+//   }
+// };
 
 /**
  * @category Awayto React
  */
 // eslint-disable-next-line
-export type IBaseComponent = FunctionComponent<IProps | IComponent> & ComponentType<any> & ReactNode;
+export type IBaseComponent = FunctionComponent<IProps | IComponent> | ComponentType<any>;
 
 /**
  * @category Awayto React
  */
-export type IDefaultedComponent = LazyExoticComponent<IBaseComponent> | ((props?: IProps) => React.JSX.Element);
+export type IDefaultedComponent = LazyExoticComponent<IBaseComponent>;
 
 /**
  * @category Awayto React
  */
-export type IBaseComponents = Record<string, IDefaultedComponent>;
+export type IBaseComponents = Record<string, IDefaultedComponent | (() => React.JSX.Element)>;
 
 const components = {} as IBaseComponents;
 
@@ -56,6 +53,9 @@ const components = {} as IBaseComponents;
  *
  * @category Hooks
  */
+
+const modules = import.meta.glob<{ default: ComponentType<any>; }>('/src/modules/*/*.tsx');
+
 export function useComponents(): IBaseComponents {
 
   // const { authenticated } = useAppSelector(state => state.auth);
@@ -76,9 +76,9 @@ export function useComponents(): IBaseComponents {
         //   components[prop] = ((): React.JSX.Element => createElement('div'));
         // }
 
-        if (!components[prop]) components[prop] = lazy<IBaseComponent>(() => import(`../${views[prop]}`) as Promise<{ default: IBaseComponent }>);
+        if (!components[prop]) components[prop] = lazy(() => modules[`/src/${views[prop]}.tsx`]());
 
-        target[prop] = views[prop] ? components[prop] : ((): React.JSX.Element => createElement('div'))
+        target[prop] = views[prop] ? components[prop] : ((): React.JSX.Element => createElement('div'));
 
         return Reflect.get(target, prop);
       }

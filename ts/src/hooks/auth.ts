@@ -3,15 +3,15 @@ import { createSlice } from '@reduxjs/toolkit';
 import Keycloak from 'keycloak-js';
 
 const {
-  REACT_APP_KC_REALM,
-  REACT_APP_KC_CLIENT,
-  REACT_APP_KC_PATH
-} = process.env as { [prop: string]: string };
+  VITE_REACT_APP_KC_REALM,
+  VITE_REACT_APP_KC_CLIENT,
+  VITE_REACT_APP_KC_PATH
+} = import.meta.env;
 
 export const keycloak = new Keycloak({
-  url: REACT_APP_KC_PATH,
-  realm: REACT_APP_KC_REALM,
-  clientId: REACT_APP_KC_CLIENT
+  url: VITE_REACT_APP_KC_PATH,
+  realm: VITE_REACT_APP_KC_REALM,
+  clientId: VITE_REACT_APP_KC_CLIENT
 });
 
 export const refreshToken = async (dur?: number) => {

@@ -4,13 +4,13 @@ import { keycloak, refreshToken } from './auth';
 import { utilSlice } from './util';
 
 const {
-  REACT_APP_APP_HOST_URL,
-} = process.env as { [prop: string]: string };
+  VITE_REACT_APP_APP_HOST_URL,
+} = import.meta.env;
 
 const setSnack = utilSlice.actions.setSnack;
 
 const baseQuery = fetchBaseQuery({
-  baseUrl: REACT_APP_APP_HOST_URL + "/api",
+  baseUrl: VITE_REACT_APP_APP_HOST_URL + "/api",
   prepareHeaders(headers) {
     if (!keycloak.token) {
       throw 'no token for api fetch';

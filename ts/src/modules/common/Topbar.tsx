@@ -32,8 +32,8 @@ import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { useSecure, useComponents, siteApi, keycloak, useStyles, SiteRoles } from 'awayto/hooks';
 
 const {
-  REACT_APP_APP_HOST_URL
-} = process.env as { [prop: string]: string }
+  VITE_REACT_APP_APP_HOST_URL
+} = import.meta.env;
 
 
 declare global {
@@ -255,7 +255,7 @@ export function Topbar(props: IComponent): React.JSX.Element {
           <MenuItem aria-label="logout of the application" onClick={() => {
             async function go() {
               localStorage.clear();
-              await keycloak.logout({ redirectUri: REACT_APP_APP_HOST_URL });
+              await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
             }
             void go();
           }}>

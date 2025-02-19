@@ -1,4 +1,4 @@
-import React, { ReactNode } from 'react';
+import React, { ComponentType, lazy, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -31,7 +31,7 @@ const root = createRoot(document.getElementById('root') as Element);
 if (window.location.pathname.startsWith('/app/ext/')) {
   (async function() {
     try {
-      const Ext = (await import('./modules/ext/Ext')).default;
+      const Ext = (await import('./modules/ext/Ext.tsx')).default;
       root.render(
         <Provider store={store}>
           <BrowserRouter basename="/app/ext">
@@ -47,7 +47,7 @@ if (window.location.pathname.startsWith('/app/ext/')) {
 } else {
   (async function() {
     try {
-      const AuthProvider = (await import('./modules/auth/AuthProvider')).default;
+      const AuthProvider = (await import('./modules/auth/AuthProvider.tsx')).default;
       root.render(
         <Provider store={store}>
           <BrowserRouter basename="/app">
@@ -60,4 +60,3 @@ if (window.location.pathname.startsWith('/app/ext/')) {
     }
   })().catch(console.error);
 }
-
