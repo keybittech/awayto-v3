@@ -61,7 +61,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
 
   const firstLoad = useRef(true);
   const [viewStep, setViewStep] = useState(1);
-  if (Object.keys(schedule?.brackets || {}).length && viewStep === 1 && firstLoad.current) {
+  if (firstLoad.current && viewStep === 1 && Object.keys(schedule?.brackets || {}).length) {
     setViewStep(2);
   }
 
@@ -148,7 +148,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
       }
     }
     void go();
-  }, [schedule, scheduleBracketsValues]);
+  }, [schedule, groupSchedule, scheduleBracketsValues]);
 
   return <>
     <DialogTitle>{!editSchedule?.id ? 'Create' : 'Manage'} Schedule Bracket</DialogTitle>

@@ -3,7 +3,7 @@ import { Route, Outlet, Routes } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
 
-import { useAppSelector, useComponents } from 'awayto/hooks';
+import { useComponents } from 'awayto/hooks';
 
 const Layout = (props: IComponent): React.JSX.Element => {
 

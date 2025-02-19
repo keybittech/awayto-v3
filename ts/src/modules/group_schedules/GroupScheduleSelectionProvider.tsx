@@ -1,4 +1,4 @@
-import React, { useContext, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
 import { dayjs, IGroupScheduleDateSlots, IQuote, TimeUnit, quotedDT, userTimezone, siteApi } from 'awayto/hooks';
 
@@ -18,15 +18,11 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
 
   const tz = useMemo(() => encodeURIComponent(btoa(userTimezone)), [userTimezone]);
 
-  const { data: dateSlots } = siteApi.useGroupScheduleServiceGetGroupScheduleByDateQuery({
-    groupScheduleId: groupSchedule?.schedule?.id || '',
-    date: startOfMonth.format("YYYY-MM-DD"),
-    timezone: tz,
-  }, { skip: !groupSchedule?.schedule?.id });
+  const [getScheduleDateSlots, { data: dateSlotsRequest, fulfilledTimeStamp, isFetching }] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleByDateQuery();
 
-  if (dateSlots?.groupScheduleDateSlots?.length && !firstAvailable.scheduleBracketSlotId) {
-    const [slot] = dateSlots.groupScheduleDateSlots as Required<IGroupScheduleDateSlots>[];
-    const time = quotedDT(slot.weekStart, slot.startTime);
+  if (dateSlotsRequest?.groupScheduleDateSlots?.length && !firstAvailable.scheduleBracketSlotId) {
+    const [slot] = dateSlotsRequest.groupScheduleDateSlots as Required<IGroupScheduleDateSlots>[];
+    const time = quotedDT(slot.startDate, slot.startTime);
     const firstAvail = { ...slot, time };
     setFirstAvailable(firstAvail);
     setSelectedDate(time);
@@ -41,6 +37,22 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
     return 0;
   }, [selectedDate]);
 
+  const getDateSlots = useCallback(() => {
+    if (groupSchedule?.schedule?.id?.length && startOfMonth && tz && !isFetching) {
+      getScheduleDateSlots({
+        groupScheduleId: groupSchedule?.schedule?.id,
+        date: startOfMonth.format("YYYY-MM-DD"),
+        timezone: tz,
+      });
+    }
+  }, [groupSchedule?.schedule, startOfMonth, tz, isFetching]);
+
+  useEffect(() => {
+    if (!dateSlotsRequest?.groupScheduleDateSlots && groupSchedule?.schedule?.id) {
+      getDateSlots();
+    }
+  }, [dateSlotsRequest, groupSchedule?.schedule]);
+
   useEffect(() => {
     const date = selectedDate?.format('YYYY-MM-DD');
     const timeHour = selectedTime?.hour() || 0;
@@ -49,7 +61,7 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
       .add(bracketSlotDateDayDiff, TimeUnit.DAY)
       .add(timeHour, TimeUnit.HOUR)
       .add(timeMins, TimeUnit.MINUTE);
-    const [slot] = dateSlots?.groupScheduleDateSlots?.filter(s => {
+    const [slot] = dateSlotsRequest?.groupScheduleDateSlots?.filter(s => {
       const startTimeDuration = dayjs.duration(s.startTime!);
       return s.startDate === date && duration.hours() === startTimeDuration.hours() && duration.minutes() === startTimeDuration.minutes();
     }) || [] as Required<IGroupScheduleDateSlots>[];
@@ -67,7 +79,8 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
     setSelectedTime,
     startOfMonth,
     setStartOfMonth,
-    dateSlots: dateSlots?.groupScheduleDateSlots,
+    dateSlots: dateSlotsRequest?.groupScheduleDateSlots,
+    getDateSlots,
     firstAvailable,
     bracketSlotDateDayDiff,
   } as GroupScheduleSelectionContextType;

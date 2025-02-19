@@ -70,9 +70,12 @@ export function staticDT(weekStart: dayjs.Dayjs, startTime: string): dayjs.Dayjs
 /**
  * @category Time Unit
  */
-export function quotedDT(weekStart: string, startTime: string): dayjs.Dayjs {
-  return staticDT(dayjs(weekStart), startTime);
+export function quotedDT(startDate: string, startTime: string): dayjs.Dayjs {
+  const d = dayjs.duration(startTime);
+  return dayjs(startDate).startOf('day').hour(d.hours()).minute(d.minutes());
 }
+
+
 
 /**
  * @category Time Unit

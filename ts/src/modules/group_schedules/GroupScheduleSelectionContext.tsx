@@ -13,6 +13,7 @@ declare global {
     startOfMonth: dayjs.Dayjs;
     setStartOfMonth(start: dayjs.Dayjs): void;
     dateSlots: Required<IGroupScheduleDateSlots>[];
+    getDateSlots: () => void;
     firstAvailable: { time: dayjs.Dayjs, scheduleBracketSlotId: string };
     bracketSlotDateDayDiff: number;
     GroupScheduleDateSelection?: FunctionComponent<IComponent>;

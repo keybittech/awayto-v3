@@ -15,7 +15,7 @@ func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Reques
 	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.group_user_schedules (group_schedule_id, user_schedule_id, created_sub, group_id)
 		VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid)
-		ON CONFLICT (group_schedule_id, user_schedule_id) DO NOTHING
+		ON CONFLICT (group_schedule_id, user_schedule_id) DO UPDATE SET updated_on = NOW()
 		RETURNING id
 	`, data.GetGroupScheduleId(), data.GetUserScheduleId(), session.UserSub, session.GroupId).Scan(&groupUserScheduleId)
 	if err != nil {

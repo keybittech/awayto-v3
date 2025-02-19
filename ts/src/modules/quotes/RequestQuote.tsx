@@ -1,4 +1,4 @@
-import React, { Suspense, useContext, useState } from 'react';
+import React, { Suspense, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import Alert from '@mui/material/Alert';
@@ -52,7 +52,7 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
     }
   } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
-  const { quote } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
+  const { quote, getDateSlots } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
   const {
     form: serviceForm,
@@ -71,21 +71,25 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
     comp: FileManagerComp
   } = useFiles();
 
-  const ServiceTierAddonsAccordion = useAccordion('Features', false, expanded === 'service_features', handleChange('service_features'));
-  const SelectTimeAccordion = useAccordion('Select Time', false, expanded === 'select_time', handleChange('select_time'));
-  const GroupScheduleServiceAccordion = useAccordion((groupScheduleService?.name || '') + ' Questionnaire', didSubmit && !serviceFormValid, expanded === 'service_questionnaire', handleChange('service_questionnaire'));
-  const GroupScheduleServiceTierAccordion = useAccordion((groupScheduleServiceTier?.name || '') + ' Questionnaire', didSubmit && !tierFormValid, expanded === 'tier_questionnaire', handleChange('tier_questionnaire'));
-  const FileManagerAccordion = useAccordion('Files', false, expanded === 'file_manager', handleChange('file_manager'));
+  useEffect(() => {
+    getDateSlots();
+  }, []);
+
+  // const ServiceTierAddonsAccordion = useAccordion('Features', false, expanded === 'service_features', handleChange('service_features'));
+  // const SelectTimeAccordion = useAccordion('Select Time', false, expanded === 'select_time', handleChange('select_time'));
+  // const GroupScheduleServiceAccordion = useAccordion((groupScheduleService?.name || '') + ' Questionnaire', didSubmit && !serviceFormValid, expanded === 'service_questionnaire', handleChange('service_questionnaire'));
+  // const GroupScheduleServiceTierAccordion = useAccordion((groupScheduleServiceTier?.name || '') + ' Questionnaire', didSubmit && !tierFormValid, expanded === 'tier_questionnaire', handleChange('tier_questionnaire'));
+  // const FileManagerAccordion = useAccordion('Files', false, expanded === 'file_manager', handleChange('file_manager'));
 
   return <>
-    <Grid container spacing={2}>
+    <Grid container spacing={2} direction="column" alignContent="center">
 
-      <Grid size={12}>
+      <Grid size={{ xs: 12, md: 10, xl: 8 }}>
         <Card>
           <CardHeader
             title="Create Request"
             subheader="Request services from a group. Some fields may be required depending on the service."
-            action={<GroupSelect />}
+          // action={<GroupSelect />}
           />
           <CardContent>
             <Grid container spacing={2}>
@@ -107,36 +111,37 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
           There are no active schedules or operations are currently halted.
         </Alert> : <Suspense fallback={<CircularProgress />}>
 
-          {groupScheduleService && <AccordionWrap {...ServiceTierAddonsAccordion}>
-            <ServiceTierAddons service={groupScheduleService} />
-          </AccordionWrap>}
-
-          {serviceForm && <AccordionWrap {...GroupScheduleServiceAccordion}>
-            <ServiceForm />
-          </AccordionWrap>}
-
-          {tierForm && <AccordionWrap {...GroupScheduleServiceTierAccordion}>
-            <TierForm />
-          </AccordionWrap>}
-
-          <AccordionWrap {...SelectTimeAccordion}>
-            <Grid container spacing={2}>
-              <Grid size={4}>
+          <Grid container spacing={2} mt={1}>
+            <Grid container spacing={1} size={{ xs: 12, md: 4 }} direction="column">
+              <Grid>
                 <ScheduleDatePicker key={groupSchedule?.schedule.id} />
               </Grid>
-              <Grid size={4}>
+              <Grid>
                 <ScheduleTimePicker key={groupSchedule?.schedule.id} />
               </Grid>
             </Grid>
-          </AccordionWrap>
+            <Grid container size={{ xs: 12, md: 8, xl: 8 }} sx={{ mt: { xs: 0, sm: 1.5 } }} spacing={2} direction="column">
+              <Grid>
+                <ServiceTierAddons service={groupScheduleService} />
+              </Grid>
+              <Grid>
+                <FileManagerComp {...props} />
+              </Grid>
+            </Grid>
+          </Grid>
 
-          <AccordionWrap {...FileManagerAccordion}>
-            <FileManagerComp {...props} />
-          </AccordionWrap>
+          <Grid container spacing={2} direction="column">
+            {serviceForm && <Grid size="grow">
+              <ServiceForm />
+            </Grid>}
+            {tierForm && <Grid size="grow">
+              <TierForm />
+            </Grid>}
+          </Grid>
         </Suspense>}
       </Grid>
 
-      {groupUserSchedulesRequest?.groupUserSchedules && <Grid size={12} mb={2}>
+      {groupUserSchedulesRequest?.groupUserSchedules && <Grid size={{ xs: 12, md: 10, xl: 8 }}>
         <Card>
           <CardActionArea onClick={() => {
             if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier || !quote.slotDate || !quote.scheduleBracketSlotId) {

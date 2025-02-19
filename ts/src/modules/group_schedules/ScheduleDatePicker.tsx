@@ -19,6 +19,12 @@ export function ScheduleDatePicker(): React.JSX.Element {
 
   return <DesktopDatePicker
     value={selectedDate}
+    sx={{
+      mt: '12px'
+    }}
+    slotProps={{
+      textField: { fullWidth: true }
+    }}
     onChange={(date: dayjs.Dayjs | null) => setSelectedDate(date ? date.isBefore(firstAvailable.time) ? firstAvailable.time : date : null)}
     label="Date"
     format="MM/DD/YYYY"
