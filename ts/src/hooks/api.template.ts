@@ -16,6 +16,7 @@ const baseQuery = fetchBaseQuery({
       throw 'no token for api fetch';
     }
 
+    headers.set('X-TZ', Intl.DateTimeFormat().resolvedOptions().timeZone);
     headers.set('Authorization', 'Bearer ' + keycloak.token);
     return headers
   },
