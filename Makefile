@@ -215,7 +215,7 @@ docker_up:
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA)
 	${SUDO} docker volume create $(REDIS_DATA)
-	${SUDO} docker $(DOCKER_COMPOSE) up -d --build
+	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build
 	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 
 .PHONY: docker_down
