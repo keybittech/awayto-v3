@@ -104,7 +104,7 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 			return util.ErrCheck(txErr)
 		}
 		return nil
-	}, subscriber.UserSub)
+	}, subscriber.UserSub, subscriber.GroupId)
 	if err != nil {
 		util.ErrorLog.Println(err)
 		return
@@ -178,7 +178,7 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 					continue
 				}
 
-				go a.SocketMessageRouter(socketMessage, subscriber.UserSub, connId)
+				go a.SocketMessageRouter(socketMessage, subscriber.UserSub, subscriber.GroupId, connId)
 			}
 		case err := <-errs:
 			util.ErrorLog.Println(util.ErrCheck(err))
@@ -190,7 +190,7 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 	}
 }
 
-func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId string) {
+func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, groupId, connId string) {
 	var err error
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
@@ -225,7 +225,7 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 				return util.ErrCheck(txErr)
 			}
 			return nil
-		}, userSub)
+		}, userSub, groupId)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
@@ -312,7 +312,7 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 				return util.ErrCheck(txErr)
 			}
 			return nil
-		}, userSub)
+		}, userSub, groupId)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
@@ -340,7 +340,7 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 					return util.ErrCheck(txErr)
 				}
 				return nil
-			}, userSub)
+			}, userSub, groupId)
 			if err != nil {
 				util.ErrorLog.Println(err)
 				return
@@ -370,7 +370,7 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, userSub, connId stri
 				return util.ErrCheck(txErr)
 			}
 			return nil
-		}, userSub)
+		}, userSub, groupId)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return

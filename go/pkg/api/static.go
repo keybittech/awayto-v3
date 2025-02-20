@@ -66,38 +66,57 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 		fmt.Printf("please set TS_DEV_SERVER_URL %s", err.Error())
 	}
 
-	// Attach demos
-	mux.Handle("/demos/", http.StripPrefix("/demos/", http.FileServer(http.Dir("demos/final/"))))
-
 	// Attach landing/ to domain url root /
-	mux.Handle("/", http.StripPrefix("/", http.FileServer(http.Dir("landing/public/"))))
+	landingFiles := http.FileServer(http.Dir("landing/public/"))
+	mux.Handle("/", http.StripPrefix("/",
+		a.LimitMiddleware(10, 5)(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				landingFiles.ServeHTTP(w, r)
+			}),
+		),
+	))
+
+	// Attach demos
+	demoFiles := http.FileServer(http.Dir("demos/final/"))
+	mux.Handle("/demos/", http.StripPrefix("/demos/",
+		a.LimitMiddleware(.1, 1)(
+			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				demoFiles.ServeHTTP(w, r)
+			}),
+		),
+	))
 
 	// use dev server or built for /app
 	_, err = http.Get(devServerUrl.String())
-
 	if err != nil && !strings.Contains(err.Error(), "failed to verify certificate") {
 		util.ErrCheck(err)
 		println("Using build folder")
 
 		fileServer := http.FileServer(http.Dir("ts/build/"))
 
-		mux.Handle("GET /app/", a.StaticAuthCheckMiddleware(http.StripPrefix("/app/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			redirect := &StaticRedirect{ResponseWriter: w}
-			if !strings.HasSuffix(r.URL.Path, ".js") {
-				fileServer.ServeHTTP(redirect, r)
-			} else {
-				w.Header().Set("Content-Encoding", "gzip")
-				gz := gzip.NewWriter(w)
-				defer gz.Close()
-				gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
-				fileServer.ServeHTTP(gzr, r)
-			}
-			if redirect.StatusCode == http.StatusNotFound {
-				r.URL.Path = "/"
-				redirect.Header().Set("Content-Type", "text/html")
-				fileServer.ServeHTTP(w, r)
-			}
-		}))))
+		mux.Handle("GET /app/", http.StripPrefix("/app/",
+			a.StaticAuthCheckMiddleware(
+				a.LimitMiddleware(5, 25)(
+					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+						redirect := &StaticRedirect{ResponseWriter: w}
+						if !strings.HasSuffix(r.URL.Path, ".js") {
+							fileServer.ServeHTTP(redirect, r)
+						} else {
+							w.Header().Set("Content-Encoding", "gzip")
+							gz := gzip.NewWriter(w)
+							defer gz.Close()
+							gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
+							fileServer.ServeHTTP(gzr, r)
+						}
+						if redirect.StatusCode == http.StatusNotFound {
+							r.URL.Path = "/"
+							redirect.Header().Set("Content-Type", "text/html")
+							fileServer.ServeHTTP(w, r)
+						}
+					}),
+				),
+			),
+		))
 	} else {
 		println("Using live reload")
 		var proxy *httputil.ReverseProxy
@@ -106,18 +125,12 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
-		mux.Handle("GET /app/", a.StaticAuthCheckMiddleware(http.StripPrefix("/app/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			proxy.ServeHTTP(w, r)
-		}))))
-
-		var wsDevProxy *httputil.ReverseProxy
-		wsDevProxy = httputil.NewSingleHostReverseProxy(devServerUrl)
-		wsDevProxy.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		}
-
-		mux.Handle("GET /ws", a.StaticAuthCheckMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			wsDevProxy.ServeHTTP(w, r)
-		})))
+		mux.Handle("GET /app/", http.StripPrefix("/app/",
+			a.StaticAuthCheckMiddleware(
+				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					proxy.ServeHTTP(w, r)
+				}),
+			),
+		))
 	}
 }

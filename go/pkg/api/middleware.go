@@ -5,11 +5,15 @@ import (
 	"av3api/pkg/util"
 	"bytes"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
+
+	"golang.org/x/time/rate"
 )
 
 type Middleware func(http.HandlerFunc) http.HandlerFunc
@@ -190,5 +194,55 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(http.HandlerFunc) 
 				}
 			}
 		}
+	}
+}
+
+// From https://blog.logrocket.com/rate-limiting-go-application
+func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.HandlerFunc) http.HandlerFunc {
+	type client struct {
+		limiter  *rate.Limiter
+		lastSeen time.Time
+	}
+	var (
+		mu      sync.Mutex
+		clients = make(map[string]*client)
+	)
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+			// Lock the mutex to protect this section from race conditions.
+			mu.Lock()
+			for ip, client := range clients {
+				if time.Since(client.lastSeen) > 3*time.Minute {
+					delete(clients, ip)
+				}
+			}
+			mu.Unlock()
+		}
+	}()
+	return func(next http.HandlerFunc) http.HandlerFunc {
+
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			// Extract the IP address from the request.
+			ip, _, err := net.SplitHostPort(r.RemoteAddr)
+			if err != nil {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			// Lock the mutex to protect this section from race conditions.
+			mu.Lock()
+			if _, found := clients[ip]; !found {
+				clients[ip] = &client{limiter: rate.NewLimiter(limit, burst)}
+			}
+			clients[ip].lastSeen = time.Now()
+			if !clients[ip].limiter.Allow() {
+				mu.Unlock()
+
+				w.WriteHeader(http.StatusTooManyRequests)
+				return
+			}
+			mu.Unlock()
+			next(w, r)
+		})
 	}
 }

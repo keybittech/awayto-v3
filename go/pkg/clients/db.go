@@ -240,27 +240,30 @@ func (pms *ProtoMapSerializer) Scan(src interface{}) error {
 
 func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error {
 
-	hasUserSub := len(ids) > 0 && ids[0] != ""
-	hasGroupId := len(ids) > 1 && ids[1] != ""
-
 	tx, err := db.Client().Begin()
 	if err != nil {
 		return util.ErrCheck(err)
 	}
 	defer tx.Rollback()
 
-	if hasUserSub {
-		err = tx.SetDbVar("user_sub", ids[0])
-		if err != nil {
-			return util.ErrCheck(err)
-		}
+	var userSub, groupId string
+
+	if len(ids) > 0 {
+		userSub = ids[0]
 	}
 
-	if hasGroupId {
-		err = tx.SetDbVar("group_id", ids[1])
-		if err != nil {
-			return util.ErrCheck(err)
-		}
+	if len(ids) > 1 {
+		groupId = ids[1]
+	}
+
+	err = tx.SetDbVar("user_sub", userSub)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("group_id", groupId)
+	if err != nil {
+		return util.ErrCheck(err)
 	}
 
 	err = doFunc(tx)
@@ -268,18 +271,14 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 		return util.ErrCheck(err)
 	}
 
-	if hasUserSub {
-		err = tx.SetDbVar("user_sub", "")
-		if err != nil {
-			return util.ErrCheck(err)
-		}
+	err = tx.SetDbVar("user_sub", "")
+	if err != nil {
+		return util.ErrCheck(err)
 	}
 
-	if hasGroupId {
-		err = tx.SetDbVar("group_id", "")
-		if err != nil {
-			return util.ErrCheck(err)
-		}
+	err = tx.SetDbVar("group_id", "")
+	if err != nil {
+		return util.ErrCheck(err)
 	}
 
 	err = tx.Commit()

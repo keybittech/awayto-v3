@@ -157,7 +157,7 @@ $(TS_API_BUILD): $(shell find proto/ -type f)
 		$(PROTO_FILES)
 	npx @rtk-query/codegen-openapi $(TS_CONFIG_API)
 
-$(TS_TARGET): .env $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,tsconfig.json,tsconfig.paths.json,package.json,.env} -type f) $(shell find proto/ -type f)
+$(TS_TARGET): .env $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,package.json,index.html,vite.config.ts,.env.local} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i
 	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
 	pnpm run --dir $(TS_SRC) build

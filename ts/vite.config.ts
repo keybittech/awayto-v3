@@ -5,8 +5,7 @@ import { sync } from 'glob';
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import viteCompression from 'vite-plugin-compression';
-import copy from 'rollup-plugin-copy';
-import circular from 'circular-dependency-plugin';
+import circleDeps from 'vite-plugin-circular-dependency';
 import { fileURLToPath } from 'url';
 import dotenv from 'dotenv';
 
@@ -108,6 +107,14 @@ const resolveApp = (relativePath: string) => path.resolve(appDirectory, relative
 
 export default defineConfig(_ => {
   return {
+    build: {
+      outDir: 'build',
+      rollupOptions: {
+        output: {
+          manualChunks: () => 'x'
+        }
+      }
+    },
     server: {
       port: 3000
     },
@@ -120,35 +127,13 @@ export default defineConfig(_ => {
     },
     plugins: [
       react(),
-      // Circular dependency checking
-      {
-        name: 'circular-dependency',
-        ...(new circular({
-          exclude: /a\.js|node_modules/,
-          include: /src/,
-          failOnError: true,
-          allowAsyncCycles: false,
-          cwd: process.cwd()
-        })),
-        apply: 'build'
-      },
-
-      // File copying (equivalent to CopyWebpackPlugin)
-      copy({
-        targets: [
-          {
-            src: 'node_modules/pdfjs-dist/build/pdf.worker.min.mjs',
-            dest: 'dist/static/js'
-          }
-        ],
-        hook: 'writeBundle'
+      circleDeps({
+        ignoreDynamicImport: true
       }),
-
-      // Compression (equivalent to CompressionWebpackPlugin)
       viteCompression({
         algorithm: 'gzip',
-        filter: /\.(js|css|html|svg)$/i,
-        threshold: 10240,
+        filter: /\.(js|mjs|json|css|html)$/i,
+        threshold: 1024,
       })
     ]
   };

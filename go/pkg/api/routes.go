@@ -214,10 +214,10 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 		})
 
 		middlewareHandler := ApplyMiddleware(protoHandler, []Middleware{
+			a.CorsMiddleware,
 			a.CacheMiddleware(handlerOpts),
 			a.SiteRoleCheckMiddleware(handlerOpts),
-			a.CorsMiddleware,
-			// a.SessionAuthMiddleware,
+			a.LimitMiddleware(2, 8),
 		})
 
 		mux.HandleFunc(handlerOpts.Pattern, middlewareHandler)

@@ -35,6 +35,7 @@ const (
 
 type SocketParams struct {
 	UserSub      string
+	GroupId      string
 	Ticket       string
 	Topic        string
 	Conn         net.Conn
@@ -72,6 +73,7 @@ type SocketMessage struct {
 
 type Subscriber struct {
 	UserSub          string
+	GroupId          string
 	ConnectionIds    []string
 	Tickets          map[string]string
 	SubscribedTopics map[string][]string
@@ -101,6 +103,7 @@ func InitSocket() ISocket {
 				} else {
 					subscriber = Subscriber{
 						UserSub:          cmd.Params.UserSub,
+						GroupId:          cmd.Params.GroupId,
 						Tickets:          map[string]string{auth: connectionId},
 						SubscribedTopics: map[string][]string{},
 					}
@@ -265,11 +268,11 @@ func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (f
 	}, nil
 }
 
-func (s *Socket) GetSocketTicket(sub string) (string, error) {
+func (s *Socket) GetSocketTicket(session *UserSession) (string, error) {
 	replyChan := make(chan SocketResponse)
 	s.Chan() <- SocketCommand{
 		Ty:        CreateSocketTicketSocketCommand,
-		Params:    SocketParams{UserSub: sub},
+		Params:    SocketParams{UserSub: session.UserSub, GroupId: session.GroupId},
 		ReplyChan: replyChan,
 	}
 	reply := <-replyChan

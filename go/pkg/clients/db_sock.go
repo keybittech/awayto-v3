@@ -37,6 +37,7 @@ func (db *Database) InitDBSocketConnection(tx IDatabaseTx, userSub string, connI
 }
 
 func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.IdStruct, error) {
+
 	rows, err := tx.Query(`
 		SELECT b.id
 		FROM dbtable_schema.bookings b
@@ -73,7 +74,7 @@ func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (S
 
 	participants := make(SocketParticipants)
 
-	topicRows, err := db.Client().Query(`
+	topicRows, err := tx.Query(`
 		SELECT
 			created_sub as scid,
 			JSONB_AGG(connection_id) as cids

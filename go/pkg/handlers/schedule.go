@@ -264,7 +264,7 @@ func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, scheduleId string
 				_, err = tx.Exec(`
 					DELETE FROM dbtable_schema.schedule_bracket_slots
 					WHERE schedule_bracket_id = $1 AND id <> ALL($2::uuid[])
-				`, bracketId, scheduledSlots.GetIds())
+				`, bracketId, pq.Array(scheduledSlots.GetIds()))
 				if err != nil {
 					return util.ErrCheck(err)
 				}

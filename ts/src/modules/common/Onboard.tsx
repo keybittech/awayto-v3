@@ -15,21 +15,27 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import CardHeader from '@mui/material/CardHeader';
+import Tooltip from '@mui/material/Tooltip';
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
 import Accordion from '@mui/material/Accordion';
 import AccordionSummary from '@mui/material/AccordionSummary';
 import AccordionDetails from '@mui/material/AccordionDetails';
 
+import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
 import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 
-import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken } from 'awayto/hooks';
+import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak } from 'awayto/hooks';
 import { Breadcrumbs, Dialog } from '@mui/material';
 
 import Icon from '../../img/kbt-icon.png';
+
+const {
+  VITE_REACT_APP_APP_HOST_URL
+} = import.meta.env;
 
 export function Onboard(props: IProps): React.JSX.Element {
 
@@ -52,8 +58,8 @@ export function Onboard(props: IProps): React.JSX.Element {
   const [assist, setAssist] = useState('');
   const [groupCode, setGroupCode] = useState('');
   const [currentAccordion, setCurrentAccordion] = useState(0);
-  const [currPage, setCurrPage] = useState<string | false>(location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
-  const [expanded, setExpanded] = useState<boolean>(false);
+  // const [currPage, setCurrPage] = useState<string | false>(location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
+  // const [expanded, setExpanded] = useState<boolean>(false);
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
@@ -187,6 +193,21 @@ export function Onboard(props: IProps): React.JSX.Element {
           <Grid size="grow" justifyItems="center">
             <Typography>Onboarding Progress</Typography>
             <OnboardingProgress />
+          </Grid>
+          <Grid>
+            <Tooltip title="Logout">
+              <IconButton
+                onClick={() => {
+                  async function go() {
+                    localStorage.clear();
+                    await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
+                  }
+                  void go();
+                }}
+              >
+                <ExitToAppIcon color="primary" />
+              </IconButton>
+            </Tooltip>
           </Grid>
         </Grid>
         <Grid container size={12} direction="row" sx={{ alignItems: "center" }}>

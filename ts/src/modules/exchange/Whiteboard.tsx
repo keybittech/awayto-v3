@@ -7,8 +7,9 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import 'react-pdf/dist/esm/Page/TextLayer.css';
 
 import { pdfjs } from 'react-pdf';
+import * as _ from 'pdfjs-dist';
 
-pdfjs.GlobalWorkerOptions.workerSrc = '../static/js/pdf.worker.min.mjs'
+pdfjs.GlobalWorkerOptions.workerSrc = '/app/pdf.worker.min.mjs';
 
 import { Document, Page } from 'react-pdf';
 

@@ -33,10 +33,9 @@
     "@types/react-window": "^1.8.8",
     "@types/redux-logger": "^3.0.13",
     "@vitejs/plugin-react": "^4.3.4",
-    "circular-dependency-plugin": "^5.2.2",
+    "vite-plugin-circular-dependency": "^0.5.0",
     "dotenv": "^16.4.7",
     "glob": "^11.0.1",
-    "rollup-plugin-copy": "^3.5.0",
     "typescript": "^5.7.2",
     "vite": "^6.1.1",
     "vite-plugin-compression": "^0.5.1"
