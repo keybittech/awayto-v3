@@ -64,7 +64,7 @@ func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data 
 				}
 
 				if strings.Contains(lowerCheck, "result:") {
-					resp = strings.Split(lowerCheck, "result:")[1]
+					resp = strings.Split(resp, "Result:")[1]
 				}
 
 				suggestions := strings.Split(resp, "|")

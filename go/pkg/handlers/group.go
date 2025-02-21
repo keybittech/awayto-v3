@@ -28,6 +28,10 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	var kcGroupExternalId, kcAdminSubgroupExternalId, groupId, groupName string
 
+	if strings.Contains(data.GetName(), " ") {
+		return nil, util.ErrCheck(util.UserError("Invalid group name."))
+	}
+
 	// Create group system user
 	groupSub, err := uuid.NewV7()
 	if err != nil {

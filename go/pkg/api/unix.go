@@ -50,12 +50,12 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 	handler := reflect.ValueOf(a.Handlers).MethodByName("AuthWebhook_" + authEvent.WebhookName)
 
 	if handler.IsValid() {
-		var deferralError error
+		var deferredError error
 
 		// Create fake context so we can use our regular http handlers
 		fakeReq, err := http.NewRequest("GET", "unix://auth", nil)
 		if err != nil {
-			deferralError = util.ErrCheck(err)
+			deferredError = util.ErrCheck(err)
 			return
 		}
 
@@ -66,71 +66,37 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 			Timezone:  authEvent.Timezone,
 		}
 
-		tx, err := a.Handlers.Database.Client().Begin()
-		if err != nil {
-			deferralError = util.ErrCheck(err)
-			return
-		}
-
-		err = tx.SetDbVar("user_sub", "worker")
-		if err != nil {
-			deferralError = util.ErrCheck(err)
-			return
-		}
-
-		err = tx.SetDbVar("group_id", "")
-		if err != nil {
-			deferralError = util.ErrCheck(err)
-			return
-		}
-
 		defer func() {
-			var deferredError error
-
-			err = tx.SetDbVar("user_sub", "")
-			if err != nil {
-				deferredError = util.ErrCheck(err)
-			}
-
 			if p := recover(); p != nil {
-				tx.Rollback()
 				panic(p)
-			} else if deferralError != nil {
-				tx.Rollback()
-			} else {
-				err = tx.Commit()
-				if err != nil {
-					deferralError = util.ErrCheck(err)
-				}
-			}
-
-			var loggedError string
-			if deferredError != nil {
-				loggedError = deferredError.Error()
-			}
-			if deferralError != nil {
-				loggedError = fmt.Sprintf("%s %s", loggedError, deferralError.Error())
-			}
-			if loggedError != "" {
-				util.ErrorLog.Println(loggedError)
-				fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, loggedError))
+			} else if deferredError != nil {
+				util.ErrorLog.Println(deferredError)
+				fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, deferredError))
 			}
 		}()
 
-		results := handler.Call([]reflect.Value{
-			reflect.ValueOf(fakeReq),
-			reflect.ValueOf(authEvent),
-			reflect.ValueOf(session),
-			reflect.ValueOf(tx),
-		})
+		results := []reflect.Value{}
+		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+			results = handler.Call([]reflect.Value{
+				reflect.ValueOf(fakeReq),
+				reflect.ValueOf(authEvent),
+				reflect.ValueOf(session),
+				reflect.ValueOf(tx),
+			})
+			return nil
+		}, "worker", "", "")
+		if err != nil {
+			deferredError = util.ErrCheck(err)
+			return
+		}
 
 		if len(results) != 2 {
-			deferralError = util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
+			deferredError = util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
 			return
 		}
 
 		if !results[1].IsNil() {
-			deferralError = util.ErrCheck(results[1].Interface().(error))
+			deferredError = util.ErrCheck(results[1].Interface().(error))
 			return
 		}
 

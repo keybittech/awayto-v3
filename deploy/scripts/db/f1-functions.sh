@@ -2,6 +2,20 @@
 
 psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
 
+  CREATE OR REPLACE FUNCTION dbfunc_schema.set_session_vars(
+    p_user_sub VARCHAR,
+    p_group_id VARCHAR,
+    p_roles VARCHAR
+  ) RETURNS VOID AS \$\$
+  BEGIN
+
+    EXECUTE format('SET SESSION app_session.user_sub = %L', p_user_sub);
+    EXECUTE format('SET SESSION app_session.group_id = %L', p_group_id);
+    EXECUTE format('SET SESSION app_session.roles = %L', p_roles);
+  
+  END;
+  \$\$ LANGUAGE PLPGSQL;
+
   CREATE OR REPLACE FUNCTION dbfunc_schema.delete_group(
     sub UUID  
   ) RETURNS TABLE (

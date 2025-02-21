@@ -64,6 +64,7 @@ func InitDatabase() IDatabase {
 	var adminRoleId, adminSub string
 
 	err = dbc.TxExec(func(tx IDatabaseTx) error {
+
 		var txErr error
 		txErr = tx.QueryRow(`
 			SELECT u.sub, r.id FROM dbtable_schema.users u
@@ -223,6 +224,9 @@ func (pms *ProtoMapSerializer) Scan(src interface{}) error {
 }
 
 func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error {
+	if ids == nil || len(ids) != 3 {
+		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
+	}
 
 	tx, err := db.Client().Begin()
 	if err != nil {
@@ -230,31 +234,9 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 	}
 	defer tx.Rollback()
 
-	var userSub, groupId, roles string
-
-	if len(ids) > 0 {
-		userSub = ids[0]
-	}
-
-	if len(ids) > 1 {
-		groupId = ids[1]
-	}
-
-	if len(ids) > 2 {
-		roles = ids[2]
-	}
-
-	err = tx.SetDbVar("user_sub", userSub)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	err = tx.SetDbVar("group_id", groupId)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	err = tx.SetDbVar("roles", roles)
+	_, err = tx.Exec(`
+		SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)
+	`, ids[0], ids[1], ids[2])
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -264,17 +246,9 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 		return util.ErrCheck(err)
 	}
 
-	err = tx.SetDbVar("user_sub", "")
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	err = tx.SetDbVar("group_id", "")
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	err = tx.SetDbVar("roles", "")
+	_, err = tx.Exec(`
+		SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)
+	`, "", "", "")
 	if err != nil {
 		return util.ErrCheck(err)
 	}

@@ -134,7 +134,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 									results := []reflect.Value{}
 
-									a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+									err := a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
 										results = handlerFunc.Call([]reflect.Value{
 											reflect.ValueOf(w),
 											reflect.ValueOf(req),
@@ -144,6 +144,10 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 										})
 										return nil
 									}, session.UserSub, session.GroupId, strings.Join(session.AvailableUserGroupRoles, " "))
+									if err != nil {
+										deferredError = util.ErrCheck(err)
+										return
+									}
 
 									// Handle errors
 

@@ -60,12 +60,12 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
     group.allowedDomains = allowedDomains.join(',');
 
     const newGroup = {
-      name: group.name,
-      displayName: group.name.replaceAll(/__+/g, '_')
-        .replaceAll(/\s/g, '_')
-        .replaceAll(/[\W]+/g, '_')
-        .replaceAll(/__+/g, '_')
-        .replaceAll(/__+/g, '').toLowerCase(),
+      displayName: group.name,
+      name: group.name.replace(/__+/g, '_')
+        .replace(/\s/g, '_')
+        .replace(/[\W]+/g, '_')
+        .replace(/__+/g, '_')
+        .replace(/__+/g, '').toLowerCase(),
       purpose: group.purpose,
       allowedDomains: allowedDomains.join(','),
       ai: group.ai
