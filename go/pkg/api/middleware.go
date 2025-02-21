@@ -139,7 +139,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			return
 		}
 
-		// If the group is not changing and there's an existing session
+		// If the group is not changing via client selection and there's an existing session
 		if gidSelect == "" && existingSession != nil {
 
 			// Get the most recent group version (role changes, etc)
@@ -152,7 +152,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			// If the group version has not changed
 			if existingSession.GroupSessionVersion == groupVersion {
 
-				// Rebuild the group info
+				// Ignore rebuilding
 				skipRebuild = true
 			}
 		}
@@ -170,8 +170,12 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			}
 		}
 
-		// Keep separate so above checks can take place
-		if !skipRebuild {
+		// re-use existing session info if no changes
+		if skipRebuild && existingSession != nil && len(session.SubGroups) > 0 {
+
+			session = existingSession
+
+		} else {
 
 			// If user belongs to a group, get info about it
 			if len(session.SubGroups) > 0 {

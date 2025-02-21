@@ -29,7 +29,7 @@ func (db *Database) InitDBSocketConnection(tx IDatabaseTx, userSub string, connI
 				return util.ErrCheck(err)
 			}
 			return nil
-		}, "worker")
+		}, "worker", "", "")
 		if err != nil {
 			util.ErrorLog.Println(err)
 		}
