@@ -241,8 +241,12 @@ docker_stop:
 docker_db:
 	$(DOCKER_DB_EXEC) $(DOCKER_DB_CID) psql -U postgres -d ${PG_DB}
 
-.PHONY: docker_db_start
-docker_db_start:
+.PHONY: docker_db_redeploy
+docker_db_redeploy: docker_stop
+	${SUDO} docker volume remove $(PG_DATA) || true
+	${SUDO} docker volume remove $(REDIS_DATA) || true
+	${SUDO} docker volume create $(PG_DATA)
+	${SUDO} docker volume create $(REDIS_DATA)
 	${SUDO} docker $(DOCKER_COMPOSE) up -d db
 	sleep 5
 
@@ -252,7 +256,7 @@ docker_db_backup: $(DB_BACKUP_DIR)
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
 .PHONY: docker_db_restore
-docker_db_restore: docker_stop docker_db_start docker_db_restore_op docker_start
+docker_db_restore: docker_db_redeploy docker_db_restore_op docker_start
 
 .PHONY: docker_db_restore_op
 docker_db_restore_op:
@@ -459,7 +463,7 @@ host_db_backup:
 
 .PHONY: host_db_restore
 host_db_restore:
-	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_restore_op"
+	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_restore"
 
 .PHONY: host_db_restore_op
 host_db_restore_op: host_predeploy host_service_stop host_db_restore host_service_start host_postdeploy
