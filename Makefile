@@ -141,10 +141,10 @@ $(JAVA_TARGET): .env $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	mvn -f $(JAVA_SRC) install
 
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
-$(LANDING_TARGET): .env 
-	npm --prefix ./landing i
-	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%d-%m-%Y)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
-	npm run --prefix ./landing build
+$(LANDING_TARGET): .env $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json,config.yaml} -type f)
+	npm --prefix ${LANDING_SRC} i
+	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
+	npm run --prefix ${LANDING_SRC} build
 
 .PHONY: landing_dev
 landing_dev: build
