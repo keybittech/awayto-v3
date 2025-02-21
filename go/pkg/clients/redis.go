@@ -51,18 +51,9 @@ func InitRedis() IRedis {
 		}
 	}()
 
-	r := &Redis{}
-	r.SetClient(redisClient)
-	r.InitKeys()
-	return r
-}
-
-func (r *Redis) Client() IRedisClient {
-	return r.RedisClient
-}
-
-func (r *Redis) SetClient(c IRedisClient) {
-	r.RedisClient = c
+	return &Redis{
+		RedisClient: redisClient,
+	}
 }
 
 var socketServerConnectionsKey = "socket_server_connections"
@@ -73,6 +64,10 @@ func ParticipantTopicsKey(topic string) string {
 
 func SocketIdTopicsKey(socketId string) string {
 	return fmt.Sprintf("socket_id:%s:topics", socketId)
+}
+
+func (r *Redis) Client() IRedisClient {
+	return r.RedisClient
 }
 
 func (r *Redis) InitKeys() {

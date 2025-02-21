@@ -6,7 +6,6 @@ import (
 	"context"
 	"database/sql"
 	"net"
-	"net/http"
 	"time"
 
 	redis "github.com/redis/go-redis/v9"
@@ -63,7 +62,6 @@ type IRows interface {
 
 type IRedis interface {
 	Client() IRedisClient
-	SetClient(IRedisClient)
 	InitKeys()
 	InitRedisSocketConnection(socketId string) error
 	HandleUnsub(socketId string) (map[string][]string, error)
@@ -74,9 +72,8 @@ type IRedis interface {
 	GetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	GetSession(ctx context.Context, userSub string) (*UserSession, error)
-	SetSession(ctx context.Context, userSub string, session *UserSession) error
+	SetSession(ctx context.Context, session *UserSession) error
 	DeleteSession(ctx context.Context, userSub string) error
-	ReqSession(req *http.Request) (*UserSession, error)
 }
 
 type IRedisClient interface {
@@ -95,7 +92,7 @@ type IKeycloak interface {
 	Chan() chan<- KeycloakCommand
 	Client() *KeycloakClient
 	UpdateUser(id, firstName, lastName string) error
-	GetUserTokenValid(token string) (bool, error)
+	GetUserTokenValid(token string) (*KeycloakUser, error)
 	GetUserInfoById(id string) (*KeycloakUser, error)
 	GetGroupAdminRoles() []KeycloakRole
 	GetGroupSiteRoles(groupId string) []ClientRoleMappingRole

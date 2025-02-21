@@ -63,34 +63,18 @@ func InitDatabase() IDatabase {
 
 	var adminRoleId, adminSub string
 
-	tx, err := dbc.Client().Begin()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	defer tx.Rollback()
-
-	err = tx.SetDbVar("user_sub", "worker")
-	if err != nil {
-		log.Fatal(fmt.Sprintf("can't set app sub %s", err))
-	}
-
-	err = tx.QueryRow(`SELECT sub FROM dbtable_schema.users WHERE username = 'system_owner'`).Scan(&adminSub)
-	if err != nil {
-		log.Fatal(fmt.Sprintf("can't get admin sub %s", err))
-	}
-
-	err = tx.QueryRow(`SELECT id FROM dbtable_schema.roles WHERE name = 'Admin'`).Scan(&adminRoleId)
-	if err != nil {
-		log.Fatal(fmt.Sprintf("can't get admin role %s", err))
-	}
-
-	err = tx.SetDbVar("user_sub", "")
-	if err != nil {
-		log.Fatal(fmt.Sprintf("can't set app sub %s", err))
-	}
-
-	err = tx.Commit()
+	err = dbc.TxExec(func(tx IDatabaseTx) error {
+		var txErr error
+		txErr = tx.QueryRow(`
+			SELECT u.sub, r.id FROM dbtable_schema.users u
+			JOIN dbtable_schema.roles r ON r.name = 'Admin'
+			WHERE u.username = 'system_owner'
+		`).Scan(&adminSub, &adminRoleId)
+		if txErr != nil {
+			return errors.New(fmt.Sprintf("can't get admin sub %s", txErr))
+		}
+		return nil
+	}, "worker", "", "")
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -246,7 +230,7 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 	}
 	defer tx.Rollback()
 
-	var userSub, groupId string
+	var userSub, groupId, roles string
 
 	if len(ids) > 0 {
 		userSub = ids[0]
@@ -256,12 +240,21 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 		groupId = ids[1]
 	}
 
+	if len(ids) > 2 {
+		roles = ids[2]
+	}
+
 	err = tx.SetDbVar("user_sub", userSub)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
 
 	err = tx.SetDbVar("group_id", groupId)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("roles", roles)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -277,6 +270,11 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 	}
 
 	err = tx.SetDbVar("group_id", "")
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	err = tx.SetDbVar("roles", "")
 	if err != nil {
 		return util.ErrCheck(err)
 	}

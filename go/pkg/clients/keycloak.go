@@ -129,11 +129,11 @@ func InitKeycloak() IKeycloak {
 					cmd.ReplyChan <- KeycloakResponse{Error: err}
 				} else {
 					for _, realmClient := range *realmClients {
-						if realmClient.ClientID == string(os.Getenv("KC_CLIENT")) {
+						if realmClient.ClientId == string(os.Getenv("KC_CLIENT")) {
 							println("setting app client")
 							kc.AppClient = &realmClient
 						}
-						if realmClient.ClientID == string(os.Getenv("KC_API_CLIENT")) {
+						if realmClient.ClientId == string(os.Getenv("KC_API_CLIENT")) {
 							println("setting api client")
 							kc.ApiClient = &realmClient
 						}
@@ -163,8 +163,8 @@ func InitKeycloak() IKeycloak {
 				user, err := kc.GetUserInfoById(cmd.Params.UserId)
 				cmd.ReplyChan <- KeycloakResponse{User: user, Error: err}
 			case GetUserTokenValidKeycloakCommand:
-				valid, err := kc.ValidateToken(cmd.Params.Token)
-				cmd.ReplyChan <- KeycloakResponse{Valid: valid, Error: err}
+				kcUser, err := kc.ValidateToken(cmd.Params.Token)
+				cmd.ReplyChan <- KeycloakResponse{User: kcUser, Error: err}
 			case UpdateUserKeycloakCommand:
 				err := kc.UpdateUser(cmd.Params.UserId, cmd.Params.FirstName, cmd.Params.LastName)
 				cmd.ReplyChan <- KeycloakResponse{Error: err}
@@ -267,7 +267,7 @@ func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
 	return nil
 }
 
-func (k *Keycloak) GetUserTokenValid(token string) (bool, error) {
+func (k *Keycloak) GetUserTokenValid(token string) (*KeycloakUser, error) {
 	kcUserInfoTokenReplyChan := make(chan KeycloakResponse)
 	k.Chan() <- KeycloakCommand{
 		Ty:        GetUserTokenValidKeycloakCommand,
@@ -278,10 +278,10 @@ func (k *Keycloak) GetUserTokenValid(token string) (bool, error) {
 	close(kcUserInfoTokenReplyChan)
 
 	if kcUserInfoTokenReply.Error != nil {
-		return false, kcUserInfoTokenReply.Error
+		return nil, kcUserInfoTokenReply.Error
 	}
 
-	return kcUserInfoTokenReply.Valid, nil
+	return kcUserInfoTokenReply.User, nil
 }
 
 func (k *Keycloak) GetUserInfoById(id string) (*KeycloakUser, error) {

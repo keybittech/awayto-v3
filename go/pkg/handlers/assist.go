@@ -5,7 +5,6 @@ import (
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"net/http"
-	"regexp"
 	"strconv"
 	"strings"
 )
@@ -58,21 +57,23 @@ func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data 
 					continue
 				}
 
-				if strings.Contains(resp, "Result:") {
-					resp = strings.Split(resp, "Result:")[1]
+				lowerCheck := strings.ToLower(resp)
+
+				if strings.Contains(lowerCheck, "sorry") {
+					continue
 				}
 
-				r, err := regexp.Compile(`[-:\.]`)
-				if err != nil {
-					continue
-				}
-				if r.MatchString(resp) {
-					continue
+				if strings.Contains(lowerCheck, "result:") {
+					resp = strings.Split(lowerCheck, "result:")[1]
 				}
 
 				suggestions := strings.Split(resp, "|")
 				for _, str := range suggestions {
 					str = strings.TrimSpace(str)
+				}
+
+				if len(suggestions) != 5 {
+					continue
 				}
 
 				return suggestions, nil

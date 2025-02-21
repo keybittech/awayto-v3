@@ -1,6 +1,7 @@
 package api
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"encoding/json"
@@ -51,175 +52,137 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 		ignoreFields := slices.Concat([]string{"state", "sizeCache", "unknownFields"}, handlerOpts.NoLogFields)
 
-		protoHandler := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		mux.HandleFunc(handlerOpts.Pattern,
+			a.LimitMiddleware(2, 8)(
+				a.ValidateTokenMiddleware(
+					a.GroupInfoMiddleware(
+						a.SiteRoleCheckMiddleware(handlerOpts)(
+							a.CacheMiddleware(handlerOpts)(
+								func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
 
-			var deferredError error
-			var pbVal reflect.Value
+									var deferredError error
+									var pbVal reflect.Value
 
-			exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
+									exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
 
-			requestId := uuid.NewString()
+									requestId := uuid.NewString()
 
-			// Setup handler transaction
+									// Setup handler deferrals
 
-			tx, err := a.Handlers.Database.Client().Begin()
-			if err != nil {
-				util.RequestError(w, requestId, util.ErrCheck(err).Error(), ignoreFields, pbVal)
-				return
-			}
+									defer func() {
+										if p := recover(); p != nil {
+											panic(p)
+										} else if deferredError != nil {
+											util.RequestError(w, requestId, deferredError.Error(), ignoreFields, pbVal)
+										}
+									}()
 
-			// Setup handler deferrals
+									// Transform the request body to a protobuf struct
 
-			defer func() {
-				var deferralError error
+									pb := serviceType.New().Interface()
 
-				err = tx.SetDbVar("user_sub", "")
-				if err != nil {
-					deferralError = util.ErrCheck(err)
-				}
+									if req.Method == http.MethodPost && strings.Contains(req.URL.Path, "files/content") {
+										req.ParseMultipartForm(20480000)
 
-				err = tx.SetDbVar("group_id", "")
-				if err != nil {
-					deferralError = util.ErrCheck(err)
-				}
+										files := req.MultipartForm.File["contents"]
 
-				if p := recover(); p != nil {
-					tx.Rollback()
-					panic(p)
-				} else if deferredError != nil {
-					tx.Rollback()
-				} else {
-					err = tx.Commit()
-					if err != nil {
-						deferralError = util.ErrCheck(err)
-					}
-				}
+										pbFiles := &types.PostFileContentsRequest{}
 
-				var loggedError string
-				if deferredError != nil {
-					loggedError = deferredError.Error()
-				}
-				if deferralError != nil {
-					loggedError = fmt.Sprintf("%s %s", loggedError, deferralError.Error())
-				}
-				if loggedError != "" {
-					util.RequestError(w, requestId, loggedError, ignoreFields, pbVal)
-				}
-			}()
+										for _, f := range files {
+											fileBuf := make([]byte, f.Size)
 
-			// Authorize the request
+											fileData, _ := f.Open()
+											fileData.Read(fileBuf)
+											fileData.Close()
 
-			session, err := a.GetAuthorizedSession(w, req, tx)
-			if err != nil {
-				util.RequestError(w, requestId, util.ErrCheck(err).Error(), ignoreFields, pbVal)
-				return
-			}
+											pbFiles.Contents = append(pbFiles.Contents, &types.FileContent{
+												Name:    f.Filename,
+												Content: fileBuf,
+											})
+										}
 
-			// Transform the request body to a protobuf struct
+										pb = pbFiles
+									} else {
+										body, err := io.ReadAll(req.Body)
+										if err != nil {
+											deferredError = util.ErrCheck(err)
+											return
+										}
+										defer req.Body.Close()
 
-			pb := serviceType.New().Interface()
+										if len(body) > 0 {
+											err = json.Unmarshal(body, pb)
+											if err != nil {
+												deferredError = util.ErrCheck(err)
+												return
+											}
+										}
+									}
 
-			if req.Method == http.MethodPost && strings.Contains(req.URL.Path, "files/content") {
-				req.ParseMultipartForm(20480000)
+									pbVal = reflect.ValueOf(pb).Elem()
 
-				files := req.MultipartForm.File["contents"]
+									// Parse query and path parameters
 
-				pbFiles := &types.PostFileContentsRequest{}
+									util.ParseProtoQueryParams(pbVal, req.URL.Query())
+									util.ParseProtoPathParams(
+										pbVal,
+										strings.Split(handlerOpts.ServiceMethodURL, "/"),
+										strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
+									)
 
-				for _, f := range files {
-					fileBuf := make([]byte, f.Size)
+									// Perform the handler function
 
-					fileData, _ := f.Open()
-					fileData.Read(fileBuf)
-					fileData.Close()
+									results := []reflect.Value{}
 
-					pbFiles.Contents = append(pbFiles.Contents, &types.FileContent{
-						Name:    f.Filename,
-						Content: fileBuf,
-					})
-				}
+									a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+										results = handlerFunc.Call([]reflect.Value{
+											reflect.ValueOf(w),
+											reflect.ValueOf(req),
+											reflect.ValueOf(pb),
+											reflect.ValueOf(session),
+											reflect.ValueOf(tx),
+										})
+										return nil
+									}, session.UserSub, session.GroupId, strings.Join(session.AvailableUserGroupRoles, " "))
 
-				pb = pbFiles
-			} else {
-				body, err := io.ReadAll(req.Body)
-				if err != nil {
-					deferredError = util.ErrCheck(err)
-					return
-				}
-				defer req.Body.Close()
+									// Handle errors
 
-				if len(body) > 0 {
-					err = json.Unmarshal(body, pb)
-					if err != nil {
-						deferredError = util.ErrCheck(err)
-						return
-					}
-				}
-			}
+									if len(results) != 2 {
+										deferredError = util.ErrCheck(errors.New("badly formed handler"))
+										return
+									}
 
-			pbVal = reflect.ValueOf(pb).Elem()
+									if err, ok := results[1].Interface().(error); ok {
+										deferredError = util.ErrCheck(err)
+										return
+									}
 
-			// Parse query and path parameters
+									// Transform the response
 
-			util.ParseProtoQueryParams(pbVal, req.URL.Query())
-			util.ParseProtoPathParams(
-				pbVal,
-				strings.Split(handlerOpts.ServiceMethodURL, "/"),
-				strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
-			)
+									if req.Method == http.MethodGet && strings.Contains(req.URL.Path, "files/content") {
+										w.Header().Add("Content-Type", "application/octet-stream")
+										_, err := w.Write(*results[0].Interface().(*[]byte))
+										if err != nil {
+											deferredError = util.ErrCheck(err)
+											return
+										}
+									} else {
+										pbJsonBytes, err := protojson.Marshal(results[0].Interface().(protoreflect.ProtoMessage))
+										if err != nil {
+											deferredError = util.ErrCheck(err)
+											return
+										}
 
-			// Perform the handler function
+										defer exeTimeDefer("response len " + fmt.Sprint(len(pbJsonBytes)))
 
-			results := handlerFunc.Call([]reflect.Value{
-				reflect.ValueOf(w),
-				reflect.ValueOf(req),
-				reflect.ValueOf(pb),
-				reflect.ValueOf(session),
-				reflect.ValueOf(tx),
-			})
-
-			// Handle errors
-
-			if len(results) != 2 {
-				deferredError = util.ErrCheck(errors.New("badly formed handler"))
-				return
-			}
-
-			if err, ok := results[1].Interface().(error); ok {
-				deferredError = err
-				return
-			}
-
-			// Transform the response
-
-			if req.Method == http.MethodGet && strings.Contains(req.URL.Path, "files/content") {
-				w.Header().Add("Content-Type", "application/octet-stream")
-				_, err := w.Write(*results[0].Interface().(*[]byte))
-				if err != nil {
-					deferredError = util.ErrCheck(err)
-					return
-				}
-			} else {
-				pbJsonBytes, err := protojson.Marshal(results[0].Interface().(protoreflect.ProtoMessage))
-				if err != nil {
-					deferredError = util.ErrCheck(err)
-					return
-				}
-
-				defer exeTimeDefer("response len " + fmt.Sprint(len(pbJsonBytes)))
-
-				w.Write(pbJsonBytes)
-			}
-
-		})
-
-		middlewareHandler := ApplyMiddleware(protoHandler, []Middleware{
-			a.CorsMiddleware,
-			a.CacheMiddleware(handlerOpts),
-			a.SiteRoleCheckMiddleware(handlerOpts),
-			a.LimitMiddleware(2, 8),
-		})
-
-		mux.HandleFunc(handlerOpts.Pattern, middlewareHandler)
+										w.Write(pbJsonBytes)
+									}
+								},
+							),
+						),
+					),
+				),
+			),
+		)
 	}
 }

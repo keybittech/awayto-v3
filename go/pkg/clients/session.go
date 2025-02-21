@@ -1,11 +1,8 @@
 package clients
 
 import (
-	"av3api/pkg/util"
 	"context"
 	"encoding/json"
-	"errors"
-	"net/http"
 	"time"
 )
 
@@ -58,63 +55,20 @@ func (r *Redis) GetSession(ctx context.Context, userSub string) (*UserSession, e
 		return nil, err
 	}
 
-	r.Client().Expire(ctx, "user_session:"+userSub, sessionDuration)
+	// not sure if this is needed
+	// r.Client().Expire(ctx, "user_session:"+userSub, sessionDuration)
 
 	return &userSession, nil
 }
 
-func (r *Redis) SetSession(ctx context.Context, userSub string, session *UserSession) error {
+func (r *Redis) SetSession(ctx context.Context, session *UserSession) error {
 	sessionJson, err := json.Marshal(session)
 	if err != nil {
 		return err
 	}
-	return r.Client().Set(ctx, "user_session:"+userSub, sessionJson, sessionDuration).Err()
+	return r.Client().Set(ctx, "user_session:"+session.UserSub, sessionJson, sessionDuration).Err()
 }
 
 func (r *Redis) DeleteSession(ctx context.Context, userSub string) error {
 	return r.Client().Del(ctx, "user_session:"+userSub).Err()
-}
-
-func (r *Redis) ReqSession(req *http.Request) (*UserSession, error) {
-
-	token, ok := req.Header["Authorization"]
-	if !ok {
-		return nil, errors.New("no auth token")
-	}
-
-	userToken, _, err := ParseJWT(token[0])
-	if err != nil {
-		return nil, err
-	}
-
-	session, err := r.GetSession(req.Context(), userToken.Sub)
-	if session == nil && err != nil && err.Error() != "redis: nil" {
-		return nil, err
-	}
-
-	update := false
-
-	if session == nil {
-		update = true
-		session = &UserSession{
-			UserSub:   userToken.Sub,
-			UserEmail: userToken.Email,
-			SubGroups: userToken.Groups,
-			AnonIp:    util.AnonIp(req.RemoteAddr),
-		}
-	}
-
-	if len(session.SubGroups) != len(userToken.Groups) {
-		update = true
-		session.SubGroups = userToken.Groups
-	}
-
-	if update {
-		err = r.SetSession(req.Context(), userToken.Sub, session)
-		if err != nil {
-			return nil, err
-		}
-	}
-
-	return session, nil
 }

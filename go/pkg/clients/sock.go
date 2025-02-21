@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -36,6 +37,7 @@ const (
 type SocketParams struct {
 	UserSub      string
 	GroupId      string
+	Roles        string
 	Ticket       string
 	Topic        string
 	Conn         net.Conn
@@ -74,6 +76,7 @@ type SocketMessage struct {
 type Subscriber struct {
 	UserSub          string
 	GroupId          string
+	Roles            string
 	ConnectionIds    []string
 	Tickets          map[string]string
 	SubscribedTopics map[string][]string
@@ -104,6 +107,7 @@ func InitSocket() ISocket {
 					subscriber = Subscriber{
 						UserSub:          cmd.Params.UserSub,
 						GroupId:          cmd.Params.GroupId,
+						Roles:            cmd.Params.Roles,
 						Tickets:          map[string]string{auth: connectionId},
 						SubscribedTopics: map[string][]string{},
 					}
@@ -272,7 +276,7 @@ func (s *Socket) GetSocketTicket(session *UserSession) (string, error) {
 	replyChan := make(chan SocketResponse)
 	s.Chan() <- SocketCommand{
 		Ty:        CreateSocketTicketSocketCommand,
-		Params:    SocketParams{UserSub: session.UserSub, GroupId: session.GroupId},
+		Params:    SocketParams{UserSub: session.UserSub, GroupId: session.GroupId, Roles: strings.Join(session.AvailableUserGroupRoles, " ")},
 		ReplyChan: replyChan,
 	}
 	reply := <-replyChan

@@ -1,6 +1,7 @@
 package api
 
 import (
+	"av3api/pkg/clients"
 	"av3api/pkg/util"
 	"compress/gzip"
 	"crypto/tls"
@@ -12,21 +13,6 @@ import (
 	"os"
 	"strings"
 )
-
-func (a *API) StaticAuthCheckMiddleware(next http.Handler) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		// session := a.Handlers.Redis.ReqSession(req)
-		// TODO integreate session.UserRoles
-		hasRole := true
-
-		if hasRole {
-			next.ServeHTTP(w, req)
-		} else {
-			http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
-			return
-		}
-	}
-}
 
 type StaticGzip struct {
 	io.Writer
@@ -69,10 +55,10 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 	// Attach landing/ to domain url root /
 	landingFiles := http.FileServer(http.Dir("landing/public/"))
 	mux.Handle("/", http.StripPrefix("/",
-		a.LimitMiddleware(10, 5)(
-			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		a.LimitMiddleware(10, 10)(
+			func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
 				landingFiles.ServeHTTP(w, r)
-			}),
+			},
 		),
 	))
 
@@ -80,9 +66,11 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 	demoFiles := http.FileServer(http.Dir("demos/final/"))
 	mux.Handle("/demos/", http.StripPrefix("/demos/",
 		a.LimitMiddleware(.1, 1)(
-			http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				demoFiles.ServeHTTP(w, r)
-			}),
+			a.ValidateTokenMiddleware(
+				func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+					demoFiles.ServeHTTP(w, r)
+				},
+			),
 		),
 	))
 
@@ -95,26 +83,24 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 		fileServer := http.FileServer(http.Dir("ts/build/"))
 
 		mux.Handle("GET /app/", http.StripPrefix("/app/",
-			a.StaticAuthCheckMiddleware(
-				a.LimitMiddleware(5, 25)(
-					http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-						redirect := &StaticRedirect{ResponseWriter: w}
-						if !strings.HasSuffix(r.URL.Path, ".js") {
-							fileServer.ServeHTTP(redirect, r)
-						} else {
-							w.Header().Set("Content-Encoding", "gzip")
-							gz := gzip.NewWriter(w)
-							defer gz.Close()
-							gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
-							fileServer.ServeHTTP(gzr, r)
-						}
-						if redirect.StatusCode == http.StatusNotFound {
-							r.URL.Path = "/"
-							redirect.Header().Set("Content-Type", "text/html")
-							fileServer.ServeHTTP(w, r)
-						}
-					}),
-				),
+			a.LimitMiddleware(10, 10)(
+				func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+					redirect := &StaticRedirect{ResponseWriter: w}
+					if !strings.HasSuffix(req.URL.Path, ".js") {
+						fileServer.ServeHTTP(redirect, req)
+					} else {
+						w.Header().Set("Content-Encoding", "gzip")
+						gz := gzip.NewWriter(w)
+						defer gz.Close()
+						gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
+						fileServer.ServeHTTP(gzr, req)
+					}
+					if redirect.StatusCode == http.StatusNotFound {
+						req.URL.Path = "/"
+						redirect.Header().Set("Content-Type", "text/html")
+						fileServer.ServeHTTP(w, req)
+					}
+				},
 			),
 		))
 	} else {
@@ -126,10 +112,10 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 		}
 
 		mux.Handle("GET /app/", http.StripPrefix("/app/",
-			a.StaticAuthCheckMiddleware(
-				http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					proxy.ServeHTTP(w, r)
-				}),
+			a.LimitMiddleware(100, 200)(
+				func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+					proxy.ServeHTTP(w, req)
+				},
 			),
 		))
 	}

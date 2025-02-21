@@ -57,54 +57,29 @@ type KeycloakClient struct {
 	PublicKey       *rsa.PublicKey
 }
 
-type JWKSInfo struct {
-	Alg string   `json:"alg"`
-	Typ string   `json:"typ"`
-	Kid string   `json:"kid"`
-	X5c []string `json:"x5c"`
-}
-
 type KeycloakUser struct {
-	Id                string   `json:"id,omitempty"`
-	Sub               string   `json:"sub,omitempty"`
-	CreatedTimestamp  int64    `json:"createdTimestamp,omitempty"`
-	Username          string   `json:"username,omitempty"`
-	Enabled           bool     `json:"enabled,omitempty"`
-	Totp              bool     `json:"totp,omitempty"`
-	Name              string   `json:"name,omitempty"`
-	PreferredUsername string   `json:"preferred_username,omitempty"`
-	GivenName         string   `json:"given_name,omitempty"`
-	FamilyName        string   `json:"family_name,omitempty"`
-	EmailVerified     bool     `json:"emailVerified,omitempty"`
-	FirstName         string   `json:"firstName,omitempty"`
-	LastName          string   `json:"lastName,omitempty"`
-	Email             string   `json:"email,omitempty"`
-	FederationLink    string   `json:"federationLink,omitempty"`
-	Groups            []string `json:"groups,omitempty"`
-	Attributes        *struct {
-		LDAPENTRYDN []string `json:"LDAP_ENTRY_DN,omitempty"`
-		LDAPID      []string `json:"LDAP_ID,omitempty"`
-	} `json:"attributes,omitempty"`
-	DisableableCredentialTypes []interface{} `json:"disableableCredentialTypes,omitempty"`
-	RequiredActions            []interface{} `json:"requiredActions,omitempty"`
-	Access                     *struct {
-		ManageGroupMembership bool `json:"manageGroupMembership,omitempty"`
-		View                  bool `json:"view,omitempty"`
-		MapRoles              bool `json:"mapRoles,omitempty"`
-		Impersonate           bool `json:"impersonate,omitempty"`
-		Manage                bool `json:"manage,omitempty"`
-	} `json:"access,omitempty"`
-}
-
-type KeycloakUserSession struct {
-	Id            string            `json:"id"`
-	Clients       map[string]string `json:""`
-	IpAddress     string            `json:"ipAddress"`
-	LastAccess    int               `json:"lastAccess"`
-	Start         int               `json:"start"`
-	UserId        string            `json:"userId"`
-	Username      string            `json:"username"`
-	TransientUser bool              `json:"transientUser"`
+	jwt.StandardClaims
+	Id                  string   `json:"id,omitempty"`
+	Sub                 string   `json:"sub,omitempty"`
+	CreatedTimestamp    int64    `json:"createdTimestamp,omitempty"`
+	Username            string   `json:"username,omitempty"`
+	Enabled             bool     `json:"enabled,omitempty"`
+	Totp                bool     `json:"totp,omitempty"`
+	Name                string   `json:"name,omitempty"`
+	PreferredUsername   string   `json:"preferred_username,omitempty"`
+	GivenName           string   `json:"given_name,omitempty"`
+	FamilyName          string   `json:"family_name,omitempty"`
+	EmailVerified       bool     `json:"emailVerified,omitempty"`
+	FirstName           string   `json:"firstName,omitempty"`
+	LastName            string   `json:"lastName,omitempty"`
+	Email               string   `json:"email,omitempty"`
+	FederationLink      string   `json:"federationLink,omitempty"`
+	Groups              []string `json:"groups,omitempty"`
+	AvailableGroupRoles []string `json:"availableGroupRoles,omitempty"`
+	Azp                 string   `json:"azp,omitempty"`
+	ResourceAccess      map[string]struct {
+		Roles []string `json:"roles,omitempty"`
+	} `json:"resource_access,omitempty"`
 }
 
 type KeycloakUserGroup struct {
@@ -132,8 +107,6 @@ type KeycloakRole struct {
 }
 
 type ClientRoleMapping struct {
-	ID       string                  `json:"id"`
-	Client   string                  `json:"client"`
 	Mappings []ClientRoleMappingRole `json:"mappings"`
 }
 
@@ -144,16 +117,11 @@ type ClientRoleMappingRole struct {
 	ScopeParamRequired bool   `json:"scopeParamRequired"`
 	Composite          bool   `json:"composite"`
 	ClientRole         bool   `json:"clientRole"`
-	ContainerID        string `json:"containerId"`
-}
-
-type GroupRoleMappingsResponse struct {
-	ClientMappings map[string]ClientRoleMapping `json:"clientMappings"`
 }
 
 type KeycloakRealmClient struct {
 	Id       string `json:"id"`
-	ClientID string `json:"clientId"`
+	ClientId string `json:"clientId"`
 }
 
 type KeycloakRealmInfo struct {
@@ -162,42 +130,6 @@ type KeycloakRealmInfo struct {
 	TokenService    string `json:"token-service"`
 	AccountService  string `json:"account-service"`
 	TokensNotBefore int    `json:"tokens-not-before"`
-}
-
-func ParseJWT(token string) (*KeycloakUser, *JWKSInfo, error) {
-
-	bearerParts := strings.Split(token, " ")
-
-	if len(bearerParts) != 2 {
-		return nil, nil, util.ErrCheck(errors.New("bad token split"))
-	}
-
-	tokenParts := strings.Split(bearerParts[1], ".")
-	if len(tokenParts) != 3 {
-		return nil, nil, util.ErrCheck(errors.New(fmt.Sprintf("invalid JWT, expected 3 parts but got %d", len(tokenParts))))
-	}
-
-	payloadBytes, err := util.Base64UrlDecode(tokenParts[1])
-	if err != nil {
-		return nil, nil, util.ErrCheck(err)
-	}
-
-	var payload KeycloakUser
-	if err := json.Unmarshal(payloadBytes, &payload); err != nil {
-		return nil, nil, util.ErrCheck(err)
-	}
-
-	jwksBytes, err := util.Base64UrlDecode(tokenParts[0])
-	if err != nil {
-		return nil, nil, util.ErrCheck(err)
-	}
-
-	var jwksInfo JWKSInfo
-	if err := json.Unmarshal(jwksBytes, &jwksInfo); err != nil {
-		return nil, nil, util.ErrCheck(err)
-	}
-
-	return &payload, &jwksInfo, nil
 }
 
 func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
@@ -240,22 +172,30 @@ func (keycloakClient KeycloakClient) FetchPublicKey() (*rsa.PublicKey, error) {
 	return nil, errors.New("key could not be parsed")
 }
 
-func (keycloakClient KeycloakClient) ValidateToken(token string) (bool, error) {
+func (keycloakClient KeycloakClient) ValidateToken(token string) (*KeycloakUser, error) {
 	if strings.Contains(token, "Bearer") {
 		token = strings.Split(token, " ")[1]
 	}
 
-	parsedToken, err := jwt.Parse(token, func(t *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.ParseWithClaims(token, &KeycloakUser{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, errors.New("bad signing method")
 		}
 		return keycloakClient.PublicKey, nil
 	})
 	if err != nil {
-		return false, util.ErrCheck(err)
+		return nil, util.ErrCheck(err)
 	}
 
-	return parsedToken.Valid, nil
+	if !parsedToken.Valid {
+		return nil, util.ErrCheck(errors.New("invalid token during parse"))
+	}
+
+	if claims, ok := parsedToken.Claims.(*KeycloakUser); ok {
+		return claims, nil
+	}
+
+	return nil, nil
 }
 
 func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*OIDCToken, error) {
@@ -390,7 +330,7 @@ func (keycloakClient KeycloakClient) GetGroupRoleMappings(groupId string) ([]Cli
 
 	clientMappings := f["clientMappings"]
 	for clientId, client := range clientMappings {
-		if clientId == keycloakClient.AppClient.ClientID {
+		if clientId == keycloakClient.AppClient.ClientId {
 			mappings = client.Mappings
 			break
 		}
@@ -438,11 +378,9 @@ func (keycloakClient KeycloakClient) GetRealmClients() (*[]KeycloakRealmClient, 
 func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName string) error {
 
 	kcUserJson, err := json.Marshal(&KeycloakUser{
-		Id:         userId,
-		FirstName:  firstName,
-		LastName:   lastName,
-		Attributes: nil,
-		Access:     nil,
+		Id:        userId,
+		FirstName: firstName,
+		LastName:  lastName,
 	})
 
 	if err != nil {
