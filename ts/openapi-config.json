@@ -4,5 +4,6 @@
   "apiImport": "siteApiTemplate",
   "outputFile": "./src/hooks/api.ts",
   "exportName": "siteApi",
-  "hooks": true
+  "hooks": true,
+  "tag": true
 }

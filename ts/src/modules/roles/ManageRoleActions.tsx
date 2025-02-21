@@ -17,9 +17,7 @@ export function ManageRoleActions(): React.JSX.Element {
   const { setSnack } = useUtil();
   const [patchAssignments] = siteApi.useGroupServicePatchGroupAssignmentsMutation();
 
-  const { data: availableGroupAssignmentsRequest } = siteApi.useGroupServiceGetGroupAssignmentsQuery(undefined, {
-    refetchOnMountOrArgChange: true
-  });
+  const { data: availableGroupAssignmentsRequest } = siteApi.useGroupServiceGetGroupAssignmentsQuery();
 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 

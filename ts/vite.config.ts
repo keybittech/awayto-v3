@@ -111,7 +111,7 @@ export default defineConfig(_ => {
       outDir: 'build',
       rollupOptions: {
         output: {
-          manualChunks: () => 'x'
+          manualChunks: a => a.includes('node_modules') ? 'pkg' : 'y',
         }
       }
     },

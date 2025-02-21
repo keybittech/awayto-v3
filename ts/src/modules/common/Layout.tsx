@@ -2,23 +2,33 @@ import React, { useEffect, Suspense } from 'react';
 import { Route, Outlet, Routes } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
+import TopLevelProviders from './TopLevelProviders';
+import Topbar from './Topbar';
+import Home from './Home';
+import Profile from '../profile/Profile';
+import RequestQuote from '../quotes/RequestQuote';
+import ScheduleHome from '../schedules/ScheduleHome';
+import GroupPaths from '../groups/GroupPaths';
+import ExchangeSummary from '../exchange/ExchangeSummary';
+import ExchangeProvider from '../exchange/ExchangeProvider';
+import Exchange from '../exchange/Exchange';
 
-import { useComponents } from 'awayto/hooks';
+// import { useComponents } from 'awayto/hooks';
 
 const Layout = (props: IComponent): React.JSX.Element => {
 
-  const {
-    Home,
-    Exchange,
-    ExchangeSummary,
-    ExchangeProvider,
-    TopLevelProviders,
-    Profile,
-    GroupPaths,
-    ScheduleHome,
-    RequestQuote,
-    Topbar
-  } = useComponents();
+  // const {
+  //   Home,
+  //   Exchange,
+  //   ExchangeSummary,
+  //   ExchangeProvider,
+  //   TopLevelProviders,
+  //   Profile,
+  //   GroupPaths,
+  //   ScheduleHome,
+  //   RequestQuote,
+  //   Topbar
+  // } = useComponents();
 
   useEffect(() => {
     window.INT_SITE_LOAD = true;

@@ -262,7 +262,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 		}
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/assignments")
+	// h.Redis.Client().Del(req.Context(), session.UserSub+"group/assignments")
 
 	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
 

@@ -22,7 +22,7 @@ import ExchangeContext from './ExchangeContext';
 import WSTextContext from '../web_socket/WSTextContext';
 import WSCallContext from '../web_socket/WSCallContext';
 
-export function Exchange(): React.JSX.Element {
+export function Exchange(_: IProps): React.JSX.Element {
   const classes = useStyles();
 
   const { Whiteboard, FileSelectionModal } = useComponents();

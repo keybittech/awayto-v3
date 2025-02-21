@@ -10,7 +10,7 @@ import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import { siteApi, useUtil, useAccordion, useComponents, useGroupForm } from 'awayto/hooks';
 
-export function ExchangeSummary(): React.JSX.Element {
+export function ExchangeSummary(_: IProps): React.JSX.Element {
   const { summaryId } = useParams();
   if (!summaryId) return <></>;
 

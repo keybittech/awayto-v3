@@ -5,6 +5,7 @@ import (
 	"av3api/pkg/types"
 	"av3api/pkg/util"
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net"
@@ -291,9 +292,16 @@ type CacheWriter struct {
 	Buffer *bytes.Buffer
 }
 
+// This lets us pull data out of the writer and into the cache, after whatever handler has written to it
 func (cw *CacheWriter) Write(data []byte) (int, error) {
 	defer cw.Buffer.Write(data)
 	return cw.ResponseWriter.Write(data)
+}
+
+type CacheMeta struct {
+	Data       []byte    `json:"data"`
+	LastMod    time.Time `json:"last_modified"`
+	StatusCode int       `json:"status_code"`
 }
 
 func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
@@ -303,51 +311,105 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 	return func(next SessionHandler) SessionHandler {
 		return func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
-			cacheKey := session.UserSub + strings.TrimLeft(req.URL.String(), os.Getenv("API_PATH")) // gives a cache key like absd-asff-asff-asfdgroup/users
+			// gives a cache key like absd-asff-asff-asfdgroup/users
+			cacheKey := session.UserSub + strings.TrimLeft(req.URL.String(), os.Getenv("API_PATH"))
 
-			if shouldStore || req.Method == http.MethodGet && types.CacheType_SKIP != opts.CacheType {
-				cachedRes, _ := a.Handlers.Redis.Client().Get(req.Context(), cacheKey).Bytes()
-				if cachedRes != nil {
+			// Any non-GET processed normally, and deletes cache key unless being stored
+			if !shouldStore && req.Method != http.MethodGet {
+				next(w, req, session)
+				if types.CacheType_STORE != opts.CacheType {
+					a.Handlers.Redis.Client().Del(req.Context(), cacheKey)
+				}
+				return
+			}
+
+			// Check if client sent If-Modified-Since header
+			ifModifiedSince := req.Header.Get("If-Modified-Since")
+			var clientModTime time.Time
+			if ifModifiedSince != "" {
+				if t, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+					clientModTime = t.Truncate(time.Second)
+				}
+			}
+
+			if types.CacheType_SKIP != opts.CacheType {
+				// Check redis cache for request
+				if cacheData, err := a.Handlers.Redis.Client().Get(req.Context(), cacheKey).Bytes(); err == nil {
+
+					var cacheMeta CacheMeta
+					err = json.Unmarshal(cacheData, &cacheMeta)
+					if err != nil {
+						http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+						util.ErrorLog.Println(util.ErrCheck(err))
+						return
+					}
+
+					w.Header().Set("Last-Modified", cacheMeta.LastMod.UTC().Format(http.TimeFormat))
+
+					// If the client has current data
+					if !clientModTime.IsZero() && !cacheMeta.LastMod.Truncate(time.Second).After(clientModTime) {
+						w.Header().Set("X-Cache-Status", "UNMODIFIED")
+						w.WriteHeader(http.StatusNotModified)
+						w.Write([]byte{})
+						return
+					}
+
+					// Serve cached data if no header interaction
 					w.Header().Set("X-Cache-Status", "HIT")
-					w.Write(cachedRes)
+					w.Write(cacheMeta.Data)
 					return
 				}
 			}
 
+			// No cached data, create it on this request
+			timeNow := time.Now().UTC()
+
 			w.Header().Set("X-Cache-Status", "MISS")
+			w.Header().Set("Last-Modified", timeNow.Format(http.TimeFormat))
 
-			if shouldStore || req.Method == http.MethodGet {
+			// Perform the handler request
+			cacheWriter := &CacheWriter{
+				ResponseWriter: w,
+				Buffer:         new(bytes.Buffer),
+			}
 
-				cacheWriter := &CacheWriter{
-					ResponseWriter: w,
-					Buffer:         new(bytes.Buffer),
+			// Response is written out to client
+			next(cacheWriter, req, session)
+
+			// Cache any response
+			if cacheWriter.Buffer.Len() > 0 {
+
+				// Prep for redis storage
+				cacheMeta := CacheMeta{
+					Data:    cacheWriter.Buffer.Bytes(),
+					LastMod: timeNow,
 				}
 
-				next(cacheWriter, req, session)
+				cacheData, err := json.Marshal(cacheMeta)
+				if err != nil {
+					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+					util.ErrorLog.Println(util.ErrCheck(err))
+					return
+				}
 
-				resBytes := cacheWriter.Buffer.Bytes()
+				if shouldStore {
 
-				if len(resBytes) > 0 {
-					if shouldStore {
-						a.Handlers.Redis.Client().Set(req.Context(), cacheKey, resBytes, 0)
-					} else {
-						duration := duration180
-						if opts.CacheDuration > 0 {
-							var err error
-							duration, err = time.ParseDuration(fmt.Sprintf("%ds", opts.CacheDuration))
-							if err != nil {
-								util.ErrorLog.Println(util.ErrCheck(err))
-								duration = duration180
-							}
+					// Store the response in redis until restart
+					a.Handlers.Redis.Client().Set(req.Context(), cacheKey, cacheData, 0)
+
+				} else {
+
+					// Default 3 min cache or as otherwise specified
+					duration := duration180
+					if opts.CacheDuration > 0 {
+						if parsedDuration, err := time.ParseDuration(fmt.Sprintf("%ds", opts.CacheDuration)); err == nil {
+							duration = parsedDuration
+						} else {
+							util.ErrorLog.Println(util.ErrCheck(err))
 						}
-
-						a.Handlers.Redis.Client().SetEx(req.Context(), cacheKey, resBytes, duration)
 					}
-				}
-			} else {
-				next(w, req, session)
-				if types.CacheType_STORE != opts.CacheType {
-					a.Handlers.Redis.Client().Del(req.Context(), cacheKey)
+
+					a.Handlers.Redis.Client().SetEx(req.Context(), cacheKey, cacheData, duration)
 				}
 			}
 		}
