@@ -64,7 +64,6 @@ func InitDatabase() IDatabase {
 	var adminRoleId, adminSub string
 
 	err = dbc.TxExec(func(tx IDatabaseTx) error {
-
 		var txErr error
 		txErr = tx.QueryRow(`
 			SELECT u.sub, r.id FROM dbtable_schema.users u

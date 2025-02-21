@@ -211,6 +211,13 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE POLICY table_update ON dbtable_schema.group_users FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
   CREATE POLICY table_delete ON dbtable_schema.group_users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
 
+  CREATE POLICY table_select_by_group_admin ON dbtable_schema.users FOR SELECT TO $PG_WORKER USING (
+    EXISTS(
+      SELECT 1 FROM dbtable_schema.group_users gu
+      WHERE gu.user_id = dbtable_schema.users.id AND gu.$HAS_GROUP -- can select if the user record belongs to the session group id
+    )
+  );
+
   CREATE TABLE dbtable_schema.group_files (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,

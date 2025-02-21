@@ -89,7 +89,7 @@ SITE_INSTALLER=deploy/scripts/host/install.sh
 
 # backup related
 DB_BACKUP_DIR=backups/db
-DOCKER_DB_CID := $(shell ${SUDO} docker ps -aqf "name=db")
+DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
 DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 LATEST_KEYCLOAK_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_app*" $(DB_BACKUP_DIR) | tail -n 1)
@@ -111,7 +111,7 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-DIRS=$(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR) $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR)
+DIRS=$(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(CERTS_DIR) $(DB_BACKUP_DIR) $(PLAYWRIGHT_CACHE_DIR) $(DEMOS_DIR) $(DB_BACKUP_DIR)/deployed
 
 $(shell mkdir -p $(DIRS))
 
@@ -232,6 +232,7 @@ docker_build:
 .PHONY: docker_start
 docker_start: docker_build
 	${SUDO} docker $(DOCKER_COMPOSE) up -d
+	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 
 .PHONY: docker_stop
 docker_stop:
@@ -243,26 +244,33 @@ docker_db:
 
 .PHONY: docker_db_redeploy
 docker_db_redeploy: docker_stop
+	${SUDO} docker rm $(DOCKER_DB_CID) || true
 	${SUDO} docker volume remove $(PG_DATA) || true
-	${SUDO} docker volume remove $(REDIS_DATA) || true
 	${SUDO} docker volume create $(PG_DATA)
-	${SUDO} docker volume create $(REDIS_DATA)
-	${SUDO} docker $(DOCKER_COMPOSE) up -d db
+	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build db
 	sleep 5
 
 .PHONY: docker_db_backup
 docker_db_backup: $(DB_BACKUP_DIR)
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc keycloak > $(DB_BACKUP_DIR)/${PG_DB}_keycloak_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
-	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --column-inserts --data-only --on-conflict-do-nothing -n dbtable_schema -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
-.PHONY: docker_db_restore
-docker_db_restore: docker_db_redeploy docker_db_restore_op docker_start
+.PHONY: docker_db_upgrade
+docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
 
-.PHONY: docker_db_restore_op
-docker_db_restore_op:
-	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) /bin/bash /docker-entrypoint-initdb.d/a0-permissions.sh
+.PHONY: docker_db_upgrade_op
+docker_db_upgrade_op:
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d keycloak < $(LATEST_KEYCLOAK_RESTORE) || true
-	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d ${PG_DB} < $(LATEST_APP_RESTORE) || true
+	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") psql -U postgres -d ${PG_DB} -c " \
+		TRUNCATE TABLE dbtable_schema.users CASCADE; \
+		TRUNCATE TABLE dbtable_schema.roles CASCADE; \
+		TRUNCATE TABLE dbtable_schema.file_types CASCADE; \
+		TRUNCATE TABLE dbtable_schema.budgets CASCADE; \
+		TRUNCATE TABLE dbtable_schema.timelines CASCADE; \
+		TRUNCATE TABLE dbtable_schema.time_units CASCADE; \
+	"
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -a --disable-triggers --superuser=postgres -d ${PG_DB} < $(LATEST_APP_RESTORE) || true
+
 
 # ${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") \
 # 	psql -U postgres -d ${PG_DB} -c "\
@@ -271,6 +279,10 @@ docker_db_restore_op:
 # 		TRUNCATE TABLE dbtable_schema.time_units CASCADE; \
 # 		TRUNCATE TABLE dbtable_schema.timelines CASCADE; \
 # 	"
+
+# $(DOCKER_DB_CMD) $(DOCKER_DB_CID) /bin/bash /docker-entrypoint-initdb.d/a0-permissions.sh
+# $(DOCKER_DB_CMD) $(DOCKER_DB_CID) /bin/bash /docker-entrypoint-initdb.d/f1-functions.sh
+# $(DOCKER_DB_CMD) $(DOCKER_DB_CID) /bin/bash /docker-entrypoint-initdb.d/f2-function_views.sh
 
 .PHONY: docker_cycle
 docker_cycle: docker_down docker_up
@@ -362,6 +374,11 @@ host_deploy_env:
 	rsync ${RSYNC_FLAGS} "${BINARY_NAME}" "$(SSH_OP_B):$(H_OP)/$(BINARY_NAME)"
 	$(SSH) " \
 		if [ ! -f ${CERTS_DIR}/cert.pem ]; then \
+			curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null; \
+			curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list; \
+			sudo apt-get update; \
+			sudo apt-get install -y tailscale; \
+			sudo tailscale up; \
 			sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email; \
 			sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt; \
 			sudo chmod 700 ${CERTS_DIR}/cert.pem ${CERTS_DIR}/privkey.pem; \
@@ -460,13 +477,14 @@ host_deploy_compose_down:
 .PHONY: host_db_backup
 host_db_backup:
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_backup"
+	rsync ${RSYNC_FLAGS} "$(SSH_OP_B):$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(DB_BACKUP_DIR)/deployed"
 
-.PHONY: host_db_restore
-host_db_restore:
-	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_restore"
+.PHONY: host_db_upgrade_op
+host_db_upgrade_op:
+	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_upgrade"
 
-.PHONY: host_db_restore_op
-host_db_restore_op: host_predeploy host_service_stop host_db_restore host_service_start host_postdeploy
+.PHONY: host_db_upgrade
+host_db_upgrade: host_predeploy host_service_stop host_db_upgrade_op host_service_start host_postdeploy
 
 .PHONY: host_deploy
 host_deploy: host_predeploy host_deploy_env host_deploy_sync host_deploy_docker host_deploy_compose_up host_postdeploy
