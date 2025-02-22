@@ -106,6 +106,10 @@ export function nid(uuid?: string) {
   return arbitraryCounter;
 }
 
+export function isStringArray(str?: string | string[]): str is string[] {
+  return (str as string[]).forEach !== undefined;
+}
+
 /**
  * @category Util
  */

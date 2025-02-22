@@ -1,9 +1,9 @@
 import React, { useMemo, useState, useEffect } from 'react';
 
-import { useComponents } from './useComponents';
 import { siteApi } from './api';
 import { IForm } from './form';
 import { deepClone } from './util';
+import FormDisplay from '../modules/forms/FormDisplay';
 
 type UseGroupFormResponse = {
   form?: IForm,
@@ -12,8 +12,6 @@ type UseGroupFormResponse = {
 };
 
 export function useGroupForm(id = ''): UseGroupFormResponse {
-
-  const { FormDisplay } = useComponents();
 
   const [form, setForm] = useState<IForm | undefined>();
   const [forms, setForms] = useState<Map<string, IForm>>(new Map());

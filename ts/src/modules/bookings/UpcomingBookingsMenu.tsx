@@ -14,18 +14,16 @@ import DoneIcon from '@mui/icons-material/Done';
 
 import { useUtil, bookingDT, dayjs, shortNSweet } from 'awayto/hooks';
 
-import BookingContext from './BookingContext';
+import BookingContext, { BookingContextType } from './BookingContext';
 
-declare global {
-  interface IComponent {
-    upcomingBookingsAnchorEl?: null | HTMLElement;
-    upcomingBookingsMenuId?: string;
-    isUpcomingBookingsOpen?: boolean;
-    handleMenuClose?: () => void;
-  }
+interface UpcomingBookingsMenuProps extends IComponent {
+  upcomingBookingsAnchorEl: null | HTMLElement;
+  upcomingBookingsMenuId: string;
+  isUpcomingBookingsOpen: boolean;
+  handleMenuClose: () => void;
 }
 
-export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl, upcomingBookingsMenuId, isUpcomingBookingsOpen }: IComponent): React.JSX.Element {
+export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl, upcomingBookingsMenuId, isUpcomingBookingsOpen }: UpcomingBookingsMenuProps): React.JSX.Element {
   const { exchangeId } = useParams();
   const nav = useNavigate();
   const navigate = (loc: string) => {
@@ -34,7 +32,7 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
   const { openConfirm } = useUtil();
 
   const minsAgo15 = dayjs.duration(-15, 'years');
-  const startOfDay = dayjs().startOf('day');
+  // const startOfDay = dayjs().startOf('day');
 
   const { bookingValues: upcomingBookings } = useContext(BookingContext) as BookingContextType;
 

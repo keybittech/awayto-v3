@@ -1,12 +1,9 @@
 import React, { useCallback, useState, useEffect, Suspense, useMemo } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
-import Avatar from '@mui/material/Avatar';
 import Grid from '@mui/material/Grid';
-import Chip from '@mui/material/Chip';
 import IconButton from '@mui/material/IconButton';
 import DialogContent from '@mui/material/DialogContent';
-import DialogTitle from '@mui/material/DialogTitle';
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -18,36 +15,33 @@ import CardHeader from '@mui/material/CardHeader';
 import Tooltip from '@mui/material/Tooltip';
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
-import Accordion from '@mui/material/Accordion';
-import AccordionSummary from '@mui/material/AccordionSummary';
-import AccordionDetails from '@mui/material/AccordionDetails';
 
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
-import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
-import QuestionMarkIcon from '@mui/icons-material/QuestionMark';
 
-import { useComponents, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak } from 'awayto/hooks';
+import { useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak } from 'awayto/hooks';
 import { Breadcrumbs, Dialog } from '@mui/material';
 
 import Icon from '../../img/kbt-icon.png';
+import ManageGroupModal from '../groups/ManageGroupModal';
+import ManageGroupRolesModal from '../roles/ManageGroupRolesModal';
+import ManageServiceModal from '../services/ManageServiceModal';
+import ManageSchedulesModal from '../group_schedules/ManageSchedulesModal';
 
 const {
   VITE_REACT_APP_APP_HOST_URL
 } = import.meta.env;
 
-export function Onboard(props: IProps): React.JSX.Element {
+export function Onboard(props: IComponent): React.JSX.Element {
 
   window.INT_SITE_LOAD = true;
 
   const navigate = useNavigate();
-  const location = useLocation();
+  // const location = useLocation();
   const classes = useStyles();
 
   const { setSnack, openConfirm } = useUtil();
-
-  const { ManageGroupModal, ManageGroupRolesModal, ManageServiceModal, ManageSchedulesModal } = useComponents();
 
   const [group, setGroup] = useState({} as IGroup);
   const [groupService, setGroupService] = useState(JSON.parse(localStorage.getItem('onboarding_service') || '{}') as IGroupService);

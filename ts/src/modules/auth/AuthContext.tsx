@@ -1,8 +1,6 @@
 import { createContext } from 'react';
 
-declare global {
-  type AuthContextType = {}
-}
+interface AuthContextType { }
 
 export const AuthContext = createContext<AuthContextType | null>(null);
 

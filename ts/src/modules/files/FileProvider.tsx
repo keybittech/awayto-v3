@@ -1,23 +1,22 @@
 import React, { useMemo } from 'react';
 
-import { siteApi, useComponents, useFileContents } from 'awayto/hooks';
+import { siteApi, useFileContents } from 'awayto/hooks';
 
-import FileContext from './FileContext';
+import FileContext, { FileContextType } from './FileContext';
+import FileManager from './FileManager';
 
 export function FileProvider({ children }: IComponent): React.JSX.Element {
-
-  const { FileManager } = useComponents();
 
   const getFiles = siteApi.useFileServiceGetFilesQuery();
 
   const { fileContents, getFileContents } = useFileContents();
 
-  const fileContext = {
+  const fileContext: FileContextType = {
     getFiles,
     fileContents,
     getFileContents,
     fileManager: FileManager
-  } as FileContextType;
+  };
 
   return useMemo(() => <FileContext.Provider value={fileContext}>
     {children}

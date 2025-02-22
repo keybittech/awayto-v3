@@ -4,17 +4,15 @@ import {
   UseFileContents,
   FileServiceGetFilesApiArg,
   FileServiceGetFilesApiResponse,
-  IDefaultedComponent,
   UseSiteQuery
 } from 'awayto/hooks';
+import { FileManagerProps } from './FileManager';
 
-declare global {
-  type FileContextType = {
-    getFiles: UseSiteQuery<FileServiceGetFilesApiArg, FileServiceGetFilesApiResponse>;
-    fileContents: IFile;
-    fileManager: IDefaultedComponent;
-    getFileContents: ReturnType<UseFileContents>['getFileContents'];
-  }
+export interface FileContextType {
+  getFiles: UseSiteQuery<FileServiceGetFilesApiArg, FileServiceGetFilesApiResponse>;
+  fileContents?: IFile;
+  fileManager: (props: FileManagerProps) => React.JSX.Element;
+  getFileContents: ReturnType<UseFileContents>['getFileContents'];
 }
 
 export const FileContext = createContext<FileContextType | null>(null);

@@ -1,4 +1,5 @@
 import React, { useMemo, useState, Suspense } from 'react';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { useColorScheme } from '@mui/material';
 
@@ -18,38 +19,36 @@ import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 
 import CampaignIcon from '@mui/icons-material/Campaign';
-import TtyIcon from '@mui/icons-material/Tty';
 import ThreePIcon from '@mui/icons-material/ThreeP';
 import LogoutIcon from '@mui/icons-material/Logout';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 import MoreTimeIcon from '@mui/icons-material/MoreTime';
-import BusinessIcon from '@mui/icons-material/Business';
 import GroupIcon from '@mui/icons-material/Group';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-import { useLocation, useNavigate, useParams } from 'react-router-dom';
-import { useSecure, useComponents, siteApi, keycloak, useStyles, SiteRoles } from 'awayto/hooks';
+import { useSecure, siteApi, keycloak, useStyles, SiteRoles } from 'awayto/hooks';
+
+import UpcomingBookingsMenu from '../bookings/UpcomingBookingsMenu';
+import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
+import PendingQuotesMenu from '../quotes/PendingQuotesMenu';
+import FeedbackMenu from '../feedback/FeedbackMenu';
 
 const {
   VITE_REACT_APP_APP_HOST_URL
 } = import.meta.env;
 
-
-declare global {
-  interface IComponent {
-    forceSiteMenu?: boolean;
-  }
+interface TopbarProps extends IComponent {
+  forceSiteMenu?: boolean;
 }
 
-export function Topbar(props: IComponent): React.JSX.Element {
+export function Topbar(props: TopbarProps): React.JSX.Element {
 
   const { exchangeId } = useParams();
   const classes = useStyles();
   const navigate = useNavigate();
   const hasRole = useSecure();
 
-  const { FeedbackMenu, PendingQuotesMenu, PendingQuotesProvider, UpcomingBookingsMenu } = useComponents();
   const location = useLocation();
 
   const { mode, setMode } = useColorScheme();

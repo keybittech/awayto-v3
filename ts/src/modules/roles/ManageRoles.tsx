@@ -16,7 +16,7 @@ import ManageRoleModal from './ManageRoleModal';
 
 import { siteApi, useGrid, useStyles, dayjs, IGroupRole } from 'awayto/hooks';
 
-export function ManageRoles(): React.JSX.Element {
+export function ManageRoles(_: IComponent): React.JSX.Element {
 
   const classes = useStyles();
 

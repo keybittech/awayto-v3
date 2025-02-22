@@ -30,7 +30,6 @@ import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArro
 import { SocketActions, useDebounce, useStyles, IWhiteboard } from 'awayto/hooks';
 import type { PopoverOrigin } from '@mui/material';
 
-type WhiteBoardOptionsFns = { [props: string]: (...props: unknown[]) => void };
 const scales = [.1, .25, .5, .8, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 const directions = {
   tl: {
@@ -59,23 +58,25 @@ const directions = {
   }
 };
 
-declare global {
-  interface IProps {
-    whiteboard?: IWhiteboard;
-    whiteboardRef?: HTMLCanvasElement;
-    contextRef?: CanvasRenderingContext2D;
-    canvasPointerEvents?: string;
-    strokeColor?: string;
-    numPages?: number;
-    pageNumber?: number;
-    scale?: number;
-  }
-}
+// type WhiteBoardOptionsFns = { [props: string]: (...props: unknown[]) => void };
 
+interface WhiteboardOptionsMenuProps extends IComponent {
+  whiteboard: IWhiteboard;
+  whiteboardRef: HTMLCanvasElement | null;
+  // contextRef: CanvasRenderingContext2D;
+  canvasPointerEvents: string;
+  strokeColor: string;
+  setStrokeColor: React.Dispatch<React.SetStateAction<string>>;
+  numPages: number;
+  pageNumber: number;
+  scale: number;
+  setCanvasPointerEvents: React.Dispatch<React.SetStateAction<string>>;
+  sendWhiteboardMessage: (action: SocketActions, payload?: Partial<IWhiteboard> | undefined) => void;
+}
 
 export function WhiteboardOptionsMenu({
   children,
-  contextRef,
+  // contextRef,
   whiteboardRef,
   whiteboard,
   strokeColor,
@@ -86,7 +87,7 @@ export function WhiteboardOptionsMenu({
   canvasPointerEvents,
   setCanvasPointerEvents,
   sendWhiteboardMessage,
-}: Required<IProps> & WhiteBoardOptionsFns): React.JSX.Element {
+}: WhiteboardOptionsMenuProps): React.JSX.Element {
 
   const panning = 'none' === canvasPointerEvents;
   const penning = !whiteboard.settings.highlight;
@@ -183,8 +184,10 @@ export function WhiteboardOptionsMenu({
               variant="standard"
               value={scale}
               onChange={e => setScale(parseFloat(e.target.value))}
-              InputProps={{
-                startAdornment: <ZoomInIcon sx={{ mr: 1 }} />
+              slotProps={{
+                input: {
+                  startAdornment: <ZoomInIcon sx={{ mr: 1 }} />
+                }
               }}
             >
               {scales.map(v => <MenuItem key={v} value={v}>{Math.round(parseFloat(v.toFixed(2)) * 100)}%</MenuItem>)}
@@ -212,9 +215,11 @@ export function WhiteboardOptionsMenu({
               variant="standard"
               value={pageNumber}
               onChange={e => setPage(parseInt(e.target.value))}
-              InputProps={{
-                startAdornment: <MenuBookIcon sx={{ mr: 1 }} />,
-                endAdornment: <Box sx={{ minWidth: 60 }}>of {numPages}</Box>
+              slotProps={{
+                input: {
+                  startAdornment: <MenuBookIcon sx={{ mr: 1 }} />,
+                  endAdornment: <Box sx={{ minWidth: 60 }}>of {numPages}</Box>
+                }
               }}
             />
 
@@ -249,14 +254,15 @@ export function WhiteboardOptionsMenu({
             <ListSubheader>Canvas</ListSubheader>
           }
         >
-
           <ListItem
             secondaryAction={
               <Tooltip title="Clear Canvas">
                 <IconButton
                   color="error"
                   onClick={() => {
-                    whiteboardRef.getContext('2d')?.clearRect(0, 0, whiteboardRef.width, whiteboardRef.height)
+                    if (whiteboardRef) {
+                      whiteboardRef.getContext('2d')?.clearRect(0, 0, whiteboardRef.width, whiteboardRef.height)
+                    }
                     // contextRef?.clearRect(0, 0, whiteboardRef.width || 0, whiteboardRef.height || 0);
                     // handleMenuClose();
                   }}

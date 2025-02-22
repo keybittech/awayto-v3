@@ -1,8 +1,7 @@
-import React, { useContext } from 'react';
+import React from 'react';
 
-import BookingContext from './BookingContext';
 
-export function BookingHome(): React.JSX.Element {
+export function BookingHome(_: IComponent): React.JSX.Element {
 
   // const { bookingValues: upcomingBookings } = useContext(BookingContext) as BookingContextType;
   //

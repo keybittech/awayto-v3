@@ -1,15 +1,17 @@
-import React, { Suspense, useContext, useMemo } from 'react';
+import React, { useContext, useMemo } from 'react';
 
 import Box from '@mui/material/Box';
 
-import { siteApi, SiteRoleDetails, SiteRoles, useComponents } from 'awayto/hooks';
-import { Card, CardHeader, Chip, Tooltip, Typography } from '@mui/material';
+import { siteApi, SiteRoleDetails, SiteRoles } from 'awayto/hooks';
+import { Card, CardHeader, Chip, Tooltip } from '@mui/material';
 import { useNavigate } from 'react-router';
 
-import GroupContext from '../groups/GroupContext';
+import GroupContext, { GroupContextType } from '../groups/GroupContext';
+import BookingHome from '../bookings/BookingHome';
+import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
+import QuoteHome from '../quotes/QuoteHome';
 
-export function Home(props: IProps): React.JSX.Element {
-  const { BookingHome, GroupHome, QuoteHome, PendingQuotesProvider } = useComponents();
+export function Home(props: IComponent): React.JSX.Element {
 
   const {
     GroupSelect

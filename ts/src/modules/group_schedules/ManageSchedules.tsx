@@ -12,16 +12,16 @@ import MoreTimeIcon from '@mui/icons-material/MoreTime';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useComponents, useGrid, siteApi, useUtil, useStyles, dayjs, IGroupSchedule } from 'awayto/hooks';
+import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupSchedule } from 'awayto/hooks';
 
 import ManageSchedulesModal from './ManageSchedulesModal';
+import ManageScheduleStubs from './ManageScheduleStubs';
 
 // This is how group owners interact with the schedule
 export function ManageSchedules(props: IComponent): React.JSX.Element {
   const classes = useStyles();
 
   const { openConfirm } = useUtil();
-  const { ManageScheduleStubs } = useComponents();
 
   const [deleteGroupSchedule] = siteApi.useGroupScheduleServiceDeleteGroupScheduleMutation();
 

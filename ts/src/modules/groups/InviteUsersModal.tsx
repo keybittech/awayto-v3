@@ -9,7 +9,7 @@ import CardActions from '@mui/material/CardActions';
 import { siteApi, useUtil, UserEmail } from 'awayto/hooks';
 import { TextField } from '@mui/material';
 
-export function InviteUsersModal({ closeModal }: IProps): React.JSX.Element {
+export function InviteUsersModal({ closeModal }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
   const [inviteGroupUser] = siteApi.useGroupServiceInviteGroupUsersMutation();
@@ -53,10 +53,12 @@ export function InviteUsersModal({ closeModal }: IProps): React.JSX.Element {
                   onChange={e => {
                     setEmail(e.currentTarget.value)
                   }}
-                  InputProps={{
-                    onKeyDown: e => {
-                      if ('Enter' === e.key && e.currentTarget.validity.valid) {
-                        handleAdd();
+                  slotProps={{
+                    input: {
+                      onKeyDown: e => {
+                        if ('Enter' === e.key && e.currentTarget.validity.valid) {
+                          handleAdd();
+                        }
                       }
                     }
                   }}

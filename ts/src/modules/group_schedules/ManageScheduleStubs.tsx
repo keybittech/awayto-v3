@@ -10,13 +10,12 @@ import CreateIcon from '@mui/icons-material/Create';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, useComponents, IGroupUserScheduleStub, shortNSweet } from 'awayto/hooks';
+import { useGrid, IGroupUserScheduleStub, shortNSweet } from 'awayto/hooks';
 
-import GroupScheduleContext from './GroupScheduleContext';
+import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
+import ManageScheduleStubModal from './ManageScheduleStubModal';
 
-export function ManageScheduleStubs(): React.JSX.Element {
-
-  const { ManageScheduleStubModal } = useComponents();
+export function ManageScheduleStubs(_: IComponent): React.JSX.Element {
 
   const {
     getGroupUserScheduleStubs: {

@@ -14,18 +14,17 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 
-import { useComponents, siteApi, useUtil, bracketSchema, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName } from 'awayto/hooks';
+import { siteApi, useUtil, bracketSchema, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName } from 'awayto/hooks';
 
-import GroupContext from '../groups/GroupContext';
-import GroupScheduleContext from '../group_schedules/GroupScheduleContext';
+import GroupContext, { GroupContextType } from '../groups/GroupContext';
+import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
+import ScheduleDisplay from './ScheduleDisplay';
 
-declare global {
-  interface IComponent {
-    editSchedule?: ISchedule;
-  }
+interface ManageScheduleBracketsModalProps extends IComponent {
+  editSchedule: ISchedule;
 }
 
-export function ManageScheduleBracketsModal({ editSchedule, closeModal }: IComponent): React.JSX.Element {
+export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ManageScheduleBracketsModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -56,12 +55,12 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
     setSchedule({ ...groupSchedule?.schedule, brackets: {} });
   }
 
-  const scheduleTimeUnitName = useTimeName(schedule?.scheduleTimeUnitId);
-  const bracketTimeUnitName = useTimeName(schedule?.bracketTimeUnitId);
+  const scheduleTimeUnitName = useTimeName(schedule.scheduleTimeUnitId);
+  const bracketTimeUnitName = useTimeName(schedule.bracketTimeUnitId);
 
   const firstLoad = useRef(true);
   const [viewStep, setViewStep] = useState(1);
-  if (firstLoad.current && viewStep === 1 && Object.keys(schedule?.brackets || {}).length) {
+  if (firstLoad.current && viewStep === 1 && Object.keys(schedule.brackets || {}).length) {
     setViewStep(2);
   }
 
@@ -71,12 +70,10 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
   const [postScheduleBrackets] = siteApi.useScheduleServicePostScheduleBracketsMutation();
   const [postGroupUserSchedule] = siteApi.useGroupUserScheduleServicePostGroupUserScheduleMutation();
 
-  const { ScheduleDisplay } = useComponents();
-
-  const scheduleParent = useRef<HTMLDivElement>(null);
+  // const scheduleParent = useRef<HTMLDivElement>(null);
   const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as Required<IScheduleBracket>);
 
-  const scheduleBracketsValues = useMemo(() => Object.values(schedule?.brackets || {}) as Required<IScheduleBracket>[], [schedule?.brackets]);
+  const scheduleBracketsValues = useMemo(() => Object.values(schedule.brackets || {}) as Required<IScheduleBracket>[], [schedule.brackets]);
   const bracketServicesValues = useMemo(() => Object.values(bracket.services || {}) as Required<IService>[], [bracket.services]);
 
   const remainingBracketTime = useMemo(() => {
@@ -93,9 +90,9 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
 
   const handleSubmit = useCallback(() => {
     async function go() {
-      if (schedule && groupSchedule && schedule.name && scheduleBracketsValues.length) {
+      if (groupSchedule && schedule.name && scheduleBracketsValues.length) {
 
-        const groupScheduleId = groupSchedule.schedule.id;
+        const groupScheduleId = groupSchedule.schedule?.id;
         let userScheduleId = editSchedule?.id;
 
         if (!userScheduleId) {
@@ -235,7 +232,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
         </Box>}
       </> : <>
         <Suspense fallback={<CircularProgress />}>
-          <ScheduleDisplay parentRef={scheduleParent} schedule={schedule} setSchedule={setSchedule} />
+          <ScheduleDisplay schedule={schedule} setSchedule={setSchedule} />
         </Suspense>
       </>}
     </DialogContent>
@@ -259,7 +256,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ICompo
           <Button
             disabled={!bracket.duration || !bracketServicesValues.length}
             onClick={() => {
-              if (schedule?.id && bracket.duration && Object.keys(bracket.services).length) {
+              if (schedule.id && bracket.duration && Object.keys(bracket.services).length) {
                 bracket.id = (new Date()).getTime().toString();
                 bracket.scheduleId = schedule.id;
                 const newBrackets = { ...schedule.brackets };

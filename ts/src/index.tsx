@@ -1,4 +1,4 @@
-import React, { ComponentType, lazy, ReactNode } from 'react';
+import { ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
@@ -11,12 +11,6 @@ import { store } from 'awayto/hooks';
 declare global {
   interface Window {
     INT_SITE_LOAD: boolean;
-  }
-
-  interface IProps {
-    children?: ReactNode;
-    loading?: boolean;
-    closeModal?(prop?: unknown): void;
   }
 
   interface IComponent {

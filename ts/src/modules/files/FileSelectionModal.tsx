@@ -13,23 +13,19 @@ import CardHeader from '@mui/material/CardHeader';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { useComponents, OrderedFiles } from 'awayto/hooks';
+import { OrderedFiles } from 'awayto/hooks';
+import FileTypeIcon from './FileTypeIcon';
 
-declare global {
-  interface IComponent {
-    fileGroups?: OrderedFiles[];
-  }
+interface FileSelectionModal extends IComponent {
+  fileGroups: OrderedFiles[];
 }
 
-export function FileSelectionModal({ closeModal, fileGroups }: IComponent): React.JSX.Element {
-
-  const { FileTypeIcon } = useComponents();
-
+export function FileSelectionModal({ closeModal, fileGroups }: FileSelectionModal): React.JSX.Element {
   return <Card sx={{ display: 'flex', flex: 1, flexDirection: 'column' }}>
     <CardHeader title="Select File" />
     <CardContent sx={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'auto' }}>
       <Grid container>
-        {!fileGroups?.length ? <Alert variant="outlined" severity="info">
+        {!fileGroups.length ? <Alert variant="outlined" severity="info">
           No files could be found.
         </Alert> : <Grid container>
           {fileGroups.map((group, i) => {

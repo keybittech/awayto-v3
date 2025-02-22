@@ -1,10 +1,8 @@
 import { VideoHTMLAttributes, useCallback } from 'react'
 
-declare global {
-  interface IComponent {
-    srcObject?: MediaStream;
-    autoPlay?: boolean;
-  }
+interface IComponent {
+  srcObject: MediaStream;
+  autoPlay: boolean;
 }
 
 export function Video({ srcObject, autoPlay = false }: VideoHTMLAttributes<HTMLVideoElement> & IComponent): React.JSX.Element {

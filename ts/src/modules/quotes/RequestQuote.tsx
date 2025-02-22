@@ -11,28 +11,29 @@ import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import { CircularProgress } from '@mui/material';
 
-import { useComponents, siteApi, useUtil, useGroupForm, useAccordion, useFiles, IFormVersionSubmission } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, useFiles, IFormVersionSubmission } from 'awayto/hooks';
 
-import GroupContext from '../groups/GroupContext';
-import GroupScheduleContext from '../group_schedules/GroupScheduleContext';
+import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
 import GroupScheduleSelectionContext from '../group_schedules/GroupScheduleSelectionContext';
+import ScheduleDatePicker from '../group_schedules/ScheduleDatePicker';
+import ScheduleTimePicker from '../group_schedules/ScheduleTimePicker';
+import ServiceTierAddons from '../services/ServiceTierAddons';
 
 export function RequestQuote(props: IComponent): React.JSX.Element {
 
   const navigate = useNavigate();
   const { setSnack } = useUtil();
-  const { ScheduleDatePicker, ScheduleTimePicker, ServiceTierAddons, AccordionWrap } = useComponents();
   const [postQuote] = siteApi.useQuoteServicePostQuoteMutation();
-  const [didSubmit, setDidSubmit] = useState(false);
-  const [expanded, setExpanded] = useState<string | false>(false);
+  // const [didSubmit, setDidSubmit] = useState(false);
+  // const [expanded, setExpanded] = useState<string | false>(false);
 
-  const handleChange = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
-    setExpanded(isExpanded ? panel : false);
-  };
+  // const handleChange = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
+  //   setExpanded(isExpanded ? panel : false);
+  // };
 
-  const {
-    GroupSelect
-  } = useContext(GroupContext) as GroupContextType;
+  // const {
+  //   GroupSelect
+  // } = useContext(GroupContext) as GroupContextType;
 
   const {
     getGroupUserSchedules: {
@@ -114,10 +115,10 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
           <Grid container spacing={2} mt={1}>
             <Grid container spacing={1} size={{ xs: 12, md: 4 }} direction="column">
               <Grid>
-                <ScheduleDatePicker key={groupSchedule?.schedule.id} />
+                <ScheduleDatePicker key={groupSchedule?.schedule?.id} />
               </Grid>
               <Grid>
-                <ScheduleTimePicker key={groupSchedule?.schedule.id} />
+                <ScheduleTimePicker key={groupSchedule?.schedule?.id} />
               </Grid>
             </Grid>
             <Grid container size={{ xs: 12, md: 8, xl: 8 }} sx={{ mt: { xs: 0, sm: 1.5 } }} spacing={2} direction="column">
@@ -144,13 +145,13 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
       {groupUserSchedulesRequest?.groupUserSchedules && <Grid size={{ xs: 12, md: 10, xl: 8 }}>
         <Card>
           <CardActionArea onClick={() => {
-            if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier || !quote.slotDate || !quote.scheduleBracketSlotId) {
+            if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.scheduleBracketSlotId) {
               setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out.' });
-              setDidSubmit(true);
+              // setDidSubmit(true);
               return;
             }
 
-            setDidSubmit(false);
+            // setDidSubmit(false);
 
             postQuote({
               postQuoteRequest: {

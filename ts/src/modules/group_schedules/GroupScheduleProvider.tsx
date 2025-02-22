@@ -1,11 +1,11 @@
 import React, { useMemo } from 'react';
 
-import { siteApi, useComponents, useSelectOne } from 'awayto/hooks';
+import { siteApi, useSelectOne } from 'awayto/hooks';
 
-import GroupScheduleContext from './GroupScheduleContext';
+import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
+import GroupScheduleSelectionProvider from './GroupScheduleSelectionProvider';
 
 export function GroupScheduleProvider({ children }: IComponent): React.JSX.Element {
-  const { GroupScheduleSelectionProvider } = useComponents();
 
   const getGroupSchedules = siteApi.useGroupScheduleServiceGetGroupSchedulesQuery();
   const getGroupUserScheduleStubs = siteApi.useGroupUserScheduleServiceGetGroupUserScheduleStubsQuery();
@@ -27,21 +27,20 @@ export function GroupScheduleProvider({ children }: IComponent): React.JSX.Eleme
     data: Object.values(selectGroupScheduleService.item?.tiers || {}).sort((a, b) => new Date(a.createdOn || '').getTime() - new Date(b.createdOn || '').getTime())
   });
 
-  const groupScheduleContext = {
+  const groupScheduleContext: GroupScheduleContextType = {
     getGroupSchedules,
     getGroupUserScheduleStubs,
     getGroupUserSchedules,
     selectGroupSchedule,
     selectGroupScheduleService,
     selectGroupScheduleServiceTier
-  } as GroupScheduleContextType;
+  };
 
-  return useMemo(() => !GroupScheduleSelectionProvider ? <></> :
-    <GroupScheduleContext.Provider value={groupScheduleContext}>
-      <GroupScheduleSelectionProvider>
-        {children}
-      </GroupScheduleSelectionProvider>
-    </GroupScheduleContext.Provider>,
+  return useMemo(() => <GroupScheduleContext.Provider value={groupScheduleContext}>
+    <GroupScheduleSelectionProvider>
+      {children}
+    </GroupScheduleSelectionProvider>
+  </GroupScheduleContext.Provider>,
     [GroupScheduleSelectionProvider, groupScheduleContext]
   );
 }

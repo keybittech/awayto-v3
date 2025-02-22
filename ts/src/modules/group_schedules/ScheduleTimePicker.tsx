@@ -1,16 +1,15 @@
 import React, { useContext, useMemo } from 'react';
 import { Duration, DurationUnitType } from 'dayjs/plugin/duration';
 
-import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import { DigitalClock } from '@mui/x-date-pickers/DigitalClock';
 
 import { useTimeName, dayjs, getRelativeDuration, TimeUnit } from 'awayto/hooks';
 
-import GroupScheduleContext from './GroupScheduleContext';
-import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
+import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
+import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
 
-export function ScheduleTimePicker(): React.JSX.Element {
+export function ScheduleTimePicker(_: IComponent): React.JSX.Element {
 
   const { selectGroupSchedule: { item: groupSchedule } } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
@@ -84,11 +83,14 @@ export function ScheduleTimePicker(): React.JSX.Element {
 
           // Check if any matching slot is available
           const hasMatchingSlot = dateSlots.some(s => {
+            if (!s.startDate) return false;
 
             return s.startDate === currentSlotDate.format("YYYY-MM-DD") && checkDurations.some(d => {
-              // Convert startTime to milliseconds before making the comparison
+              if (!s.startTime) return false;
 
+              // Convert startTime to milliseconds before making the comparison
               const startTimeDuration = dayjs.duration(s.startTime);
+
               return d.hours() === startTimeDuration.hours() && d.minutes() === startTimeDuration.minutes();
             });
           });

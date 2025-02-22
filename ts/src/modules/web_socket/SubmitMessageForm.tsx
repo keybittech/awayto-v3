@@ -6,14 +6,12 @@ import IconButton from '@mui/material/IconButton';
 
 import Send from '@mui/icons-material/Send';
 
-declare global {
-  interface IProps {
-    sendTextMessage?: (msg: string) => void;
-  }
+interface SubmitMessageFormProps extends IComponent {
+  sendTextMessage?: (msg: string) => void;
 }
 
-export function SubmitMessageForm({ sendTextMessage }: IProps): React.JSX.Element {
-  
+export function SubmitMessageForm({ sendTextMessage }: SubmitMessageFormProps): React.JSX.Element {
+
   const [textMessage, setTextMessage] = useState('');
 
   return useMemo(() => {
@@ -30,27 +28,27 @@ export function SubmitMessageForm({ sendTextMessage }: IProps): React.JSX.Elemen
         value={textMessage}
         name="message"
         onChange={e => setTextMessage(e.target.value)}
-        InputProps={{
-          sx: {
-            'textarea': {
-              overflow: 'auto !important',
-              maxHeight: '60px'
-            }
-          },
-          onKeyDown: e => {
-            if ('Enter' === e.key && !e.shiftKey) {
-              e.preventDefault();
-              sendTextMessage && sendTextMessage(textMessage);
-              setTextMessage('');
-            }
-          },
-          endAdornment: (
-            <InputAdornment position="end">
+        slotProps={{
+          input: {
+            sx: {
+              'textarea': {
+                overflow: 'auto !important',
+                maxHeight: '60px'
+              }
+            },
+            onKeyDown: e => {
+              if ('Enter' === e.key && !e.shiftKey) {
+                e.preventDefault();
+                sendTextMessage && sendTextMessage(textMessage);
+                setTextMessage('');
+              }
+            },
+            endAdornment: <InputAdornment position="end">
               <IconButton type="submit" aria-label="toggle password visibility">
                 <Send />
               </IconButton>
             </InputAdornment>
-          )
+          }
         }}
       />
     </form>

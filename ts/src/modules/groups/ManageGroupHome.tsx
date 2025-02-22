@@ -3,11 +3,7 @@ import { useNavigate, useParams } from 'react-router';
 
 import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
-import Modal from '@mui/material/Modal';
-import Alert from '@mui/material/Alert';
-import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
-import Link from '@mui/material/Link';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 import Typography from '@mui/material/Typography';
@@ -17,11 +13,20 @@ import CardContent from '@mui/material/CardContent';
 
 import CreateIcon from '@mui/icons-material/Create';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import { ContentCopy } from '@mui/icons-material';
 
-import { useComponents, useUtil, SiteRoles, useStyles, siteApi } from 'awayto/hooks';
+import { useUtil, SiteRoles, useStyles, siteApi } from 'awayto/hooks';
 
-import GroupContext from './GroupContext';
+import GroupContext, { GroupContextType } from './GroupContext';
+import GroupSecure from './GroupSecure';
+import ManageSchedules from '../group_schedules/ManageSchedules';
+import ManageRoles from '../roles/ManageRoles';
+import ManageUsers from '../users/ManageUsers';
+import ManageRoleActions from '../roles/ManageRoleActions';
+import ManageFeedback from '../feedback/ManageFeedback';
+import ManageForms from '../forms/ManageForms';
+import ManageServices from '../services/ManageServices';
+import ManageGroupModal from './ManageGroupModal';
+import GroupSeatModal from './GroupSeatModal';
 
 const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULE_KEYS, APP_GROUP_SERVICES, APP_GROUP_USERS } = SiteRoles;
 
@@ -42,8 +47,6 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
   } = useContext(GroupContext) as GroupContextType;
 
   const navigate = useNavigate();
-
-  const { ManageGroupModal, GroupSeatModal, ManageFeedback, ManageUsers, ManageRoles, ManageRoleActions, ManageForms, ManageServices, ManageSchedules, GroupSecure } = useComponents();
 
   const menuRoles: Record<string, SiteRoles[]> = {
     services: [APP_GROUP_SERVICES],

@@ -1,11 +1,8 @@
 import React from 'react';
-import { useComponents } from 'awayto/hooks';
 import { Route, Routes } from 'react-router';
+import ManageGroupHome from './ManageGroupHome';
 
-export function GroupPaths(props: IProps): React.JSX.Element {
-
-  const { ManageGroupHome } = useComponents();
-
+export function GroupPaths(props: IComponent): React.JSX.Element {
   return <Routes>
     <Route path="manage" element={<ManageGroupHome {...props} />} />
     <Route path="manage/:component" element={<ManageGroupHome {...props} />} />

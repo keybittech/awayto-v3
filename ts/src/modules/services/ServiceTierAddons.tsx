@@ -12,15 +12,13 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useGrid, useStyles, IService, IServiceTier } from 'awayto/hooks';
 import Box from '@mui/material/Box';
 
-declare global {
-  interface IComponent {
-    service?: IService;
-    showFormChips?: boolean;
-    onClickHeader?: (tier: IServiceTier) => void;
-  }
+interface ServiceTierAddonsProps extends IComponent {
+  service?: IService;
+  showFormChips?: boolean;
+  onClickHeader?: (tier: IServiceTier) => void;
 }
 
-export function ServiceTierAddons({ service, showFormChips, onClickHeader }: IComponent): React.JSX.Element {
+export function ServiceTierAddons({ service, showFormChips, onClickHeader }: ServiceTierAddonsProps): React.JSX.Element {
 
   const serviceTiers = useMemo(() => Object.values(service?.tiers || {}), [service?.tiers]);
 

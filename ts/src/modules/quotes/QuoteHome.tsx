@@ -12,9 +12,9 @@ import { DataGrid } from '@mui/x-data-grid';
 
 import { useGrid, utcDTLocal, shortNSweet } from 'awayto/hooks';
 
-import PendingQuotesContext from './PendingQuotesContext';
+import PendingQuotesContext, { PendingQuotesContextType } from './PendingQuotesContext';
 
-function QuoteHome(): React.JSX.Element {
+function QuoteHome(_: IComponent): React.JSX.Element {
 
   const {
     pendingQuotes,

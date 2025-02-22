@@ -1,8 +1,9 @@
 import React, { useRef, useCallback, useMemo, useState, useEffect } from 'react';
 
-import { ExchangeSessionAttributes, SenderStreams, SocketMessage, SocketActions, useComponents, useUtil, useWebSocketSubscribe } from 'awayto/hooks';
+import { ExchangeSessionAttributes, SenderStreams, SocketMessage, SocketActions, useUtil, useWebSocketSubscribe } from 'awayto/hooks';
 
-import WSCallContext from './WSCallContext';
+import WSCallContext, { WSCallContextType } from './WSCallContext';
+import Video from '../common/Video';
 
 const peerConnectionConfig = {
   'iceServers': [
@@ -11,19 +12,16 @@ const peerConnectionConfig = {
   ]
 };
 
-declare global {
-  interface IComponent {
-    topicId?: string;
-    topicMessages?: SocketMessage[];
-    setTopicMessages?(selector: (prop: SocketMessage[]) => SocketMessage[]): void;
-  }
+interface WSCallProviderProps extends IComponent {
+  topicId: string;
+  topicMessages: SocketMessage[];
+  setTopicMessages: React.Dispatch<React.SetStateAction<SocketMessage[]>>;
 }
 
-export function WSCallProvider({ children, topicId, setTopicMessages }: IComponent): React.JSX.Element {
+export function WSCallProvider({ children, topicId, setTopicMessages }: WSCallProviderProps): React.JSX.Element {
   if (!topicId) return <>{children}</>;
 
   const { setSnack } = useUtil();
-  const { Video } = useComponents();
 
   const [streamsUpdated, setStreamsUpdated] = useState('');
   const [audioOnly, setAudioOnly] = useState(false);
@@ -111,7 +109,7 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: ICompone
   } = useWebSocketSubscribe<ExchangeSessionAttributes>(topicId, async ({ sender, action, payload }) => {
 
     const timestamp = (new Date()).toString();
-    const { formats, target, sdp, ice, message, style } = payload;
+    const { target, sdp, ice, message, style } = payload; // formats was here
 
     // If this message isn't from my self or it isn't targeted for me and
     // isn't related to any WebRTC messages
@@ -300,10 +298,10 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: ICompone
               echoCancellation: true,
               noiseSuppression: true,
               autoGainControl: true,
-              latency: 0.01,
+              // latency: 0.01,
               channelCount: 2,
               sampleRate: 48000,
-              sampleSize: 16
+              sampleSize: 16,
             }
           };
 
@@ -405,7 +403,7 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: ICompone
     }
   }, [subscribed]);
 
-  const wsTextContext = {
+  const wsTextContext: WSCallContextType = {
     audioOnly,
     connected: !!localStream.current,
     canStartStop,
@@ -413,7 +411,7 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: ICompone
     leaveCall,
     senderStreamsElements,
     localStreamElement
-  } as WSCallContextType | null;
+  };
 
   return useMemo(() => <WSCallContext.Provider value={wsTextContext}>
     {children}

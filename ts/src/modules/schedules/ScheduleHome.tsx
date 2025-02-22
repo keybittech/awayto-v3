@@ -1,9 +1,8 @@
 import React from 'react';
+import ManageScheduleBrackets from './ManageScheduleBrackets';
 
-import { useComponents } from 'awayto/hooks';
 
-export function ScheduleHome(props: IProps): React.JSX.Element {
-  const { ManageScheduleBrackets } = useComponents();
+export function ScheduleHome(props: IComponent): React.JSX.Element {
   return <ManageScheduleBrackets {...props} />
 }
 

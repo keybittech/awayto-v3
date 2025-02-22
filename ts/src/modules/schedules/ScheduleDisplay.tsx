@@ -8,23 +8,19 @@ import Typography from '@mui/material/Typography';
 
 import { useSchedule, useTimeName, deepClone, getRelativeDuration, ISchedule, IScheduleBracket, IScheduleBracketSlot, useStyles, useUtil } from 'awayto/hooks';
 
-export type ScheduleDisplayProps = {
-  schedule?: ISchedule;
-  setSchedule?(value: ISchedule): void;
-  isKiosk?: boolean;
-};
-
 type GridCell = {
   columnIndex: number, rowIndex: number, style: CSSProperties
 }
 
-declare global {
-  interface IComponent extends ScheduleDisplayProps { }
-}
+export interface ScheduleDisplayProps extends IComponent {
+  schedule: ISchedule;
+  setSchedule?(value: ISchedule): void;
+  isKiosk?: boolean;
+};
 
 const bracketColors = ['cadetblue', 'forestgreen', 'brown', 'chocolate', 'darkslateblue', 'goldenrod', 'indianred', 'teal'];
 
-export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: IComponent & Required<ScheduleDisplayProps>): React.JSX.Element {
+export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ScheduleDisplayProps): React.JSX.Element {
 
   const scheduleDisplay = useMemo(() => deepClone(schedule) as Required<ISchedule>, [schedule]);
 
@@ -39,7 +35,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
   const [selected, setSelected] = useState({} as Record<string, IScheduleBracketSlot>);
   const [selectedBracket, setSelectedBracket] = useState<Required<IScheduleBracket>>();
   const [buttonDown, setButtonDown] = useState(false);
-  const [width, setWidth] = useState(1);
+  const [_, setWidth] = useState(1); // old can probably remove
 
   const scheduleTimeUnitName = scheduleDisplay.scheduleTimeUnitName || useTimeName(scheduleDisplay.scheduleTimeUnitId);
   const bracketTimeUnitName = scheduleDisplay.bracketTimeUnitName || useTimeName(scheduleDisplay.bracketTimeUnitId);
@@ -79,7 +75,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
           return;
         }
 
-        setSchedule({ ...schedule, brackets: { ...scheduleDisplay.brackets } });
+        setSchedule && setSchedule({ ...schedule, brackets: { ...scheduleDisplay.brackets } });
         setSelected({ ...selected });
       }
     }
@@ -182,7 +178,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ICom
                         }, {});
                         setSelected({ ...newSelected });
                         delete scheduleDisplay.brackets[bracket.id];
-                        setSchedule({ ...schedule, brackets: { ...scheduleDisplay.brackets } });
+                        setSchedule && setSchedule({ ...schedule, brackets: { ...scheduleDisplay.brackets } });
                       }
                     });
                   }}

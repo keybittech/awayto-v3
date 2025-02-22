@@ -8,14 +8,12 @@ import { siteApi } from 'awayto/hooks';
 
 const ratings = ['🙁', '🙂'];
 
-declare global {
-  interface IProps {
-    exchangeId?: string;
-    rating?: string;
-  }
+interface ExchangeRatingProps extends IComponent {
+  exchangeId: string;
+  rating: string;
 }
 
-export function ExchangeRating({ exchangeId, rating }: Required<IProps>): React.JSX.Element {
+export function ExchangeRating({ exchangeId, rating }: ExchangeRatingProps): React.JSX.Element {
   const [changing, setChanging] = useState(false);
   const [patchBookingRating, { data: ratingDataResponse }] = siteApi.useBookingServicePatchBookingRatingMutation();
 

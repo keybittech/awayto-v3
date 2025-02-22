@@ -1,7 +1,6 @@
 import React, { useState, useCallback, useMemo, useEffect } from 'react';
 
 import Grid from '@mui/material/Grid';
-import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
@@ -11,22 +10,19 @@ import Alert from '@mui/material/Alert';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 
-import { siteApi, useComponents, useUtil, useSuggestions, IPrompts, IGroup, IRole } from 'awayto/hooks';
+import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IRole } from 'awayto/hooks';
+import SelectLookup from '../common/SelectLookup';
 
-declare global {
-  interface IComponent {
-    showCancel?: boolean;
-    editGroup?: IGroup;
-    setEditGroup?: React.Dispatch<React.SetStateAction<IGroup>>;
-    saveToggle?: number;
-  }
+interface ManageGroupRolesModal extends IComponent {
+  showCancel?: boolean;
+  editGroup?: IGroup;
+  setEditGroup?: React.Dispatch<React.SetStateAction<IGroup>>;
+  saveToggle?: number;
 }
 
-export function ManageGroupRolesModal({ children, editGroup, setEditGroup, saveToggle = 0, showCancel = true, closeModal, ...props }: IComponent): React.JSX.Element {
+export function ManageGroupRolesModal({ children, editGroup, setEditGroup, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageGroupRolesModal): React.JSX.Element {
 
   const { setSnack } = useUtil();
-
-  const { SelectLookup } = useComponents();
 
   const {
     comp: RoleSuggestions,
@@ -122,9 +118,12 @@ export function ManageGroupRolesModal({ children, editGroup, setEditGroup, saveT
               lookupValue={roleIds}
               invalidValues={['admin']}
               refetchAction={getUserProfileDetails}
-              createAction={postRole}
-              createActionBodyKey='postRoleRequest'
-              deleteAction={deleteRole}
+              createAction={async ({ name }) => {
+                return await postRole({ postRoleRequest: { name } }).unwrap();
+              }}
+              deleteAction={async ({ ids }) => {
+                await deleteRole({ ids }).unwrap();
+              }}
               deleteActionIdentifier='ids'
               {...props}
             />

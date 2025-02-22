@@ -11,18 +11,18 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { useComponents, IGroupUserScheduleStub, shortNSweet, siteApi } from 'awayto/hooks';
+import { IGroupUserScheduleStub, shortNSweet, siteApi } from 'awayto/hooks';
 
-import GroupScheduleContext from './GroupScheduleContext';
-import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
+import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
+import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
+import ScheduleDatePicker from './ScheduleDatePicker';
+import ScheduleTimePicker from './ScheduleTimePicker';
 
-declare global {
-  interface IComponent {
-    editGroupUserScheduleStub?: Required<IGroupUserScheduleStub>;
-  }
+interface ManageScheduleStubModalProps extends IComponent {
+  editGroupUserScheduleStub: IGroupUserScheduleStub;
 }
 
-export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal }: Required<IComponent>): React.JSX.Element {
+export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal }: ManageScheduleStubModalProps): React.JSX.Element {
 
   const {
     selectGroupSchedule: { item: groupSchedule },
@@ -34,8 +34,6 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
     selectedDate,
     firstAvailable
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
-
-  const { ScheduleDatePicker, ScheduleTimePicker } = useComponents();
 
   const [patchGroupUserScheduleStubReplacement] = siteApi.useGroupUserScheduleServicePatchGroupUserScheduleStubReplacementMutation();
   const [getGroupUserScheduleStubReplacement] = siteApi.useLazyGroupUserScheduleServiceGetGroupUserScheduleStubReplacementQuery();
@@ -80,9 +78,14 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
     }).catch(console.error);
   }, [editGroupUserScheduleStub, replacement]);
 
+  if (!editGroupUserScheduleStub.slotDate || !editGroupUserScheduleStub.startTime) return <></>;
+
   return <>
     <Card>
-      <CardHeader title={`${shortNSweet(editGroupUserScheduleStub.slotDate, editGroupUserScheduleStub.startTime)}`} subheader={`${editGroupUserScheduleStub.serviceName} ${editGroupUserScheduleStub.tierName}`} />
+      <CardHeader
+        title={`${shortNSweet(editGroupUserScheduleStub.slotDate, editGroupUserScheduleStub.startTime)}`}
+        subheader={`${editGroupUserScheduleStub.serviceName} ${editGroupUserScheduleStub.tierName}`}
+      />
       <CardContent>
 
         {groupSchedule && !getGroupUserSchedulesRequest?.groupUserSchedules?.length ? <Alert severity="info">

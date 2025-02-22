@@ -1,21 +1,15 @@
 import React, { useCallback, useMemo, useEffect } from 'react';
 import Grid from '@mui/material/Grid';
-import TextField from '@mui/material/TextField';
 
-import { IForm, IFormSubmission, useComponents } from 'awayto/hooks';
+import { IForm, IFormSubmission } from 'awayto/hooks';
+import Field from './Field';
 
-export type FormDisplayProps = {
-  form?: Required<IForm>;
-  setForm?(value: IForm): void;
-};
-
-declare global {
-  interface IProps extends FormDisplayProps { }
+interface FormDisplayProps extends IComponent {
+  form: Required<IForm>;
+  setForm(value: IForm): void;
 }
 
-export default function FormDisplay({ form, setForm }: IProps & FormDisplayProps): React.JSX.Element {
-
-  const { Field } = useComponents();
+export default function FormDisplay({ form, setForm }: FormDisplayProps): React.JSX.Element {
 
   useEffect(() => {
     if (setForm && form && !form?.version?.submission) {

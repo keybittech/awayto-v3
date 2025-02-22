@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense, useContext } from 'react';
+import React, { useState, useMemo, useContext } from 'react';
 
 import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
@@ -12,16 +12,16 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, useUtil, siteApi, useComponents, dayjs, plural, ISchedule } from 'awayto/hooks';
+import { useGrid, useUtil, siteApi, dayjs, plural, ISchedule } from 'awayto/hooks';
 
-import GroupContext from '../groups/GroupContext';
-import GroupScheduleContext from '../group_schedules/GroupScheduleContext';
+import GroupContext, { GroupContextType } from '../groups/GroupContext';
+import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
+import ManageScheduleBracketsModal from './ManageScheduleBracketsModal';
 
 // This is how group users interact with the schedule
 
-export function ManageScheduleBrackets(): React.JSX.Element {
+export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
 
-  const { ManageScheduleBracketsModal } = useComponents();
   const { setSnack, openConfirm } = useUtil();
 
   const {
@@ -45,7 +45,7 @@ export function ManageScheduleBrackets(): React.JSX.Element {
   const [deleteGroupUserScheduleByUserScheduleId] = siteApi.useGroupUserScheduleServiceDeleteGroupUserScheduleByUserScheduleIdMutation();
   const [deleteSchedule] = siteApi.useScheduleServiceDeleteScheduleMutation();
 
-  const [schedule, setSchedule] = useState<ISchedule>();
+  const [schedule, setSchedule] = useState<ISchedule>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState('');
 
@@ -114,7 +114,7 @@ export function ManageScheduleBrackets(): React.JSX.Element {
         <Typography variant="button">Schedules:</Typography>
         <Button key={'create_schedule_button'} onClick={() => {
           if (groupSchedules?.length) {
-            setSchedule(undefined);
+            setSchedule({});
             setDialog('manage_schedule');
           } else {
             setSnack({ snackType: 'warning', snackOn: 'There are no available master schedules.' })

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
@@ -13,14 +13,12 @@ import { useUtil, siteApi, IRole } from 'awayto/hooks';
 import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
-declare global {
-  interface IComponent {
-    editRole?: IRole;
-    isDefault?: boolean;
-  }
+interface ManageRoleModalProps extends IComponent {
+  editRole?: IRole;
+  isDefault?: boolean;
 }
 
-export function ManageRoleModal({ editRole, isDefault, closeModal }: IComponent): React.JSX.Element {
+export function ManageRoleModal({ editRole, isDefault, closeModal }: ManageRoleModalProps): React.JSX.Element {
   const { setSnack } = useUtil();
   const [postRole] = siteApi.useRoleServicePostRoleMutation();
   const [patchGroupRole] = siteApi.useGroupRoleServicePatchGroupRoleMutation();

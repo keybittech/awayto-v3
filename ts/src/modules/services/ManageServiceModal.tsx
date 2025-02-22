@@ -6,14 +6,16 @@ import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
-import CardActionArea from '@mui/material/CardActionArea';
 import CardHeader from '@mui/material/CardHeader';
 import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 
-import { useComponents, useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IServiceAddon, IGroupService } from 'awayto/hooks';
+import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService } from 'awayto/hooks';
 import { Checkbox, FormControlLabel } from '@mui/material';
+import FormPicker from '../forms/FormPicker';
+import SelectLookup from '../common/SelectLookup';
+import ServiceTierAddons from './ServiceTierAddons';
 
 const serviceSchema = {
   name: '',
@@ -31,24 +33,21 @@ const serviceTierSchema = {
   addons: {}
 } as IServiceTier;
 
-const validCost = function(cost: string): boolean {
-  return /(^$|^\$?\d+(,\d{3})*(\.\d*)?$)/.test(cost);
+// const validCost = function(cost: string): boolean {
+//   return /(^$|^\$?\d+(,\d{3})*(\.\d*)?$)/.test(cost);
+// }
+
+interface ManageServiceModalProps extends IComponent {
+  showCancel?: boolean;
+  editGroup?: IGroup;
+  editGroupService: IGroupService;
+  setEditGroupService?: React.Dispatch<React.SetStateAction<IGroupService>>;
+  saveToggle?: number;
 }
 
-declare global {
-  interface IComponent {
-    showCancel?: boolean;
-    editGroup?: IGroup;
-    editGroupService?: IGroupService;
-    setEditGroupService?: React.Dispatch<React.SetStateAction<IGroupService>>;
-    saveToggle?: number;
-  }
-}
-
-export function ManageServiceModal({ editGroup, editGroupService, setEditGroupService, saveToggle = 0, showCancel = true, closeModal, ...props }: IComponent) {
+export function ManageServiceModal({ editGroup, editGroupService, setEditGroupService, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageServiceModalProps) {
 
   const classes = useStyles();
-  const { SelectLookup, ServiceTierAddons, FormPicker } = useComponents();
 
   const { setSnack } = useUtil();
 
@@ -61,7 +60,7 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
   const group = useMemo(() => editGroup || Object.values(profileRequest?.userProfile?.groups || {}).find(g => g.active), [profileRequest?.userProfile, editGroup]);
 
-  const { data: existingServiceRequest, refetch: getExistingService } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editGroupService?.id || newService?.id || '' }, { skip: !editGroupService?.id });
+  const { data: existingServiceRequest } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editGroupService?.id || newService?.id || '' }, { skip: !editGroupService?.id });
   const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery(undefined, { skip: !group?.id });
 
   const {
@@ -115,7 +114,6 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
         await patchService({ patchServiceRequest: { service: newServiceRef } }).unwrap();
         await postGroupService({ postGroupServiceRequest: { serviceId } }).unwrap();
         setNewService(newServiceRef);
-        // await getExistingService();
       }
     }
 
@@ -329,9 +327,12 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
                   lookupChange={(selectedAddonIds: string[]) => {
                     setServiceTierAddonIds([...selectedAddonIds]);
                   }}
-                  createAction={postServiceAddon}
-                  createActionBodyKey='postServiceAddonRequest'
-                  deleteAction={deleteGroupServiceAddon}
+                  createAction={async ({ name }) => {
+                    return await postServiceAddon({ postServiceAddonRequest: { name } }).unwrap();
+                  }}
+                  deleteAction={async ({ serviceAddonId }) => {
+                    await deleteGroupServiceAddon({ serviceAddonId }).unwrap();
+                  }}
                   deleteActionIdentifier='serviceAddonId'
                   deleteComplete={(val: string) => {
                     const tiers = { ...newService.tiers };
@@ -343,7 +344,9 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
                     setNewService({ ...newService, tiers });
                   }}
                   refetchAction={getGroupServiceAddons}
-                  attachAction={postGroupServiceAddon}
+                  attachAction={async ({ serviceAddonId }) => {
+                    await postGroupServiceAddon({ serviceAddonId }).unwrap();
+                  }}
                   attachName='serviceAddonId'
                   {...props}
                 />
@@ -441,35 +444,6 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
                 {newServiceTier.id ? 'Save Changes' : 'Add Service Tier'}
               </Button>
             </Grid>
-            {/* <Box sx={{ display: !serviceTiers.length ? 'none' : 'flex', py: 1, flexWrap: 'wrap', flexDirection: 'column' }}> */}
-            {/*   <Typography variant="caption">Click to edit or remove existing tiers.</Typography> */}
-            {/*   <Grid container size="grow"> */}
-            {/*     {serviceTiers.sort((a, b) => new Date(a.createdOn!).getTime() - new Date(b.createdOn!).getTime()).map((tier, i) => { */}
-            {/*       return <Box key={`service-tier-chip${i + 1}new`} m={1}> */}
-            {/*         <Chip */}
-            {/*           sx={classes.chipRoot} */}
-            {/*           label={ */}
-            {/*             <Typography sx={classes.chipLabel}> */}
-            {/*               {`#${i + 1} ` + tier.name + ' (' + (tier.multiplier || 100) / 100 + 'x)'} */}
-            {/*             </Typography> */}
-            {/*           } */}
-            {/*           onDelete={() => { */}
-            {/*             const tiers = { ...newService.tiers }; */}
-            {/*             if (tier.id) { */}
-            {/*               delete tiers[tier.id]; */}
-            {/*               setNewService({ ...newService, tiers }); */}
-            {/*             } */}
-            {/*           }} */}
-            {/*           onClick={() => { */}
-            {/*             setNewServiceTier({ ...tier }); */}
-            {/*             useSuggestAddons(`${tier.name} ${newService.name}`); */}
-            {/*             setServiceTierAddonIds(Object.keys(tier.addons || {})); */}
-            {/*           }} */}
-            {/*         /> */}
-            {/*       </Box> */}
-            {/*     })} */}
-            {/*   </Grid> */}
-            {/* </Box> */}
           </Box>
         </Grid>
         <Grid size={12}>

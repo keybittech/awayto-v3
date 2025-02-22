@@ -15,7 +15,8 @@ import { Document, Page } from 'react-pdf';
 
 import Box from '@mui/material/Box';
 
-import { IFile, IWhiteboard, useWebSocketSubscribe, useFileContents, useComponents, useUtil, SocketActions } from 'awayto/hooks';
+import { IFile, IWhiteboard, useWebSocketSubscribe, useFileContents, useUtil, SocketActions } from 'awayto/hooks';
+import WhiteboardOptionsMenu from './WhiteboardOptionsMenu';
 
 function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasElement>, canvas: HTMLCanvasElement) {
   const rect = canvas.getBoundingClientRect();
@@ -26,16 +27,14 @@ function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasE
 
 // onwhiteboard load use effect check fileDetails from modal close then do a confirm action to getFileContents ?
 
-declare global {
-  interface IProps {
-    optionsMenu?: React.JSX.Element;
-    sharedFile?: IFile;
-    topicId?: string;
-    openFileSelect?: () => void;
-  }
+interface WhiteboardProps extends IComponent {
+  optionsMenu: React.JSX.Element;
+  sharedFile?: IFile;
+  topicId: string;
+  openFileSelect: () => void;
 }
 
-export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, topicId }: IProps): React.JSX.Element {
+export default function Whiteboard({ optionsMenu, sharedFile, topicId }: WhiteboardProps): React.JSX.Element {
   if (!topicId) return <></>;
 
   const whiteboardRef = useRef<HTMLCanvasElement>(null);
@@ -47,7 +46,6 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
   const whiteboard = useRef<IWhiteboard>({ lines: [], settings: { highlight: false, position: [0, 0] } });
 
   const { openConfirm } = useUtil();
-  const { WhiteboardOptionsMenu } = useComponents();
 
   const [canvasPointerEvents, setCanvasPointerEvents] = useState('none');
   const [zoom, setZoom] = useState(1);
@@ -59,7 +57,7 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
   const [strokeColor, setStrokeColor] = useState('#aaaaaa');
   const [fileToggle, setFileToggle] = useState(false);
   const [selectedText, setSelectedText] = useState<Record<string, string>>({});
-  const [boards, setBoards] = useState<Record<string, Partial<IWhiteboard>>>({});
+  const [_, setBoards] = useState<Record<string, Partial<IWhiteboard>>>({});
 
   const {
     connectionId,
@@ -198,7 +196,7 @@ export default function Whiteboard({ optionsMenu, sharedFile, openFileSelect, to
     const scrollDiv = fileScroller.current;
     if (scrollDiv) {
 
-      const onFileScroll = (e: Event) => {
+      const onFileScroll = (_: Event) => {
         if (scrollTimeout.current) {
           clearTimeout(scrollTimeout.current);
         }

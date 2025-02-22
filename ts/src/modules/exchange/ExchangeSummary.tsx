@@ -8,13 +8,16 @@ import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
-import { siteApi, useUtil, useAccordion, useComponents, useGroupForm } from 'awayto/hooks';
 
-export function ExchangeSummary(_: IProps): React.JSX.Element {
+import { siteApi, useUtil, useAccordion, useGroupForm } from 'awayto/hooks';
+
+import ExchangeRating from './ExchangeRating';
+import AccordionWrap from '../common/AccordionWrap';
+
+export function ExchangeSummary(_: IComponent): React.JSX.Element {
   const { summaryId } = useParams();
   if (!summaryId) return <></>;
 
-  const { AccordionWrap, ExchangeRating } = useComponents();
   const { setSnack } = useUtil();
 
   const [didSubmit, setDidSubmit] = useState(false);
@@ -43,7 +46,7 @@ export function ExchangeSummary(_: IProps): React.JSX.Element {
     <Card sx={{ mb: 2 }}>
       <CardHeader title="Summary Review" subheader="Your feedback is important and helps make services better." />
       <CardContent>
-        <ExchangeRating rating={booking?.rating} exchangeId={summaryId} />
+        <ExchangeRating rating={booking.rating || '0'} exchangeId={summaryId} />
       </CardContent>
     </Card>
 

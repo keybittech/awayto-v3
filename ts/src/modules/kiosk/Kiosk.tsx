@@ -14,13 +14,12 @@ import CardContent from '@mui/material/CardContent';
 
 import DoubleArrorIcon from '@mui/icons-material/DoubleArrow';
 
-import { useComponents, IKiosk } from 'awayto/hooks';
+import { IKiosk } from 'awayto/hooks';
+import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 export function Kiosk(): React.JSX.Element {
   const { groupName, scheduleName } = useParams();
   if (!groupName) return <></>;
-
-  const { ScheduleDisplay } = useComponents();
 
   const [scheduleId, setScheduleId] = useState(scheduleName);
   const [kiosk, setKiosk] = useState<IKiosk | undefined>();

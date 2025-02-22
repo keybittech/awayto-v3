@@ -16,16 +16,17 @@ import CallIcon from '@mui/icons-material/Call';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import InsertPageBreak from '@mui/icons-material/InsertPageBreak';
 
-import { ExchangeActions, useComponents, useStyles, IFile, OrderedFiles } from 'awayto/hooks';
+import { ExchangeActions, useStyles, IFile, OrderedFiles } from 'awayto/hooks';
 
-import ExchangeContext from './ExchangeContext';
-import WSTextContext from '../web_socket/WSTextContext';
-import WSCallContext from '../web_socket/WSCallContext';
+import ExchangeContext, { ExchangeContextType } from './ExchangeContext';
+import WSTextContext, { WSTextContextType } from '../web_socket/WSTextContext';
+import WSCallContext, { WSCallContextType } from '../web_socket/WSCallContext';
+import FileSelectionModal from '../files/FileSelectionModal';
+import Whiteboard from './Whiteboard';
 
-export function Exchange(_: IProps): React.JSX.Element {
+export function Exchange(_: IComponent): React.JSX.Element {
   const classes = useStyles();
 
-  const { Whiteboard, FileSelectionModal } = useComponents();
   const [dialog, setDialog] = useState('');
   const [chatOpen, setChatOpen] = useState(true);
   const [fileGroups, setFileGroups] = useState<OrderedFiles[]>([])

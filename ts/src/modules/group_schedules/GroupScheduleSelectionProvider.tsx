@@ -2,23 +2,23 @@ import React, { useCallback, useContext, useEffect, useMemo, useState } from 're
 
 import { dayjs, IGroupScheduleDateSlots, IQuote, TimeUnit, quotedDT, userTimezone, siteApi } from 'awayto/hooks';
 
-import GroupScheduleContext from './GroupScheduleContext';
-import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
+import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
+import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
 
-export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.Element {
+export function GroupScheduleSelectionProvider({ children }: IComponent): React.JSX.Element {
 
   const { selectGroupSchedule: { item: groupSchedule } } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
   const [firstAvailable, setFirstAvailable] = useState({ time: dayjs().startOf('day'), scheduleBracketSlotId: '' });
   const [startOfMonth, setStartOfMonth] = useState(dayjs().startOf(TimeUnit.MONTH));
-  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs | null>(firstAvailable.time!);
-  const [selectedTime, setSelectedTime] = useState<dayjs.Dayjs | null>(firstAvailable.time!);
+  const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>(firstAvailable.time);
+  const [selectedTime, setSelectedTime] = useState<dayjs.Dayjs>(firstAvailable.time);
 
   const [quote, setQuote] = useState({} as IQuote);
 
   const tz = useMemo(() => encodeURIComponent(btoa(userTimezone)), [userTimezone]);
 
-  const [getScheduleDateSlots, { data: dateSlotsRequest, fulfilledTimeStamp, isFetching }] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleByDateQuery();
+  const [getScheduleDateSlots, { data: dateSlotsRequest, isFetching }] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleByDateQuery();
 
   if (dateSlotsRequest?.groupScheduleDateSlots?.length && !firstAvailable.scheduleBracketSlotId) {
     const [slot] = dateSlotsRequest.groupScheduleDateSlots as Required<IGroupScheduleDateSlots>[];
@@ -70,7 +70,7 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
     }
   }, [selectedDate, selectedTime]);
 
-  const groupScheduleSelectionContext = {
+  const groupScheduleSelectionContext: GroupScheduleSelectionContextType = {
     quote,
     setQuote,
     selectedDate,
@@ -79,11 +79,11 @@ export function GroupScheduleSelectionProvider({ children }: IProps): React.JSX.
     setSelectedTime,
     startOfMonth,
     setStartOfMonth,
-    dateSlots: dateSlotsRequest?.groupScheduleDateSlots,
+    dateSlots: dateSlotsRequest?.groupScheduleDateSlots || [],
     getDateSlots,
     firstAvailable,
     bracketSlotDateDayDiff,
-  } as GroupScheduleSelectionContextType;
+  };
 
   return useMemo(() => <GroupScheduleSelectionContext.Provider value={groupScheduleSelectionContext}>
     {children}

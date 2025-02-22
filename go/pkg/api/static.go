@@ -112,11 +112,11 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 		}
 
 		mux.Handle("GET /app/", http.StripPrefix("/app/",
-			a.LimitMiddleware(100, 200)(
-				func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
-					proxy.ServeHTTP(w, req)
-				},
-			),
+			// a.LimitMiddleware(100, 200)(
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				proxy.ServeHTTP(w, req)
+			}),
+			// ),
 		))
 	}
 }

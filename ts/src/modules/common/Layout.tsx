@@ -13,22 +13,7 @@ import ExchangeSummary from '../exchange/ExchangeSummary';
 import ExchangeProvider from '../exchange/ExchangeProvider';
 import Exchange from '../exchange/Exchange';
 
-// import { useComponents } from 'awayto/hooks';
-
 const Layout = (props: IComponent): React.JSX.Element => {
-
-  // const {
-  //   Home,
-  //   Exchange,
-  //   ExchangeSummary,
-  //   ExchangeProvider,
-  //   TopLevelProviders,
-  //   Profile,
-  //   GroupPaths,
-  //   ScheduleHome,
-  //   RequestQuote,
-  //   Topbar
-  // } = useComponents();
 
   useEffect(() => {
     window.INT_SITE_LOAD = true;
@@ -56,7 +41,6 @@ const Layout = (props: IComponent): React.JSX.Element => {
         }>
           <Route path="/" element={<Home {...props} />} />
           <Route path="/profile" element={<Profile {...props} />} />
-          {/* <Route path="/service" element={<ServiceHome {...props} />} /> */}
           <Route path="/request" element={<RequestQuote {...props} />} />
           <Route path="/schedule" element={<ScheduleHome {...props} />} />
           <Route path="/group/*" element={<GroupPaths {...props} />} />

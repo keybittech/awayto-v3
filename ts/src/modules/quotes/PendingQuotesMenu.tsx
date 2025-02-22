@@ -17,18 +17,16 @@ import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
 import { shortNSweet } from 'awayto/hooks';
 
-import PendingQuotesContext from './PendingQuotesContext';
+import PendingQuotesContext, { PendingQuotesContextType } from './PendingQuotesContext';
 
-declare global {
-  interface IComponent {
-    pendingQuotesAnchorEl?: null | HTMLElement;
-    pendingQuotesMenuId?: string;
-    isPendingQuotesOpen?: boolean;
-    handleMenuClose?: () => void;
-  }
+interface PendingQuotesMenuProps extends IComponent {
+  pendingQuotesAnchorEl: null | HTMLElement;
+  pendingQuotesMenuId: string;
+  isPendingQuotesOpen: boolean;
+  handleMenuClose: () => void;
 }
 
-export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pendingQuotesMenuId, isPendingQuotesOpen }: IComponent): React.JSX.Element {
+export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pendingQuotesMenuId, isPendingQuotesOpen }: PendingQuotesMenuProps): React.JSX.Element {
 
   const {
     pendingQuotes,

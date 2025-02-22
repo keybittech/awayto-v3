@@ -13,15 +13,13 @@ import {
   GroupUserScheduleServiceGetGroupUserSchedulesApiResponse
 } from 'awayto/hooks';
 
-declare global {
-  type GroupScheduleContextType = {
-    getGroupSchedules: UseSiteQuery<GroupScheduleServiceGetGroupSchedulesApiArg, GroupScheduleServiceGetGroupSchedulesApiResponse>;
-    getGroupUserScheduleStubs: UseSiteQuery<GroupUserScheduleServiceGetGroupUserScheduleStubsApiArg, GroupUserScheduleServiceGetGroupUserScheduleStubsApiResponse>;
-    getGroupUserSchedules: UseSiteQuery<GroupUserScheduleServiceGetGroupUserSchedulesApiArg, GroupUserScheduleServiceGetGroupUserSchedulesApiResponse>;
-    selectGroupSchedule: UseSelectOneResponse<Required<IGroupSchedule>>;
-    selectGroupScheduleService: UseSelectOneResponse<Required<IService>>;
-    selectGroupScheduleServiceTier: UseSelectOneResponse<Required<IServiceTier>>;
-  }
+export interface GroupScheduleContextType {
+  getGroupSchedules: UseSiteQuery<GroupScheduleServiceGetGroupSchedulesApiArg, GroupScheduleServiceGetGroupSchedulesApiResponse>;
+  getGroupUserScheduleStubs: UseSiteQuery<GroupUserScheduleServiceGetGroupUserScheduleStubsApiArg, GroupUserScheduleServiceGetGroupUserScheduleStubsApiResponse>;
+  getGroupUserSchedules: UseSiteQuery<GroupUserScheduleServiceGetGroupUserSchedulesApiArg, GroupUserScheduleServiceGetGroupUserSchedulesApiResponse>;
+  selectGroupSchedule: UseSelectOneResponse<IGroupSchedule>;
+  selectGroupScheduleService: UseSelectOneResponse<IService>;
+  selectGroupScheduleServiceTier: UseSelectOneResponse<IServiceTier>;
 }
 
 export const GroupScheduleContext = createContext<GroupScheduleContextType | null>(null);

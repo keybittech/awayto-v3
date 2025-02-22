@@ -8,44 +8,36 @@ import InputAdornment from '@mui/material/InputAdornment';
 import Grid from '@mui/material/Grid';
 import ClearIcon from '@mui/icons-material/Clear';
 import CheckIcon from '@mui/icons-material/Check';
-import { useUtil, ILookup, SiteQuery } from 'awayto/hooks';
-import { QueryActionCreatorResult } from '@reduxjs/toolkit/query';
+import { useUtil, ILookup, isStringArray } from 'awayto/hooks';
 
-type CreateActionBody = Record<string, string | Record<string, string>>;
+type ActionBody = Record<string, string>;
 
-type MutatorFn<T, R> = (p: T) => QueryActionCreatorResult<SiteQuery<T, R>>
+// type MutatorFn<T, R> = (p: T) => QueryActionCreatorResult<SiteQuery<T, R>>
 
-declare global {
-  interface IComponent {
-    multiple?: boolean;
-    required?: boolean;
-    disabled?: boolean;
-    noEmptyValue?: boolean;
-    lookups?: ILookup[];
-    lookupName?: string;
-    helperText?: string;
-    lookupChange?(value: string | string[]): void;
-    lookupValue?: string | string[];
-    defaultValue?: string | string[];
-    invalidValues?: string[];
-    refetchAction?: (props?: { [prop: string]: string }) => void;
-    attachAction?: MutatorFn<{ [prop: string]: string }, ILookup>;
-    createAction?: MutatorFn<CreateActionBody, ILookup>;
-    createActionBodyKey?: string;
-    deleteAction?: MutatorFn<{ [prop: string]: string }, ILookup[]>;
-    deleteComplete?(value: string | string[]): void;
-    parentUuidName?: string;
-    parentUuid?: string;
-    attachName?: string;
-    deleteActionIdentifier?: string
-  }
+interface SelectLookupProps extends IComponent {
+  multiple?: boolean;
+  required?: boolean;
+  disabled?: boolean;
+  noEmptyValue?: boolean;
+  lookups?: (ILookup | undefined)[];
+  lookupName: string;
+  helperText: React.JSX.Element | string;
+  lookupChange(value: string | string[]): void;
+  lookupValue: string | string[];
+  defaultValue?: string | string[];
+  invalidValues?: string[];
+  refetchAction?: (props?: { [prop: string]: string }) => void;
+  attachAction?: (p: ActionBody) => Promise<void>;
+  createAction?: (p: ActionBody) => Promise<{ id: string }>;
+  deleteAction?: (p: ActionBody) => Promise<void>;
+  deleteComplete?(value: string | string[]): void;
+  parentUuidName?: string;
+  parentUuid?: string;
+  attachName?: string;
+  deleteActionIdentifier?: string
 }
 
-function isStringArray(str?: string | string[]): str is string[] {
-  return (str as string[]).forEach !== undefined;
-}
-
-export function SelectLookup({ lookupChange, required = false, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, createActionBodyKey, deleteAction, deleteComplete, deleteActionIdentifier }: IComponent): React.JSX.Element {
+export function SelectLookup({ lookupChange, required = false, disabled = false, invalidValues = [], attachAction, attachName, refetchAction, parentUuidName, parentUuid, lookups, lookupName, helperText, lookupValue, multiple = false, noEmptyValue = false, createAction, deleteAction, deleteComplete, deleteActionIdentifier }: SelectLookupProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -72,20 +64,15 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
 
       setLookupUpdater(newLookup.name);
       if (createAction) {
-        let actionBody: CreateActionBody = { name: newLookup.name };
-        if (createActionBodyKey) {
-          actionBody = {
-            [createActionBodyKey]: { name: newLookup.name }
-          };
-        }
-        createAction(actionBody).unwrap().then(res => {
+        let actionBody: ActionBody = { name: newLookup.name };
+        createAction(actionBody).then(res => {
           const { id: lookupId } = res;
           if (attachAction && lookupId && attachName) {
             const attachPayload = { [attachName]: lookupId };
             if (parentUuid && parentUuidName) {
               attachPayload[parentUuidName] = parentUuid;
             }
-            attachAction(attachPayload).unwrap().then(() => refresh()).catch(console.error);
+            attachAction(attachPayload).then(() => refresh()).catch(console.error);
           } else {
             refresh();
           }
@@ -98,7 +85,7 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
 
   useEffect(() => {
     if (lookupValue && lookups?.length && isStringArray(lookupValue) && lookupUpdater) {
-      const updater = lookups.find(l => l.name === lookupUpdater);
+      const updater = lookups.find(l => l?.name === lookupUpdater);
       if (updater?.id) {
         lookupChange([...lookupValue, updater.id]);
         setLookupUpdater('');
@@ -133,9 +120,9 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
           onKeyDown={(e) => {
             ('Enter' === e.key && newLookup.name) && handleSubmit();
           }}
-          InputProps={{
-            endAdornment: (
-              <InputAdornment position="end">
+          slotProps={{
+            input: {
+              endAdornment: <InputAdornment position="end">
                 <IconButton aria-label="close new record" onClick={() => {
                   setAddingNew(false);
                   setNewLookup({ ...newLookup, name: '' });
@@ -148,7 +135,7 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
                   <CheckIcon style={{ color: 'green' }} />
                 </IconButton>
               </InputAdornment>
-            ),
+            }
           }}
         /> : <TextField
           select
@@ -167,17 +154,18 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
             }
           }}
           value={lookupValue}
-          SelectProps={{
-            multiple,
-            renderValue: selected => {
-              const lookupText = isStringArray(selected as string[]) ?
-                (selected as string[]).map(v => lookups?.find(r => r.id === v)?.name).join(', ') :
-                lookups?.find(r => r.id === selected)?.name as string;
+          slotProps={{
+            select: {
+              multiple,
+              renderValue: selected => {
+                const lookupText = isStringArray(selected as string[]) ?
+                  (selected as string[]).map(v => lookups?.find(r => r?.id === v)?.name).join(', ') :
+                  lookups?.find(r => r?.id === selected)?.name as string;
 
-              return <Box sx={{ whiteSpace: 'pre-wrap' }}>{lookupText}</Box>;
+                return <Box sx={{ whiteSpace: 'pre-wrap' }}>{lookupText}</Box>;
+              }
             }
           }}
-
         >
           {!multiple && !noEmptyValue && <MenuItem value="">No selection</MenuItem>}
           {createAction && <MenuItem value="new" onClick={e => {
@@ -189,24 +177,24 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
             Click the button above to add some.
           </MenuItem>}
           {lookups?.length ? lookups.map((lookup, i) => (
-            <MenuItem key={i} style={{ display: 'flex' }} value={lookup.id}>
-              <span style={{ flex: '1' }}>{lookup.name}</span>
+            <MenuItem key={i} style={{ display: 'flex' }} value={lookup?.id}>
+              <span style={{ flex: '1' }}>{lookup?.name}</span>
               {refetchAction && deleteAction && <ClearIcon style={{ color: 'red', marginRight: '8px' }} onClick={e => {
                 e.stopPropagation();
-                if (isStringArray(lookupValue) && lookup.id) {
-                  lookupChange([...lookupValue.filter(l => l !== lookup.id)]);
-                } else if (lookupValue === lookup.id) {
+                if (isStringArray(lookupValue) && lookup?.id) {
+                  lookupChange([...lookupValue.filter(l => l !== lookup?.id)]);
+                } else if (lookupValue === lookup?.id) {
                   lookupChange('');
                 }
 
-                if (lookup.id && ((parentUuidName && parentUuid && attachName) || deleteActionIdentifier)) {
+                if (lookup?.id && ((parentUuidName && parentUuid && attachName) || deleteActionIdentifier)) {
                   deleteAction(
-                    parentUuidName && parentUuid && attachName ? { [parentUuidName]: parentUuid, [attachName]: lookup.id } :
-                      deleteActionIdentifier ? { [deleteActionIdentifier]: lookup.id } :
+                    parentUuidName && parentUuid && attachName ? { [parentUuidName]: parentUuid, [attachName]: lookup?.id } :
+                      deleteActionIdentifier ? { [deleteActionIdentifier]: lookup?.id } :
                         {}
-                  ).unwrap().then(() => {
-                    if (lookup.id) {
-                      deleteComplete && deleteComplete(lookup.id);
+                  ).then(() => {
+                    if (lookup?.id) {
+                      deleteComplete && deleteComplete(lookup?.id);
                       refresh()
                     }
                   }).catch(console.error);

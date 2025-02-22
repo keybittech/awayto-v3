@@ -10,6 +10,9 @@ import IconButton from '@mui/material/IconButton';
 
 import SettingsIcon from '@mui/icons-material/Settings';
 
+import { IField, IFormVersion, deepClone } from 'awayto/hooks';
+import Field from './Field';
+
 // text
 
 // Single line text input.
@@ -84,28 +87,19 @@ import SettingsIcon from '@mui/icons-material/Settings';
 
 // Time input based on HTML 5 spec.
 
-
-import { useComponents, IField, IFormVersion, deepClone } from 'awayto/hooks';
-
-export type FormBuilderProps = {
-  version?: IFormVersion;
-  setVersion?(value: IFormVersion): void;
-  editable?: boolean;
-};
-
-declare global {
-  interface IProps extends FormBuilderProps { }
+interface FormBuilderProps extends IComponent {
+  version: IFormVersion;
+  setVersion(value: IFormVersion): void;
+  editable: boolean;
 }
 
-export default function FormBuilder({ version, setVersion, editable = true }: IProps & Required<FormBuilderProps>): React.JSX.Element {
-
-  const { Field } = useComponents();
+export default function FormBuilder({ version, setVersion, editable = true }: FormBuilderProps): React.JSX.Element {
 
   const [rows, setRows] = useState({} as Record<string, IField[]>);
-  const [cell, setCell] = useState({} as IField);
+  const [cell, setCell] = useState({} as IField & Object);
   const [position, setPosition] = useState({ row: '', col: 0 });
 
-  const cellSelected = Object.hasOwn(cell, 'l');
+  const cellSelected = cell.hasOwnProperty('l');
   const inputTypes = ['text', 'date', 'time'];
 
   useEffect(() => {
@@ -182,6 +176,7 @@ export default function FormBuilder({ version, setVersion, editable = true }: IP
                 return <Grid role="gridcell" size={12 / rows[rowId].length} key={`form_fields_cell_${i + 1}_${j}`}>
                   <Field
                     defaultDisplay
+                    editable={false}
                     field={field}
                     settingsBtn={
                       <IconButton sx={{ color: position.row == rowId && position.col == j ? 'white' : 'gray' }} onClick={() => {

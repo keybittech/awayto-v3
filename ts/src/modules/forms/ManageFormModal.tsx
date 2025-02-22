@@ -9,15 +9,14 @@ import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useComponents, siteApi, useUtil, IForm, IProtoForm, IFormVersion, IField, deepClone, IGroupForm } from 'awayto/hooks';
+import { siteApi, useUtil, IForm, IFormVersion, IField, deepClone, IGroupForm } from 'awayto/hooks';
+import FormBuilder from './FormBuilder';
 
-declare global {
-  interface IComponent {
-    editForm?: IForm;
-  }
+interface ManageFormModalProps extends IComponent {
+  editForm?: IForm;
 }
 
-export function ManageFormModal({ editForm, closeModal, ...props }: IComponent): React.JSX.Element {
+export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormModalProps): React.JSX.Element {
 
   const [postGroupFormVersion] = siteApi.useGroupFormServicePostGroupFormVersionMutation();
   const [postGroupForm] = siteApi.useGroupFormServicePostGroupFormMutation();
@@ -25,7 +24,6 @@ export function ManageFormModal({ editForm, closeModal, ...props }: IComponent):
 
   const { setSnack } = useUtil();
 
-  const { FormBuilder } = useComponents();
   const [version, setVersion] = useState({ form: {} } as IFormVersion);
   const [form, setForm] = useState({ name: '', ...editForm } as IForm);
   const [editable, setEditable] = useState(true);

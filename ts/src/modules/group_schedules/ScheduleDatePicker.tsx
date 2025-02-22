@@ -1,13 +1,12 @@
 import React, { useContext } from 'react';
 
-import TextField from '@mui/material/TextField';
 import { DesktopDatePicker } from '@mui/x-date-pickers/DesktopDatePicker';
 
 import { dayjs } from 'awayto/hooks';
 
-import GroupScheduleSelectionContext from './GroupScheduleSelectionContext';
+import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
 
-export function ScheduleDatePicker(): React.JSX.Element {
+export function ScheduleDatePicker(_: IComponent): React.JSX.Element {
 
   const {
     setStartOfMonth,
@@ -25,7 +24,7 @@ export function ScheduleDatePicker(): React.JSX.Element {
     slotProps={{
       textField: { fullWidth: true }
     }}
-    onChange={(date: dayjs.Dayjs | null) => setSelectedDate(date ? date.isBefore(firstAvailable.time) ? firstAvailable.time : date : null)}
+    onChange={(date: dayjs.Dayjs | null) => setSelectedDate(date ? date.isBefore(firstAvailable.time) ? firstAvailable.time : date : firstAvailable.time)}
     label="Date"
     format="MM/DD/YYYY"
     minDate={firstAvailable.time}

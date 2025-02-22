@@ -1,8 +1,8 @@
 import React, { useMemo } from 'react';
 
-import { siteApi, useSelectOne, isExternal, IGroup } from 'awayto/hooks';
+import { siteApi, useSelectOne, IGroup } from 'awayto/hooks';
 
-import GroupContext from './GroupContext';
+import GroupContext, { GroupContextType } from './GroupContext';
 
 export function GroupProvider({ children }: IComponent): React.JSX.Element {
 
@@ -17,15 +17,15 @@ export function GroupProvider({ children }: IComponent): React.JSX.Element {
   const { data: groupFormsRequest } = siteApi.useGroupFormServiceGetGroupFormsQuery();
   const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
 
-  const groupContext = {
+  const groupContext: GroupContextType = {
     groups,
     group: group || {},
-    groupSchedules: groupSchedulesRequest?.groupSchedules,
-    groupServices: groupServicesRequest?.groupServices,
-    groupForms: groupFormsRequest?.groupForms,
-    groupRoles: groupRolesRequest?.groupRoles,
+    groupSchedules: groupSchedulesRequest?.groupSchedules || [],
+    groupServices: groupServicesRequest?.groupServices || [],
+    groupForms: groupFormsRequest?.groupForms || [],
+    groupRoles: groupRolesRequest?.groupRoles || [],
     GroupSelect
-  } as GroupContextType | null;
+  };
 
   return useMemo(() => <GroupContext.Provider value={groupContext}>
     {children}

@@ -5,20 +5,16 @@ import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 
-import { dayjs, IField } from 'awayto/hooks';
+import { IField } from 'awayto/hooks';
 
-type FieldProps = {
-  field?: IField;
+interface FieldProps extends IComponent {
+  field: IField;
+  editable: boolean;
   defaultDisplay?: boolean;
-  editable?: boolean;
   settingsBtn?: React.JSX.Element;
-};
-
-declare global {
-  interface IComponent extends FieldProps { }
 }
 
-function Field({ settingsBtn, defaultDisplay, field, editable = false, ...props }: IComponent): React.JSX.Element {
+function Field({ settingsBtn, defaultDisplay, field, editable = false, ...props }: FieldProps & TextFieldProps): React.JSX.Element {
   if (!field) return <></>;
 
   const FieldElement: (props: TextFieldProps) => React.JSX.Element = useMemo(() => {
@@ -37,16 +33,16 @@ function Field({ settingsBtn, defaultDisplay, field, editable = false, ...props 
     }
   }, [field, settingsBtn]);
 
-  const defaultValue = useMemo(() => {
-    switch (field.t) {
-      case 'date':
-        return dayjs().format('YYYY-MM-DD');
-      case 'time':
-        return dayjs().format('hh:mm:ss');
-      default:
-        return defaultDisplay ? ' ' : '';
-    }
-  }, [field]);
+  // const defaultValue = useMemo(() => {
+  //   switch (field.t) {
+  //     case 'date':
+  //       return dayjs().format('YYYY-MM-DD');
+  //     case 'time':
+  //       return dayjs().format('hh:mm:ss');
+  //     default:
+  //       return defaultDisplay ? ' ' : '';
+  //   }
+  // }, [field]);
 
   return <FieldElement
     fullWidth
@@ -55,10 +51,10 @@ function Field({ settingsBtn, defaultDisplay, field, editable = false, ...props 
     type={field.t}
     helperText={`${field.r ? 'Required. ' : ''}${field.h || ''}`}
     value={field.v ?? ''}
-    InputProps={{
-      endAdornment: settingsBtn
-    }}
     slotProps={{
+      input: {
+        endAdornment: settingsBtn
+      },
       inputLabel: {
         shrink: true
       }

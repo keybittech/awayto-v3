@@ -8,13 +8,11 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 import { MimeTypes } from 'awayto/hooks';
 
-declare global {
-  interface IComponent {
-    fileType?: string;
-  }
+interface FileTypeIcon extends IComponent {
+  fileType: string;
 }
 
-export function FileTypeIcon({ fileType }: IComponent): React.JSX.Element {
+export function FileTypeIcon({ fileType }: FileTypeIcon): React.JSX.Element {
   switch (fileType) {
     case MimeTypes.PLAIN_TEXT:
       return <Tooltip title="Plain Text" children={<TextFieldsIcon />} />;

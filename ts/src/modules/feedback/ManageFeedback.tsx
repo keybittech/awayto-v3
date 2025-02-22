@@ -4,7 +4,7 @@ import { DataGrid } from '@mui/x-data-grid';
 
 import { useGrid, siteApi, dayjs } from 'awayto/hooks';
 
-export function ManageFeedbacks(): React.JSX.Element {
+export function ManageFeedbacks(_: IComponent): React.JSX.Element {
   const { data: feedbackRequest } = siteApi.useGroupFeedbackServiceGetGroupFeedbackQuery();
 
   const feedbackGridProps = useGrid({

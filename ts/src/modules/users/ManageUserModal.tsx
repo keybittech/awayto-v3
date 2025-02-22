@@ -6,32 +6,24 @@ import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import MenuItem from '@mui/material/MenuItem';
-import Typography from '@mui/material/Typography';
-import FormControl from '@mui/material/FormControl';
-import Input from '@mui/material/Input';
-import FormHelperText from '@mui/material/FormHelperText';
 import Button from '@mui/material/Button';
-import InputLabel from '@mui/material/InputLabel';
 import TextField from '@mui/material/TextField';
-import InputAdornment from '@mui/material/InputAdornment';
 
-import { IUserProfile, passwordGen, siteApi } from 'awayto/hooks';
+import { IUserProfile, siteApi } from 'awayto/hooks';
 
-declare global {
-  interface IComponent {
-    editRoleId?: string;
-    editUser?: IUserProfile;
-  }
+interface ManageUserModalProps extends IComponent {
+  editRoleId: string;
+  editUser: IUserProfile;
 }
 
-export function ManageUserModal({ editRoleId, editUser, closeModal }: IComponent): React.JSX.Element {
+export function ManageUserModal({ editRoleId, editUser, closeModal }: ManageUserModalProps): React.JSX.Element {
 
   const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const [patchGroupUser] = siteApi.useGroupUsersServicePatchGroupUserMutation();
 
   // const [password, setPassword] = useState('');
   const [roleId, setRoleId] = useState(editRoleId);
-  const [profile, setProfile] = useState({
+  const [profile, _] = useState({
     firstName: '',
     lastName: '',
     email: '',

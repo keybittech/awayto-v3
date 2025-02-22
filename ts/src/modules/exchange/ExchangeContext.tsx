@@ -6,13 +6,11 @@ import {
   SocketMessage
 } from 'awayto/hooks';
 
-declare global {
-  type ExchangeContextType = {
-    exchangeId: string;
-    topicMessages: SocketMessage[];
-    setTopicMessages(selector: (prop: Partial<SocketMessage>[]) => SocketMessage[]): void;
-    getBookingFiles: UseSiteQuery<BookingServiceGetBookingFilesApiArg, BookingServiceGetBookingFilesApiResponse>;
-  }
+export interface ExchangeContextType {
+  exchangeId: string;
+  topicMessages: SocketMessage[];
+  setTopicMessages(selector: (prop: Partial<SocketMessage>[]) => SocketMessage[]): void;
+  getBookingFiles: UseSiteQuery<BookingServiceGetBookingFilesApiArg, BookingServiceGetBookingFilesApiResponse>;
 }
 
 export const ExchangeContext = createContext<ExchangeContextType | null>(null);

@@ -12,19 +12,18 @@ import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useComponents, useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, scheduleSchema, IGroup } from 'awayto/hooks';
+import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, scheduleSchema, IGroup, ISchedule } from 'awayto/hooks';
+import SelectLookup from '../common/SelectLookup';
 
-declare global {
-  interface IComponent {
-    showCancel?: boolean;
-    editGroup?: IGroup;
-    editGroupSchedule?: IGroupSchedule;
-    setEditGroupSchedule?: React.Dispatch<React.SetStateAction<IGroupSchedule>>;
-    saveToggle?: number;
-  }
+interface ManageSchedulesModalProps extends IComponent {
+  showCancel?: boolean;
+  editGroup?: IGroup;
+  editGroupSchedule?: IGroupSchedule;
+  setEditGroupSchedule?: React.Dispatch<React.SetStateAction<IGroupSchedule>>;
+  saveToggle?: number;
 }
 
-export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, setEditGroupSchedule, saveToggle = 0, showCancel = true, closeModal, ...props }: IComponent): React.JSX.Element {
+export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, setEditGroupSchedule, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageSchedulesModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -34,8 +33,6 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
 
   const { data: lookups, isSuccess: lookupsRetrieved } = siteApi.useLookupServiceGetLookupsQuery();
 
-  const { SelectLookup } = useComponents();
-
   const [groupSchedule, setGroupSchedule] = useState({
     schedule: {
       ...scheduleSchema,
@@ -44,19 +41,19 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
     ...editGroupSchedule
   } as IGroupSchedule);
 
-  const schedule = useMemo(() => groupSchedule.schedule, [groupSchedule.schedule]);
+  const schedule = useMemo(() => (groupSchedule.schedule || { ...scheduleSchema }) as Required<ISchedule>, [groupSchedule.schedule]);
 
-  const scheduleTimeUnitName = useTimeName(schedule?.scheduleTimeUnitId);
-  const bracketTimeUnitName = useTimeName(schedule?.bracketTimeUnitId);
-  const slotTimeUnitName = useTimeName(schedule?.slotTimeUnitId);
+  const scheduleTimeUnitName = useTimeName(schedule.scheduleTimeUnitId);
+  const bracketTimeUnitName = useTimeName(schedule.bracketTimeUnitId);
+  const slotTimeUnitName = useTimeName(schedule.slotTimeUnitId);
 
-  const setDefault = useCallback((type: string) => {
+  const setDefault = useCallback((scheduleType: string) => {
     const weekId = lookups?.timeUnits?.find(s => s.name === TimeUnit.WEEK)?.id;
     const hourId = lookups?.timeUnits?.find(s => s.name === TimeUnit.HOUR)?.id;
     const dayId = lookups?.timeUnits?.find(s => s.name === TimeUnit.DAY)?.id;
     const minuteId = lookups?.timeUnits?.find(s => s.name === TimeUnit.MINUTE)?.id;
     const monthId = lookups?.timeUnits?.find(s => s.name === TimeUnit.MONTH)?.id;
-    if ('hoursweekly30minsessions' === type) {
+    if ('hoursweekly30minsessions' == scheduleType) {
       setGroupSchedule({
         schedule: {
           ...schedule,
@@ -66,7 +63,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
           slotDuration: 30
         }
       });
-    } else if ('dailybookingpermonth') {
+    } else if ('dailybookingpermonth' == scheduleType) {
       setGroupSchedule({
         schedule: {
           ...schedule,
@@ -95,7 +92,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
   }, [bracketTimeUnitName, slotTimeUnitName, scheduleTimeUnitName]);
 
   const handleSubmit = useCallback(async () => {
-    if (!groupSchedule.schedule || !groupSchedule.schedule?.name) {
+    if (!groupSchedule.schedule || !groupSchedule.schedule.name) {
       setSnack({ snackOn: 'A name must be provided.', snackType: 'warning' });
       return;
     }
@@ -128,7 +125,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
   useEffect(() => {
     async function go() {
       if (lookupsRetrieved) {
-        if (schedule?.id) {
+        if (schedule.id) {
           const { groupSchedule } = await getGroupScheduleMasterById({ groupScheduleId: schedule.id }).unwrap();
           setGroupSchedule(groupSchedule);
         } else if (!editGroupSchedule?.schedule?.name) {
@@ -137,22 +134,22 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       }
     }
     void go();
-  }, [lookupsRetrieved, schedule?.id]);
+  }, [lookupsRetrieved, schedule.id]);
 
   if (!lookups?.timeUnits) return <></>;
 
   return <Card>
-    <CardHeader title={`${schedule?.id ? 'Edit' : 'Create'} Schedule`}></CardHeader>
+    <CardHeader title={`${schedule.id ? 'Edit' : 'Create'} Schedule`}></CardHeader>
     <CardContent>
       {!!children && children}
 
       <Box mb={4}>
         <TextField
           fullWidth
-          disabled={!!schedule?.id}
+          disabled={!!schedule.id}
           label="Name"
           helperText="Ex: Spring 2022 Campaign, Q1 Offering"
-          value={schedule?.name || ''}
+          value={schedule.name || ''}
           required
           onChange={e => setGroupSchedule({ schedule: { ...schedule, name: e.target.value } })}
         />
@@ -166,12 +163,14 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
               fullWidth
               label="Start Date"
               type="date"
-              value={schedule?.startTime || ''}
+              value={schedule.startTime || ''}
               required
               helperText="Schedule is active after this date. Clear this date to deactivate the schedule. Deactivated schedules do not allow new bookings to be made."
               onChange={e => setGroupSchedule({ schedule: { ...schedule, startTime: e.target.value } })}
-              InputLabelProps={{
-                shrink: true,
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
               }}
             />
             {/* <DesktopDatePicker
@@ -192,11 +191,13 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
               fullWidth
               label="End Date"
               type="date"
-              value={schedule?.endTime || ''}
+              value={schedule.endTime || ''}
               helperText="Optional. No bookings will be allowed after this date."
               onChange={e => setGroupSchedule({ schedule: { ...schedule, endTime: e.target.value } })}
-              InputLabelProps={{
-                shrink: true,
+              slotProps={{
+                inputLabel: {
+                  shrink: true
+                }
               }}
             />
           </Grid>
@@ -204,7 +205,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       </Box>
 
       <Box mb={4}>
-        {!schedule?.id ? <>
+        {!schedule.id ? <>
           <Typography variant="body2">Use premade selections for this schedule.</Typography>
           <Button color="secondary" onClick={() => setDefault('hoursweekly30minsessions')}>weekly, 30 minute appointments</Button>
           <Button color="secondary" onClick={() => setDefault('dailybookingpermonth')}>monthly, full-day booking</Button>
@@ -216,10 +217,10 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       <Box mb={4}>
         <SelectLookup
           noEmptyValue
-          disabled={!!schedule?.id}
+          disabled={!!schedule.id}
           lookupName="Schedule Duration"
           helperText="The length of time the schedule will run over. This determines the overall context of the schedule and how time will be divided and managed within. For example, a 40 hour per week schedule would require configuring a 1 week Schedule Duration."
-          lookupValue={schedule?.scheduleTimeUnitId}
+          lookupValue={schedule.scheduleTimeUnitId}
           lookups={lookups?.timeUnits?.filter(sc => ![TimeUnit.MINUTE, TimeUnit.HOUR, TimeUnit.YEAR].includes(sc.name as TimeUnit))}
           lookupChange={(val: string) => {
             const { id, name } = lookups?.timeUnits?.find(c => c.id === val) || {};
@@ -247,10 +248,10 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       <Box mb={4}>
         <SelectLookup
           noEmptyValue
-          disabled={!!schedule?.id}
+          disabled={!!schedule.id}
           lookupName="Bracket Duration Type"
           helperText="How to measure blocks of time within the Schedule Duration. For example, in a 40 hour per week situation, blocks of time are divided in hours. Multiple brackets can be used on a single schedule, and all of them share the same Bracket Duration Type."
-          lookupValue={schedule?.bracketTimeUnitId}
+          lookupValue={schedule.bracketTimeUnitId}
           lookups={lookups?.timeUnits?.filter(sc => sc.name && sc.name !== scheduleTimeUnitName && timeUnitOrder.indexOf(sc.name) <= timeUnitOrder.indexOf(scheduleTimeUnitName))}
           lookupChange={(val: string) => {
             const { name, id } = lookups?.timeUnits?.find(c => c.id === val) as ITimeUnit;
@@ -263,10 +264,10 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       <Box mb={4}>
         <SelectLookup
           noEmptyValue
-          disabled={!!schedule?.id}
+          disabled={!!schedule.id}
           lookupName="Booking Slot Length"
           helperText={`The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.`}
-          lookupValue={schedule?.slotTimeUnitId}
+          lookupValue={schedule.slotTimeUnitId}
           lookups={lookups?.timeUnits?.filter(sc => sc.name && [timeUnitOrder.indexOf(bracketTimeUnitName), Math.max(timeUnitOrder.indexOf(bracketTimeUnitName) - 1, 0)].includes(timeUnitOrder.indexOf(sc.name)))}
           lookupChange={(val: string) => {
             const { name, id } = lookups?.timeUnits?.find(c => c.id === val) || {};
@@ -277,10 +278,10 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
         />
 
         <Box mt={2} sx={{ display: 'flex', alignItems: 'baseline' }}>
-          <Box>{schedule?.slotDuration} <span>&nbsp;</span> &nbsp;</Box>
+          <Box>{schedule.slotDuration} <span>&nbsp;</span> &nbsp;</Box>
           <Slider
-            disabled={!!schedule?.id}
-            value={schedule?.slotDuration}
+            disabled={!!schedule.id}
+            value={schedule.slotDuration}
             step={null}
             marks={slotDurationMarks}
             max={Math.max(...slotDurationMarks.map(m => m.value))}
@@ -294,7 +295,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
     {!setEditGroupSchedule && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-        <Button disabled={!schedule?.name || !schedule?.startTime} onClick={handleSubmit}>Save Schedule</Button>
+        <Button disabled={!schedule.name || !schedule.startTime} onClick={handleSubmit}>Save Schedule</Button>
       </Grid>
     </CardActions>}
   </Card>

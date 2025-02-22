@@ -5,22 +5,20 @@ import Typography from '@mui/material/Typography';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 
-import { SocketMessage, SocketActions, plural, useComponents, useWebSocketSubscribe } from 'awayto/hooks';
+import { SocketMessage, SocketActions, plural, useWebSocketSubscribe } from 'awayto/hooks';
 
-import WSTextContext from './WSTextContext';
+import WSTextContext, { WSTextContextType } from './WSTextContext';
+import GroupedMessages from './GroupedMessages';
+import SubmitMessageForm from './SubmitMessageForm';
 
-declare global {
-  interface IComponent {
-    topicId?: string;
-    topicMessages?: SocketMessage[];
-    setTopicMessages?(selector: (prop: SocketMessage[]) => SocketMessage[]): SocketMessage[];
-  }
+interface WSTextProviderProps extends IComponent {
+  topicId: string;
+  topicMessages: SocketMessage[];
+  setTopicMessages: React.Dispatch<React.SetStateAction<SocketMessage[]>>;
 }
 
-export function WSTextProvider({ children, topicId, topicMessages, setTopicMessages }: IComponent): React.JSX.Element {
+export function WSTextProvider({ children, topicId, topicMessages, setTopicMessages }: WSTextProviderProps): React.JSX.Element {
   if (!topicId) return <></>;
-
-  const { GroupedMessages, SubmitMessageForm } = useComponents();
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessage = useRef<string>(undefined);
@@ -34,7 +32,7 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
     connected,
     sendMessage,
     storeMessage
-  } = useWebSocketSubscribe<{ page: number, pageSize: number, message: string, style: SocketMessage['style'] }>(topicId, ({ timestamp, sender, topic, action, payload, historical }) => {
+  } = useWebSocketSubscribe<{ page: number, pageSize: number, message: string, style: SocketMessage['style'] }>(topicId, ({ timestamp, sender, action, payload, historical }) => {
 
     if (action == SocketActions.HAS_MORE_MESSAGES) {
       setHasMore(true)
@@ -83,7 +81,7 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
     }
   }, [messagesEndRef.current, topicMessages]);
 
-  const wsTextContext = {
+  const wsTextContext: WSTextContextType = {
     wsTextConnectionId: connectionId,
     wsTextConnected: connected,
     messagesEnd: useMemo(() => <Box ref={messagesEndRef} />, []),
@@ -109,7 +107,7 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
         </Typography>
       </>
     }, [userList])
-  } as WSTextContextType | null;
+  };
 
   return useMemo(() => <WSTextContext.Provider value={wsTextContext}>
     {children}

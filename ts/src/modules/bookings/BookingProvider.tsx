@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 
 import { siteApi, IBooking } from 'awayto/hooks';
 
-import BookingContext from "./BookingContext";
+import BookingContext, { BookingContextType } from "./BookingContext";
 
 export function BookingProvider({ children }: IComponent): React.JSX.Element {
 
@@ -13,7 +13,7 @@ export function BookingProvider({ children }: IComponent): React.JSX.Element {
 
   const bookingValues = useMemo(() => Object.values(profileRequest?.userProfile?.bookings || {}), [profileRequest?.userProfile]);
 
-  const bookingContext = {
+  const bookingContext: BookingContextType = {
     bookingValues,
     setBookingValuesChanged,
     bookingValuesChanged,
@@ -38,7 +38,7 @@ export function BookingProvider({ children }: IComponent): React.JSX.Element {
 
       setSelectedBooking(bookingValuesSet);
     }
-  } as BookingContextType | null;
+  };
 
   return useMemo(() => <BookingContext.Provider value={bookingContext}>
     {children}

@@ -7,14 +7,12 @@ import Box from '@mui/material/Box';
 import { useStyles, PaletteMode } from 'awayto/hooks';
 import { useColorScheme } from '@mui/material';
 
-declare global {
-  interface IComponent {
-    showTitle?: boolean;
-  }
+
+interface PickThemeProps extends IComponent {
+  showTitle?: boolean;
 }
 
-export function PickTheme(props: IComponent): React.JSX.Element {
-  const { showTitle } = props;
+export function PickTheme({ showTitle }: PickThemeProps): React.JSX.Element {
 
   const classes = useStyles();
 

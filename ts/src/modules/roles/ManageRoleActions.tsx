@@ -12,7 +12,7 @@ import { DataGrid, GridColDef } from '@mui/x-data-grid';
 import { useGrid, siteApi, useUtil, SiteRoles, SiteRoleDetails } from 'awayto/hooks';
 import { Tooltip } from '@mui/material';
 
-export function ManageRoleActions(): React.JSX.Element {
+export function ManageRoleActions(_: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
   const [patchAssignments] = siteApi.useGroupServicePatchGroupAssignmentsMutation();

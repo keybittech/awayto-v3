@@ -16,16 +16,14 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 
 import { useDebounce, useUtil, refreshToken, siteApi, IGroup } from 'awayto/hooks';
 
-declare global {
-  interface IComponent {
-    showCancel?: boolean;
-    editGroup?: IGroup;
-    setEditGroup?: React.Dispatch<React.SetStateAction<IGroup>>;
-    saveToggle?: number;
-  }
+interface ManageGroupModalProps extends IComponent {
+  editGroup: IGroup;
+  setEditGroup?: React.Dispatch<React.SetStateAction<IGroup>>;
+  showCancel?: boolean;
+  saveToggle?: number;
 }
 
-export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel = true, saveToggle = 0, closeModal }: IComponent): React.JSX.Element {
+export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel = true, saveToggle = 0, closeModal }: ManageGroupModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -140,7 +138,11 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
             <TextField
               id={`group-purpose-entry`}
               fullWidth
-              inputProps={{ maxLength: 100 }}
+              slotProps={{
+                input: {
+                  sx: { maxLength: 100 }
+                }
+              }}
               helperText={'Enter a short phrase about the function of your group (max. 100 characters).'}
               label={`Group Description`}
               required
@@ -160,19 +162,21 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
               label={`Allowed Email Domains`}
               onChange={e => setAllowedDomain(e.target.value)}
               value={allowedDomain}
-              InputProps={{
-                endAdornment: <Button
-                  variant="text"
-                  color="secondary"
-                  onClick={() => {
-                    if (!/[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*/.test(allowedDomain)) {
-                      setSnack({ snackType: 'info', snackOn: 'Must be an email domain, like DOMAIN.COM' })
-                    } else {
-                      setAllowedDomains([...allowedDomains, allowedDomain])
-                      setAllowedDomain('');
-                    }
-                  }}
-                >Add</Button>
+              slotProps={{
+                input: {
+                  endAdornment: <Button
+                    variant="text"
+                    color="secondary"
+                    onClick={() => {
+                      if (!/[a-zA-Z0-9-]+\.[a-zA-Z0-9-]+(?:\.[a-zA-Z0-9-]+)*/.test(allowedDomain)) {
+                        setSnack({ snackType: 'info', snackOn: 'Must be an email domain, like DOMAIN.COM' })
+                      } else {
+                        setAllowedDomains([...allowedDomains, allowedDomain])
+                        setAllowedDomain('');
+                      }
+                    }}
+                  >Add</Button>
+                }
               }}
             />
             <Grid container>

@@ -1,10 +1,8 @@
 import React from 'react';
 import { Route, Routes } from 'react-router-dom';
-import { useComponents } from '../../hooks'
+import Kiosk from '../kiosk/Kiosk';
 
 export function Ext(): React.JSX.Element {
-
-  const { GroupProvider, GroupScheduleProvider, Kiosk } = useComponents();
 
   return <>
     <Routes>

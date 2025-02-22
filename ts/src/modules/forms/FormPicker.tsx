@@ -11,16 +11,15 @@ import { siteApi } from 'awayto/hooks';
 import ManageFormModal from './ManageFormModal';
 import Dialog from '@mui/material/Dialog';
 
-declare global {
-  interface IComponent {
-    label?: string;
-    helperText?: string;
-    formId?: string;
-    onSelectForm?: (formId: string) => void;
-  }
+
+interface FormPickerProps extends IComponent {
+  label: string;
+  helperText: string;
+  formId?: string;
+  onSelectForm: (formId: string) => void;
 }
 
-export function FormPicker({ formId, label, helperText, onSelectForm, ...props }: IComponent) {
+export function FormPicker({ formId, label, helperText, onSelectForm, ...props }: FormPickerProps): React.JSX.Element {
   const { data: groupFormsRequest, refetch: getGroupForms, isSuccess: groupFormsLoaded } = siteApi.useGroupFormServiceGetGroupFormsQuery();
   const [dialog, setDialog] = useState('');
 
@@ -32,16 +31,16 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
       label={label}
       helperText={helperText}
       onChange={e => onSelectForm(e.target.value)}
-      InputProps={{
-        endAdornment: (
-          <InputAdornment position="end" sx={{ mr: 2 }}>
+      slotProps={{
+        input: {
+          endAdornment: <InputAdornment position="end" sx={{ mr: 2 }}>
             <Tooltip key={'create_form'} title="New">
               <Button color="secondary" onClick={() => setDialog('manage_form')}>
                 <Typography variant="button">New</Typography>
               </Button>
             </Tooltip>
           </InputAdornment>
-        ),
+        }
       }}
     >
       {formId && <MenuItem key="unset-selection" value=""><Typography variant="caption">Remove selection</Typography></MenuItem>}

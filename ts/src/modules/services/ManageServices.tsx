@@ -13,19 +13,19 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, siteApi, useUtil, useStyles, useComponents, dayjs, IGroupService } from 'awayto/hooks';
+import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupService } from 'awayto/hooks';
+import ManageServiceModal from './ManageServiceModal';
 
-export function ManageServices(props: IProps): React.JSX.Element {
+export function ManageServices(props: IComponent): React.JSX.Element {
   const classes = useStyles();
 
   const { openConfirm } = useUtil();
-  const { ManageServiceModal } = useComponents();
 
   const [deleteGroupService] = siteApi.useGroupServiceServiceDeleteGroupServiceMutation();
 
   const { data: groupServicesRequest, refetch: getGroupServices } = siteApi.useGroupServiceServiceGetGroupServicesQuery();
 
-  const [groupService, setGroupService] = useState<IGroupService>();
+  const [groupService, setGroupService] = useState<IGroupService>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState('');
 
@@ -79,7 +79,7 @@ export function ManageServices(props: IProps): React.JSX.Element {
       <Typography variant="button">Services:</Typography>
       <Tooltip key={'create_service'} title="Create">
         <Button onClick={() => {
-          setGroupService(undefined);
+          setGroupService({});
           setDialog('manage_service');
         }}>
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>

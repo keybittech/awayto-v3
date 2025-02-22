@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 
 import { useUtil, SocketResponse, SocketResponseHandler, siteApi, SocketActions } from 'awayto/hooks';
 
-import WebSocketContext from './WebSocketContext';
+import WebSocketContext, { WebSocketContextType } from './WebSocketContext';
 
 const {
   VITE_REACT_APP_APP_HOST_NAME,
@@ -92,7 +92,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
     connect();
   }, []);
 
-  const webSocketContext = {
+  const webSocketContext: WebSocketContextType = {
     connectionId,
     connected: socket?.readyState === WebSocket.OPEN,
     transmit(store, action, topic, payload) {
@@ -120,7 +120,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
         }
       };
     },
-  } as WebSocketContextType;
+  };
 
   return useMemo(() => !initialConnectionMade.current ? <></> :
     <WebSocketContext.Provider value={webSocketContext}>

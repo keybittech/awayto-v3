@@ -9,16 +9,14 @@ import TextField from '@mui/material/TextField';
 
 import { siteApi } from 'awayto/hooks';
 
-declare global {
-  interface IComponent {
-    feedbackAnchorEl?: null | HTMLElement;
-    feedbackMenuId?: string;
-    isFeedbackOpen?: boolean;
-    handleMenuClose?: () => void;
-  }
+interface FeedbackMenuProps extends IComponent {
+  feedbackAnchorEl: null | HTMLElement;
+  feedbackMenuId: string;
+  isFeedbackOpen: boolean;
+  handleMenuClose: () => void;
 }
 
-export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId, isFeedbackOpen }: IComponent): React.JSX.Element {
+export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId, isFeedbackOpen }: FeedbackMenuProps): React.JSX.Element {
 
   const [postGroupFeedback] = siteApi.useGroupFeedbackServicePostGroupFeedbackMutation();
   const [postSiteFeedback] = siteApi.useFeedbackServicePostSiteFeedbackMutation();
@@ -76,7 +74,13 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
             multiline
             autoFocus
             rows={4}
-            inputProps={{ maxLength: 300 }}
+            slotProps={{
+              input: {
+                sx: {
+                  maxLength: 300
+                }
+              }
+            }}
             helperText={`${300 - message.length}/300`}
             value={message}
             onChange={e => setMessage(e.target.value)}

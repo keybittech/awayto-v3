@@ -1,15 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { useDropzone } from 'react-dropzone';
 
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
-import Avatar from '@mui/material/Avatar';
-import CardActionArea from '@mui/material/CardActionArea';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
-import PersonIcon from '@mui/icons-material/Person';
 
-import { siteApi, useComponents, useFileStore, useStyles, useUtil, IUserProfile, IPreviewFile, PatchUserProfileRequest } from 'awayto/hooks';
+import { siteApi, useStyles, useUtil, IUserProfile, PatchUserProfileRequest } from 'awayto/hooks';
+import PickTheme from '../common/PickTheme';
+import ManageGroups from '../groups/ManageGroups';
 
 export function Profile(props: IComponent): React.JSX.Element {
   const classes = useStyles();
@@ -18,7 +16,6 @@ export function Profile(props: IComponent): React.JSX.Element {
   const [patchUserProfile] = siteApi.useUserProfileServicePatchUserProfileMutation();
 
   // const fileStore = useFileStore();
-  const { PickTheme, ManageGroups } = useComponents();
 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
