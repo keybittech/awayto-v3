@@ -110,91 +110,75 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     List<FormMessage> validationErrors = new ArrayList<>();
     MultivaluedMap<String, String> formData = context.getHttpRequest().getDecodedFormParameters();
 
-    String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Forwarded-For");
+    if (formData.containsKey("groupCode")) {
+      String groupCode = formData.getFirst("groupCode");
+      String email = formData.getFirst("email");
 
-    RedisConnection redis = new RedisConnection();
-    boolean rateLimitExceeded = redis.rateLimit(xForwardedFor, "submit_registration",
-        Integer.valueOf(System.getenv("KC_REGISTRATION_RATE_LIMIT")), 3600);
+      String groupName = (String) session.getAttribute("groupName");
+      String allowedDomains = (String) session.getAttribute("allowedDomains");
 
-    if (rateLimitExceeded) {
-      formData.clear();
-      validationErrors.add(new FormMessage("global", "Try again in an hour."));
-      context.validationError(formData, validationErrors);
-      return;
-    } else {
+      Boolean suppliedCode = groupCode != null && groupCode.length() > 0;
 
-      session.setAttribute("timezone", formData.getFirst("timezone"));
+      if ((groupName == null || allowedDomains == null) && suppliedCode) {
 
-      if (formData.containsKey("groupCode")) {
-        String groupCode = formData.getFirst("groupCode");
-        String email = formData.getFirst("email");
+        if (!RegexUtils.valueMatchesRegex("[a-zA-Z0-9]{8}", groupCode)) {
+          validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
+        } else {
 
-        String groupName = (String) session.getAttribute("groupName");
-        String allowedDomains = (String) session.getAttribute("allowedDomains");
+          if (groupCode != session.getAttribute("groupCode")) {
 
-        Boolean suppliedCode = groupCode != null && groupCode.length() > 0;
+            // Get group information for registration
+            JSONObject registrationValidationPayload = new JSONObject();
+            registrationValidationPayload.put("groupCode", groupCode);
+            JSONObject registrationValidationResponse = BackchannelAuth.sendUnixMessage("REGISTER_VALIDATE",
+                registrationValidationPayload);
 
-        if ((groupName == null || allowedDomains == null) && suppliedCode) {
+            if (false == registrationValidationResponse.getBoolean("success")) {
 
-          if (!RegexUtils.valueMatchesRegex("[a-zA-Z0-9]{8}", groupCode)) {
-            validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
-          } else {
+              String reason = registrationValidationResponse.getString("reason");
 
-            if (groupCode != session.getAttribute("groupCode")) {
-
-              // Get group information for registration
-              JSONObject registrationValidationPayload = new JSONObject();
-              registrationValidationPayload.put("groupCode", groupCode);
-              JSONObject registrationValidationResponse = BackchannelAuth.sendUnixMessage("REGISTER_VALIDATE",
-                  registrationValidationPayload);
-
-              if (false == registrationValidationResponse.getBoolean("success")) {
-
-                String reason = registrationValidationResponse.getString("reason");
-
-                if (reason.contains("BAD_GROUP")) {
-                  validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
-                }
-              } else {
-                String groupId = registrationValidationResponse.getString("id");
-                groupName = registrationValidationResponse.getString("name");
-                allowedDomains = registrationValidationResponse.getString("allowedDomains");
-                session.setAttribute("groupId", groupId);
-                session.setAttribute("groupCode", groupCode);
-                session.setAttribute("groupName", groupName);
-                session.setAttribute("allowedDomains", allowedDomains);
+              if (reason.contains("BAD_GROUP")) {
+                validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
               }
+            } else {
+              String groupId = registrationValidationResponse.getString("id");
+              groupName = registrationValidationResponse.getString("name");
+              allowedDomains = registrationValidationResponse.getString("allowedDomains");
+              session.setAttribute("groupId", groupId);
+              session.setAttribute("groupCode", groupCode);
+              session.setAttribute("groupName", groupName);
+              session.setAttribute("allowedDomains", allowedDomains);
             }
           }
         }
-
-        if (allowedDomains != null) {
-          List<String> domains = List.of(allowedDomains.split(","));
-          if (email == null
-              || email.contains("@") && allowedDomains.length() > 0 && !domains.contains(email.split("@")[1])) {
-            validationErrors.add(new FormMessage("email", "invalidEmail"));
-          }
-        } else if (suppliedCode) {
-          validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
-        }
-
-        UserModel userWithEmail = context.getSession().users().getUserByEmail(context.getRealm(), email);
-
-        if (userWithEmail != null) {
-          validationErrors.add(new FormMessage("email", "emailInUse"));
-        }
-
-        if (!validationErrors.isEmpty()) {
-          context.error("VALIDATION_ERROR");
-          context.validationError(formData, validationErrors);
-          return;
-        }
-
-        // context.getEvent().detail("group_code", groupCode);
       }
 
-      super.validate(context);
+      if (allowedDomains != null) {
+        List<String> domains = List.of(allowedDomains.split(","));
+        if (email == null
+            || email.contains("@") && allowedDomains.length() > 0 && !domains.contains(email.split("@")[1])) {
+          validationErrors.add(new FormMessage("email", "invalidEmail"));
+        }
+      } else if (suppliedCode) {
+        validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
+      }
+
+      UserModel userWithEmail = context.getSession().users().getUserByEmail(context.getRealm(), email);
+
+      if (userWithEmail != null) {
+        validationErrors.add(new FormMessage("email", "emailInUse"));
+      }
+
+      if (!validationErrors.isEmpty()) {
+        context.error("VALIDATION_ERROR");
+        context.validationError(formData, validationErrors);
+        return;
+      }
+
+      // context.getEvent().detail("group_code", groupCode);
     }
+
+    super.validate(context);
   }
 
   @Override
@@ -207,7 +191,6 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     AbstractUserRepresentation up = profile.toRepresentation();
 
     Object groupIdObj = session.getAttribute("groupId");
-    String timezone = session.getAttribute("timezone").toString();
 
     String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Forwarded-For").split(":")[0];
 
@@ -224,7 +207,6 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     registrationSuccessPayload.put("lastName", up.getLastName());
     registrationSuccessPayload.put("email", up.getEmail());
     registrationSuccessPayload.put("ipAddress", xForwardedFor);
-    registrationSuccessPayload.put("timezone", timezone);
 
     BackchannelAuth.sendUnixMessage("REGISTER", registrationSuccessPayload);
   }

@@ -32,7 +32,6 @@
                 <#if callback = "afterField">
                 <#-- render password fields just under the username or email (if used as username) -->
                     <#if passwordRequired?? && (attribute.name == 'username' || (attribute.name == 'email' && realm.registrationEmailAsUsername))>
-                        <input type="hidden" id="timezone" name="timezone" />
                         <div class="${properties.kcFormGroupClass!}">
                             <div class="${properties.kcLabelWrapperClass!}">
                                 <label for="password" class="${properties.kcLabelClass!}">${msg("password")}</label> *
