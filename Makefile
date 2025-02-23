@@ -73,14 +73,8 @@ DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
 DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 
-# APP_IP=$(shell hcloud server ip -6 ${APP_HOST})
-APP_IP=$(shell hcloud server ip ${APP_HOST})
-APP_IP_B=[$(APP_IP)]
-
-SSH_OP=${HOST_OPERATOR}@$(APP_IP)
-# was APP_IP_B
-SSH_OP_B=${HOST_OPERATOR}@$(APP_IP)
-SSH=ssh -p ${SSH_PORT} -T $(SSH_OP)
+# APP_IP=$(shell hcloud server ip ${APP_HOST})
+SSH=ssh -p ${SSH_PORT} -T ${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
 
 LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
 define set_local_unix_sock_dir
@@ -113,7 +107,7 @@ build: ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_
 .PHONY: clean
 clean:
 	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) \
-		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(HOST_LOCAL_DIR) $(PLAYWRIGHT_CACHE_DIR)
+		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
 	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD)
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
@@ -283,20 +277,34 @@ host_up:
 		--type "${HETZNER_APP_TYPE}" --image "${HETZNER_IMAGE}" \
 		--user-data-from-file "$(HOST_LOCAL_DIR)/cloud-config.yaml" --firewall "${PROJECT_PREFIX}-public-firewall" >/dev/null
 	hcloud server describe "${APP_HOST}" -o json > "$(HOST_LOCAL_DIR)/app.json"
-	jq -r '.public_net.ipv6.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip"
-	until ping -c1 $(APP_IP) ; do sleep 5; done
-	until ssh-keyscan -p ${SSH_PORT} -H $(APP_IP) >> ~/.ssh/known_hosts; do sleep 5; done
-	$(SSH) sudo tailscale up
+	jq -r '.public_net.ipv6.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip6"
+	jq -r '.public_net.ipv4.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip"
+	until ssh-keyscan -p ${SSH_PORT} -H $$(cat "$(HOST_LOCAL_DIR)/app_ip") >> ~/.ssh/known_hosts; do sleep 5; done
+	$(SSH) 'cd "$(H_REM_DIR)" && make host_install'
+
+.PHONY: host_install
+host_install:
+	mkdir -p $$HOME/gobin
+	echo "export GOROOT=\$$HOME/go" >> \$$HOME/.bashrc
+	echo "export GOPATH=\$$HOME/gobin" >> \$$HOME/.bashrc
+	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> \$$HOME/.bashrc
+	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+	wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C \$$HOME
+	source \$$HOME/.bashrc
+	nvm install v22.13.1
+	npm i -g pnpm@latest-1
+	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+	sudo tailscale up
 
 .PHONY: host_reboot
 host_reboot:
-	hcloud server reboot $(APP_HOST)
-	until ping -c1 $(APP_IP) ; do sleep 5; done
+	hcloud server reboot "${APP_HOST}"
+	until ping -c1 "${APP_HOST}" ; do sleep 5; done
 	@echo "rebooted"
 
 .PHONY: host_down
 host_down:
-	ssh-keygen -f ~/.ssh/known_hosts -R "$(APP_IP):${SSH_PORT}"
+	ssh-keygen -f ~/.ssh/known_hosts -R "${APP_HOST}:${SSH_PORT}"
 	hcloud server delete "${APP_HOST}"
 	hcloud firewall delete "${PROJECT_PREFIX}-public-firewall"
 	rm -rf $(HOST_LOCAL_DIR)
@@ -307,23 +315,23 @@ host_down:
 
 .PHONY: host_sync_env
 host_sync_env:
-	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(SSH_OP_B):$(H_REM_DIR)"
+	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "${HOST_OPERATOR}@${APP_HOST}:$(H_REM_DIR)"
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
-	$(SSH) cd "$(H_REM_DIR)" && make r_deploy
+	$(SSH) 'cd "$(H_REM_DIR)" && make r_deploy'
 
 .PHONY: host_update_cert
 host_update_cert:
-	$(SSH) cd "$(H_REM_DIR)" && make r_host_update_cert_op
+	$(SSH) 'cd "$(H_REM_DIR)" && make r_host_update_cert_op'
 
 .PHONY: host_deploy_compose_up
 host_deploy_compose_up:
-	$(SSH) cd "$(H_REM_DIR)" && SUDO=sudo ENVFILE="$(H_ETC_DIR)/.env" make docker_up
+	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo ENVFILE="$(H_ETC_DIR)/.env" make docker_up'
 
 .PHONY: host_deploy_compose_down
 host_deploy_compose_down:
-	$(SSH) cd "$(H_REM_DIR)" && SUDO=sudo ENVFILE="$(H_ETC_DIR)/.env" make docker_down
+	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo ENVFILE="$(H_ETC_DIR)/.env" make docker_down'
 
 #################################
 #           HOST UTILS          #
@@ -331,7 +339,7 @@ host_deploy_compose_down:
 
 .PHONY: host_ssh
 host_ssh:
-	ssh -p ${SSH_PORT} ${HOST_OPERATOR}@$(APP_IP)
+	ssh -p ${SSH_PORT} ${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
 
 .PHONY: host_cmd
 host_cmd:
@@ -440,7 +448,7 @@ docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
 host_db_backup:
 	@mkdir -p "$(DB_BACKUP_DIR)/deployed"
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_backup"
-	rsync ${RSYNC_FLAGS} "$(SSH_OP_B):$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(DB_BACKUP_DIR)/deployed"
+	rsync ${RSYNC_FLAGS} "${HOST_OPERATOR}@${APP_HOST}:$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(DB_BACKUP_DIR)/deployed"
 
 .PHONY: host_db_upgrade_op
 host_db_upgrade_op:
