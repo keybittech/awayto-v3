@@ -202,10 +202,15 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*OIDCToken, er
 
 	headers := http.Header{}
 
+	clientSecret, err := util.EnvFile(os.Getenv("KC_API_CLIENT_SECRET_FILE"))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	body := url.Values{
 		"grant_type":    {"client_credentials"},
 		"client_id":     {os.Getenv("KC_API_CLIENT")},
-		"client_secret": {os.Getenv("KC_API_CLIENT_SECRET")},
+		"client_secret": {string(clientSecret)},
 	}
 
 	resp, err := util.PostFormData(
@@ -213,14 +218,13 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*OIDCToken, er
 		headers,
 		body,
 	)
-
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result OIDCToken
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	if result.ExpiresIn > 0 {

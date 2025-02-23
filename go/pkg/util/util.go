@@ -106,6 +106,15 @@ func ErrCheck(err error) error {
 	return errors.New(fmt.Sprintf("%s %s:%d", err.Error(), file, line))
 }
 
+func EnvFile(loc string) (string, error) {
+	envFile, err := os.ReadFile(loc)
+	if err != nil {
+		return "", ErrCheck(err)
+	}
+
+	return strings.Trim(string(envFile), "\n"), nil
+}
+
 func CastSlice[T any](items []interface{}) ([]T, bool) {
 	results := make([]T, len(items))
 

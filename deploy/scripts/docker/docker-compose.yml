@@ -4,16 +4,20 @@ services:
     image: ${DB_IMAGE} 
     networks:
       - host
+    user: "postgres:1000" # secrets are mounted in g 1000
     build:
       context: ../../../
       dockerfile: ./deploy/scripts/docker/db_Dockerfile
     ports:
       - ${PG_PORT}:${PG_PORT}
     environment:
-      - POSTGRES_PASSWORD=${PG_PASS}
+      - POSTGRES_PASSWORD_FILE=/run/secrets/pg_pass
       - PG_DB=${PG_DB}
       - PG_WORKER=${PG_WORKER}
-      - PG_WORKER_PASS=${PG_WORKER_PASS}
+      - PG_WORKER_PASS_FILE=/run/secrets/pg_worker_pass
+    secrets:
+      - pg_pass
+      - pg_worker_pass
     volumes: 
       - pg_data:/var/lib/postgresql/data
 
@@ -24,13 +28,20 @@ services:
     ports:
       - 6379:6379
     environment:
-      - REDIS_PASSWORD=${REDIS_PASS}
-    command: redis-server --requirepass ${REDIS_PASS}
+      - REDIS_PASSWORD_FILE=/run/secrets/redis_pass
+    command:
+      - /bin/sh
+      - -c
+      - redis-server --requirepass "$$(cat /run/secrets/redis_pass)"
+    secrets:
+      - redis_pass
     volumes:
       - redis_data:/data
 
   auth: # 8443 keycloak
     image: ${AUTH_IMAGE} 
+    depends_on:
+      - db
     networks: 
       - host
     ports:
@@ -47,27 +58,24 @@ services:
     build:
       context: ../../../
       dockerfile: ./deploy/scripts/docker/auth_Dockerfile
-    volumes:
-      - ${UNIX_SOCK_DIR}:/unix_sock
     environment:
       - KC_UNIX_SOCK_DIR=/unix_sock
-      - KC_UNIX_SOCK_FILE=${UNIX_SOCK_FILE}
+      - KC_UNIX_SOCK_LOC=${UNIX_SOCK_FILE}
       - KC_API_CLIENT_ID=${KC_CLIENT}
       - KC_PROXY_HEADERS=xforwarded
       - KC_HTTP_ENABLED=true
       - KC_HOSTNAME_STRICT=false
       - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
-      - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN} #SECRET
-      - KC_BOOTSTRAP_ADMIN_PASSWORD=${KC_PASS} #SECRET
-      - KC_DB_URL=jdbc:postgresql://db:${PG_PORT}/keycloak #NONSECRET
-      - KC_DB_USERNAME=${PG_WORKER} #SECRET
-      - KC_DB_PASSWORD=${PG_WORKER_PASS} #SECRET
-      - KC_REDIS_HOST=redis
-      - KC_REDIS_PORT=${REDIS_PORT}
-      - KC_REDIS_PASS=${REDIS_PASS}
-      - KC_REGISTRATION_RATE_LIMIT=100
-    depends_on:
-      - db
+      - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN}
+      - KC_BOOTSTRAP_ADMIN_PASSWORD_FILE=/run/secrets/kc_pass
+      - KC_DB_URL=jdbc:postgresql://db:${PG_PORT}/keycloak
+      - KC_DB_USERNAME=${PG_WORKER}
+      - KC_DB_PASSWORD_FILE=/run/secrets/pg_worker_pass
+    secrets:
+      - kc_pass
+      - pg_worker_pass
+    volumes:
+      - ${UNIX_SOCK_DIR}:/unix_sock
 
   turn:
     image: ${TURN_IMAGE} 
@@ -88,6 +96,15 @@ services:
       - "gotenberg"
       - "--api-port=8000"
 
+secrets:
+  kc_pass:
+    file: ../../../secrets/kc_pass
+  pg_pass:
+    file: ../../../secrets/pg_pass
+  pg_worker_pass:
+    file: ../../../secrets/pg_worker_pass
+  redis_pass:
+    file: ../../../secrets/redis_pass
 
 networks:
   host:

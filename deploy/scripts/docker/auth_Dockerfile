@@ -35,6 +35,14 @@ COPY --from=builder /opt/keycloak/ /opt/keycloak/
 
 ENV JAVA_OPTS="-XX:MaxHeapFreeRatio=40 -XX:MaxRAMPercentage=45"
 
-ENTRYPOINT [ "/opt/keycloak/bin/kc.sh", "start", "--optimized" ]
+COPY ./deploy/scripts/auth/entrypoint.sh .
+
+USER root
+
+RUN chown keycloak: /entrypoint.sh && chmod -R g+rwx /entrypoint.sh
+
+USER keycloak
+
+ENTRYPOINT [ "/entrypoint.sh" ]
 
 

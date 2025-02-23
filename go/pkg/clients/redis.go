@@ -20,14 +20,18 @@ type Redis struct {
 type SocketParticipants map[string]*types.SocketParticipant
 
 func InitRedis() IRedis {
+
+	redisPass, err := util.EnvFile(os.Getenv("REDIS_PASS_FILE"))
+	if err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+	}
+
 	redisClient := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_URL"),
-		Password: os.Getenv("REDIS_PASS"),
+		Password: redisPass,
 		DB:       0,
 		Protocol: 3,
 	})
-
-	redisClient.FlushAll(context.Background())
 
 	connLen := 0
 

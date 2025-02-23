@@ -223,6 +223,7 @@ func InitKeycloak() IKeycloak {
 	}()
 
 	cmds <- KeycloakCommand{Ty: SetKeycloakTokenKeycloakCommand}
+	println("keycloak authenticated")
 	cmds <- KeycloakCommand{Ty: SetKeycloakRealmClientsKeycloakCommand}
 	cmds <- KeycloakCommand{Ty: SetKeycloakRolesKeycloakCommand}
 

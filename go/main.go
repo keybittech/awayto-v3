@@ -45,7 +45,7 @@ func main() {
 	defer api.Server.Close()
 
 	certLoc := os.Getenv("CERT_LOC")
-	keyLoc := os.Getenv("KEY_LOC")
+	keyLoc := os.Getenv("CERT_KEY_LOC")
 
 	println("listening on ", httpsPort, "Cert Locations:", certLoc, keyLoc)
 

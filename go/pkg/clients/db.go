@@ -36,10 +36,13 @@ var colTypes *ColTypes
 func InitDatabase() IDatabase {
 	dbDriver := os.Getenv("DB_DRIVER")
 	pgUser := os.Getenv("PG_WORKER")
-	pgPass := os.Getenv("PG_WORKER_PASS")
 	pgHost := os.Getenv("PG_HOST")
 	pgPort := os.Getenv("PG_PORT")
 	pgDb := os.Getenv("PG_DB")
+	pgPass, err := util.EnvFile(os.Getenv("PG_WORKER_PASS_FILE"))
+	if err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+	}
 
 	connString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable", dbDriver, pgUser, pgPass, pgHost, pgPort, pgDb)
 
