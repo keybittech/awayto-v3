@@ -57,6 +57,7 @@ TS_CONFIG_API=ts/openapi-config.json
 CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
 
 # deploy properties
+RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 DOCKER_COMPOSE:=compose -f deploy/scripts/docker/docker-compose.yml --env-file $(ENVFILE)
 
 DEPLOY_SCRIPTS=deploy/scripts
@@ -71,10 +72,6 @@ DB_BACKUP_DIR=backups/db
 DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
 DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
-LATEST_KEYCLOAK_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_app*" $(DB_BACKUP_DIR) | tail -n 1)
-LATEST_APP_RESTORE := $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_keycloak*" $(DB_BACKUP_DIR) | tail -n 1)
-
-RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 
 # APP_IP=$(shell hcloud server ip -6 ${APP_HOST})
 APP_IP=$(shell hcloud server ip ${APP_HOST})
@@ -110,7 +107,7 @@ $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
 #           TARGETS             #
 #################################
 
-build: ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_MOCK_TARGET) $(GO_TARGET)
+build: ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -150,11 +147,12 @@ $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
 	mvn -f $(JAVA_SRC) install
 
+$(LANDING_SRC)/config.yaml:
+	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
+
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
 $(LANDING_TARGET): $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json,config.yaml} -type f)
 	npm --prefix ${LANDING_SRC} i
-	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; \
-		s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
 	npm run --prefix ${LANDING_SRC} build
 
 $(TS_API_BUILD): $(shell find proto/ -type f)
@@ -166,10 +164,7 @@ $(TS_API_BUILD): $(shell find proto/ -type f)
 
 $(TS_TARGET): $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,package.json,index.html,vite.config.ts,.env.local} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i
-	sed -e "s&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; \
-		s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; \
-		s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; \
-		s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;" "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
+	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
 	pnpm run --dir $(TS_SRC) build
 
 $(GO_TARGET): $(shell find $(GO_SRC)/{main.go,flags.go,pkg} -type f) $(shell find proto/ -type f)
@@ -281,10 +276,8 @@ docker_redis:
 host_up: 
 	@mkdir -p $(HOST_LOCAL_DIR)
 	date >> "$(HOST_LOCAL_DIR)/start_time"
-	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ${RSA_PUB})&g; s&project-prefix&${PROJECT_PREFIX}&g; \
-		s&ssh-port&${SSH_PORT}&g; s&project-repo&${PROJECT_REPO}&g; s&https-port&${GO_HTTPS_PORT}&g; \
-		s&http-port&${GO_HTTP_PORT}&g;' $(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
-	sed -e 's&ssh-port&${SSH_PORT}&g;' $(DEPLOY_HOST_SCRIPTS)/public-firewall.json > "$(HOST_LOCAL_DIR)/public-firewall.json"
+	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ${RSA_PUB})&g; s&project-prefix&${PROJECT_PREFIX}&g; s&ssh-port&${SSH_PORT}&g; s&project-repo&${PROJECT_REPO}&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g;' "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+	sed -e 's&ssh-port&${SSH_PORT}&g;' "$(DEPLOY_HOST_SCRIPTS)/public-firewall.json" > "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud firewall create --name "${PROJECT_PREFIX}-public-firewall" --rules-file "$(HOST_LOCAL_DIR)/public-firewall.json" >/dev/null
 	hcloud firewall describe "${PROJECT_PREFIX}-public-firewall" -o json > "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud server create \
@@ -314,12 +307,16 @@ host_down:
 #           HOST MAKE           #
 #################################
 
+.PHONY: host_sync_env
+host_sync_env:
+	rsync ${RSYNC_FLAGS} .env "$(SSH_OP_B):$(H_REM_DIR)"
+
 .PHONY: host_deploy
-host_deploy:  
+host_deploy: host_sync_env
 	$(SSH) cd "$(H_REM_DIR)" && make r_deploy
 
 .PHONY: host_update_cert
-host_update_cert:  
+host_update_cert:
 	$(SSH) cd "$(H_REM_DIR)" && make r_host_update_cert_op
 
 .PHONY: host_deploy_compose_up
@@ -425,12 +422,15 @@ docker_db_redeploy: docker_stop
 .PHONY: docker_db_backup
 docker_db_backup:
 	mkdir -p $(DB_BACKUP_DIR)
-	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc keycloak > $(DB_BACKUP_DIR)/${PG_DB}_keycloak_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
-	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --column-inserts --data-only --on-conflict-do-nothing -n dbtable_schema -Fc ${PG_DB} > $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --inserts --on-conflict-do-nothing -Fc keycloak \
+		> $(DB_BACKUP_DIR)/${PG_DB}_keycloak_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --column-inserts --data-only --on-conflict-do-nothing -n dbtable_schema -Fc ${PG_DB} \
+		> $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
 .PHONY: docker_db_upgrade_op
 docker_db_upgrade_op:
-	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d keycloak < $(LATEST_KEYCLOAK_RESTORE) || true
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d keycloak \
+		< $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_app*" $(DB_BACKUP_DIR) | tail -n 1) || true
 	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") psql -U postgres -d ${PG_DB} -c " \
 		TRUNCATE TABLE dbtable_schema.users CASCADE; \
 		TRUNCATE TABLE dbtable_schema.roles CASCADE; \
@@ -439,7 +439,8 @@ docker_db_upgrade_op:
 		TRUNCATE TABLE dbtable_schema.timelines CASCADE; \
 		TRUNCATE TABLE dbtable_schema.time_units CASCADE; \
 	"
-	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -a --disable-triggers --superuser=postgres -d ${PG_DB} < $(LATEST_APP_RESTORE) || true
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -a --disable-triggers --superuser=postgres -d ${PG_DB} \
+		< $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_keycloak*" $(DB_BACKUP_DIR) | tail -n 1) || true
 
 .PHONY: docker_db_upgrade
 docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
