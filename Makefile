@@ -147,11 +147,9 @@ $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
 	mvn -f $(JAVA_SRC) install
 
-$(LANDING_SRC)/config.yaml:
-	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
-
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
-$(LANDING_TARGET): $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json,config.yaml} -type f)
+$(LANDING_TARGET): $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json,config.yaml.template} -type f)
+	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
 	npm --prefix ${LANDING_SRC} i
 	npm run --prefix ${LANDING_SRC} build
 

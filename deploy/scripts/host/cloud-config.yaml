@@ -18,9 +18,9 @@ packages:
   - build-essential 
   - ufw
   - jq
+  - openjdk-21-jre
   - maven
   - hugo
-  - default-jre
   - protobuf-compiler
   - protoc-gen-go
 package_update: true
