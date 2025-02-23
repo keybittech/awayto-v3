@@ -280,24 +280,23 @@ host_up:
 	jq -r '.public_net.ipv6.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip6"
 	jq -r '.public_net.ipv4.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip"
 	until ssh-keyscan -p ${SSH_PORT} -H $$(cat "$(HOST_LOCAL_DIR)/app_ip") >> ~/.ssh/known_hosts; do sleep 5; done
-	$(SSH) sudo chown -R ${HOST_OPERATOR} $(H_REM_DIR)
+	$(SSH) sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} $(H_REM_DIR)
 	make host_sync_env
 	$(SSH) 'cd "$(H_REM_DIR)" && make host_install'
 
 .PHONY: host_install
 host_install:
-	mkdir -p $$HOME/gobin
-	echo "export GOROOT=\$$HOME/go" >> \$$HOME/.bashrc
-	echo "export GOPATH=\$$HOME/gobin" >> \$$HOME/.bashrc
-	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> \$$HOME/.bashrc
+	mkdir -p $(H_OP)/gobin   
+	echo "export GOROOT=\$$HOME/go" >> $(H_OP)/.bashrc
+	echo "export GOPATH=\$$HOME/gobin" >> $(H_OP)/.bashrc
+	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> $(H_OP)/.bashrc
 	@echo "installing nvm"
 	@curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 	@echo "installing go"
-	@wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C \$$HOME
-	source \$$HOME/.bashrc
-	nvm install v22.13.1
-	npm i -g pnpm@latest-1
-	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+	@wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C $(H_OP)
+	. ~/.nvm/nvm.sh && nvm install v22.13.1
+	. ~/.nvm/nvm.sh && nvm use v22.13.1 && npm i -g pnpm@latest-1
+	~/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
 
 .PHONY: host_reboot
@@ -319,7 +318,7 @@ host_down:
 
 .PHONY: host_sync_env
 host_sync_env:
-	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "${HOST_OPERATOR}@${APP_HOST}:$(H_REM_DIR)"
+	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip"):$(H_REM_DIR)"
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
@@ -452,7 +451,7 @@ docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
 host_db_backup:
 	@mkdir -p "$(DB_BACKUP_DIR)/deployed"
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_backup"
-	rsync ${RSYNC_FLAGS} "${HOST_OPERATOR}@${APP_HOST}:$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(DB_BACKUP_DIR)/deployed"
+	rsync ${RSYNC_FLAGS} "${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip"):$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(DB_BACKUP_DIR)/deployed"
 
 .PHONY: host_db_upgrade_op
 host_db_upgrade_op:

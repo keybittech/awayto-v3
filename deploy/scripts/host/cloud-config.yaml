@@ -23,14 +23,15 @@ packages:
   - hugo
   - protobuf-compiler
   - protoc-gen-go
+  - tailscale
 package_update: true
 package_upgrade: true
 runcmd:
   - curl -fsSL https://get.docker.com | sh
-  - curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null
-  - curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list
-  - sudo apt-get update
-  - sudo apt-get install -y tailscale
+  - curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null; \
+    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list; \
+    sudo apt-get update; \
+    sudo apt-get install -y tailscale
   - sed -i -e '/^\(#\|\)Port/s/^.*$/Port ssh-port/' /etc/ssh/sshd_config
   - sed -i -e '/^\(#\|\)PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
   - sed -i -e '/^\(#\|\)PasswordAuthentication/s/^.*$/PasswordAuthentication no/' /etc/ssh/sshd_config
