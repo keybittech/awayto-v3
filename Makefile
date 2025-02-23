@@ -371,8 +371,6 @@ host_metric_cpu:
 
 .PHONY: r_deploy
 r_deploy: 
-ifeq ($(DEPLOYING),true)
-	cd $(H_REM_DIR)
 	git pull
 	make build
 	SUDO=sudo make docker_up
@@ -385,11 +383,9 @@ ifeq ($(DEPLOYING),true)
 	sudo systemctl enable $(BINARY_SERVICE)
 	sudo systemctl stop $(BINARY_SERVICE)
 	sudo systemctl start $(BINARY_SERVICE)
-endif
 
 .PHONY: r_host_update_cert_op
 r_host_update_cert_op:
-ifeq ($(DEPLOYING),true)
 	sudo certbot certificates
 	sudo ip6tables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
@@ -401,7 +397,6 @@ ifeq ($(DEPLOYING),true)
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo certbot certificates
 	sudo systemctl is-active $(BINARY_SERVICE)
-endif
 
 #################################
 #            BACKUP             #
