@@ -64,7 +64,6 @@ runcmd:
   - ufw enable
   - mkdir /etc/project-prefix
   - git clone project-repo /home/dummyuser/project-prefix
-  - sudo chown -R dummyuser: /home/dummyuser/project-prefix
   - reboot
 
 # - ufw allow proto tcp from ::/0 to any port 443

@@ -280,6 +280,8 @@ host_up:
 	jq -r '.public_net.ipv6.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip6"
 	jq -r '.public_net.ipv4.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip"
 	until ssh-keyscan -p ${SSH_PORT} -H $$(cat "$(HOST_LOCAL_DIR)/app_ip") >> ~/.ssh/known_hosts; do sleep 5; done
+	$(SSH) sudo chown -R ${HOST_OPERATOR} $(H_REM_DIR)
+	make host_sync_env
 	$(SSH) 'cd "$(H_REM_DIR)" && make host_install'
 
 .PHONY: host_install
@@ -288,8 +290,10 @@ host_install:
 	echo "export GOROOT=\$$HOME/go" >> \$$HOME/.bashrc
 	echo "export GOPATH=\$$HOME/gobin" >> \$$HOME/.bashrc
 	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> \$$HOME/.bashrc
-	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-	wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C \$$HOME
+	@echo "installing nvm"
+	@curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+	@echo "installing go"
+	@wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C \$$HOME
 	source \$$HOME/.bashrc
 	nvm install v22.13.1
 	npm i -g pnpm@latest-1
