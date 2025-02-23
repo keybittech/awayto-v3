@@ -31,10 +31,12 @@ runcmd:
   - [ -s "$NVM_DIR/nvm.sh" ] && \. "$NVM_DIR/nvm.sh"
   - [ -s "$NVM_DIR/bash_completion" ] && \. "$NVM_DIR/bash_completion"
   - nvm install v22.13.1
-  - npm i -g pnpm@latest-10 @rtk-query/codegen-openapi@latest typescript
+  - npm i -g pnpm@latest-10
   - wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C /home/dummyuser
+  - mkdir /home/dummyuser/gobin
   - echo "export GOROOT=/home/dummyuser/go" >> /home/dummyuser/.bashrc
-  - echo "export PATH=$PATH:$GOROOT/bin" >> /home/dummyuser/.bashrc
+  - echo "export GOPATH=/home/dummyuser/gobin" >> /home/dummyuser/.bashrc
+  - echo "export PATH=$PATH:$GOROOT/bin:$GOPATH/bin" >> /home/dummyuser/.bashrc
   - /home/dummyuser/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
   - curl -fsSL https://get.docker.com | sh
   - curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null

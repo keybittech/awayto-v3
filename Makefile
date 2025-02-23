@@ -307,7 +307,7 @@ host_down:
 
 .PHONY: host_sync_env
 host_sync_env:
-	rsync ${RSYNC_FLAGS} .env "$(SSH_OP_B):$(H_REM_DIR)"
+	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(SSH_OP_B):$(H_REM_DIR)"
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
@@ -375,15 +375,13 @@ ifeq ($(DEPLOYING),true)
 	cd $(H_REM_DIR)
 	git pull
 	make build
-	mkdir -p staging
-	mv $(BINARY_NAME) .env staging
-	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; \
-		s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > staging/$(BINARY_SERVICE)
-	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > staging/start.sh
-	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} staging/.env $(H_ETC_DIR)
-	sudo install -m 644 staging/$(BINARY_SERVICE) /etc/systemd/system
-	sudo install -m 700 staging/$(BINARY_NAME) staging/start.sh /usr/local/bin
-	rm -rf staging
+	SUDO=sudo make docker_up
+	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
+	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
+	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
+	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
+	sudo install -m 700 $(BINARY_NAME) start.sh /usr/local/bin
+	rm start.sh $(BINARY_SERVICE) $(BINARY_NAME)
 	sudo systemctl enable $(BINARY_SERVICE)
 	sudo systemctl stop $(BINARY_SERVICE)
 	sudo systemctl start $(BINARY_SERVICE)

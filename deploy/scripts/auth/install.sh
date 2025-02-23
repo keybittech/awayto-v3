@@ -16,6 +16,8 @@ while true; do
   sleep 2 # sleep for 5 seconds before the next attempt
 done
 
+kcadm update realms/master -s sslRequired=NONE
+
 echo "Logged in...deploying realm"
 
 EXISTING=$(kcadm get realms/$KC_REALM)
