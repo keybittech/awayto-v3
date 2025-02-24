@@ -286,16 +286,20 @@ host_up:
 
 .PHONY: host_install
 host_install:
+	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
+	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
+	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
+	sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
 	mkdir -p $(H_OP)/gobin   
 	echo "export GOROOT=\$$HOME/go" >> $(H_OP)/.bashrc
 	echo "export GOPATH=\$$HOME/gobin" >> $(H_OP)/.bashrc
 	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> $(H_OP)/.bashrc
 	@echo "installing nvm"
 	@curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-	@echo "installing go"
-	@wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C $(H_OP)
 	. ~/.nvm/nvm.sh && nvm install v22.13.1
 	. ~/.nvm/nvm.sh && nvm use v22.13.1 && npm i -g pnpm@latest-1
+	@echo "installing go"
+	@wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C $(H_OP)
 	~/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
 
@@ -399,10 +403,8 @@ r_deploy: r_pull build docker_up
 .PHONY: r_host_update_cert_op
 r_host_update_cert_op:
 	sudo certbot certificates
-	sudo ip6tables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email
-	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt
 	sudo chmod 600 ${CERTS_DIR}/cert.pem ${CERTS_DIR}/privkey.pem
