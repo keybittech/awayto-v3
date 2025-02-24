@@ -294,13 +294,12 @@ host_install:
 	echo "export GOROOT=\$$HOME/go" >> $(H_OP)/.bashrc
 	echo "export GOPATH=\$$HOME/gobin" >> $(H_OP)/.bashrc
 	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> $(H_OP)/.bashrc
+	source $(H_OP)/.bashrc
 	@echo "installing nvm"
-	@curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-	. ~/.nvm/nvm.sh && nvm install v22.13.1
-	. ~/.nvm/nvm.sh && nvm use v22.13.1 && npm i -g pnpm@latest-1
+	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+	. ~/.nvm/nvm.sh && nvm install v22.13.1 && nvm use v22.13.1 && npm i -g pnpm@latest-1
 	@echo "installing go"
-	@wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C $(H_OP)
-	~/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+	. $(H_OP)/.bashrc && wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C $(H_OP) && ~/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
 
 .PHONY: host_reboot
@@ -326,7 +325,7 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
-	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo make r_deploy'
+	$(SSH) '. ~/.bashrc && . ~/.nvm/nvm.sh && nvm use v22.13.1 && cd "$(H_REM_DIR)" && SUDO=sudo make r_deploy'
 
 .PHONY: host_update_cert
 host_update_cert:
