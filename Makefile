@@ -1,3 +1,4 @@
+export PATH := ${PATH}:~/go/bin:~/gobin/bin
 SHELL := /bin/bash
 
 ENVFILE?=./.env
@@ -152,7 +153,7 @@ $(TS_API_BUILD): $(shell find proto/ -type f)
 		--experimental_allow_proto3_optional \
 		--openapi_out=$(TS_SRC) \
 		$(PROTO_FILES)
-	npx @rtk-query/codegen-openapi $(TS_CONFIG_API)
+	npx -y @rtk-query/codegen-openapi $(TS_CONFIG_API)
 
 $(TS_TARGET): $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,package.json,index.html,vite.config.ts,.env.local} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i
@@ -290,7 +291,7 @@ host_install:
 	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
-	mkdir -p $(H_OP)/gobin   
+	mkdir -p $(H_OP)/gobin $(H_REM_DIR)/local_tmp $(H_REM_DIR)/demos/final
 	echo "export GOROOT=\$$HOME/go" >> $(H_OP)/.bashrc
 	echo "export GOPATH=\$$HOME/gobin" >> $(H_OP)/.bashrc
 	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> $(H_OP)/.bashrc
@@ -321,6 +322,7 @@ host_down:
 
 .PHONY: host_sync_env
 host_sync_env:
+	rsync ${RSYNC_FLAGS} "$(DEMOS_DIR)/" "${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip"):$(H_REM_DIR)/$(DEMOS_DIR)/"
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip"):$(H_REM_DIR)"
 
 .PHONY: host_deploy
@@ -353,7 +355,7 @@ host_cmd:
 
 .PHONY: host_status
 host_status:
-	$(SSH) sudo journalctl -u ${BINARY_SERVICE} -f
+	$(SSH) sudo journalctl -n 100 -u ${BINARY_SERVICE} -f
 
 .PHONY: host_errors
 host_errors:
@@ -393,7 +395,7 @@ r_deploy: r_pull build docker_up
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
-	sudo install -m 700 $(BINARY_NAME) start.sh /usr/local/bin
+	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(BINARY_NAME) start.sh /usr/local/bin
 	rm start.sh $(BINARY_SERVICE) $(BINARY_NAME)
 	sudo systemctl enable $(BINARY_SERVICE)
 	sudo systemctl stop $(BINARY_SERVICE)
