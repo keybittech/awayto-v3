@@ -81,8 +81,8 @@ define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
 
-CURRENT_USER := $(shell whoami)
-DEPLOYING := $(if $(filter ${HOST_OPERATOR},${CURRENT_USER}), true,)
+CURRENT_USER:=$(shell whoami)
+DEPLOYING:=$(if $(filter ${HOST_OPERATOR},${CURRENT_USER}),true,)
 
 define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
@@ -322,7 +322,7 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
-	$(SSH) 'cd "$(H_REM_DIR)" && make r_deploy'
+	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo make r_deploy'
 
 .PHONY: host_update_cert
 host_update_cert:
@@ -380,11 +380,12 @@ host_metric_cpu:
 #           REMOTE FNS          #
 #################################
 
-.PHONY: r_deploy
-r_deploy: 
+.PHONY: r_pull
+r_pull:
 	git pull
-	make build
-	SUDO=sudo make docker_up
+
+.PHONY: r_deploy
+r_deploy: r_pull build docker_up
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)

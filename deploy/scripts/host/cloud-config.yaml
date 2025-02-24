@@ -23,15 +23,11 @@ packages:
   - hugo
   - protobuf-compiler
   - protoc-gen-go
-  - tailscale
 package_update: true
 package_upgrade: true
 runcmd:
   - curl -fsSL https://get.docker.com | sh
-  - curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.noarmor.gpg | sudo tee /usr/share/keyrings/tailscale-archive-keyring.gpg >/dev/null; \
-    curl -fsSL https://pkgs.tailscale.com/stable/ubuntu/jammy.tailscale-keyring.list | sudo tee /etc/apt/sources.list.d/tailscale.list; \
-    sudo apt-get update; \
-    sudo apt-get install -y tailscale
+  - curl -fsSL https://tailscale.com/install.sh | sh
   - sed -i -e '/^\(#\|\)Port/s/^.*$/Port ssh-port/' /etc/ssh/sshd_config
   - sed -i -e '/^\(#\|\)PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
   - sed -i -e '/^\(#\|\)PasswordAuthentication/s/^.*$/PasswordAuthentication no/' /etc/ssh/sshd_config
@@ -47,10 +43,6 @@ runcmd:
   - sed -i -e '/^[^#]*\[sshd\]/a enabled = true' /etc/fail2ban/jail.local
   - sed -i -e '/^\[sshd\]/,/^\[/s/^port\s*=\s*ssh$/port = ssh-port/' /etc/fail2ban/jail.local
   - systemctl enable fail2ban
-  - ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
-  - ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
-  - iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
-  - iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw default deny routed
@@ -63,6 +55,10 @@ runcmd:
   - ufw allow 3478/udp
   - ufw allow 44400-44500/udp
   - ufw enable
+  - sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
+  - sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
+  - sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
+  - sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
   - mkdir /etc/project-prefix
   - git clone project-repo /home/dummyuser/project-prefix
   - reboot
