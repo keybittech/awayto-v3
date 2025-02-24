@@ -297,7 +297,7 @@ host_install:
 	source $(H_OP)/.bashrc
 	@echo "installing nvm"
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-	. ~/.nvm/nvm.sh && nvm install v22.13.1 && nvm use v22.13.1 && npm i -g pnpm@latest-1
+	. ~/.nvm/nvm.sh && nvm install v22.13.1 && nvm use v22.13.1 && npm i -g pnpm@latest-10
 	@echo "installing go"
 	. $(H_OP)/.bashrc && wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C $(H_OP) && ~/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
