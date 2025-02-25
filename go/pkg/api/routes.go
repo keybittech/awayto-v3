@@ -81,27 +81,30 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 									pb := serviceType.New().Interface()
 
-									if req.Method == http.MethodPost && strings.Contains(req.URL.Path, "files/content") {
-										req.ParseMultipartForm(20480000)
+									if req.Method == http.MethodPost && req.MultipartForm != nil {
+										if files, ok := req.MultipartForm.File["contents"]; ok {
+											req.ParseMultipartForm(20480000)
 
-										files := req.MultipartForm.File["contents"]
+											pbFiles := &types.PostFileContentsRequest{}
 
-										pbFiles := &types.PostFileContentsRequest{}
+											for _, f := range files {
+												fileBuf := make([]byte, f.Size)
 
-										for _, f := range files {
-											fileBuf := make([]byte, f.Size)
+												fileData, _ := f.Open()
+												fileData.Read(fileBuf)
+												fileData.Close()
 
-											fileData, _ := f.Open()
-											fileData.Read(fileBuf)
-											fileData.Close()
+												pbFiles.Contents = append(pbFiles.Contents, &types.FileContent{
+													Name:    f.Filename,
+													Content: fileBuf,
+												})
+											}
 
-											pbFiles.Contents = append(pbFiles.Contents, &types.FileContent{
-												Name:    f.Filename,
-												Content: fileBuf,
-											})
+											pb = pbFiles
+										} else {
+											deferredError = util.ErrCheck(errors.New("invalid multipart request"))
+											return
 										}
-
-										pb = pbFiles
 									} else {
 										body, err := io.ReadAll(req.Body)
 										if err != nil {
@@ -163,24 +166,28 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 									// Transform the response
 
-									if req.Method == http.MethodGet && strings.Contains(req.URL.Path, "files/content") {
-										w.Header().Add("Content-Type", "application/octet-stream")
-										_, err := w.Write(*results[0].Interface().(*[]byte))
+									var resLen int
+									if resData, ok := results[0].Interface().([]byte); ok {
+										resLen = len(resData)
+										_, err := w.Write(resData)
 										if err != nil {
 											deferredError = util.ErrCheck(err)
 											return
 										}
-									} else {
-										pbJsonBytes, err := protojson.Marshal(results[0].Interface().(protoreflect.ProtoMessage))
+									} else if resData, ok := results[0].Interface().(protoreflect.ProtoMessage); ok {
+										pbJsonBytes, err := protojson.Marshal(resData)
 										if err != nil {
 											deferredError = util.ErrCheck(err)
 											return
 										}
+										resLen = len(pbJsonBytes)
 
-										defer exeTimeDefer("response len " + fmt.Sprint(len(pbJsonBytes)))
-
+										w.Header().Set("Content-Type", "application/json")
+										w.Header().Set("Content-Length", fmt.Sprintf("%d", resLen))
 										w.Write(pbJsonBytes)
 									}
+
+									defer exeTimeDefer(fmt.Sprintf("response len %d", resLen))
 								},
 							),
 						),

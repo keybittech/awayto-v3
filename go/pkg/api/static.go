@@ -66,11 +66,23 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 	demoFiles := http.FileServer(http.Dir("demos/final/"))
 	mux.Handle("/demos/", http.StripPrefix("/demos/",
 		a.LimitMiddleware(.1, 1)(
-			a.ValidateTokenMiddleware(
-				func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
-					demoFiles.ServeHTTP(w, r)
-				},
-			),
+			func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+				cookieValidation, err := req.Cookie("validation_cookie")
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
+					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+					return
+				}
+
+				err = util.VerifySigned("validation_cookie", cookieValidation.Value)
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
+					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+					return
+				}
+
+				demoFiles.ServeHTTP(w, req)
+			},
 		),
 	))
 

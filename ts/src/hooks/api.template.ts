@@ -31,7 +31,6 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = as
 
       return headers
     },
-
   });
 
   await refreshToken();

@@ -1,6 +1,9 @@
 package util
 
 import (
+	"crypto/hmac"
+	"crypto/rand"
+	"crypto/sha256"
 	"encoding/base64"
 	"errors"
 	"flag"
@@ -22,6 +25,7 @@ var (
 	LoggingMode = flag.String("log", "", "Debug mode")
 	ErrorLog    *ErrLog
 	TitleCase   cases.Caser
+	HashData    []byte
 )
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
@@ -44,6 +48,12 @@ func (e *ErrLog) Println(v ...any) {
 }
 
 func init() {
+	randBytes := make([]byte, 64)
+	if _, err := rand.Read(randBytes); err != nil {
+		log.Fatal(err)
+	}
+	HashData = randBytes
+
 	file, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
 		log.Fatal(err)
@@ -185,4 +195,37 @@ func Base64UrlDecode(str string) ([]byte, error) {
 		s += "="
 	}
 	return base64.StdEncoding.DecodeString(s)
+}
+
+func WriteSigned(name, unsignedValue string) string {
+	mac := hmac.New(sha256.New, HashData)
+	mac.Write([]byte(name))
+	mac.Write([]byte(unsignedValue))
+	signature := mac.Sum(nil)
+	return base64.StdEncoding.EncodeToString(signature) + unsignedValue
+}
+
+func VerifySigned(name, signedValue string) error {
+	if len(signedValue) < sha256.Size {
+		return errors.New("signed value too small")
+	}
+
+	signatureEncoded := signedValue[:base64.StdEncoding.EncodedLen(sha256.Size)]
+	signature, err := base64.StdEncoding.DecodeString(signatureEncoded)
+	if err != nil {
+		return errors.New("invalid base64 signature encoding")
+	}
+
+	value := signedValue[base64.StdEncoding.EncodedLen(sha256.Size):]
+
+	mac := hmac.New(sha256.New, HashData)
+	mac.Write([]byte(name))
+	mac.Write([]byte(value))
+	expectedSignature := mac.Sum(nil)
+
+	if !hmac.Equal(signature, expectedSignature) {
+		return errors.New("invalid signature equality")
+	}
+
+	return nil
 }

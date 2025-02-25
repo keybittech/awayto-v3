@@ -23,7 +23,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak } from 'awayto/hooks';
 import { Breadcrumbs, Dialog } from '@mui/material';
 
-import Icon from '../../img/kbt-icon.png';
+import KbtIcon from '../../img/kbt-icon.png';
 import ManageGroupModal from '../groups/ManageGroupModal';
 import ManageGroupRolesModal from '../roles/ManageGroupRolesModal';
 import ManageServiceModal from '../services/ManageServiceModal';
@@ -367,7 +367,7 @@ export function Onboard(props: IComponent): React.JSX.Element {
           <CloseIcon />
         </IconButton>
         <DialogContent sx={{ m: 3 }} dividers>
-          {'demo' == assist ? <video controls loop poster={Icon} src="/demos/onboarding.mp4" width="100%" /> : <Help />}
+          {'demo' == assist ? <video controls loop poster={KbtIcon} src="/demos/onboarding.mp4" width="100%" /> : <Help />}
         </DialogContent>
       </Grid>
     </Dialog>

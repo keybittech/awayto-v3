@@ -6,12 +6,10 @@ import {
   FileServiceGetFilesApiResponse,
   UseSiteQuery
 } from 'awayto/hooks';
-import { FileManagerProps } from './FileManager';
 
 export interface FileContextType {
   getFiles: UseSiteQuery<FileServiceGetFilesApiArg, FileServiceGetFilesApiResponse>;
   fileContents?: IFile;
-  fileManager: (props: FileManagerProps) => React.JSX.Element;
   getFileContents: ReturnType<UseFileContents>['getFileContents'];
 }
 
