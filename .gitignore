@@ -12,6 +12,7 @@ errors.log
 .swap/
 working/
 .env
+.env.local
 awaytobin
 dist/
 node_modules/
