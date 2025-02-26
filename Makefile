@@ -147,9 +147,11 @@ $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
 	mvn -f $(JAVA_SRC) install
 
-# using npm here as pnpm symlinks just hugo and doesn't build correctly 
-$(LANDING_TARGET): $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json,config.yaml.template} -type f)
+$(LANDING_SRC)/config.yaml: $(LANDING_SRC)/config.yaml.template
 	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
+
+# using npm here as pnpm symlinks just hugo and doesn't build correctly 
+$(LANDING_TARGET): $(LANDING_SRC)/config.yaml $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json} -type f)
 	npm --prefix ${LANDING_SRC} i
 	npm run --prefix ${LANDING_SRC} build
 
@@ -400,6 +402,7 @@ r_pull:
 
 .PHONY: r_deploy
 r_deploy: r_pull build docker_up
+	sed -i -e '/^  lastUpdated:/s/^.*$/lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
