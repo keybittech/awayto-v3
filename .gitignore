@@ -5,7 +5,7 @@ ts/settings.application.env
 backups/
 certs/
 secrets/
-deployed/
+sites/
 deploy/images/
 errors.log
 .hugo_build.lock
