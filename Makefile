@@ -399,7 +399,7 @@ host_metric_cpu:
 .PHONY: r_pull
 r_pull:
 	git pull
-	sed -i -e '/^  lastUpdated:/s/^.*$/  lastUpdated: \$(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
+	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: r_deploy
 r_deploy: r_pull build docker_up
