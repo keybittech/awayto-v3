@@ -74,8 +74,7 @@ export function Exchange(_: IComponent): React.JSX.Element {
       </Suspense>
     </Dialog>
 
-
-    <Grid p={1} sx={{ flex: '1 0 25%', display: 'flex', flexDirection: 'column', maxWidth: '390px' }}>
+    <Grid p={1} sx={{ flex: '1 0 25%', display: chatOpen ? 'flex' : 'none', flexDirection: 'column', maxWidth: '390px' }}>
       <Grid sx={{ flex: 1, overflow: 'auto' }}>
         {chatLog}
         {messagesEnd}
@@ -85,7 +84,6 @@ export function Exchange(_: IComponent): React.JSX.Element {
         {submitMessageForm}
       </Grid>
     </Grid>
-
 
     <Grid sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
 

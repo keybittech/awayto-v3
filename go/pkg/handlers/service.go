@@ -56,7 +56,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		serviceSurveyId = &service.SurveyId
 	}
 
-	rows, err := h.Database.Client().Query(`
+	rows, err := tx.Query(`
 		SELECT st.id
 		FROM dbtable_schema.service_tiers st
 		WHERE st.service_id = $1
@@ -64,6 +64,8 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	defer rows.Close()
 
 	for rows.Next() {
 		var tierId string

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"time"
 
@@ -63,14 +64,13 @@ type SocketCommand struct {
 }
 
 type SocketMessage struct {
-	Timestamp  string              `json:"timestamp,omitempty"`
-	Sender     string              `json:"sender,omitempty"`
-	Target     string              `json:"target,omitempty"`
-	Action     types.SocketActions `json:"action,omitempty"`
-	Topic      string              `json:"topic,omitempty"`
-	Store      bool                `json:"store,omitempty"`
-	Payload    interface{}         `json:"payload,omitempty"`
-	Historical bool                `json:"historical,omitempty"`
+	Action     types.SocketActions
+	Store      bool
+	Historical bool
+	Topic      string
+	Sender     string
+	Payload    interface{}
+	Timestamp  string
 }
 
 type Subscriber struct {
@@ -288,6 +288,41 @@ func (s *Socket) GetSocketTicket(session *UserSession) (string, error) {
 	return reply.Ticket, nil
 }
 
+func GenerateMessage(padTo int, message SocketMessage) []byte {
+	storeStr := "f"
+	if message.Store {
+		storeStr = "t"
+	}
+
+	historicalStr := "f"
+	if message.Historical {
+		historicalStr = "t"
+	}
+
+	payloadStr := ""
+	switch v := message.Payload.(type) {
+	case string:
+		payloadStr = v
+	case nil:
+		payloadStr = ""
+	default:
+		pl, err := json.Marshal(v)
+		if err == nil {
+			payloadStr = string(pl)
+		}
+	}
+
+	return []byte(fmt.Sprintf("%s%d%s%s%s%s%s%s%s%s%s%s%s%s",
+		util.PaddedLen(padTo, len(strconv.Itoa(int(message.Action.Number())))), message.Action.Number(),
+		util.PaddedLen(padTo, 1), storeStr,
+		util.PaddedLen(padTo, 1), historicalStr,
+		util.PaddedLen(padTo, len(message.Timestamp)), message.Timestamp,
+		util.PaddedLen(padTo, len(message.Topic)), message.Topic,
+		util.PaddedLen(padTo, len(message.Sender)), message.Sender,
+		util.PaddedLen(padTo, len(payloadStr)), payloadStr,
+	))
+}
+
 func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) error {
 	replyChan := make(chan SocketResponse)
 	s.Chan() <- SocketCommand{
@@ -315,30 +350,7 @@ func (s *Socket) SendMessage(targets []string, message SocketMessage) error {
 		return util.ErrCheck(errors.New("no targets to send message to"))
 	}
 
-	messageBytes, err := json.Marshal(message)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	return s.SendMessageBytes(targets, messageBytes)
-}
-
-func (s *Socket) SendMessageWithReply(targets []string, message SocketMessage, replyChan chan SocketResponse) error {
-	messageBytes, err := json.Marshal(message)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	s.Chan() <- SocketCommand{
-		Ty: SendSocketMessageSocketCommand,
-		Params: SocketParams{
-			Targets:      targets,
-			MessageBytes: messageBytes,
-		},
-		ReplyChan: replyChan,
-	}
-
-	return nil
+	return s.SendMessageBytes(targets, GenerateMessage(util.DefaultPadding, message))
 }
 
 func (s *Socket) GetSubscriberByTicket(ticket string) (*Subscriber, error) {

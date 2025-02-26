@@ -25,7 +25,7 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
   const { setSnack, openConfirm } = useUtil();
 
   const {
-    GroupSelect,
+    // GroupSelect,
     groupSchedules,
   } = useContext(GroupContext) as GroupContextType;
 
@@ -109,7 +109,7 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
     selected,
     onSelected: selection => setSelected(selection as string[]),
     toolbar: () => <>
-      <GroupSelect />
+      {/* <GroupSelect /> */}
       <Box pt={2} sx={{ width: '100%' }}>
         <Typography variant="button">Schedules:</Typography>
         <Button key={'create_schedule_button'} onClick={() => {

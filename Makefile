@@ -259,7 +259,7 @@ docker_db:
 
 .PHONY: docker_redis
 docker_redis:
-	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass ${REDIS_PASS}
+	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass $$(cat $$REDIS_PASS_FILE)
 
 #################################
 #            HOST INIT          #

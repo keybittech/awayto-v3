@@ -37,7 +37,7 @@ export function Home(props: IComponent): React.JSX.Element {
       <CardHeader
         title={`${profileRequest?.userProfile.firstName} ${profileRequest?.userProfile.lastName}`}
         subheader={`${profileRequest?.userProfile.roleName}`}
-        action={<GroupSelect />}
+      // action={<GroupSelect />}
       />
       {roleActions}
     </Card>

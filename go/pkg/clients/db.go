@@ -42,6 +42,7 @@ func InitDatabase() IDatabase {
 	pgPass, err := util.EnvFile(os.Getenv("PG_WORKER_PASS_FILE"))
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
+		log.Fatal(util.ErrCheck(err))
 	}
 
 	connString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable", dbDriver, pgUser, pgPass, pgHost, pgPort, pgDb)
@@ -49,6 +50,7 @@ func InitDatabase() IDatabase {
 	db, err := sql.Open(dbDriver, connString)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
+		log.Fatal(util.ErrCheck(err))
 	}
 
 	dbc := &Database{
@@ -74,12 +76,29 @@ func InitDatabase() IDatabase {
 			WHERE u.username = 'system_owner'
 		`).Scan(&adminSub, &adminRoleId)
 		if txErr != nil {
-			return errors.New(fmt.Sprintf("can't get admin sub %s", txErr))
+			return util.ErrCheck(txErr)
 		}
+
+		txErr = tx.SetDbVar("sock_topic", "")
+		if txErr != nil {
+			return util.ErrCheck(txErr)
+		}
+
+		_, txErr = tx.Exec(`
+			DELETE FROM dbtable_schema.sock_connections
+			USING dbtable_schema.sock_connections sc
+			LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
+			WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL
+		`)
+		if txErr != nil {
+			return util.ErrCheck(txErr)
+		}
+
 		return nil
 	}, "worker", "", "")
 	if err != nil {
-		log.Fatal(err)
+		util.ErrorLog.Println(util.ErrCheck(err))
+		log.Fatal(util.ErrCheck(err))
 	}
 
 	dbc.DatabaseAdminSub = adminSub
@@ -156,8 +175,8 @@ func (tx *TxWrapper) QueryRow(query string, args ...interface{}) IRow {
 	return tx.Tx.QueryRow(query, args...)
 }
 
-func (tx *TxWrapper) SetDbVar(prop, sub string) error {
-	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.%s = '%s'", prop, sub))
+func (tx *TxWrapper) SetDbVar(prop, value string) error {
+	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.%s = '%s'", prop, value))
 	if err != nil {
 		return util.ErrCheck(err)
 	}

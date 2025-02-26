@@ -1,12 +1,80 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useUtil, SocketResponse, SocketResponseHandler, siteApi, SocketActions } from 'awayto/hooks';
+import { useUtil, SocketResponseHandler, siteApi, SocketActions, SocketResponse } from 'awayto/hooks';
 
 import WebSocketContext, { WebSocketContextType } from './WebSocketContext';
 
 const {
   VITE_REACT_APP_APP_HOST_NAME,
 } = import.meta.env;
+
+const defaultPadding = 5;
+
+function paddedLen(len: number) {
+  let strLen = len.toString();
+  while (strLen.length < defaultPadding) strLen = "0" + strLen;
+  return strLen;
+}
+
+function generateMessage(action: SocketActions, store: boolean, historical: boolean, timestamp: string, topic: string, cid: string, payload: string) {
+  return [
+    paddedLen(action.toString().length), action,
+    paddedLen(1), String(store)[0],
+    paddedLen(1), String(historical)[0],
+    paddedLen(timestamp.length), timestamp,
+    paddedLen(topic.length), topic,
+    paddedLen(cid.length), cid,
+    paddedLen(payload.length), payload,
+  ].join('');
+}
+
+function parseField(cursor: number, data: string): [number, string, null | Error] {
+  const lenEnd = cursor + defaultPadding;
+
+  if (data.length < lenEnd) {
+    return [0, "", new Error("length index out of range")];
+  }
+
+  const lenStr = data.substring(cursor, lenEnd);
+  const valLen = parseInt(lenStr, 10);
+
+  const valEnd = lenEnd + valLen;
+
+  if (data.length < valEnd) {
+    return [0, "", new Error("value index out of range")];
+  }
+
+  const val = data.substring(lenEnd, valEnd);
+
+  return [valEnd, val, null];
+}
+
+function parseMessage(eventData: string) {
+  const messageParams = Array(7);
+
+  let cursor = 0;
+  for (let i = 0; i < messageParams.length; i++) {
+    const [newCursor, curr, err] = parseField(cursor, eventData);
+    if (err) {
+      console.error(err);
+      return
+    }
+    messageParams[i] = curr;
+    cursor = newCursor;
+  }
+
+  const socketResponse: SocketResponse<string> = {
+    action: parseInt(messageParams[0]),
+    store: messageParams[1] == 't',
+    historical: messageParams[2] == 't',
+    timestamp: messageParams[3] || (new Date()).toISOString(),
+    topic: messageParams[4],
+    sender: messageParams[5],
+    payload: messageParams[6],
+  };
+
+  return socketResponse;
+}
 
 function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
@@ -26,17 +94,17 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
     void getTicket().unwrap().then(async res => {
       const { ticket } = res;
-      const [_, connectionId] = ticket.split(":");
+      const [_, connId] = ticket.split(":");
 
       const ws = new WebSocket(`wss://${VITE_REACT_APP_APP_HOST_NAME}/sock?ticket=${ticket}`)
 
       ws.onopen = () => {
-        console.log('socket open', connectionId);
+        console.log('socket open', connId);
         if (reconnectSnackShown.current) {
           setSnack({ snackOn: 'Reconnected!', snackType: 'success' });
           reconnectSnackShown.current = false;
         }
-        setConnectionId(connectionId);
+        setConnectionId(connId);
         setSocket(ws);
         initialConnectionMade.current = true;
       };
@@ -58,26 +126,26 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       };
 
       ws.onmessage = async (event) => {
-        const {
-          timestamp,
-          sender,
-          action,
-          topic,
-          payload,
-          historical
-        } = JSON.parse(event.data) as SocketResponse<string>;
 
+        const socketResponse = parseMessage(event.data);
 
-        if (payload == "PING") {
-          ws.send(JSON.stringify({ sender: connectionId, payload: "PONG" }));
-        } else if (SocketActions.ROLE_CALL == action) {
+        if (!socketResponse) {
+          return
+        }
+
+        if (socketResponse.payload == "PING") {
+          ws.send(
+            generateMessage(SocketActions.PING_PONG, false, false, "", "", "", "PONG")
+          );
+        } else if (SocketActions.ROLE_CALL == socketResponse.action) {
           await getUserProfileDetails();
-        } else {
-          const listeners = messageListeners.current.get(topic);
+        } else if (socketResponse.topic) {
+          const listeners = messageListeners.current.get(socketResponse.topic);
 
           if (listeners) {
             for (const listener of listeners) {
-              await listener({ timestamp, sender, action, topic, payload: payload || {}, historical });
+              socketResponse.payload = JSON.parse(socketResponse.payload || '{}')
+              await listener(socketResponse);
             }
           }
         }
@@ -87,7 +155,6 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       reconnectSnackShown.current = true;
     });
   }
-
   useEffect(() => {
     connect();
   }, []);
@@ -97,15 +164,9 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
     connected: socket?.readyState === WebSocket.OPEN,
     transmit(store, action, topic, payload) {
       if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(JSON.stringify({
-          timestamp: (new Date()).toUTCString(),
-          sender: connectionId,
-          store,
-          action,
-          actionName: SocketActions[action],
-          topic,
-          payload
-        }));
+        socket.send(
+          generateMessage(action, store, false, "", topic, connectionId, JSON.stringify(payload) || '')
+        );
       }
     },
     subscribe(topic, callback) {

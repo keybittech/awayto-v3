@@ -353,22 +353,22 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE POLICY table_update ON dbtable_schema.quotes FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
 
   CREATE POLICY table_select_2 ON dbtable_schema.files FOR SELECT TO $PG_WORKER USING (
-    EXISTS(
+    EXISTS( -- this allows staff members to see information about the users they have appointments with
       SELECT 1 FROM dbtable_schema.quotes q
       JOIN dbtable_schema.schedule_bracket_slots sbs ON q.schedule_bracket_slot_id = sbs.id
-      WHERE q.created_sub = dbtable_schema.files.created_sub -- file belongs to user who made the quote
-      AND sbs.$IS_CREATOR -- this user made the sbs for the quote
+      WHERE q.created_sub = dbtable_schema.files.created_sub -- selecting record in question belongs to user who made the quote
+      AND sbs.$IS_CREATOR -- selecting user made the schedule bracket for the quote
     )
-  ); -- file can be read if the file creator requested a meeting with bracket owner
+  );
 
   CREATE POLICY table_select_2 ON dbtable_schema.file_contents FOR SELECT TO $PG_WORKER USING (
-    EXISTS(
+    EXISTS( -- this allows staff members to see information about the users they have appointments with
       SELECT 1 FROM dbtable_schema.quotes q
       JOIN dbtable_schema.schedule_bracket_slots sbs ON q.schedule_bracket_slot_id = sbs.id
-      WHERE q.created_sub = dbtable_schema.file_contents.created_sub -- file belongs to user who made the quote
-      AND sbs.$IS_CREATOR -- this user made the sbs for the quote
+      WHERE q.created_sub = dbtable_schema.file_contents.created_sub -- selecting record in question belongs to user who made the quote
+      AND sbs.$IS_CREATOR -- selecting user made the schedule bracket for the quote
     )
-  ); -- file can be read if the file creator requested a meeting with bracket owner
+  );
 
   CREATE TABLE dbtable_schema.quote_files (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -415,7 +415,14 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true
   );
   ALTER TABLE dbtable_schema.sock_connections ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY table_select ON dbtable_schema.sock_connections FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR);
+  CREATE POLICY table_select ON dbtable_schema.sock_connections FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR OR
+    EXISTS( -- this allows staff members to see information about the users they have appointments with
+      SELECT 1 FROM dbtable_schema.quotes q
+      JOIN dbtable_schema.schedule_bracket_slots sbs ON q.schedule_bracket_slot_id = sbs.id
+      WHERE q.created_sub = dbtable_schema.sock_connections.created_sub -- selecting record in question belongs to user who made the quote
+      AND sbs.$IS_CREATOR -- selecting user made the schedule bracket for the quote
+    )
+  );
   CREATE POLICY table_insert ON dbtable_schema.sock_connections FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
   CREATE POLICY table_delete ON dbtable_schema.sock_connections FOR DELETE TO $PG_WORKER USING ($IS_WORKER);
 
@@ -423,7 +430,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     connection_id TEXT NOT NULL,
     topic TEXT NOT NULL,
-    message JSONB NOT NULL,
+    message TEXT NOT NULL,
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
     created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
     updated_on TIMESTAMP,
@@ -431,7 +438,9 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     enabled BOOLEAN NOT NULL DEFAULT true
   );
   ALTER TABLE dbtable_schema.topic_messages ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY table_select ON dbtable_schema.topic_messages FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR topic = current_setting('app_session.sock_topic'));
+  CREATE POLICY table_select ON dbtable_schema.topic_messages FOR SELECT TO $PG_WORKER USING (
+    $IS_WORKER OR dbtable_schema.topic_messages.topic = current_setting('app_session.sock_topic')
+  );
   CREATE POLICY table_insert ON dbtable_schema.topic_messages FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
 
   CREATE INDEX topic_index ON dbtable_schema.topic_messages (topic);

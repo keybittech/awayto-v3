@@ -12,6 +12,7 @@ import (
 	"net"
 	"net/http"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -59,9 +60,28 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 	)
 }
 
-func PingPong(conn net.Conn) error {
-	pingBytes, _ := json.Marshal(&clients.SocketMessage{Payload: "PING"})
-	if err := util.WriteSocketConnectionMessage(pingBytes, conn); err != nil {
+func ParseMessage(padTo, cursor int, data []byte) (int, string, error) {
+	lenEnd := cursor + padTo
+
+	if len(data) < lenEnd {
+		return 0, "", util.ErrCheck(errors.New("length index out of range"))
+	}
+
+	valLen, _ := strconv.Atoi(string(data[cursor:lenEnd]))
+	valEnd := lenEnd + valLen
+
+	if len(data) < valEnd {
+		return 0, "", util.ErrCheck(errors.New("value index out of range"))
+	}
+
+	val := string(data[lenEnd:valEnd])
+
+	return valEnd, val, nil
+}
+
+func (a *API) PingPong(connId string) error {
+	messageBytes := clients.GenerateMessage(util.DefaultPadding, clients.SocketMessage{Payload: "PING"})
+	if err := a.Handlers.Socket.SendMessageBytes([]string{connId}, messageBytes); err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		return err
 	}
@@ -147,12 +167,12 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 	defer ticker.Stop()
 	lastPong := time.Now()
 
-	err = PingPong(conn)
+	err = a.PingPong(connId)
 
 	for {
 		select {
 		case <-ticker.C:
-			err := PingPong(conn)
+			err := a.PingPong(connId)
 			if err != nil {
 				return
 			}
@@ -165,10 +185,32 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 
 				var socketMessage clients.SocketMessage
 
-				if err := json.Unmarshal(data, &socketMessage); err != nil {
+				messageParams := make([]string, 7)
+
+				cursor := 0
+				var curr string
+				for i := 0; i < len(messageParams); i++ {
+					cursor, curr, err = ParseMessage(util.DefaultPadding, cursor, data)
+					if err != nil {
+						util.ErrorLog.Println(util.ErrCheck(err))
+						continue
+					}
+					messageParams[i] = curr
+				}
+
+				actionId, err := strconv.Atoi(messageParams[0])
+				if err != nil {
 					util.ErrorLog.Println(util.ErrCheck(err))
 					continue
 				}
+
+				socketMessage.Action = types.SocketActions(actionId)
+				socketMessage.Store = messageParams[1] == "t"
+				socketMessage.Historical = messageParams[2] == "t"
+				socketMessage.Timestamp = messageParams[3]
+				socketMessage.Topic = messageParams[4]
+				socketMessage.Sender = messageParams[5]
+				socketMessage.Payload = messageParams[6]
 
 				if socketMessage.Payload == "PONG" {
 					lastPong = time.Now()
@@ -327,12 +369,13 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, subscriber *clients.
 
 		if a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic) {
 			targets := []string{connId}
-			pageInfo := sm.Payload.(map[string]interface{})
+			var pageInfo map[string]int
+			json.Unmarshal([]byte(sm.Payload.(string)), &pageInfo)
 			messages := [][]byte{}
 
 			err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
 				var txErr error
-				messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, int(pageInfo["page"].(float64)), int(pageInfo["pageSize"].(float64)))
+				messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, pageInfo["page"], 100) // int(pageInfo["pageSize"])
 				if txErr != nil {
 					return util.ErrCheck(txErr)
 				}
@@ -362,7 +405,7 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, subscriber *clients.
 		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
 			var txErr error
 
-			txErr = a.Handlers.Database.StoreTopicMessage(tx, connId, sm.Topic, sm)
+			txErr = a.Handlers.Database.StoreTopicMessage(tx, connId, sm)
 			if txErr != nil {
 				return util.ErrCheck(txErr)
 			}

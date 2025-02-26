@@ -49,6 +49,8 @@ func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.
 		return nil, util.ErrCheck(err)
 	}
 
+	defer rows.Close()
+
 	ids := []util.IdStruct{}
 
 	for rows.Next() {
@@ -86,10 +88,7 @@ func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (S
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetDbVar("sock_topic", "")
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	defer topicRows.Close()
 
 	for topicRows.Next() {
 		var scid string
@@ -120,6 +119,11 @@ func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (S
 		}
 	}
 
+	err = tx.SetDbVar("sock_topic", "")
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	return participants, nil
 }
 
@@ -145,23 +149,18 @@ func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants Soc
 	return participants, nil
 }
 
-func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId, topic string, message SocketMessage) error {
+func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message SocketMessage) error {
 
 	message.Store = false
 	message.Historical = true
 	message.Timestamp = time.Now().Local().UTC().String()
 
-	socketMessage, err := json.Marshal(message)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	_, err = tx.Exec(`
+	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.topic_messages (created_sub, topic, message, connection_id)
 		SELECT created_sub, $2, $3, $1
 		FROM dbtable_schema.sock_connections
 		WHERE connection_id = $1
-	`, connId, topic, socketMessage)
+	`, connId, message.Topic, GenerateMessage(util.DefaultPadding, message))
 
 	if err != nil {
 		return util.ErrCheck(err)
@@ -172,22 +171,35 @@ func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId, topic string, mess
 
 func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error) {
 
-	err := tx.SetDbVar("sock_topic", topic)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	messages := make([][]byte, pageSize)
 
 	paginatedQuery := util.WithPagination(`
 		SELECT message FROM dbtable_schema.topic_messages
 		WHERE topic = $1
-		ORDER BY created_on DESC 
+		ORDER BY created_on DESC
 	`, page, pageSize)
+
+	err := tx.SetDbVar("sock_topic", topic)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	rows, err := tx.Query(paginatedQuery, topic)
 	if err != nil {
 		return nil, util.ErrCheck(err)
+	}
+
+	defer rows.Close()
+
+	i := 0
+	for rows.Next() {
+		var smBytes string
+		err := rows.Scan(&smBytes)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+		messages[i] = []byte(smBytes)
+		i++
 	}
 
 	err = tx.SetDbVar("sock_topic", "")
@@ -195,23 +207,11 @@ func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSiz
 		return nil, util.ErrCheck(err)
 	}
 
-	i := 0
-	for rows.Next() {
-		var smBytes []byte
-		err := rows.Scan(&smBytes)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-		messages[i] = smBytes
-		i++
-	}
-
 	if messages[pageSize-1] != nil {
-		msgStatusBytes, _ := json.Marshal(&SocketMessage{
+		messages = append(messages, GenerateMessage(util.DefaultPadding, SocketMessage{
 			Topic:  topic,
 			Action: types.SocketActions_HAS_MORE_MESSAGES,
-		})
-		messages = append(messages, msgStatusBytes)
+		}))
 	}
 
 	return messages, nil

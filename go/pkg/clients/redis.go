@@ -55,9 +55,12 @@ func InitRedis() IRedis {
 		}
 	}()
 
-	return &Redis{
+	r := &Redis{
 		RedisClient: redisClient,
 	}
+	r.InitKeys()
+
+	return r
 }
 
 var socketServerConnectionsKey = "socket_server_connections"

@@ -138,16 +138,17 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 	var diffs []*types.IGroupRole
 
 	// Remove all unused roles from keycloak and the group records
-	rows, err := h.Database.Client().Query(`
+	rows, err := tx.Query(`
 		SELECT egr.id, egr."roleId", er.name
 		FROM dbview_schema.enabled_group_roles egr
 		JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
 		WHERE er.name != 'Admin' AND egr."groupId" = $1 AND egr."roleId" != ANY($2::uuid[])
 	`, session.GroupId, pq.Array(roleIds))
-	defer rows.Close()
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	defer rows.Close()
 
 	for rows.Next() {
 		var groupRoleId, roleId, roleName string

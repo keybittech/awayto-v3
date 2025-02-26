@@ -14,6 +14,7 @@ import (
 	"reflect"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
@@ -22,11 +23,28 @@ import (
 )
 
 var (
-	LoggingMode = flag.String("log", "", "Debug mode")
-	ErrorLog    *ErrLog
-	TitleCase   cases.Caser
-	HashData    []byte
+	LoggingMode    = flag.String("log", "", "Debug mode")
+	ErrorLog       *ErrLog
+	TitleCase      cases.Caser
+	HashData       []byte
+	DefaultPadding int
 )
+
+func init() {
+	DefaultPadding = 5
+	randBytes := make([]byte, 64)
+	if _, err := rand.Read(randBytes); err != nil {
+		log.Fatal(err)
+	}
+	HashData = randBytes
+
+	file, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		log.Fatal(err)
+	}
+	ErrorLog = &ErrLog{log.New(file, "", log.Ldate|log.Ltime)}
+	TitleCase = cases.Title(language.Und)
+}
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
 const InternalErrorResponse = `{ "error": { "status": 500 } }`
@@ -45,21 +63,6 @@ func (e *ErrLog) Println(v ...any) {
 	if *LoggingMode == "debug" {
 		fmt.Println(fmt.Sprintf("DEBUG: %s", v...))
 	}
-}
-
-func init() {
-	randBytes := make([]byte, 64)
-	if _, err := rand.Read(randBytes); err != nil {
-		log.Fatal(err)
-	}
-	HashData = randBytes
-
-	file, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
-	if err != nil {
-		log.Fatal(err)
-	}
-	ErrorLog = &ErrLog{log.New(file, "", log.Ldate|log.Ltime)}
-	TitleCase = cases.Title(language.Und)
 }
 
 func UserError(err string) error {
@@ -114,6 +117,14 @@ func ErrCheck(err error) error {
 	_, file, line, _ := runtime.Caller(1)
 
 	return errors.New(fmt.Sprintf("%s %s:%d", err.Error(), file, line))
+}
+
+func PaddedLen(padTo int, length int) string {
+	strLen := strconv.Itoa(length)
+	for len(strLen) < padTo {
+		strLen = "0" + strLen
+	}
+	return strLen
 }
 
 func EnvFile(loc string) (string, error) {
