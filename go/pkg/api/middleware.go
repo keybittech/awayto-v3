@@ -190,15 +190,6 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			// If user belongs to a group, get info about it
 			if len(session.SubGroups) > 0 {
 
-				if existingSession != nil {
-					// Update contextually relevant info into the existing session
-					existingSession.Timezone = session.Timezone
-					existingSession.AnonIp = session.AnonIp
-
-					// re-use existing session info
-					session = existingSession
-				}
-
 				if gidSelect != "" && slices.Contains(session.SubGroups, gidSelect) {
 					session.SubGroupName = gidSelect
 				} else {
