@@ -399,10 +399,10 @@ host_metric_cpu:
 .PHONY: r_pull
 r_pull:
 	git pull
+	sed -i -e '/^  lastUpdated:/s/^.*$/  lastUpdated: \$(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: r_deploy
 r_deploy: r_pull build docker_up
-	sed -i -e '/^  lastUpdated:/s/^.*$/lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
