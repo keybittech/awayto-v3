@@ -1,5 +1,10 @@
-export PATH := ${PATH}:~/go/bin:~/gobin/bin
 SHELL := /bin/bash
+
+GO_VERSION=go1.24.0.linux-amd64
+NODE_VERSION=v22.13.1
+
+# manually manage path for makefile use
+export PATH := ${PATH}:/home/$(shell whoami)/.nvm/versions/node/$(NODE_VERSION)/bin:/home/$(shell whoami)/go/bin:/usr/local/go/bin
 
 ENVFILE?=./.env
 
@@ -293,16 +298,18 @@ host_install:
 	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
-	mkdir -p $(H_OP)/gobin $(H_REM_DIR)/local_tmp $(H_REM_DIR)/demos/final
-	echo "export GOROOT=\$$HOME/go" >> $(H_OP)/.bashrc
-	echo "export GOPATH=\$$HOME/gobin" >> $(H_OP)/.bashrc
-	echo "export PATH=\$$PATH:\$$GOROOT/bin:\$$GOPATH/bin" >> $(H_OP)/.bashrc
-	source $(H_OP)/.bashrc
+	mkdir -p $(H_REM_DIR)/local_tmp $(H_REM_DIR)/demos/final
 	@echo "installing nvm"
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-	. ~/.nvm/nvm.sh && nvm install v22.13.1 && nvm use v22.13.1 && npm i -g pnpm@latest-10
+	. ~/.nvm/nvm.sh && nvm install $(NODE_VERSION) && npm i -g pnpm@latest-10
 	@echo "installing go"
-	. $(H_OP)/.bashrc && wget -qO- https://go.dev/dl/go1.24.0.linux-amd64.tar.gz | gunzip | tar xvf - -C $(H_OP) && ~/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+	sudo rm -rf /usr/local/go
+	sudo curl -L -o goinstall.tar.gz https://go.dev/dl/$(GO_VERSION).tar.gz
+	sudo tar -C /usr/local -xzf goinstall.tar.gz
+	if ! grep -q "go/bin" "$(H_OP)/.bashrc"; then \
+		echo "export PATH=\$$PATH:/usr/local/go/bin" >> $(H_OP)/.bashrc; \
+	fi
+	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
 
 .PHONY: host_reboot
@@ -329,7 +336,7 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
-	$(SSH) '. ~/.bashrc && . ~/.nvm/nvm.sh && nvm use v22.13.1 && cd "$(H_REM_DIR)" && SUDO=sudo make r_deploy'
+	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo make r_deploy'
 
 .PHONY: host_update_cert
 host_update_cert:
