@@ -110,7 +110,7 @@ $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
 #           TARGETS             #
 #################################
 
-build: ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
+build: ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -145,6 +145,15 @@ ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FI
 	@chmod 750 $(@D)
 	install -m 640 /dev/null $@
 	openssl rand -hex 64 > $@
+
+${OAI_KEY_FILE}:
+	install -m 640 /dev/null $@
+	@if [[ ! -v OPENAI_API_KEY ]]; then \
+		echo "Provide an OPENAI_API_KEY if desired, or just press Enter"; \
+		read OAI_KEY; echo "$$OAI_KEY" > $@ ;\
+	else \
+		echo "$$OPENAI_API_KEY" > $@; \
+	fi
 
 $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
@@ -313,6 +322,7 @@ host_install:
 	sudo tar -C /usr/local -xzf goinstall.tar.gz
 	if ! grep -q "go/bin" "$(H_OP)/.bashrc"; then \
 		echo "export PATH=\$$PATH:/usr/local/go/bin" >> $(H_OP)/.bashrc; \
+		echo "clear && cd $(H_REM_DIR)" >> $(H_OP)/.bashrc; \
 	fi
 	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
