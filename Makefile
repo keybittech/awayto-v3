@@ -31,7 +31,7 @@ JAVA_TARGET_DIR=java/target
 JAVA_THEMES_DIR=java/themes
 LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
-HOST_LOCAL_DIR=deployed/${PROJECT_PREFIX}
+HOST_LOCAL_DIR=sites/${PROJECT_PREFIX}
 GO_GEN_DIR=go/pkg/types
 GO_MOCKS_GEN_DIR=go/pkg/mocks
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
@@ -52,6 +52,8 @@ H_DOCK=$(H_OP)/bin/docker
 H_REM_DIR=$(H_OP)/${PROJECT_PREFIX}
 H_ETC_DIR=/etc/${PROJECT_PREFIX}
 
+H_SIGN=${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
+
 # build artifacts
 
 PROTO_FILES=$(wildcard proto/*.proto)
@@ -70,6 +72,7 @@ DEPLOY_SCRIPTS=deploy/scripts
 DEV_SCRIPTS=deploy/scripts/dev
 DOCKER_SCRIPTS=deploy/scripts/docker
 DEPLOY_HOST_SCRIPTS=deploy/scripts/host
+CRON_DIR=deploy/scripts/cron
 AUTH_INSTALL_SCRIPT=deploy/scripts/auth/install.sh
 SITE_INSTALLER=deploy/scripts/host/install.sh
 
@@ -80,7 +83,7 @@ DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 
 # APP_IP=$(shell hcloud server ip ${APP_HOST})
-SSH=ssh -p ${SSH_PORT} -T ${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
+SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 
 LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
 define set_local_unix_sock_dir
@@ -300,7 +303,7 @@ host_install:
 	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
-	mkdir -p $(H_REM_DIR)/local_tmp $(H_REM_DIR)/demos/final
+	mkdir -p $(H_REM_DIR)/{backups/db,working,local_tmp,demos/final}
 	@echo "installing nvm"
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 	. ~/.nvm/nvm.sh && nvm install $(NODE_VERSION) && npm i -g pnpm@latest-10
@@ -327,14 +330,18 @@ host_down:
 	hcloud firewall delete "${PROJECT_PREFIX}-public-firewall"
 	rm -rf $(HOST_LOCAL_DIR)
 
+.PHONY: host_sync_env
+host_sync_env:
+	mkdir -p $(HOST_LOCAL_DIR)/cron/daily
+	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&project-prefix&${PROJECT_PREFIX}&g;' "$(CRON_DIR)/whitelist-ips" > "$(HOST_LOCAL_DIR)/cron/daily/whitelist-ips"
+	rsync ${RSYNC_FLAGS} --chown root:root --chmod 755 --rsync-path="sudo rsync" "$(HOST_LOCAL_DIR)/cron/daily/" "$(H_SIGN):/etc/cron.daily/"
+	$(SSH) 'run-parts /etc/cron.daily'
+	rsync ${RSYNC_FLAGS} "$(DEMOS_DIR)/" "$(H_SIGN):$(H_REM_DIR)/$(DEMOS_DIR)/"
+	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(H_SIGN):$(H_REM_DIR)"
+
 #################################
 #           HOST MAKE           #
 #################################
-
-.PHONY: host_sync_env
-host_sync_env:
-	rsync ${RSYNC_FLAGS} "$(DEMOS_DIR)/" "${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip"):$(H_REM_DIR)/$(DEMOS_DIR)/"
-	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip"):$(H_REM_DIR)"
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
@@ -358,7 +365,7 @@ host_deploy_compose_down:
 
 .PHONY: host_ssh
 host_ssh:
-	ssh -p ${SSH_PORT} ${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
+	@ssh -p ${SSH_PORT} $(H_SIGN)
 
 .PHONY: host_cmd
 host_cmd:
@@ -465,9 +472,13 @@ docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
 
 .PHONY: host_db_backup
 host_db_backup:
-	@mkdir -p "$(DB_BACKUP_DIR)/deployed"
+	@mkdir -p "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
 	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_backup"
-	rsync ${RSYNC_FLAGS} "${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip"):$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(DB_BACKUP_DIR)/deployed"
+	rsync ${RSYNC_FLAGS} "$(H_SIGN):$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
+
+.PHONY: host_db_backup_restore
+host_db_backup_restore:
+	rsync ${RSYNC_FLAGS} "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/" "$(H_SIGN):$(H_REM_DIR)/$(DB_BACKUP_DIR)/"
 
 .PHONY: host_db_upgrade_op
 host_db_upgrade_op:

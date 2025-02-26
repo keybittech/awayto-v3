@@ -1,0 +1,33 @@
+#! /bin/sh
+
+. /home/dummyuser/project-prefix/.env
+
+IP_FILE=/home/dummyuser/project-prefix/working/whitelisted.txt
+
+curl -s https://www.cloudflare.com/ips-v4 -o $IP_FILE
+
+touch $IP_FILE.old
+
+diff $IP_FILE $IP_FILE.old
+
+if [ $? -eq 1 ]; then
+
+  cat $IP_FILE.old | while IFS= read -r line; do
+    sudo ufw delete allow from $line to any proto tcp port 80
+    sudo ufw delete allow from $line to any proto tcp port 443
+    sudo ufw delete allow from $line to any proto tcp port $GO_HTTP_PORT
+    sudo ufw delete allow from $line to any proto tcp port $GO_HTTPS_PORT
+    sudo ufw delete allow from $line to any proto tcp port 3478
+  done
+
+  cat $IP_FILE | while IFS= read -r line; do
+    sudo ufw allow from $line to any proto tcp port 80
+    sudo ufw allow from $line to any proto tcp port 443
+    sudo ufw allow from $line to any proto tcp port $GO_HTTP_PORT
+    sudo ufw allow from $line to any proto tcp port $GO_HTTPS_PORT
+    sudo ufw allow from $line to any proto tcp port 3478
+  done
+
+  mv $IP_FILE $IP_FILE.old
+
+fi
