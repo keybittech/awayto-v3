@@ -54,6 +54,10 @@ func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data 
 
 				resp, err := h.Ai.GetPromptResponse(req.Context(), promptParts, types.IPrompts(promptType))
 				if err != nil {
+					return nil, util.ErrCheck(err)
+				}
+
+				if resp == "" {
 					continue
 				}
 

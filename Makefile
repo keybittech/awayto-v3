@@ -106,6 +106,8 @@ $(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;"
 $(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
 
+AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
+
 #################################
 #           TARGETS             #
 #################################
@@ -150,7 +152,7 @@ ${OAI_KEY_FILE}:
 	install -m 640 /dev/null $@
 	@if [[ ! -v OPENAI_API_KEY ]]; then \
 		echo "Provide an OPENAI_API_KEY if desired, or just press Enter"; \
-		read OAI_KEY; echo "$$OAI_KEY" > $@ ;\
+		read -s OAI_KEY; echo "$$OAI_KEY" > $@ ;\
 	else \
 		echo "$$OPENAI_API_KEY" > $@; \
 	fi
@@ -175,7 +177,7 @@ $(TS_API_BUILD): $(shell find proto/ -type f)
 	npx -y @rtk-query/codegen-openapi $(TS_CONFIG_API)
 
 $(TS_SRC)/.env.local: $(TS_SRC)/.env.template
-	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g;' "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
+	sed -e 's&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g; s&ai-enabled&$(AI_ENABLED)&g;' "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
 
 $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,package.json,index.html,vite.config.ts} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i

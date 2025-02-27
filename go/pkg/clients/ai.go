@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"regexp"
 	"strings"
@@ -16,6 +17,7 @@ import (
 type AiPrompts map[types.IPrompts]interface{}
 
 type Ai struct {
+	Client  *openai.Client
 	Model   string
 	Prompts AiPrompts
 }
@@ -29,7 +31,20 @@ func InitAi() IAi {
 	aiPrompts[types.IPrompts_SUGGEST_SERVICE] = suggestServiceMessages
 	aiPrompts[types.IPrompts_SUGGEST_TIER] = suggestTierMessages
 
+	apiKey, err := util.EnvFile(os.Getenv("OAI_KEY_FILE"))
+	if err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+		log.Fatal(util.ErrCheck(err))
+	}
+
+	var oaiClient *openai.Client
+
+	if apiKey != "" {
+		oaiClient = openai.NewClient(apiKey)
+	}
+
 	aic := &Ai{
+		Client:  oaiClient,
 		Model:   openai.GPT3Dot5Turbo,
 		Prompts: aiPrompts,
 	}
@@ -39,12 +54,9 @@ func InitAi() IAi {
 
 func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promptType types.IPrompts) (string, error) {
 
-	openAIKey := os.Getenv("OPENAI_API_KEY")
-	if openAIKey == "" {
-		return "", util.ErrCheck(errors.New("No OpenAI Key"))
+	if ai.Client == nil {
+		return "", util.ErrCheck(util.UserError("AI functionality is currently unavailable"))
 	}
-
-	client := openai.NewClient(openAIKey)
 
 	promptTokens := make(map[string]string)
 
@@ -62,7 +74,7 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 			content = strings.ReplaceAll(content, k, v)
 		}
 
-		resp, err := client.CreateCompletion(ctx, openai.CompletionRequest{
+		resp, err := ai.Client.CreateCompletion(ctx, openai.CompletionRequest{
 			Model:  ai.Model,
 			Prompt: content,
 		})
@@ -86,7 +98,7 @@ func (ai *Ai) GetPromptResponse(ctx context.Context, promptParts []string, promp
 			})
 		}
 
-		resp, err := client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
+		resp, err := ai.Client.CreateChatCompletion(ctx, openai.ChatCompletionRequest{
 			Model:    ai.Model,
 			Messages: messages,
 		})
