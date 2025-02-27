@@ -37,7 +37,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
   const groups = useMemo(() => profileRequest?.userProfile?.groups || {}, [profileRequest?.userProfile]);
 
   const [deleteGroup] = siteApi.useGroupServiceDeleteGroupMutation();
-  const [leaveGroup] = siteApi.useGroupServiceLeaveGroupMutation();
+  const [leaveGroup] = siteApi.useGroupUtilServiceLeaveGroupMutation();
 
   const actions = useMemo(() => {
     if (!groups) return [];

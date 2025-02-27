@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useEffect } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
@@ -13,17 +13,22 @@ import TextField from '@mui/material/TextField';
 import Checkbox from '@mui/material/Checkbox';
 import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
+import CircularProgress from '@mui/material/CircularProgress';
 
 import { useDebounce, useUtil, refreshToken, siteApi, IGroup } from 'awayto/hooks';
 
+const {
+  VITE_REACT_APP_AI_ENABLED
+} = import.meta.env;
+
 interface ManageGroupModalProps extends IComponent {
   editGroup: IGroup;
-  setEditGroup?: React.Dispatch<React.SetStateAction<IGroup>>;
+  onValidChanged?: (valid: boolean) => void;
   showCancel?: boolean;
   saveToggle?: number;
 }
 
-export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel = true, saveToggle = 0, closeModal }: ManageGroupModalProps): React.JSX.Element {
+export function ManageGroupModal({ children, editGroup, onValidChanged, showCancel = true, saveToggle = 0, closeModal }: ManageGroupModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -36,43 +41,49 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
     ...editGroup
   } as Required<IGroup>);
 
-  const debouncedName = useDebounce(group.name || '', 1000);
-  const [debouncedPrev, setDebouncedPrev] = useState(debouncedName);
+  const debouncedName = useDebounce(group.displayName || '', 500);
 
-  const [checkName, checkState] = siteApi.useLazyGroupServiceCheckGroupNameQuery();
+  const [checkName, checkState] = siteApi.useLazyGroupUtilServiceCheckGroupNameQuery();
 
-  const [editedPurpose, setEditedPurpose] = useState(false);
+  const [groupValid, setGroupValid] = useState(false);
+  const debouncedValidity = useDebounce(groupValid, 50);
+
+  // const [editedPurpose, setEditedPurpose] = useState(false);
   const [allowedDomains, setAllowedDomains] = useState([] as string[]);
   const [allowedDomain, setAllowedDomain] = useState('');
+  const purposeEdited = useRef(false);
 
   const [getUserProfileDetails] = siteApi.useLazyUserProfileServiceGetUserProfileDetailsQuery();
   const [postGroup] = siteApi.useGroupServicePostGroupMutation();
   const [patchGroup] = siteApi.useGroupServicePatchGroupMutation();
 
+  const formatName = (name: string) => name.replace(/__+/g, '_')
+    .replace(/\s/g, '_')
+    .replace(/[\W]+/g, '_')
+    .replace(/__+/g, '_')
+    .replace(/__+/g, '').toLowerCase();
+
   const handleSubmit = useCallback(async () => {
-    if (!group.name || !group.purpose) {
+    if (editGroup && editGroup.name == group.name && editGroup.purpose == group.purpose && editGroup.ai == group.ai) {
+      closeModal && closeModal(group);
+      return;
+    }
+
+    if (!group.displayName || !group.purpose) {
       setSnack({ snackType: 'error', snackOn: 'All fields are required.' });
       return;
     }
 
     group.allowedDomains = allowedDomains.join(',');
 
-    const newGroup = {
-      displayName: group.name,
-      name: group.name.replace(/__+/g, '_')
-        .replace(/\s/g, '_')
-        .replace(/[\W]+/g, '_')
-        .replace(/__+/g, '_')
-        .replace(/__+/g, '').toLowerCase(),
-      purpose: group.purpose,
-      allowedDomains: allowedDomains.join(','),
-      ai: group.ai
-    };
+    if (!group.name) {
+      group.name = formatName(debouncedName);
+    }
 
     if (group.id) {
-      await patchGroup({ patchGroupRequest: newGroup }).unwrap().catch(console.error);
+      await patchGroup({ patchGroupRequest: { ...group } }).unwrap().catch(console.error);
     } else {
-      await postGroup({ postGroupRequest: newGroup }).unwrap().then(resp => {
+      await postGroup({ postGroupRequest: { ...group } }).unwrap().then(resp => {
         group.id = resp.id;
       }).catch(console.error);
     }
@@ -83,27 +94,27 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
     }).catch(console.error);
   }, [group, editGroup]);
 
-  const badName = group.name != debouncedName || checkState.isFetching || checkState.isError;
+  const badName = !checkState.isUninitialized && (!group.name || checkState.isFetching || checkState.isError);
 
   useEffect(() => {
     async function go() {
-      if (debouncedName != debouncedPrev) {
-        const { data: check } = await checkName({ name: debouncedName });
-        if (check?.isValid) {
-          setDebouncedPrev(debouncedName);
-        }
-        setGroup({ ...group, isValid: !!check?.isValid });
+      const update: Partial<IGroup> = {};
+      if (!debouncedName.length) { // must have a name to check
+        update.isValid = false;
+        update.name = '';
+      } else if (editGroup && editGroup.displayName == debouncedName) { // don't check instantly when editing
+        update.isValid = true
+      } else { // else check as normal and update name if valid
+        const name = formatName(debouncedName);
+        const { isValid } = await checkName({ name }).unwrap();
+        update.isValid = isValid;
+        update.name = isValid ? name : '';
       }
+
+      setGroup(g => ({ ...g, ...update }));
     }
     void go();
-  }, [debouncedName, debouncedPrev]);
-
-  // Onboarding handling
-  useEffect(() => {
-    if (setEditGroup) {
-      setEditGroup({ ...group, isValid: !badName });
-    }
-  }, [group, badName]);
+  }, [debouncedName, editGroup]);
 
   // Onboarding handling
   useEffect(() => {
@@ -111,6 +122,18 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
       handleSubmit();
     }
   }, [saveToggle]);
+
+  useEffect(() => {
+    setGroupValid(Boolean(
+      !(checkState.isFetching || checkState.isLoading) && group.displayName == debouncedName && group.name && group.purpose && group.isValid
+    ));
+  }, [group, debouncedName, checkState]);
+
+  useEffect(() => {
+    if (onValidChanged) {
+      onValidChanged(debouncedValidity);
+    }
+  }, [debouncedValidity]);
 
   return <>
     <Card>
@@ -124,13 +147,33 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
               fullWidth
               id="name"
               label="Group Name"
-              value={group.name}
+              value={group.displayName}
               error={badName}
               name="name"
-              onChange={e => { setGroup({ ...group, name: e.target.value }); }}
+              onChange={e => {
+                setGroup({ ...group, displayName: e.target.value });
+              }}
               multiline
               required
               helperText="Group names can only contain letters, numbers, and underscores. Max 50 characters."
+              slotProps={{
+                input: {
+                  endAdornment: <>
+                    {group.displayName && (debouncedName.length && !group.isValid) && !checkState.isUninitialized && !checkState.isFetching ? <Box
+                      sx={{
+                        color: '#000',
+                        fontSize: '12px',
+                        padding: '0 8px',
+                        backgroundColor: 'rgb(255, 150, 150)',
+                        border: '2px solid rgb(255, 100, 100)',
+                      }}
+                    >
+                      Unavailable
+                    </Box> : checkState.isFetching ? <CircularProgress color="info" size={16} /> : <></>
+                    }
+                  </>
+                }
+              }}
             />
           </Grid>
 
@@ -138,18 +181,15 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
             <TextField
               id={`group-purpose-entry`}
               fullWidth
-              slotProps={{
-                input: {
-                  sx: { maxLength: 100 }
-                }
-              }}
               helperText={'Enter a short phrase about the function of your group (max. 100 characters).'}
               label={`Group Description`}
               required
-              error={editedPurpose && !!group.purpose && group.purpose.length > 100}
-              onBlur={() => setEditedPurpose(true)}
-              onFocus={() => setEditedPurpose(false)}
-              onChange={e => setGroup({ ...group, purpose: e.target.value })}
+              error={purposeEdited.current && (group.purpose.length == 0 || group.purpose.length > 100)}
+              onChange={e => {
+                if (e.target.value.length > 100) return;
+                purposeEdited.current = true;
+                setGroup({ ...group, purpose: e.target.value })
+              }}
               value={group.purpose}
             />
           </Grid>
@@ -192,7 +232,7 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
             </Grid>
           </Grid>
 
-          <Grid size={12}>
+          {'1' == VITE_REACT_APP_AI_ENABLED && <Grid size={12}>
             <FormGroup>
               <FormControlLabel
                 id={`group-disable-ai-entry`}
@@ -206,10 +246,10 @@ export function ManageGroupModal({ children, editGroup, setEditGroup, showCancel
               />
               <Typography variant="caption">AI suggestions will be seen by all group members. This functionality can be toggled on/off in group settings. Group name and description are used to generate suggestions.</Typography>
             </FormGroup>
-          </Grid>
+          </Grid>}
         </Grid>
       </CardContent>
-      {!setEditGroup && <CardActions>
+      {!onValidChanged && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button onClick={closeModal}>Cancel</Button>}
           <Button color="info" size="large" disabled={!editGroup?.id && (group.purpose.length > 100 || badName)} onClick={handleSubmit}>

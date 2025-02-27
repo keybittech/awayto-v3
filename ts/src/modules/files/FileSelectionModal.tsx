@@ -16,11 +16,11 @@ import Button from '@mui/material/Button';
 import { OrderedFiles } from 'awayto/hooks';
 import FileTypeIcon from './FileTypeIcon';
 
-interface FileSelectionModal extends IComponent {
+interface FileSelectionModalProps extends IComponent {
   fileGroups: OrderedFiles[];
 }
 
-export function FileSelectionModal({ closeModal, fileGroups }: FileSelectionModal): React.JSX.Element {
+export function FileSelectionModal({ closeModal, fileGroups }: FileSelectionModalProps): React.JSX.Element {
   return <Card sx={{ display: 'flex', flex: 1, flexDirection: 'column' }}>
     <CardHeader title="Select File" />
     <CardContent sx={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'auto' }}>

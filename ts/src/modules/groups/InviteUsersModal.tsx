@@ -12,7 +12,7 @@ import { TextField } from '@mui/material';
 export function InviteUsersModal({ closeModal }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
-  const [inviteGroupUser] = siteApi.useGroupServiceInviteGroupUsersMutation();
+  const [inviteGroupUser] = siteApi.useGroupUtilServiceInviteGroupUsersMutation();
 
   const [email, setEmail] = useState('');
   const [users, setUsers] = useState<UserEmail[]>([]);

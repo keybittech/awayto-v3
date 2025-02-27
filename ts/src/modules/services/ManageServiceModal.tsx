@@ -11,7 +11,7 @@ import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 
-import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService } from 'awayto/hooks';
+import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService, useDebounce } from 'awayto/hooks';
 import { Checkbox, FormControlLabel } from '@mui/material';
 import FormPicker from '../forms/FormPicker';
 import SelectLookup from '../common/SelectLookup';
@@ -39,29 +39,28 @@ const serviceTierSchema = {
 
 interface ManageServiceModalProps extends IComponent {
   showCancel?: boolean;
-  editGroup?: IGroup;
-  editGroupService: IGroupService;
-  setEditGroupService?: React.Dispatch<React.SetStateAction<IGroupService>>;
+  groupDisplayName?: string;
+  groupPurpose?: string;
+  editGroupService?: IGroupService;
+  onValidChanged?: (valid: boolean) => void;
   saveToggle?: number;
 }
 
-export function ManageServiceModal({ editGroup, editGroupService, setEditGroupService, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageServiceModalProps) {
+export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupService, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageServiceModalProps) {
 
   const classes = useStyles();
 
   const { setSnack } = useUtil();
 
   const [newService, setNewService] = useState({ ...serviceSchema, ...editGroupService?.service });
+  const debouncedService = useDebounce(newService, 50);
   const [newServiceTier, setNewServiceTier] = useState({ ...serviceTierSchema });
   const [serviceTierAddonIds, setServiceTierAddonIds] = useState<string[]>([]);
   const [hasServiceFormOrSurvey, setHasServiceFormOrSurvey] = useState(!!newService.formId || !!newService.surveyId);
   const [hasTierFormOrSurvey, setHasTierFormOrSurvey] = useState(!!newServiceTier.formId || !!newServiceTier.surveyId);
 
-  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
-  const group = useMemo(() => editGroup || Object.values(profileRequest?.userProfile?.groups || {}).find(g => g.active), [profileRequest?.userProfile, editGroup]);
-
   const { data: existingServiceRequest } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editGroupService?.id || newService?.id || '' }, { skip: !editGroupService?.id });
-  const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery(undefined, { skip: !group?.id });
+  const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery();
 
   const {
     comp: ServiceSuggestions,
@@ -93,7 +92,7 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
       return;
     }
 
-    if (!setEditGroupService) {
+    if (!onValidChanged) {
       if (editGroupService?.serviceId) {
         await patchService({ patchServiceRequest: { service: newService } }).unwrap();
       } else {
@@ -121,10 +120,10 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
   }, [newService]);
 
   const useSuggestTiers = useCallback(() => {
-    if (newService.name) {
-      void suggestTiers({ id: IPrompts.SUGGEST_TIER, prompt: `${newService.name.toLowerCase()} at ${group?.displayName}` });
+    if (debouncedService.name && groupDisplayName) {
+      void suggestTiers({ id: IPrompts.SUGGEST_TIER, prompt: `${debouncedService.name.toLowerCase()} at ${groupDisplayName}` });
     }
-  }, [newService, group]);
+  }, [debouncedService, groupDisplayName]);
 
   const useSuggestAddons = useCallback((prompt: string) => {
     void suggestAddons({ id: IPrompts.SUGGEST_FEATURE, prompt });
@@ -132,10 +131,10 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
 
   // Onboarding handling
   useEffect(() => {
-    if (setEditGroupService) {
-      setEditGroupService({ service: newService });
+    if (onValidChanged) {
+      onValidChanged(Boolean(debouncedService.name && Object.keys(debouncedService.tiers || {}).length));
     }
-  }, [newService.name, newService.tiers]);
+  }, [debouncedService]);
 
   // Onboarding handling
   useEffect(() => {
@@ -168,10 +167,10 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
   }, [newServiceTier.name, serviceTierAddonIds, groupServiceAddonsRequest]);
 
   useEffect(() => {
-    if (group?.purpose) {
-      void suggestServices({ id: IPrompts.SUGGEST_SERVICE, prompt: group.purpose });
+    if (groupPurpose) {
+      void suggestServices({ id: IPrompts.SUGGEST_SERVICE, prompt: groupPurpose });
     }
-  }, [group?.purpose]);
+  }, [groupPurpose]);
 
   useEffect(() => {
     const serv = existingServiceRequest?.service;
@@ -205,7 +204,7 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
                 value={newService.name}
                 onChange={e => setNewService({ ...newService, name: e.target.value })}
                 onBlur={() => {
-                  if (!newService.name || !group?.displayName) return;
+                  if (!newService.name || !groupDisplayName) return;
                   useSuggestTiers();
                 }}
                 helperText={
@@ -213,8 +212,8 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
                     <ServiceSuggestions
                       staticSuggestions='Ex: Website Hosting, Yard Maintenance, Automotive Repair'
                       handleSuggestion={suggestedService => {
-                        if (!group?.displayName) return;
-                        void suggestTiers({ id: IPrompts.SUGGEST_TIER, prompt: `${suggestedService.toLowerCase()} at ${group?.displayName}` });
+                        if (!groupDisplayName) return;
+                        void suggestTiers({ id: IPrompts.SUGGEST_TIER, prompt: `${suggestedService.toLowerCase()} at ${groupDisplayName}` });
                         setNewService({ ...newService, name: suggestedService });
                       }}
                     />
@@ -474,7 +473,7 @@ export function ManageServiceModal({ editGroup, editGroupService, setEditGroupSe
       </Grid>
 
     </CardContent>
-    {!setEditGroupService && <CardActions>
+    {!onValidChanged && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
         <Button disabled={!newService.name || newService.tiers && !Object.keys(newService.tiers).length} onClick={handleSubmit}>Save Service</Button>

@@ -13,10 +13,10 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupService } from 'awayto/hooks';
+import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupService, IGroup } from 'awayto/hooks';
 import ManageServiceModal from './ManageServiceModal';
 
-export function ManageServices(props: IComponent): React.JSX.Element {
+export function ManageServices(_: IComponent): React.JSX.Element {
   const classes = useStyles();
 
   const { openConfirm } = useUtil();
@@ -24,7 +24,9 @@ export function ManageServices(props: IComponent): React.JSX.Element {
   const [deleteGroupService] = siteApi.useGroupServiceServiceDeleteGroupServiceMutation();
 
   const { data: groupServicesRequest, refetch: getGroupServices } = siteApi.useGroupServiceServiceGetGroupServicesQuery();
+  const { data: userProfileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
+  const [group, setGroup] = useState<IGroup>({});
   const [groupService, setGroupService] = useState<IGroupService>({});
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState('');
@@ -34,9 +36,13 @@ export function ManageServices(props: IComponent): React.JSX.Element {
     const acts = length == 1 ? [
       <Tooltip key={'manage_service'} title="Edit">
         <Button onClick={() => {
-          setGroupService(groupServicesRequest?.groupServices.find(gs => gs.serviceId === selected[0]));
-          setDialog('manage_service');
-          setSelected([]);
+          const gs = groupServicesRequest?.groupServices.find(gs => gs.serviceId === selected[0]);
+          if (gs?.groupId && userProfileRequest?.userProfile.groups) {
+            setGroup(userProfileRequest.userProfile.groups[gs.groupId]);
+            setGroupService(gs);
+            setDialog('manage_service');
+            setSelected([]);
+          }
         }}>
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
@@ -95,10 +101,15 @@ export function ManageServices(props: IComponent): React.JSX.Element {
       <Suspense>
         <Grid container>
           <Grid size={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
-            <ManageServiceModal {...props} editGroupService={groupService} closeModal={() => {
-              setDialog('')
-              void getGroupServices();
-            }} />
+            <ManageServiceModal
+              groupDisplayName={group.displayName}
+              groupPurpose={group.purpose}
+              editGroupService={groupService}
+              closeModal={() => {
+                setDialog('')
+                void getGroupServices();
+              }}
+            />
           </Grid>
         </Grid>
       </Suspense>

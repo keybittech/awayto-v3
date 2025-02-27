@@ -13,14 +13,14 @@ import MenuItem from '@mui/material/MenuItem';
 import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IRole } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 
-interface ManageGroupRolesModal extends IComponent {
-  showCancel?: boolean;
+interface ManageGroupRolesModalProps extends IComponent {
   editGroup?: IGroup;
-  setEditGroup?: React.Dispatch<React.SetStateAction<IGroup>>;
+  onValidChanged?: (valid: boolean) => void;
+  showCancel?: boolean;
   saveToggle?: number;
 }
 
-export function ManageGroupRolesModal({ children, editGroup, setEditGroup, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageGroupRolesModal): React.JSX.Element {
+export function ManageGroupRolesModal({ children, editGroup, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageGroupRolesModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -55,17 +55,17 @@ export function ManageGroupRolesModal({ children, editGroup, setEditGroup, saveT
 
   // Onboarding handling
   useEffect(() => {
-    if (setEditGroup) {
-      setEditGroup({ ...editGroup, roles: newRoles, defaultRoleId });
-    }
-  }, [newRoles, defaultRoleId]);
-
-  // Onboarding handling
-  useEffect(() => {
     if (saveToggle > 0) {
       handleSubmit();
     }
   }, [saveToggle]);
+
+  // Onboarding handling
+  useEffect(() => {
+    if (onValidChanged) {
+      onValidChanged(Boolean(defaultRoleId.length && roleIds.length));
+    }
+  }, [defaultRoleId, roleIds]);
 
   useEffect(() => {
     if (editGroup) {
@@ -147,7 +147,7 @@ export function ManageGroupRolesModal({ children, editGroup, setEditGroup, saveT
           </Grid>
         </Grid>
       </CardContent>
-      {!setEditGroup && <CardActions>
+      {!onValidChanged && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button onClick={closeModal}>Cancel</Button>}
           <Button disabled={!defaultRoleId} onClick={handleSubmit}>Save Roles</Button>

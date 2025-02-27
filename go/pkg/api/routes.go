@@ -53,7 +53,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 		ignoreFields := slices.Concat([]string{"state", "sizeCache", "unknownFields"}, handlerOpts.NoLogFields)
 
 		mux.HandleFunc(handlerOpts.Pattern,
-			a.LimitMiddleware(2, 8)(
+			a.LimitMiddleware(2, 6)(
 				a.ValidateTokenMiddleware(
 					a.GroupInfoMiddleware(
 						a.SiteRoleCheckMiddleware(handlerOpts)(
@@ -145,21 +145,18 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 											reflect.ValueOf(session),
 											reflect.ValueOf(tx),
 										})
+
+										if len(results) != 2 {
+											return util.ErrCheck(errors.New("badly formed handler"))
+										}
+
+										if err, ok := results[1].Interface().(error); ok {
+											return util.ErrCheck(err)
+										}
+
 										return nil
 									}, session.UserSub, session.GroupId, strings.Join(session.AvailableUserGroupRoles, " "))
 									if err != nil {
-										deferredError = util.ErrCheck(err)
-										return
-									}
-
-									// Handle errors
-
-									if len(results) != 2 {
-										deferredError = util.ErrCheck(errors.New("badly formed handler"))
-										return
-									}
-
-									if err, ok := results[1].Interface().(error); ok {
 										deferredError = util.ErrCheck(err)
 										return
 									}

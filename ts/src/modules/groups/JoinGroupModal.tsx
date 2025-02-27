@@ -12,7 +12,7 @@ import { TextField } from '@mui/material';
 export function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
-  const [joinGroup] = siteApi.useGroupServiceJoinGroupMutation();
+  const [joinGroup] = siteApi.useGroupUtilServiceJoinGroupMutation();
   const [code, setCode] = useState('');
 
   const handleSubmit = useCallback(() => {

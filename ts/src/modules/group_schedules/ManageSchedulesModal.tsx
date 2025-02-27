@@ -12,18 +12,18 @@ import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, scheduleSchema, IGroup, ISchedule } from 'awayto/hooks';
+import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, scheduleSchema, ISchedule, useDebounce } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
+import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 interface ManageSchedulesModalProps extends IComponent {
   showCancel?: boolean;
-  editGroup?: IGroup;
   editGroupSchedule?: IGroupSchedule;
-  setEditGroupSchedule?: React.Dispatch<React.SetStateAction<IGroupSchedule>>;
+  onValidChanged?: (valid: boolean) => void;
   saveToggle?: number;
 }
 
-export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, setEditGroupSchedule, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageSchedulesModalProps): React.JSX.Element {
+export function ManageSchedulesModal({ children, editGroupSchedule, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageSchedulesModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -42,6 +42,8 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
   } as IGroupSchedule);
 
   const schedule = useMemo(() => (groupSchedule.schedule || { ...scheduleSchema }) as Required<ISchedule>, [groupSchedule.schedule]);
+
+  const debouncedSchedule = useDebounce(schedule, 50);
 
   const scheduleTimeUnitName = useTimeName(schedule.scheduleTimeUnitId);
   const bracketTimeUnitName = useTimeName(schedule.bracketTimeUnitId);
@@ -97,7 +99,7 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
       return;
     }
 
-    if (!setEditGroupSchedule) {
+    if (!onValidChanged) {
       if (groupSchedule.scheduleId) {
         await patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap();
       } else {
@@ -110,10 +112,10 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
 
   // Onboarding handling
   useEffect(() => {
-    if (setEditGroupSchedule) {
-      setEditGroupSchedule({ schedule: groupSchedule.schedule });
+    if (onValidChanged) {
+      onValidChanged(Boolean(debouncedSchedule.name && debouncedSchedule.startTime));
     }
-  }, [groupSchedule]);
+  }, [debouncedSchedule]);
 
   // Onboarding handling
   useEffect(() => {
@@ -291,8 +293,12 @@ export function ManageSchedulesModal({ children, editGroup, editGroupSchedule, s
           />
         </Box>
       </Box>
+
+      <Box>
+        <ScheduleDisplay schedule={schedule} />
+      </Box>
     </CardContent>
-    {!setEditGroupSchedule && <CardActions>
+    {!onValidChanged && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button onClick={closeModal}>Cancel</Button>}
         <Button disabled={!schedule.name || !schedule.startTime} onClick={handleSubmit}>Save Schedule</Button>
