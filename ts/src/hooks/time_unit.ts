@@ -127,11 +127,6 @@ export const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
 /**
  * @category Time Unit
  */
-export const compactDateTimeFormat = 'ddd, hh:mm a';
-
-/**
- * @category Time Unit
- */
 export function getFormattedScheduleContext(
   contextName: string,
   duration: string, // An ISO 8601 formatted Interval like PD3TH4M23 which represents Thursday at 4:23 AM
@@ -140,11 +135,35 @@ export function getFormattedScheduleContext(
   let formatted = 'No format found.';
 
   if (['week', 'day'].includes(contextName)) {
-    formatted = staticDT(relativeDate.startOf('day').startOf('week'), duration).format(compactDateTimeFormat);
+    formatted = staticDT(relativeDate.startOf('day').startOf('week'), duration).format('hh:mm');
   } else if (['month'].includes(contextName)) {
     formatted = staticDT(relativeDate.startOf('month').startOf('year'), duration).format('MMM, hh:mm a');
   } else if (['minute', 'hour'].includes(contextName)) {
     formatted = staticDT(relativeDate, duration).format('hh:mm a');
+  }
+
+  return formatted;
+}
+
+export function getFormattedContextLabel(contextName: string, duration: string, relativeDate: dayjs.Dayjs = dayjs().startOf('year')) {
+  let formatted = 'No format found.';
+
+  if ('day' == contextName) {
+    formatted = staticDT(relativeDate.startOf('day').startOf('week'), duration).format('ddd');
+  } else if ('week' == contextName) {
+    formatted = `Week ${staticDT(relativeDate.add(1, 'week'), duration).format('W')}`;
+  }
+
+  return formatted;
+}
+
+export function getFormattedTimeLabel(contextName: string, duration: string, relativeDate: dayjs.Dayjs = dayjs().startOf('year')) {
+  let formatted = 'No format found.';
+
+  if ('day' == contextName) {
+    formatted = staticDT(relativeDate.startOf('day').startOf('week'), duration).format('A');
+  } else if ('week' == contextName) {
+    formatted = `Day ${parseInt(staticDT(relativeDate.startOf('day'), duration).format('d')) + 1}`;
   }
 
   return formatted;

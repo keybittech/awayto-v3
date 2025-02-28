@@ -1,9 +1,9 @@
-import { useCallback } from 'react';
-
-import { DurationUnitType } from 'dayjs/plugin/duration';
-import { getFormattedScheduleContext, getRelativeDuration, TimeUnit, timeUnitOrder } from './time_unit';
-import { IScheduleBracketSlot } from './api';
+import { useMemo } from 'react';
 import dayjs from 'dayjs';
+import { DurationUnitType } from 'dayjs/plugin/duration';
+
+import { getFormattedContextLabel, getFormattedTimeLabel, getFormattedScheduleContext, getRelativeDuration, timeUnitOrder } from './time_unit';
+import { IScheduleBracketSlot } from './api';
 
 type UseScheduleProps = {
   scheduleTimeUnitName: string;
@@ -31,56 +31,50 @@ type UseScheduleResult = {
   durations: CellDuration[][]
 }
 
-export function useSchedule(): (schedule: UseScheduleProps) => UseScheduleResult {
+export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, slotDuration }: UseScheduleProps): UseScheduleResult {
 
-  const getScheduleData = useCallback(({ scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, slotDuration, beginningOfMonth, bracketSlots = [] }: UseScheduleProps) => {
+  return useMemo(() => {
     console.time('GENERATING_SCHEDULE');
 
-    let dayDiff = 0;
-
-    if (beginningOfMonth) {
-      const startOfMonthWeek = beginningOfMonth.startOf(TimeUnit.WEEK).startOf(TimeUnit.DAY);
-      dayDiff = beginningOfMonth.diff(startOfMonthWeek, TimeUnit.DAY);
-    }
-    
     const xAxisTypeName = timeUnitOrder[timeUnitOrder.indexOf(scheduleTimeUnitName) - 1];
     const yAxisTypeName = slotTimeUnitName == bracketTimeUnitName ? bracketTimeUnitName : slotTimeUnitName;
-    const divisions = beginningOfMonth ? beginningOfMonth.daysInMonth() + dayDiff : getRelativeDuration(1, scheduleTimeUnitName, xAxisTypeName);
+    const divisions = getRelativeDuration(1, scheduleTimeUnitName, xAxisTypeName);
     const selections = getRelativeDuration(1, xAxisTypeName, yAxisTypeName) / slotDuration;
     const durations = [] as CellDuration[][];
 
-    function freshDuration () {
-      return dayjs.duration(0);
-    }
+    let startDuration = dayjs.duration(0);
 
-    let startDuration = freshDuration();
-    
-    for (let x = 0; x < divisions; x++) {
-      if (beginningOfMonth && !beginningOfMonth.startOf(TimeUnit.WEEK).startOf(TimeUnit.DAY).add(startDuration).add(x, TimeUnit.DAY).day()) {
-        startDuration = freshDuration();
-      }
+    for (let x = 0; x < divisions + 1; x++) {
 
       durations[x] = [] as CellDuration[];
 
-      for (let y = 0; y < selections; y++) {
-        const startTime = startDuration.toISOString();
+      let rowHeaderTime = dayjs.duration(0);
+      if (x > 0) {
+        rowHeaderTime = dayjs.duration((x - 1) * slotDuration, yAxisTypeName as DurationUnitType);
+      }
+      for (let y = 0; y < selections + 1; y++) {
+        if (x != 0 && y != 0) {
+          const startTime = startDuration.toISOString();
 
-        let scheduleBracketSlotIds: string[] = [];
-        if (beginningOfMonth) {
-          scheduleBracketSlotIds = bracketSlots.filter(b => b.startTime === startTime).map(b => b.id!);
+          durations[x][y] = {
+            contextFormat: getFormattedScheduleContext(xAxisTypeName, startDuration.toISOString()), // beginningOfMonth),
+            scheduleBracketSlotIds: [] as string[],
+            startTime
+          } as CellDuration;
+
+          startDuration = startDuration.add(slotDuration, yAxisTypeName as DurationUnitType);
         }
-        
-        const cell = {
-          contextFormat: getFormattedScheduleContext(xAxisTypeName, startDuration.toISOString(), beginningOfMonth),
-          scheduleBracketSlotIds,
-          startTime,
-          active: !!scheduleBracketSlotIds.length,
-          x, y
-        };
 
-        durations[x][y] = cell;
+        if (x == 0) { // Left Column Labels
+          durations[x][y] = {
+            contextFormat: getFormattedTimeLabel(xAxisTypeName, dayjs.duration((y - 1) * slotDuration, yAxisTypeName as DurationUnitType).toISOString())
+          } as CellDuration;
+        } else if (y == 0) { // Top Row Labels
+          durations[x][y] = {
+            contextFormat: getFormattedContextLabel(xAxisTypeName, startDuration.toISOString())
+          } as CellDuration;
+        }
 
-        startDuration = startDuration.add(slotDuration, yAxisTypeName as DurationUnitType);
       }
     }
     console.timeEnd('GENERATING_SCHEDULE');
@@ -92,7 +86,5 @@ export function useSchedule(): (schedule: UseScheduleProps) => UseScheduleResult
       selections,
       durations
     };
-  }, []);
-
-  return getScheduleData;
+  }, [scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, slotDuration]);
 }

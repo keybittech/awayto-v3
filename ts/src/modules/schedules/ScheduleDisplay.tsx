@@ -24,26 +24,28 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
 
   const scheduleDisplay = useMemo(() => deepClone(schedule) as Required<ISchedule>, [schedule]);
 
-  const columnWidth = 150;
-
   const classes = useStyles();
 
   const { openConfirm } = useUtil();
 
-  const getScheduleData = useSchedule();
   const parentRef = useRef<HTMLDivElement>(null);
   const [selected, setSelected] = useState({} as Record<string, IScheduleBracketSlot>);
   const [selectedBracket, setSelectedBracket] = useState<Required<IScheduleBracket>>();
   const [buttonDown, setButtonDown] = useState(false);
-  const [_, setWidth] = useState(1); // old can probably remove
+  const [parentBox, setParentBox] = useState([0, 0]); // old can probably remove
 
-  const scheduleTimeUnitName = scheduleDisplay.scheduleTimeUnitName || useTimeName(scheduleDisplay.scheduleTimeUnitId);
-  const bracketTimeUnitName = scheduleDisplay.bracketTimeUnitName || useTimeName(scheduleDisplay.bracketTimeUnitId);
-  const slotTimeUnitName = scheduleDisplay.slotTimeUnitName || useTimeName(scheduleDisplay.slotTimeUnitId);
+  const displayOnly = isKiosk || !setSchedule;
 
-  const { divisions, durations, selections, xAxisTypeName } = useMemo(() => {
-    return getScheduleData({ scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, slotDuration: scheduleDisplay.slotDuration });
-  }, [scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, scheduleDisplay.slotDuration])
+  const scheduleTimeUnitName = useTimeName(scheduleDisplay.scheduleTimeUnitId);
+  const bracketTimeUnitName = useTimeName(scheduleDisplay.bracketTimeUnitId);
+  const slotTimeUnitName = useTimeName(scheduleDisplay.slotTimeUnitId);
+
+  const {
+    divisions,
+    durations,
+    selections,
+    xAxisTypeName
+  } = useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, slotDuration: scheduleDisplay.slotDuration });
 
   const scheduleBracketsValues = useMemo(() => Object.values(scheduleDisplay.brackets || {}) as Required<IScheduleBracket>[], [scheduleDisplay.brackets]);
 
@@ -82,6 +84,28 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
   }, [schedule, selectedBracket, scheduleBracketsValues, selected]);
 
   const Cell = useCallback((gridCell: GridCell) => {
+    if (gridCell.columnIndex == 0 && gridCell.rowIndex == 0) {
+      return <></>;
+    }
+
+    if (gridCell.columnIndex == 0 || gridCell.rowIndex == 0) {
+      return <Box
+        style={gridCell.style}
+        sx={{
+          userSelect: 'none',
+          cursor: 'pointer',
+          textAlign: 'center',
+          position: 'relative',
+          color: 'white',
+          whiteSpace: 'nowrap',
+          fontWeight: 700
+        }}
+      >
+        {durations[gridCell.columnIndex][gridCell.rowIndex].contextFormat}
+      </Box>
+    }
+
+
     const { startTime, contextFormat } = durations[gridCell.columnIndex][gridCell.rowIndex];
 
     const target = `schedule_bracket_slot_selection_${startTime}`;
@@ -97,18 +121,23 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
         textAlign: 'center',
         position: 'relative',
         '&:hover': {
-          backgroundColor: '#aaa',
+          backgroundColor: '#bbb',
+          color: '#222',
           opacity: '1',
-          boxShadow: '2'
+          boxShadow: '2',
+          // borderColor: '#bbb'
         },
         // border: exists ? `1px solid ${bracketColor}` : undefined,
-        color: !exists ? '#666' : 'black',
-        boxShadow: exists ? '2' : undefined
+        color: !exists ? '#666' : '#000',
+        boxShadow: exists ? '2' : undefined,
+        whiteSpace: 'nowrap',
+        borderTop: '1px solid #aaa',
+        borderRight: '1px solid #aaa',
       }}
-      onMouseLeave={() => !isKiosk && buttonDown && setValue(startTime)}
-      onMouseDown={() => !isKiosk && setButtonDown(true)}
+      onMouseLeave={() => !displayOnly && buttonDown && setValue(startTime)}
+      onMouseDown={() => !displayOnly && setButtonDown(true)}
       onMouseUp={() => {
-        if (!isKiosk) {
+        if (!displayOnly) {
           setButtonDown(false);
           setValue(startTime);
         }
@@ -116,17 +145,17 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
     >
       {contextFormat}
     </Box>
-  }, [durations, selected, scheduleBracketsValues, buttonDown, selectedBracket, xAxisTypeName]);
+  }, [durations, selected, scheduleBracketsValues, buttonDown, selectedBracket, xAxisTypeName, displayOnly]);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(([event]) => {
-      setWidth(event.contentBoxSize[0].inlineSize);
+      setParentBox([event.contentRect.width, event.contentRect.height]);
     });
 
     if (parentRef && parentRef.current) {
       resizeObserver.observe(parentRef.current);
     }
-  }, [parentRef]);
+  }, []);
 
   useEffect(() => {
     if (!Object.keys(selected).length && scheduleBracketsValues.some(b => b.slots && Object.keys(b.slots).length)) {
@@ -140,8 +169,24 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
     }
   }, [selected, scheduleBracketsValues]);
 
+  const RenderedGrid = useCallback(() => {
+    return (isNaN(selections) || isNaN(divisions)) ? <></> : <>
+      <FixedSizeGrid
+        style={{ position: 'absolute', top: 0, left: 0, backgroundColor: '#666' }}
+        rowCount={selections + 1}
+        columnCount={divisions + 1}
+        rowHeight={30}
+        columnWidth={Math.max(60, parentBox[0] / (divisions + 1))}
+        height={parentBox[1]}
+        width={parentBox[0]}
+      >
+        {Cell}
+      </FixedSizeGrid>
+    </>
+  }, [selections, divisions, parentBox[0], parentBox[1]]);
+
   return <>
-    {!isKiosk && <>
+    {!displayOnly && <>
       <Box p={2} component="fieldset" sx={classes.legendBox}>
         <legend>Step 1. Select a Bracket</legend>
         <Typography variant="body1">Brackets are blocks of time that can be applied to the schedule. You can add multiple brackets, in case certain services only occur at certain times. You can click the X to remove a bracket.</Typography>
@@ -193,22 +238,20 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
       </Box>
     </>}
 
-    <Box width="calc(100%-4px)" ref={parentRef} p={2} component="fieldset" sx={classes.legendBox}>
-      <legend>Step 2. Design your Schedule</legend>
-      <Typography variant="body1">Select a time by clicking on it. Press and hold to select multiple times. Selections will remove time from the bracket.</Typography>
-      <Typography pb={2} variant="body2">This schedule is representing 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s divided by {scheduleDisplay.slotDuration} {slotTimeUnitName} blocks.</Typography>
-      <Box onMouseLeave={() => setButtonDown(false)}>
-        {!isNaN(selections) && !isNaN(divisions) && <FixedSizeGrid
-          rowCount={selections}
-          columnCount={divisions}
-          rowHeight={30}
-          columnWidth={columnWidth}
-          height={400}
-          width={Math.min(parentRef.current?.getClientRects()[0].width || 0, columnWidth * divisions) + 20}
-        >
-          {Cell}
-        </FixedSizeGrid>}
+    <Typography pb={1} variant="body2">This schedule represents 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s divided by {scheduleDisplay.slotDuration} {slotTimeUnitName} blocks.</Typography>
+    {displayOnly ? <>
+      <Box ref={parentRef} sx={{ position: 'relative', overflow: 'scroll', width: '100%', height: '200px' }}>
+        <RenderedGrid />
       </Box>
-    </Box>
+    </> : <>
+      <Box component="fieldset" p={2} sx={classes.legendBox}>
+        <legend>Step 2. Design your Schedule</legend>
+        <Typography variant="body1">Select a time by clicking on it. Press and hold to select multiple times. Selections will remove time from the bracket.</Typography>
+
+        <Box onMouseLeave={() => setButtonDown(false)}>
+          <RenderedGrid />
+        </Box>
+      </Box>
+    </>}
   </>;
 }

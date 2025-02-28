@@ -2,6 +2,7 @@ import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
+import isoWeek from 'dayjs/plugin/isoWeek';
 import timezone from 'dayjs/plugin/timezone';
 
 import 'dayjs/locale/en';
@@ -11,6 +12,7 @@ import { BufferResponse, IFile } from './api';
 dayjs.extend(duration);
 dayjs.extend(relativeTime);
 dayjs.extend(utc);
+dayjs.extend(isoWeek);
 dayjs.extend(timezone);
 
 export { dayjs };

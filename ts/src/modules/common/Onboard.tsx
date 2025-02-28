@@ -15,11 +15,9 @@ import CardHeader from '@mui/material/CardHeader';
 import Tooltip from '@mui/material/Tooltip';
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
-import Paper from '@mui/material/Paper';
 
 import SubtitlesIcon from '@mui/icons-material/Subtitles';
 import SubtitlesOffIcon from '@mui/icons-material/SubtitlesOff';
-import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
 
@@ -123,7 +121,7 @@ function OnboardingVideo(_: IComponent): React.JSX.Element {
   </>;
 }
 
-export function Onboard(props: IComponent): React.JSX.Element {
+export function Onboard(_: IComponent): React.JSX.Element {
 
   window.INT_SITE_LOAD = true;
 
@@ -181,14 +179,6 @@ export function Onboard(props: IComponent): React.JSX.Element {
     });
   }
 
-  // const pages = useMemo(() => [
-  //   { name: , complete:  },
-  //   { name:  complete: Boolean(group.defaultRoleId) },
-  //   { name:  complete: Boolean(groupService.service?.name && Object.keys(groupService.service?.tiers || {}).length) },
-  //   { name:  complete: Boolean(groupSchedule.schedule?.name && groupSchedule.schedule?.startTime) },
-  //   { name: , complete: false },
-  // ], [formValidity, group.defaultRoleId, groupService.service?.name, groupService.service?.tiers, groupSchedule.schedule?.name, groupSchedule.schedule?.startTime]);
-  //
   const changePage = (dir: number) => {
     const nextPage = dir + currentPage;
     if (nextPage >= 0 && nextPage < 5) {
@@ -212,7 +202,7 @@ export function Onboard(props: IComponent): React.JSX.Element {
 
     <Grid container spacing={2} p={2} sx={{ justifyContent: 'center', bgcolor: 'secondary.main', height: '100vh', alignContent: 'flex-start', overflow: 'auto' }}>
 
-      <Grid container size={{ xs: 12, lg: 8, xl: 7 }}>
+      <Grid container size={{ xs: 12, md: 10, lg: 9, xl: 8 }}>
 
         <Grid container size="grow" direction="row" sx={{ alignItems: 'center', backgroundColor: '#000', borderRadius: '4px', p: '8px 12px' }}>
           <Grid container size="grow" justifyItems="center">
