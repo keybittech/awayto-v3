@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense, useContext } from 'react';
+import React, { useState, useMemo, Suspense } from 'react';
 import { useNavigate } from 'react-router';
 
 import Typography from '@mui/material/Typography';
@@ -9,7 +9,6 @@ import Tooltip from '@mui/material/Tooltip';
 
 import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import DomainAddIcon from '@mui/icons-material/DomainAdd';
-import CreateIcon from '@mui/icons-material/Create';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Logout from '@mui/icons-material/Logout';
 
@@ -28,7 +27,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
   const hasRole = useSecure();
   const navigate = useNavigate();
 
-  const [group, setGroup] = useState<IGroup>();
+  const [group, setGroup] = useState<IGroup>({});
   const [dialog, setDialog] = useState('');
   const [selected, setSelected] = useState<string[]>([]);
 
@@ -114,7 +113,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
           flex: 1,
           headerName: '',
           field: 'id',
-          renderCell: ({ row }: { row: IGroup }) => <Tooltip key={'view_group_details'} title="Details">
+          renderCell: () => <Tooltip key={'view_group_details'} title="Details">
             <Button color="secondary" onClick={() => {
               navigate(`/group/manage/users`);
             }}>
@@ -131,7 +130,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
       <Typography variant="button">Groups:</Typography>
       <Tooltip key={'join_group'} title="Join">
         <Button key={'join_group_button'} onClick={() => {
-          setGroup(undefined);
+          setGroup({});
           setDialog('join_group');
         }}>
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Join</Typography>
@@ -163,7 +162,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
 
     <Dialog open={dialog === 'join_group'} fullWidth maxWidth="sm">
       <Suspense>
-        <JoinGroupModal {...props} editGroup={group} closeModal={() => {
+        <JoinGroupModal closeModal={() => {
           setDialog('');
           void getUserProfileDetails();
         }} />
