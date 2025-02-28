@@ -217,9 +217,27 @@ export function processString(input: string, mode: Mode): string {
   return output;
 }
 
+type ElementTargets = {
+  name: string;
+  id: string;
+  label: string;
+  'aria-label': string;
+}
+
+export const targets = (name: string, label: string, aria?: string): ElementTargets => {
+  return {
+    name,
+    id: toSnakeCase(name),
+    label,
+    'aria-label': aria || label
+  };
+}
 
 export const toSnakeCase = (name: string): string => {
-  return name.substring(1).replace(/[A-Z]/g, (match) => `_${match.toLowerCase()}`).slice(1);
+  return name.replace(/\W+/g, " ")
+    .split(/ |\B(?=[A-Z])/)
+    .map(word => word.toLowerCase())
+    .join('_');
 };
 
 export const toTitleCase = (name: string): string => {

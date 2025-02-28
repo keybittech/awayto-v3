@@ -133,9 +133,9 @@ export const theme = createTheme(paletteTheme, {
           // marginBottom: '4px',
           padding: '6px 8px 4px',
           alignItems: 'baseline',
-          '&:hover': {
-            color: 'white'
-          },
+          // '&:hover': {
+          //   color: 'white'
+          // },
         }
       }
     },
