@@ -5,7 +5,7 @@ import utc from 'dayjs/plugin/utc';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import timezone from 'dayjs/plugin/timezone';
 
-import 'dayjs/locale/en';
+import en from 'dayjs/locale/en';
 import { createSlice } from '@reduxjs/toolkit';
 import { BufferResponse, IFile } from './api';
 
@@ -14,6 +14,8 @@ dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(isoWeek);
 dayjs.extend(timezone);
+
+dayjs.locale({ ...en, weekStart: 1 });
 
 export { dayjs };
 

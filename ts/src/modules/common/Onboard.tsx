@@ -348,19 +348,21 @@ export function Onboard(_: IComponent): React.JSX.Element {
 
           </Suspense>
         </Grid>
-        <Grid container size={12} direction="row" sx={{ alignItems: "center" }}>
-          <Button
-            sx={classes.onboardingProgress}
-            color="warning"
-            disableRipple
-            disableElevation
-            variant="contained"
-            disabled={currentPage == 0}
-            onClick={() => changePage(-1)}
-          >
-            Back
-          </Button>
-          <Grid size="grow" >
+        <Grid container size={12} direction="row" justifyContent="space-between" sx={{ alignItems: "center" }}>
+          <Grid height={{ sx: 'unset', sm: '100%' }}>
+            <Button
+              sx={classes.onboardingProgress}
+              color="warning"
+              disableRipple
+              disableElevation
+              variant="contained"
+              disabled={currentPage == 0}
+              onClick={() => changePage(-1)}
+            >
+              Back
+            </Button>
+          </Grid>
+          <Grid size={{ xs: 12, sm: 'grow' }} order={{ xs: 3, sm: 2 }}>
             <Alert action={
               !group.id && <Button sx={{ fontSize: '10px' }} onClick={() => setHasCode(!hasCode)}>
                 {!hasCode ? 'Use Group Code' : 'Cancel'}
@@ -370,17 +372,19 @@ export function Onboard(_: IComponent): React.JSX.Element {
               <Link sx={{ cursor: 'pointer' }} onClick={() => { setAssist('demo'); }}>Watch the tutorial</Link>
             </Alert>
           </Grid>
-          <Button
-            sx={classes.onboardingProgress}
-            color="warning"
-            disableRipple
-            disableElevation
-            variant="contained"
-            disabled={saveToggle > 0 || formValidity[currentPage] != '1' || currentPage + 1 == 5}
-            onClick={() => { setSaveToggle((new Date()).getTime()); }}
-          >
-            {saveToggle == 0 ? 'Next' : <CircularProgress size={16} />}
-          </Button>
+          <Grid height={{ sx: 'unset', sm: '100%' }} order={{ xs: 2, sm: 3 }}>
+            <Button
+              sx={classes.onboardingProgress}
+              color="warning"
+              disableRipple
+              disableElevation
+              variant="contained"
+              disabled={saveToggle > 0 || formValidity[currentPage] != '1' || currentPage + 1 == 5}
+              onClick={() => { setSaveToggle((new Date()).getTime()); }}
+            >
+              {saveToggle == 0 ? 'Next' : <CircularProgress size={16} />}
+            </Button>
+          </Grid>
         </Grid>
       </Grid>
     </Grid >

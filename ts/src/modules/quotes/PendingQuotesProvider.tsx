@@ -2,7 +2,7 @@ import React, { useMemo, useState } from 'react';
 
 import { siteApi, useUtil, plural, shortNSweet, IBooking, IQuote } from 'awayto/hooks';
 
-import PendingQuotesContext from './PendingQuotesContext';
+import PendingQuotesContext, { PendingQuotesContextType } from './PendingQuotesContext';
 
 export function PendingQuotesProvider({ children }: IComponent): React.JSX.Element {
 

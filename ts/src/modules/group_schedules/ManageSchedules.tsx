@@ -91,7 +91,7 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
   });
 
   return <>
-    <Dialog open={dialog === 'manage_schedule'} fullWidth maxWidth="sm">
+    <Dialog open={dialog === 'manage_schedule'} fullWidth maxWidth="lg">
       <Suspense>
         <ManageSchedulesModal {...props} editGroupSchedule={groupSchedule} closeModal={() => {
           setDialog('');

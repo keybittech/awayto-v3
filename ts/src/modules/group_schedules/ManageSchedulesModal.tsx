@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 
 import Alert from '@mui/material/Alert';
 import Box from '@mui/material/Box';
@@ -12,9 +12,24 @@ import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, scheduleSchema, ISchedule, useDebounce, useStyles } from 'awayto/hooks';
+import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 import ScheduleDisplay from '../schedules/ScheduleDisplay';
+
+export const scheduleSchema = {
+  id: '',
+  name: '',
+  startTime: '',
+  endTime: '',
+  timezone: '',
+  slotDuration: 30,
+  scheduleTimeUnitId: '',
+  scheduleTimeUnitName: '',
+  bracketTimeUnitId: '',
+  bracketTimeUnitName: '',
+  slotTimeUnitId: '',
+  slotTimeUnitName: ''
+};
 
 interface ManageSchedulesModalProps extends IComponent {
   showCancel?: boolean;
@@ -51,18 +66,22 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
   const slotTimeUnitName = useTimeName(schedule.slotTimeUnitId);
 
   const setDefault = useCallback((scheduleType: string) => {
-    const weekId = lookups?.timeUnits?.find(s => s.name === TimeUnit.WEEK)?.id;
-    const hourId = lookups?.timeUnits?.find(s => s.name === TimeUnit.HOUR)?.id;
-    const dayId = lookups?.timeUnits?.find(s => s.name === TimeUnit.DAY)?.id;
-    const minuteId = lookups?.timeUnits?.find(s => s.name === TimeUnit.MINUTE)?.id;
-    const monthId = lookups?.timeUnits?.find(s => s.name === TimeUnit.MONTH)?.id;
+    const week = lookups?.timeUnits?.find(s => s.name === TimeUnit.WEEK);
+    const hour = lookups?.timeUnits?.find(s => s.name === TimeUnit.HOUR);
+    const day = lookups?.timeUnits?.find(s => s.name === TimeUnit.DAY);
+    const minute = lookups?.timeUnits?.find(s => s.name === TimeUnit.MINUTE);
+    const month = lookups?.timeUnits?.find(s => s.name === TimeUnit.MONTH);
+    if (!week || !hour || !day || !minute || !month) return;
     if ('hoursweekly30minsessions' == scheduleType) {
       setGroupSchedule({
         schedule: {
           ...schedule,
-          scheduleTimeUnitId: weekId as string,
-          bracketTimeUnitId: hourId as string,
-          slotTimeUnitId: minuteId as string,
+          scheduleTimeUnitName: week.name,
+          scheduleTimeUnitId: week.id,
+          bracketTimeUnitName: hour.name,
+          bracketTimeUnitId: hour.id,
+          slotTimeUnitName: minute.name,
+          slotTimeUnitId: minute.id,
           slotDuration: 30
         }
       });
@@ -70,9 +89,12 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
       setGroupSchedule({
         schedule: {
           ...schedule,
-          scheduleTimeUnitId: monthId as string,
-          bracketTimeUnitId: weekId as string,
-          slotTimeUnitId: dayId as string,
+          scheduleTimeUnitName: month.name,
+          scheduleTimeUnitId: month.id,
+          bracketTimeUnitName: week.name,
+          bracketTimeUnitId: week.id,
+          slotTimeUnitName: day.name,
+          slotTimeUnitId: day.id,
           slotDuration: 1
         }
       });
@@ -82,12 +104,13 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
   const slotDurationMarks = useMemo(() => {
     const factors = [] as { value: number, label: number }[];
     if (!bracketTimeUnitName || !slotTimeUnitName || !scheduleTimeUnitName) return factors;
-    // const subdivided = bracketTimeUnitName !== slotTimeUnitName;
-    // const finalDuration = !subdivided ? 
-    //   Math.round(getRelativeDuration(duration, scheduleTimeUnitName, bracketTimeUnitName)) : 
-    const finalDuration = Math.round(getRelativeDuration(1, bracketTimeUnitName, slotTimeUnitName));
-    for (let value = 1; value <= finalDuration; value++) {
-      if (finalDuration % value === 0) {
+
+    const relativeDuration = Math.round(getRelativeDuration(1, bracketTimeUnitName, slotTimeUnitName));
+
+    const minimumSlotDuration = 'minute' == slotTimeUnitName ? 5 : 1;
+
+    for (let value = minimumSlotDuration; value < relativeDuration; value++) {
+      if (relativeDuration % value === 0) {
         factors.push({ value, label: value });
       }
     }
@@ -100,8 +123,13 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
       return;
     }
 
+    if (groupSchedule.schedule.endTime && dayjs(groupSchedule.schedule.startTime).isAfter(dayjs(groupSchedule.schedule.endTime))) {
+      setSnack({ snackOn: 'End date must be on or before start date.', snackType: 'warning' });
+      return;
+    }
+
     if (!onValidChanged) {
-      if (groupSchedule.scheduleId) {
+      if (groupSchedule.schedule.id) {
         await patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap();
       } else {
         await postGroupSchedule({ postGroupScheduleRequest: { groupSchedule } }).unwrap();
@@ -130,7 +158,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
       if (lookupsRetrieved) {
         if (schedule.id) {
           const { groupSchedule } = await getGroupScheduleMasterById({ groupScheduleId: schedule.id }).unwrap();
-          setGroupSchedule(groupSchedule);
+          setGroupSchedule({ ...scheduleSchema, ...groupSchedule });
         } else if (!editGroupSchedule?.schedule?.name) {
           setDefault('hoursweekly30minsessions');
         }
@@ -138,6 +166,19 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
     }
     void go();
   }, [lookupsRetrieved, schedule.id]);
+
+  useEffect(() => {
+    if (!groupSchedule.schedule?.scheduleTimeUnitName) {
+      setGroupSchedule({
+        schedule: {
+          ...groupSchedule.schedule,
+          scheduleTimeUnitName,
+          bracketTimeUnitName,
+          slotTimeUnitName
+        }
+      });
+    }
+  }, [groupSchedule, scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName]);
 
   if (!lookups?.timeUnits) return <></>;
 
@@ -234,9 +275,24 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
                 lookupValue={schedule.scheduleTimeUnitId}
                 lookups={lookups?.timeUnits?.filter(sc => [TimeUnit.WEEK, TimeUnit.MONTH].includes(sc.name as TimeUnit))}
                 lookupChange={(val: string) => {
-                  const { id, name } = lookups?.timeUnits?.find(c => c.id === val) || {};
+                  const { id, name } = lookups?.timeUnits?.find(c => c.id == val) || {};
                   if (!id || !name) return;
-                  setGroupSchedule({ schedule: { ...schedule, scheduleTimeUnitName: name, scheduleTimeUnitId: id, bracketTimeUnitId: lookups?.timeUnits?.find(s => s.name === timeUnitOrder[timeUnitOrder.indexOf(name) - 1])?.id as string } })
+                  const validBracket = lookups?.timeUnits?.find(s => s.name == timeUnitOrder[timeUnitOrder.indexOf(name) - 1]);
+                  if (!validBracket?.name) return;
+                  const validSlot = lookups.timeUnits.find(s => s.name == timeUnitOrder[timeUnitOrder.indexOf(validBracket.name!) - 1]);
+                  if (!validSlot?.id) return;
+                  setGroupSchedule({
+                    schedule: {
+                      ...schedule,
+                      scheduleTimeUnitName: name,
+                      scheduleTimeUnitId: id,
+                      bracketTimeUnitName: validBracket.name,
+                      bracketTimeUnitId: validBracket.id,
+                      slotTimeUnitName: validSlot.name,
+                      slotTimeUnitId: validSlot.id,
+                      slotDuration: 1,
+                    }
+                  });
                 }}
                 {...props}
               />
@@ -270,34 +326,38 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
                 }
                 lookupChange={(val: string) => {
                   const { name, id } = lookups?.timeUnits?.find(c => c.id === val) as ITimeUnit;
-                  setGroupSchedule({ schedule: { ...schedule, bracketTimeUnitName: name, bracketTimeUnitId: id, slotTimeUnitName: name, slotTimeUnitId: id, slotDuration: 1 } });
+                  if (!name || !id) return;
+                  const validSlot = lookups.timeUnits.find(s => s.name == timeUnitOrder[timeUnitOrder.indexOf(name!) - 1]);
+                  if (!validSlot) return;
+                  setGroupSchedule({
+                    schedule: {
+                      ...schedule,
+                      bracketTimeUnitName: name,
+                      bracketTimeUnitId: id,
+                      slotTimeUnitName: validSlot.name,
+                      slotTimeUnitId: validSlot.id,
+                      slotDuration: validSlot.name == 'minute' ? 5 : 1,
+                    }
+                  });
                 }}
                 {...props}
               />
             </Box>
 
             <Box mb={4}>
-              <SelectLookup
-                noEmptyValue
-                disabled={!!schedule.id}
-                lookupName="Booking Slot Length"
+              <TextField
+                disabled={true}
+                defaultValue={schedule.slotTimeUnitName}
+                label="Booking Slot Length"
                 helperText={`The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.`}
-                lookupValue={schedule.slotTimeUnitId}
-                lookups={
-                  'hour' == bracketTimeUnitName ? lookups.timeUnits.filter(sc => sc.name == 'minute' || sc.name == 'hour') :
-                    'day' == bracketTimeUnitName ? lookups.timeUnits.filter(sc => sc.name == 'day' || sc.name == 'hour') :
-                      'week' == bracketTimeUnitName ? lookups.timeUnits.filter(sc => sc.name == 'day' || sc.name == 'hour') :
-                        []
-                }
-                lookupChange={(val: string) => {
-                  const { name, id } = lookups?.timeUnits?.find(c => c.id === val) || {};
-                  if (!name || !id) return;
-                  setGroupSchedule({ schedule: { ...schedule, slotTimeUnitName: name, slotTimeUnitId: id, slotDuration: 1 } })
+                slotProps={{
+                  inputLabel: {
+                    shrink: true
+                  }
                 }}
-                {...props}
               />
 
-              <Box mt={2} sx={{ display: 'flex', alignItems: 'baseline' }}>
+              {slotDurationMarks.length > 1 && <Box mt={2} sx={{ display: 'flex', alignItems: 'baseline' }}>
                 <Box>{schedule.slotDuration} <span>&nbsp;</span> &nbsp;</Box>
                 <Slider
                   disabled={!!schedule.id}
@@ -309,7 +369,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
                     setGroupSchedule({ schedule: { ...schedule, slotDuration: parseFloat(val.toString()) } });
                   }}
                 />
-              </Box>
+              </Box>}
             </Box>
           </Box>
         </Grid>
@@ -322,14 +382,12 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
         </Grid>
       </Grid>
     </CardContent>
-    {
-      !onValidChanged && <CardActions>
-        <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
-          {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-          <Button disabled={!schedule.name || !schedule.startTime} onClick={handleSubmit}>Save Schedule</Button>
-        </Grid>
-      </CardActions>
-    }
+    {!onValidChanged && <CardActions>
+      <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
+        {showCancel && <Button onClick={closeModal}>Cancel</Button>}
+        <Button disabled={!schedule.name || !schedule.startTime} onClick={handleSubmit}>Save Schedule</Button>
+      </Grid>
+    </CardActions>}
   </Card >
 }
 

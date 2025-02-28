@@ -5,8 +5,9 @@ import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
+import Tooltip from '@mui/material/Tooltip';
 
-import { useSchedule, useTimeName, deepClone, getRelativeDuration, ISchedule, IScheduleBracket, IScheduleBracketSlot, useStyles, useUtil } from 'awayto/hooks';
+import { useSchedule, useTimeName, deepClone, getRelativeDuration, ISchedule, IScheduleBracket, IScheduleBracketSlot, useStyles, useUtil, plural } from 'awayto/hooks';
 
 type GridCell = {
   columnIndex: number, rowIndex: number, style: CSSProperties
@@ -41,11 +42,14 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
   const slotTimeUnitName = useTimeName(scheduleDisplay.slotTimeUnitId);
 
   const {
-    divisions,
+    columns,
+    rows,
     durations,
-    selections,
     xAxisTypeName
   } = useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, slotDuration: scheduleDisplay.slotDuration });
+
+  const cellHeight = 30;
+  const currentWidth = Math.max(60, parentBox[0] / (columns + 1));
 
   const scheduleBracketsValues = useMemo(() => Object.values(scheduleDisplay.brackets || {}) as Required<IScheduleBracket>[], [scheduleDisplay.brackets]);
 
@@ -95,7 +99,6 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
           userSelect: 'none',
           cursor: 'pointer',
           textAlign: 'center',
-          position: 'relative',
           color: 'white',
           whiteSpace: 'nowrap',
           fontWeight: 700
@@ -105,47 +108,48 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
       </Box>
     }
 
-
-    const { startTime, contextFormat } = durations[gridCell.columnIndex][gridCell.rowIndex];
+    const { startTime, contextFormat, completeContextFormat } = durations[gridCell.columnIndex][gridCell.rowIndex];
 
     const target = `schedule_bracket_slot_selection_${startTime}`;
     const exists = selected[target];
     const bracketColor = exists ? bracketColors[scheduleBracketsValues.findIndex(b => b.id === exists.scheduleBracketId)] : '#eee';
 
-    return <Box
-      style={gridCell.style}
-      sx={{
-        userSelect: 'none',
-        cursor: 'pointer',
-        backgroundColor: exists ? `color-mix(in srgb, ${bracketColor} 90%, transparent)` : 'white',
-        textAlign: 'center',
-        position: 'relative',
-        '&:hover': {
-          backgroundColor: '#bbb',
-          color: '#222',
-          opacity: '1',
-          boxShadow: '2',
-          // borderColor: '#bbb'
-        },
-        // border: exists ? `1px solid ${bracketColor}` : undefined,
-        color: !exists ? '#666' : '#000',
-        boxShadow: exists ? '2' : undefined,
-        whiteSpace: 'nowrap',
-        borderTop: '1px solid #aaa',
-        borderRight: '1px solid #aaa',
-      }}
-      onMouseLeave={() => !displayOnly && buttonDown && setValue(startTime)}
-      onMouseDown={() => !displayOnly && setButtonDown(true)}
-      onMouseUp={() => {
-        if (!displayOnly) {
-          setButtonDown(false);
-          setValue(startTime);
-        }
-      }}
-    >
-      {contextFormat}
-    </Box>
-  }, [durations, selected, scheduleBracketsValues, buttonDown, selectedBracket, xAxisTypeName, displayOnly]);
+    return <Tooltip key={`grid_cell_tooltip_${gridCell.columnIndex}_${gridCell.rowIndex}`} title={completeContextFormat}>
+      <Box
+        style={gridCell.style}
+        sx={{
+          userSelect: 'none',
+          cursor: 'pointer',
+          backgroundColor: exists ? `color-mix(in srgb, ${bracketColor} 90%, transparent)` : 'white',
+          textAlign: 'center',
+          position: 'relative',
+          '&:hover': {
+            backgroundColor: '#bbb',
+            color: '#222',
+            opacity: '1',
+            boxShadow: '2',
+            // borderColor: '#bbb'
+          },
+          // border: exists ? `1px solid ${bracketColor}` : undefined,
+          color: !exists ? '#666' : '#000',
+          boxShadow: exists ? '2' : undefined,
+          whiteSpace: 'nowrap',
+          borderTop: '1px solid #aaa',
+          borderRight: '1px solid #aaa',
+        }}
+        onMouseLeave={() => !displayOnly && buttonDown && setValue(startTime)}
+        onMouseDown={() => !displayOnly && setButtonDown(true)}
+        onMouseUp={() => {
+          if (!displayOnly) {
+            setButtonDown(false);
+            setValue(startTime);
+          }
+        }}
+      >
+        <>{'day' !== slotTimeUnitName && currentWidth >= 120 ? completeContextFormat : contextFormat}</>
+      </Box>
+    </Tooltip>
+  }, [durations, selected, scheduleBracketsValues, buttonDown, selectedBracket, slotTimeUnitName, xAxisTypeName, displayOnly, currentWidth]);
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(([event]) => {
@@ -170,20 +174,20 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
   }, [selected, scheduleBracketsValues]);
 
   const RenderedGrid = useCallback(() => {
-    return (isNaN(selections) || isNaN(divisions)) ? <></> : <>
+    return (isNaN(rows) || isNaN(columns)) ? <></> : <>
       <FixedSizeGrid
         style={{ position: 'absolute', top: 0, left: 0, backgroundColor: '#666' }}
-        rowCount={selections + 1}
-        columnCount={divisions + 1}
-        rowHeight={30}
-        columnWidth={Math.max(60, parentBox[0] / (divisions + 1))}
+        rowCount={rows + 1}
+        columnCount={columns + 1}
+        rowHeight={cellHeight}
+        columnWidth={currentWidth}
         height={parentBox[1]}
         width={parentBox[0]}
       >
         {Cell}
       </FixedSizeGrid>
     </>
-  }, [selections, divisions, parentBox[0], parentBox[1]]);
+  }, [rows, columns, parentBox[0], parentBox[1]]);
 
   return <>
     {!displayOnly && <>
@@ -238,9 +242,9 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
       </Box>
     </>}
 
-    <Typography pb={1} variant="body2">This schedule represents 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s divided by {scheduleDisplay.slotDuration} {slotTimeUnitName} blocks.</Typography>
+    <Typography pb={1} variant="body2">This schedule represents 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s where every {plural(scheduleDisplay.slotDuration, slotTimeUnitName, slotTimeUnitName + 's')} is schedulable.</Typography>
     {displayOnly ? <>
-      <Box ref={parentRef} sx={{ position: 'relative', overflow: 'scroll', width: '100%', height: '200px' }}>
+      <Box ref={parentRef} sx={{ position: 'relative', overflow: 'scroll', width: '100%', height: `${cellHeight * Math.min(8, rows + 1)}px` }}>
         <RenderedGrid />
       </Box>
     </> : <>

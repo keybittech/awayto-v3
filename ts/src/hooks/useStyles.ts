@@ -219,7 +219,7 @@ export const useStyles = (): { [key: string]: SxProps } => {
     green: { color: green[500] },
     red: { color: red[500] },
 
-    onboardingProgress: { ...disabledOverride, width: { sm: '100px', md: '200px' }, height: '100%', alignItems: 'center' },
+    onboardingProgress: { ...disabledOverride, width: { xs: '80px', sm: '100px', md: '120px' }, height: '100%', alignItems: 'center' },
     audioButton: { cursor: 'pointer' },
 
     overflowEllipsis: { textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' },

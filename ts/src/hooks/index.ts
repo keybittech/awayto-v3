@@ -5,7 +5,6 @@ export * from './auth';
 export * from './exchange';
 export * from './form';
 export * from './kiosk';
-export * from './schedule';
 export * from './store';
 export * from './time_unit';
 export * from './useAuth';

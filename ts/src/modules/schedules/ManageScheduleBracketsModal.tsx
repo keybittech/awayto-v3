@@ -14,11 +14,17 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 
-import { siteApi, useUtil, bracketSchema, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName } from 'awayto/hooks';
+import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from '../groups/GroupContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
 import ScheduleDisplay from './ScheduleDisplay';
+
+const bracketSchema = {
+  duration: 1,
+  automatic: false,
+  multiplier: 100
+};
 
 interface ManageScheduleBracketsModalProps extends IComponent {
   editSchedule: ISchedule;

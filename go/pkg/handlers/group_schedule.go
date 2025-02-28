@@ -49,7 +49,7 @@ func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, 
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules/master/"+data.GetGroupSchedule().GetScheduleId())
+	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules/master/"+data.GetGroupSchedule().GetSchedule().GetId())
 
 	return &types.PatchGroupScheduleResponse{Success: scheduleResp.Success}, nil
 }

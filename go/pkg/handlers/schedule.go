@@ -112,11 +112,16 @@ func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data 
 	schedule := data.GetSchedule()
 	// TODO add a what to expect page
 
+	var scheduleEndTime *string
+	if schedule.GetEndTime() != "" {
+		scheduleEndTime = &schedule.EndTime
+	}
+
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.schedules
 		SET name = $2, start_time = $3, end_time = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, schedule.GetId(), schedule.GetName(), schedule.GetStartTime(), schedule.GetEndTime(), session.UserSub, time.Now().Local().UTC())
+	`, schedule.GetId(), schedule.GetName(), schedule.GetStartTime(), scheduleEndTime, session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
