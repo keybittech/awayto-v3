@@ -26,6 +26,7 @@ import ManageGroupModal from '../groups/ManageGroupModal';
 import ManageGroupRolesModal from '../roles/ManageGroupRolesModal';
 import ManageServiceModal from '../services/ManageServiceModal';
 import ManageSchedulesModal from '../group_schedules/ManageSchedulesModal';
+import OnboardingVideo from './OnboardingVideo';
 
 const {
   VITE_REACT_APP_APP_HOST_URL
@@ -52,7 +53,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
   const [assist, setAssist] = useState('');
   const [groupCode, setGroupCode] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
-  const [currPage, setCurrPage] = useState<string | false>(location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
+  // const [currPage, setCurrPage] = useState<string | false>(location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
