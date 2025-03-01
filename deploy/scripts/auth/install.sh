@@ -60,7 +60,7 @@ kcadm update authentication/flows/custom%20registration/executions -r $KC_REALM 
 kcadm update realms/$KC_REALM -b '{ "registrationFlow": "custom registration", "attributes": { "userProfileEnabled": true } }'
 
 echo "# Configuring front-end auth client"
-SITE_CLIENT_ID=$(kcadm create clients -r $KC_REALM -s clientId=$KC_CLIENT -s 'redirectUris=["'"$APP_HOST_URL/*"'"]' -s rootUrl=$APP_HOST_URL/auth -s baseUrl=$APP_HOST_URL/auth -s publicClient=true -s standardFlowEnabled=true -s directAccessGrantsEnabled=true -s attributes='{ "post.logout.redirect.uris": "'"$APP_HOST_URL"'", "access.token.lifespan": 60 }' -i)
+SITE_CLIENT_ID=$(kcadm create clients -r $KC_REALM -s clientId=$KC_CLIENT -s 'redirectUris=["'"$APP_HOST_URL/*"'"]' -s rootUrl=$APP_HOST_URL -s baseUrl=$APP_HOST_URL -s publicClient=true -s standardFlowEnabled=true -s directAccessGrantsEnabled=true -s attributes='{ "post.logout.redirect.uris": "'"$APP_HOST_URL"'", "access.token.lifespan": 60 }' -i)
 echo "Site Client ID"$SITE_CLIENT_ID
 
 echo "# Attaching roles"
