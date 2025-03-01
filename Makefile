@@ -73,8 +73,8 @@ DEV_SCRIPTS=deploy/scripts/dev
 DOCKER_SCRIPTS=deploy/scripts/docker
 DEPLOY_HOST_SCRIPTS=deploy/scripts/host
 CRON_DIR=deploy/scripts/cron
+DEPLOY_SCRIPT=deploy/scripts/host/deploy.sh
 AUTH_INSTALL_SCRIPT=deploy/scripts/auth/install.sh
-SITE_INSTALLER=deploy/scripts/host/install.sh
 
 # backup related
 DB_BACKUP_DIR=backups/db
@@ -352,36 +352,20 @@ host_sync_env:
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(H_SIGN):$(H_REM_DIR)"
 
 #################################
-#           HOST MAKE           #
+#           HOST UTILS          #
 #################################
 
 .PHONY: host_deploy
 host_deploy: host_sync_env
-	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo make r_deploy'
+	$(SSH) 'cd "$(H_REM_DIR)" && sh $(DEPLOY_SCRIPT)'
 
 .PHONY: host_update_cert
 host_update_cert:
-	$(SSH) 'cd "$(H_REM_DIR)" && make r_host_update_cert_op'
-
-.PHONY: host_deploy_compose_up
-host_deploy_compose_up:
-	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo ENVFILE="$(H_ETC_DIR)/.env" make docker_up'
-
-.PHONY: host_deploy_compose_down
-host_deploy_compose_down:
-	$(SSH) 'cd "$(H_REM_DIR)" && SUDO=sudo ENVFILE="$(H_ETC_DIR)/.env" make docker_down'
-
-#################################
-#           HOST UTILS          #
-#################################
+	$(SSH) 'cd "$(H_REM_DIR)" && make host_update_cert_op'
 
 .PHONY: host_ssh
 host_ssh:
 	@ssh -p ${SSH_PORT} $(H_SIGN)
-
-.PHONY: host_cmd
-host_cmd:
-	$(SSH) $(CMD)
 
 .PHONY: host_status
 host_status:
@@ -411,17 +395,13 @@ host_service_stop:
 host_metric_cpu:
 	hcloud server metrics --type cpu $(APP_HOST)
 
-#################################
-#           REMOTE FNS          #
-#################################
-
-.PHONY: r_pull
-r_pull:
+.PHONY: host_update
+host_update:
 	git pull
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
-.PHONY: r_deploy
-r_deploy: r_pull build docker_up
+.PHONY: host_deploy_op
+host_deploy_op: 
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
@@ -429,11 +409,11 @@ r_deploy: r_pull build docker_up
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(BINARY_NAME) start.sh /usr/local/bin
 	rm start.sh $(BINARY_SERVICE) $(BINARY_NAME)
 	sudo systemctl enable $(BINARY_SERVICE)
-	sudo systemctl stop $(BINARY_SERVICE)
-	sudo systemctl start $(BINARY_SERVICE)
+	sudo systemctl restart $(BINARY_SERVICE)
+	sudo systemctl is-active $(BINARY_SERVICE)
 
-.PHONY: r_host_update_cert_op
-r_host_update_cert_op:
+.PHONY: host_update_cert_op
+host_update_cert_op:
 	sudo certbot certificates
 	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email
