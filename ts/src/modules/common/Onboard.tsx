@@ -34,6 +34,7 @@ const {
 export function Onboard(_: IComponent): React.JSX.Element {
 
   window.INT_SITE_LOAD = true;
+  console.log('window initialized');
 
   const navigate = useNavigate();
   // const location = useLocation();
