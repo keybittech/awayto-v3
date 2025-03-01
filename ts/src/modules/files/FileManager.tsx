@@ -6,11 +6,7 @@ import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import { DataGrid } from '@mui/x-data-grid';
 
-import { IFile } from './api';
-import { useUtil } from './useUtil';
-import { useFileContents } from './useFileContents';
-import { useGrid } from './useGrid';
-import { nid, targets } from './util';
+import { IFile, nid, targets, useFileContents, useGrid, useUtil } from 'awayto/hooks';
 
 const {
   VITE_REACT_APP_ALLOWED_FILE_EXT,
@@ -139,18 +135,4 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
   </>
 }
 
-
-export function useFiles(): {
-  files: IFile[];
-  comp: (props: IComponent) => React.JSX.Element;
-} {
-  const [files, setFiles] = useState<IFile[]>([]);
-
-  const comp = useCallback((_: IComponent) => {
-    return <FileManager files={files} setFiles={setFiles} />;
-  }, [files]);
-
-  return { files, comp };
-}
-
-export default useFiles;
+export default FileManager;

@@ -5,7 +5,6 @@ import Link from '@mui/material/Link';
 import { nid, obfuscate, targets } from './util';
 import { siteApi } from './api';
 import { IPrompts } from './assist';
-import Typography from '@mui/material/Typography';
 import { Tooltip } from '@mui/material';
 
 type SuggestFn = (props: { id: IPrompts, prompt: string }) => void;

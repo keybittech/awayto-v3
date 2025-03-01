@@ -10,7 +10,9 @@ import IconButton from '@mui/material/IconButton';
 
 import SettingsIcon from '@mui/icons-material/Settings';
 
-import { Field, IField, IFormVersion, deepClone, targets } from 'awayto/hooks';
+import { IField, IFormVersion, deepClone, targets } from 'awayto/hooks';
+
+import Field from './Field';
 
 // text
 

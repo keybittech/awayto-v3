@@ -9,7 +9,6 @@ export * from './store';
 export * from './time_unit';
 export * from './useAuth';
 export * from './useDebounce';
-export * from './useFiles';
 export * from './useFileStore';
 export * from './useFileContents';
 export * from './useStyles';

@@ -1,4 +1,4 @@
-import React, { Suspense, useContext, useEffect } from 'react';
+import React, { Suspense, useContext, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 
 import Alert from '@mui/material/Alert';
@@ -11,29 +11,21 @@ import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { siteApi, useUtil, useGroupForm, useFiles, IFormVersionSubmission } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import ScheduleDatePicker from '../group_schedules/ScheduleDatePicker';
 import ScheduleTimePicker from '../group_schedules/ScheduleTimePicker';
 import ServiceTierAddons from '../services/ServiceTierAddons';
+import FileManager from '../files/FileManager';
 
-export function RequestQuote(props: IComponent): React.JSX.Element {
+export function RequestQuote(_: IComponent): React.JSX.Element {
 
   const navigate = useNavigate();
   const { setSnack } = useUtil();
   const [postQuote] = siteApi.useQuoteServicePostQuoteMutation();
-  // const [didSubmit, setDidSubmit] = useState(false);
-  // const [expanded, setExpanded] = useState<string | false>(false);
-
-  // const handleChange = (panel: string) => (_: React.SyntheticEvent, isExpanded: boolean) => {
-  //   setExpanded(isExpanded ? panel : false);
-  // };
-
-  // const {
-  //   GroupSelect
-  // } = useContext(GroupContext) as GroupContextType;
+  const [files, setFiles] = useState<IFile[]>([]);
 
   const {
     getGroupUserSchedules: {
@@ -67,20 +59,9 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
     valid: tierFormValid
   } = useGroupForm(groupScheduleServiceTier?.formId);
 
-  const {
-    files,
-    comp: FileManagerComp
-  } = useFiles();
-
   useEffect(() => {
     getDateSlots();
   }, []);
-
-  // const ServiceTierAddonsAccordion = useAccordion('Features', false, expanded === 'service_features', handleChange('service_features'));
-  // const SelectTimeAccordion = useAccordion('Select Time', false, expanded === 'select_time', handleChange('select_time'));
-  // const GroupScheduleServiceAccordion = useAccordion((groupScheduleService?.name || '') + ' Questionnaire', didSubmit && !serviceFormValid, expanded === 'service_questionnaire', handleChange('service_questionnaire'));
-  // const GroupScheduleServiceTierAccordion = useAccordion((groupScheduleServiceTier?.name || '') + ' Questionnaire', didSubmit && !tierFormValid, expanded === 'tier_questionnaire', handleChange('tier_questionnaire'));
-  // const FileManagerAccordion = useAccordion('Files', false, expanded === 'file_manager', handleChange('file_manager'));
 
   return <>
     <Grid container spacing={2} direction="column" alignContent="center">
@@ -90,7 +71,6 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
           <CardHeader
             title="Create Request"
             subheader="Request services from a group. Some fields may be required depending on the service."
-          // action={<GroupSelect />}
           />
           <CardContent>
             <Grid container spacing={2}>
@@ -126,7 +106,7 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
                 <ServiceTierAddons service={groupScheduleService} />
               </Grid>
               <Grid>
-                <FileManagerComp {...props} />
+                <FileManager files={files} setFiles={setFiles} />
               </Grid>
             </Grid>
           </Grid>
@@ -147,11 +127,8 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
           <CardActionArea onClick={() => {
             if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.scheduleBracketSlotId) {
               setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out.' });
-              // setDidSubmit(true);
               return;
             }
-
-            // setDidSubmit(false);
 
             postQuote({
               postQuoteRequest: {
@@ -182,7 +159,6 @@ export function RequestQuote(props: IComponent): React.JSX.Element {
 
     </Grid>
   </>
-
 }
 
 export default RequestQuote;
