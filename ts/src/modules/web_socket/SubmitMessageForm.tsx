@@ -5,6 +5,7 @@ import InputAdornment from '@mui/material/InputAdornment';
 import IconButton from '@mui/material/IconButton';
 
 import Send from '@mui/icons-material/Send';
+import { targets } from 'awayto/hooks';
 
 interface SubmitMessageFormProps extends IComponent {
   sendTextMessage?: (msg: string) => void;
@@ -21,12 +22,10 @@ export function SubmitMessageForm({ sendTextMessage }: SubmitMessageFormProps): 
       setTextMessage('');
     }}>
       <TextField
+        {...targets(`submit message form message`, `Type here then press enter...`, `input a message to be sent to the chat`)}
         fullWidth
         multiline
-        id="message"
-        label="Type here then press enter..."
         value={textMessage}
-        name="message"
         onChange={e => setTextMessage(e.target.value)}
         slotProps={{
           input: {
@@ -44,7 +43,10 @@ export function SubmitMessageForm({ sendTextMessage }: SubmitMessageFormProps): 
               }
             },
             endAdornment: <InputAdornment position="end">
-              <IconButton type="submit" aria-label="toggle password visibility">
+              <IconButton
+                {...targets(`submit message form submit`, `submit the input message to the chat`)}
+                type="submit"
+              >
                 <Send />
               </IconButton>
             </InputAdornment>

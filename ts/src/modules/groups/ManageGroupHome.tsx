@@ -14,7 +14,7 @@ import CardContent from '@mui/material/CardContent';
 import CreateIcon from '@mui/icons-material/Create';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 
-import { useUtil, SiteRoles, useStyles, siteApi } from 'awayto/hooks';
+import { useUtil, SiteRoles, useStyles, siteApi, targets } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from './GroupContext';
 import GroupSecure from './GroupSecure';
@@ -63,11 +63,12 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
     return group.name && <GroupSecure key={`menu_${comp}`} contentGroupRoles={menuRoles[comp]}>
       <Grid>
         <Button
+          {...targets(`manage group home nav ${comp}`, `navigate to the group ${comp} management page`)}
           variant="text"
           color={selected ? "primary" : "secondary"}
           sx={{
             cursor: 'pointer',
-            textDecoration: selected ? 'underline' : undefined
+            textDecoration: selected ? 'underline !important' : undefined
           }}
           onClick={() => {
             navigate(`/group/manage/${comp}`);
@@ -119,9 +120,13 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
         <>
           {group.displayName}
           <Tooltip key={'manage_group'} title="Edit">
-            <IconButton color="info" onClick={() => {
-              setDialog('manage_group');
-            }}>
+            <IconButton
+              {...targets(`manage group home edit`, `edit the group details`)}
+              color="info"
+              onClick={() => {
+                setDialog('manage_group');
+              }}
+            >
               <CreateIcon sx={classes.variableButtonIcon} />
             </IconButton>
           </Tooltip>
@@ -134,7 +139,12 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
             <Typography fontWeight="bold">
               Group Code &nbsp;
               <Tooltip title="Copy Group Code">
-                <IconButton size="small" color="info" onClick={copyCode}>
+                <IconButton
+                  {...targets(`manage group home copy code`, `copy the group code to your system clipboard`)}
+                  size="small"
+                  color="info"
+                  onClick={copyCode}
+                >
                   <ContentCopyIcon />
                 </IconButton>
               </Tooltip>
@@ -145,7 +155,12 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
             <Typography fontWeight="bold">
               Invite Url &nbsp;
               <Tooltip title="Copy Invite URL">
-                <IconButton size="small" color="info" onClick={copyUrl}>
+                <IconButton
+                  {...targets(`manage group home copy join url`, `copy a group join url to your system clipboard`)}
+                  size="small"
+                  color="info"
+                  onClick={copyUrl}
+                >
                   <ContentCopyIcon />
                 </IconButton>
               </Tooltip>
@@ -156,7 +171,13 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
             <Typography fontWeight="bold">
               Seats &nbsp;
               <Tooltip title="Add Seats">
-                <Button sx={{ cursor: 'pointer' }} onClick={() => setDialog('add_seats')} color="info" size="small">Add</Button>
+                <Button
+                  {...targets(`manage group home add seats`, `open the group seats modal to add more seats to your group`)}
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => setDialog('add_seats')}
+                  color="info"
+                  size="small"
+                >Add</Button>
               </Tooltip>
             </Typography>
             <Typography>Test</Typography>

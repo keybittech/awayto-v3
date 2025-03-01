@@ -14,7 +14,7 @@ import { DataGrid } from '@mui/x-data-grid';
 
 import ManageRoleModal from './ManageRoleModal';
 
-import { siteApi, useGrid, useStyles, dayjs, IGroupRole } from 'awayto/hooks';
+import { siteApi, useGrid, useStyles, dayjs, IGroupRole, targets } from 'awayto/hooks';
 
 export function ManageRoles(_: IComponent): React.JSX.Element {
 
@@ -38,12 +38,15 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
     const { length } = selected;
     const acts = length == 1 ? [
       <Tooltip key={'manage_role'} title="Edit">
-        <Button onClick={() => {
-          const groupRole = roleSet.find(r => r.id === selected[0]);
-          setEditRole(groupRole);
-          setDialog('manage_role');
-          setSelected([]);
-        }}>
+        <Button
+          {...targets(`manage roles edit`, `edit the currently selected role`)}
+          onClick={() => {
+            const groupRole = roleSet.find(r => r.id === selected[0]);
+            setEditRole(groupRole);
+            setDialog('manage_role');
+            setSelected([]);
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -53,32 +56,35 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
     return [
       ...acts,
       <Tooltip key={'delete_role'} title="Delete">
-        <Button onClick={() => {
-          async function go() {
-            const selectedGroupRoleNames = groupRolesRequest?.groupRoles.
-              filter(gr => gr.id && selected.includes(gr.id)).
-              map(gr => gr.role?.name || '') || []
+        <Button
+          {...targets(`manage roles delete`, `delete the currently selected role or roles`)}
+          onClick={() => {
+            async function go() {
+              const selectedGroupRoleNames = groupRolesRequest?.groupRoles.
+                filter(gr => gr.id && selected.includes(gr.id)).
+                map(gr => gr.role?.name || '') || []
 
-            if (selectedGroupRoleNames.length) {
+              if (selectedGroupRoleNames.length) {
 
-              await deleteGroupRole({ ids: selected.join(',') }).unwrap().then(async () => {
+                await deleteGroupRole({ ids: selected.join(',') }).unwrap().then(async () => {
 
-                const userRoleIds = Object.values(profileRequest?.userProfile.roles || {}).
-                  filter(ur => ur.name && selectedGroupRoleNames.includes(ur.name)).
-                  map(ur => ur.id || '') || []
+                  const userRoleIds = Object.values(profileRequest?.userProfile.roles || {}).
+                    filter(ur => ur.name && selectedGroupRoleNames.includes(ur.name)).
+                    map(ur => ur.id || '') || []
 
-                if (userRoleIds.length) {
-                  await deleteRole({ ids: userRoleIds.join(',') }).unwrap();
-                  void getUserProfileDetails();
-                }
-                void getGroupRoles();
-                setSelected([]);
+                  if (userRoleIds.length) {
+                    await deleteRole({ ids: userRoleIds.join(',') }).unwrap();
+                    void getUserProfileDetails();
+                  }
+                  void getGroupRoles();
+                  setSelected([]);
 
-              }).catch(console.error);
+                }).catch(console.error);
+              }
             }
-          }
-          void go();
-        }}>
+            void go();
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
           <DeleteIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -98,10 +104,13 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
     toolbar: () => <>
       <Typography variant="button">Roles:</Typography>
       <Tooltip key={'manage_role'} title="Create">
-        <Button onClick={() => {
-          setEditRole(undefined);
-          setDialog('manage_role')
-        }}>
+        <Button
+          {...targets(`manage roles create`, `create a new group role`)}
+          onClick={() => {
+            setEditRole(undefined);
+            setDialog('manage_role')
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
           <GroupAddIcon sx={classes.variableButtonIcon} />
         </Button>

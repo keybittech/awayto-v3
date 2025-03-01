@@ -5,7 +5,7 @@ import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 
-import { IField } from 'awayto/hooks';
+import { IField, targets } from 'awayto/hooks';
 
 interface FieldProps extends IComponent {
   field: IField;
@@ -47,7 +47,7 @@ function Field({ settingsBtn, defaultDisplay, field, editable = false, ...props 
   return <FieldElement
     fullWidth
     disabled={!editable}
-    label={field.l}
+    {...targets(`form field ${field.l}`, field.l, `modify the form field ${field.l} which is of type ${field.t}`)}
     type={field.t}
     helperText={`${field.r ? 'Required. ' : ''}${field.h || ''}`}
     value={field.v ?? ''}

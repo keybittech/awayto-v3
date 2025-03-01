@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 
 import Link from '@mui/material/Link';
 
-import { nid, obfuscate } from './util';
+import { nid, obfuscate, targets } from './util';
 import { siteApi } from './api';
 import { IPrompts } from './assist';
 import Typography from '@mui/material/Typography';
@@ -78,10 +78,17 @@ export function useSuggestions(refName: string): {
     const compId = nid('random');
     return suggestions.length && allowSuggestions && !hideSuggestions ? <>
       AI: {suggestions.filter(s => s.toLowerCase() !== 'admin').map((suggestion, i) => {
-        return <span id={`suggestion-${compId}${i}-selection`} style={{ display: 'inline-block' }} key={`${compId}-selection-${i}`}>
-          <Link sx={{ cursor: 'pointer' }} onClick={() => {
-            handleSuggestion(suggestion);
-          }}>
+        return <span
+          style={{ display: 'inline-block' }}
+          key={`${compId}-selection-${i}`}
+        >
+          <Link
+            {...targets(`suggestion selection ${compId} ${i}`, `select the suggested value of ${suggestion}`)}
+            sx={{ cursor: 'pointer' }}
+            onClick={() => {
+              handleSuggestion(suggestion);
+            }}
+          >
             {suggestion}
           </Link>{i !== suggestions.length - 1 ? ',' : ''}&nbsp;
         </span>

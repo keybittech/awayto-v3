@@ -13,7 +13,7 @@ import CardHeader from '@mui/material/CardHeader';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { OrderedFiles } from 'awayto/hooks';
+import { OrderedFiles, targets } from 'awayto/hooks';
 import FileTypeIcon from './FileTypeIcon';
 
 interface FileSelectionModalProps extends IComponent {
@@ -36,9 +36,12 @@ export function FileSelectionModal({ closeModal, fileGroups }: FileSelectionModa
                 }
               >
                 {group.files.map((f, j) => {
-                  return <ListItemButton key={`file_${i}_${j}`} onClick={() => {
-                    closeModal && closeModal(f);
-                  }}>
+                  return !f.mimeType ? <></> : <ListItemButton
+                    {...targets(`file modal select`, `select this file from the list`)}
+                    key={`file_${i}_${j}`}
+                    onClick={() => {
+                      closeModal && closeModal(f);
+                    }}>
                     <ListItemIcon>
                       <FileTypeIcon fileType={f.mimeType} />
                     </ListItemIcon>
@@ -55,7 +58,10 @@ export function FileSelectionModal({ closeModal, fileGroups }: FileSelectionModa
     </CardContent>
     <CardActions>
       <Grid container justifyContent="space-between">
-        <Button onClick={() => closeModal && closeModal()}>Cancel</Button>
+        <Button
+          {...targets(`file modal cancel`, `cancel file selection`)}
+          onClick={() => closeModal && closeModal()}
+        >Cancel</Button>
       </Grid>
     </CardActions>
   </Card>

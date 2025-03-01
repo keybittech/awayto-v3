@@ -10,7 +10,7 @@ import { IFile } from './api';
 import { useUtil } from './useUtil';
 import { useFileContents } from './useFileContents';
 import { useGrid } from './useGrid';
-import { nid } from './util';
+import { nid, targets } from './util';
 
 const {
   VITE_REACT_APP_ALLOWED_FILE_EXT,
@@ -35,7 +35,11 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
 
   const actions = useMemo(() => {
     return [
-      <Button key={'delete_selected_files'} onClick={deleteFiles}>Delete</Button>,
+      <Button
+        {...targets(`use files delete`, `delete currently selected file or files`)}
+        key={'delete_selected_files'}
+        onClick={deleteFiles}
+      >Delete</Button>,
     ];
   }, [selected]);
 
@@ -53,7 +57,10 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
     onSelected: selection => setSelected(selection as string[]),
     toolbar: () => <>
       <Grid container alignItems="baseline">
-        <Button onClick={addFiles}>Add File</Button>
+        <Button
+          {...targets(`use files add`, `add files to the current list`)}
+          onClick={addFiles}
+        >Add File</Button>
         <Box ml={1}>
           <Typography variant="caption">{allowedFileExt}</Typography>
         </Box>

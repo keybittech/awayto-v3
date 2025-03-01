@@ -7,7 +7,7 @@ import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 
-import { siteApi } from 'awayto/hooks';
+import { siteApi, targets } from 'awayto/hooks';
 
 interface FeedbackMenuProps extends IComponent {
   feedbackAnchorEl: null | HTMLElement;
@@ -56,10 +56,10 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
       <Grid spacing={2} container direction="row">
         <Grid size={12}>
           <TextField
+            {...targets(`feedback menu target selection`, `Group or Site`, `select if feedback should go to the group or website admins`)}
             select
             fullWidth
             value={feedbackTarget}
-            label="Group or Site"
             variant="standard"
             onChange={e => setFeedbackTarget(e.target.value)}
           >
@@ -88,7 +88,11 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
           />
         </Grid>
         <Grid size={12}>
-          <Button fullWidth onClick={handleSubmit}>Submit Comment</Button>
+          <Button
+            {...targets(`feedback comment submit`, `submit the feedback comment`)}
+            fullWidth
+            onClick={handleSubmit}
+          >Submit Comment</Button>
         </Grid>
       </Grid>
     </Box>

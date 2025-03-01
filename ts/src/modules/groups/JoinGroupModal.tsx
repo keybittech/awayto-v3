@@ -6,7 +6,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 
-import { siteApi, useUtil } from 'awayto/hooks';
+import { siteApi, targets, useUtil } from 'awayto/hooks';
 import { TextField } from '@mui/material';
 
 export function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
@@ -38,7 +38,7 @@ export function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
             <Grid container>
               <Grid size={12}>
                 <TextField
-                  label="Code"
+                  {...targets(`join group input code`, `Code`, `input the group code for the group you want to join`)}
                   type="code"
                   placeholder="Type a code and press enter..."
                   fullWidth
@@ -54,8 +54,14 @@ export function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
       </CardContent>
       <CardActions>
         <Grid container justifyContent="flex-end">
-          <Button onClick={closeModal}>Cancel</Button>
-          <Button onClick={handleSubmit}>Submit</Button>
+          <Button
+            {...targets(`join group modal close`, `close the join group modal`)}
+            onClick={closeModal}
+          >Cancel</Button>
+          <Button
+            {...targets(`join group modal submit`, `submit the form to join a group using its group code`)}
+            onClick={handleSubmit}
+          >Submit</Button>
         </Grid>
       </CardActions>
     </Card>

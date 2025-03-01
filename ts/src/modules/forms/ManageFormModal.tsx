@@ -9,7 +9,7 @@ import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { siteApi, useUtil, IForm, IFormVersion, IField, deepClone, IGroupForm } from 'awayto/hooks';
+import { siteApi, useUtil, IForm, IFormVersion, IField, deepClone, IGroupForm, targets } from 'awayto/hooks';
 import FormBuilder from './FormBuilder';
 
 interface ManageFormModalProps extends IComponent {
@@ -127,11 +127,9 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
 
       <Box mb={4}>
         <TextField
+          {...targets(`manage form modal name`, `Form Name`, `change the name of the form being edited or created`)}
           fullWidth
           autoFocus
-          id="name"
-          label="Name"
-          name="name"
           value={form.name}
           onKeyDown={e => {
             if ('Enter' === e.key) {
@@ -149,8 +147,14 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
     </CardContent>
     <CardActions>
       <Grid size="grow" container justifyContent="space-between">
-        <Button onClick={closeModal}>Cancel</Button>
-        <Button onClick={handleSubmit}>Submit</Button>
+        <Button
+          {...targets(`manage form modal close`, `close the form management modal`)}
+          onClick={closeModal}
+        >Cancel</Button>
+        <Button
+          {...targets(`manage form modal submit`, `submit the current form to be saved or edited`)}
+          onClick={handleSubmit}
+        >Submit</Button>
       </Grid>
     </CardActions>
   </Card>

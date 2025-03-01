@@ -2,7 +2,7 @@ import React, { useContext } from 'react';
 
 import { DesktopDatePicker } from '@mui/x-date-pickers/DesktopDatePicker';
 
-import { dayjs } from 'awayto/hooks';
+import { dayjs, targets } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
 
@@ -17,6 +17,7 @@ export function ScheduleDatePicker(_: IComponent): React.JSX.Element {
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
   return <DesktopDatePicker
+    {...targets(`date picker selection`, `Date`, `select a date`)}
     value={selectedDate}
     sx={{
       mt: '12px'
@@ -25,7 +26,6 @@ export function ScheduleDatePicker(_: IComponent): React.JSX.Element {
       textField: { fullWidth: true }
     }}
     onChange={(date: dayjs.Dayjs | null) => setSelectedDate(date ? date.isBefore(firstAvailable.time) ? firstAvailable.time : date : firstAvailable.time)}
-    label="Date"
     format="MM/DD/YYYY"
     minDate={firstAvailable.time}
     onOpen={() => setSelectedDate(selectedDate.isAfter(firstAvailable.time) ? selectedDate : firstAvailable.time)}

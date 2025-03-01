@@ -10,7 +10,7 @@ import IconButton from '@mui/material/IconButton';
 
 import SettingsIcon from '@mui/icons-material/Settings';
 
-import { IField, IFormVersion, deepClone } from 'awayto/hooks';
+import { IField, IFormVersion, deepClone, targets } from 'awayto/hooks';
 import Field from './Field';
 
 // text
@@ -119,11 +119,6 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
 
   const addRow = useCallback(() => updateData({ ...rows, [(new Date()).getTime().toString()]: [makeField()] }), [rows]);
 
-  // const delRow = useCallback((row: string) => {
-  //   delete rows[row];
-  //   setRows({ ...rows });
-  // }, [rows]);
-
   const addCol = useCallback((row: string) => updateData({ ...rows, [row]: Array.prototype.concat(rows[row], [makeField()]) }), [rows]);
 
   const delCol = useCallback((row: string, col: number) => {
@@ -155,7 +150,12 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
   return <Grid container spacing={2}>
 
     {Object.keys(rows).length < 3 && <Grid size={12}>
-      <Button variant="outlined" fullWidth onClick={addRow}>add row</Button>
+      <Button
+        {...targets(`form build add row`, `add a row to the form`)}
+        variant="outlined"
+        fullWidth
+        onClick={addRow}
+      >add row</Button>
     </Grid>}
     {Object.keys(rows).length > 0 && <Grid size={12}>
       <Typography variant="caption">Click the <SettingsIcon fontSize="small" sx={{ verticalAlign: 'bottom' }} /> icon to edit fields.</Typography>
@@ -166,7 +166,14 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
         <Grid role="row" container spacing={2}>
           {rows[rowId].length < 3 && <Grid className="add-column-btn" size={{ xs: 12, md: 2 }}>
             <Grid container direction="column" sx={{ placeItems: 'center', height: '100%' }}>
-              <Button fullWidth variant="outlined" color="warning" sx={{ alignItems: 'center', display: 'flex', flex: 1 }} onClick={() => addCol(rowId)}>add column</Button>
+              <Button
+                {...targets(`form build add column row ${i + 1}`, `add a column to row ${i + 1}`)}
+                fullWidth
+                variant="outlined"
+                color="warning"
+                sx={{ alignItems: 'center', display: 'flex', flex: 1 }}
+                onClick={() => addCol(rowId)}
+              >add column</Button>
               {/* <ButtonBase sx={{ display: 'flex', padding: '2px', backgroundColor: 'rgba(255, 0, 0, .1)' }} onClick={() => delRow(rowId)}>- row</ButtonBase> */}
             </Grid>
           </Grid>}
@@ -179,10 +186,14 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
                     editable={false}
                     field={field}
                     settingsBtn={
-                      <IconButton sx={{ color: position.row == rowId && position.col == j ? 'white' : 'gray' }} onClick={() => {
-                        setCell(field);
-                        setPosition({ row: rowId, col: j })
-                      }}>
+                      <IconButton
+                        {...targets(`form build edit field ${field.l}`, `edit field labeled ${field.l}`)}
+                        sx={{ color: position.row == rowId && position.col == j ? 'white' : 'gray' }}
+                        onClick={() => {
+                          setCell(field);
+                          setPosition({ row: rowId, col: j })
+                        }}
+                      >
                         <SettingsIcon />
                       </IconButton>
                     }
@@ -211,42 +222,60 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
                 <Typography variant="body2">Field Attributes</Typography>
               </Grid>
               <Grid>
-                <Button variant="text" onClick={() => {
-                  setPosition({ row: '', col: 0 })
-                  setCell({} as IField);
-                }}>Close</Button>
+                <Button
+                  {...targets(`form build close editing`, `close the field editing panel`)}
+                  variant="text"
+                  onClick={() => {
+                    setPosition({ row: '', col: 0 })
+                    setCell({} as IField);
+                  }}
+                >Close</Button>
               </Grid>
             </Grid>
           </Grid>
 
           <Grid>
             <TextField
+              {...targets(`form build select field type`, `Field Type`, `modify the field's data type`)}
               fullWidth
               select
-              label="Field Type"
               value={cell.t}
               onChange={e => setCellAttr(e.target.value, 't')}
             >
-              <MenuItem key={1111} value={'text'}>Textfield</MenuItem>
-              <MenuItem key={23432423} value={'date'}>Date</MenuItem>
-              <MenuItem key={235325} value={'time'}>Time</MenuItem>
-              <MenuItem key={235324325} value={'labelntext'}>Label and Text</MenuItem>
+              <MenuItem key={`field_type_1`} value={'text'}>Textfield</MenuItem>
+              <MenuItem key={`field_type_2`} value={'date'}>Date</MenuItem>
+              <MenuItem key={`field_type_3`} value={'time'}>Time</MenuItem>
+              <MenuItem key={`field_type_4`} value={'labelntext'}>Label and Text</MenuItem>
             </TextField>
           </Grid>
 
           <Grid>
-            <TextField fullWidth autoFocus id={`row_${position.row}_col_${position.col}_label_input`} label="Label" type="text" helperText="Required." value={cell.l} onChange={e => setCellAttr(e.target.value, 'l')} />
+            <TextField
+              fullWidth
+              autoFocus
+              {...targets(`form build field label input ${position.row} ${position.col}`, `Label`, `change the label that will appear above the form field`)}
+              type="text"
+              helperText="Required."
+              value={cell.l}
+              onChange={e => setCellAttr(e.target.value, 'l')}
+            />
           </Grid>
 
           {'labelntext' === cell.t && <Grid>
-            <TextField fullWidth label="Text" type="text" value={cell.x} onChange={e => setCellAttr(e.target.value, 'x')} />
+            <TextField
+              {...targets(`form build field text`, `Text`, `change the text of a label and text style form field`)}
+              fullWidth
+              type="text"
+              value={cell.x}
+              onChange={e => setCellAttr(e.target.value, 'x')}
+            />
           </Grid>}
 
           {!inputTypes.includes(cell.t || '') ? <></> : <>
             <Grid>
               <TextField
                 fullWidth
-                label="Helper Text"
+                {...targets(`form build field helper text`, `Helper Text`, `change the text that will appear as helper text below the form field`)}
                 type="text"
                 value={cell.h}
                 onChange={e => setCellAttr(e.target.value, 'h')}
@@ -256,7 +285,7 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
             <Grid>
               <TextField
                 fullWidth
-                label="Default Value"
+                {...targets(`form build field default value`, `Default Value`, `change the default value of the form field`)}
                 type={cell.t}
                 value={cell.v}
                 onChange={e => setCellAttr(e.target.value, 'v')}
@@ -270,19 +299,28 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
 
             <Grid>
               <Typography variant="body1">Required</Typography>
-              <Switch value={cell.r} checked={cell.r} onChange={() => {
-                rows[position.row][position.col].r = !cell.r;
-                updateData({ ...rows })
-              }} />
+              <Switch
+                {...targets(`form build field required`, `set the field to be required or not during form submission`)}
+                value={cell.r}
+                checked={cell.r}
+                onChange={() => {
+                  rows[position.row][position.col].r = !cell.r;
+                  updateData({ ...rows })
+                }} />
             </Grid>
           </>}
 
           <Grid>
-            <Button fullWidth color="error" onClick={() => {
-              setPosition({ row: '', col: 0 })
-              delCol(position.row, position.col);
-              setCell({} as IField);
-            }}>Delete</Button>
+            <Button
+              {...targets(`form build delete field`, `delete this field from the form`)}
+              fullWidth
+              color="error"
+              onClick={() => {
+                setPosition({ row: '', col: 0 })
+                delCol(position.row, position.col);
+                setCell({} as IField);
+              }}
+            >Delete</Button>
           </Grid>
         </Grid>
       </Grid>

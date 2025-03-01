@@ -12,7 +12,7 @@ import MoreTimeIcon from '@mui/icons-material/MoreTime';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupSchedule } from 'awayto/hooks';
+import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupSchedule, targets } from 'awayto/hooks';
 
 import ManageSchedulesModal from './ManageSchedulesModal';
 import ManageScheduleStubs from './ManageScheduleStubs';
@@ -35,11 +35,14 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
     const { length } = selected;
     const acts = length == 1 ? [
       <Tooltip key={'manage_schedule'} title="Edit">
-        <Button onClick={() => {
-          setGroupSchedule(groupSchedulesRequest?.groupSchedules?.find(gs => gs.id === selected[0]));
-          setDialog('manage_schedule');
-          setSelected([]);
-        }}>
+        <Button
+          {...targets(`manage schedules edit`, `edit the currently selected schedule`)}
+          onClick={() => {
+            setGroupSchedule(groupSchedulesRequest?.groupSchedules?.find(gs => gs.id === selected[0]));
+            setDialog('manage_schedule');
+            setSelected([]);
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -49,17 +52,20 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
     return [
       ...acts,
       <Tooltip key={'delete_schedule'} title="Delete">
-        <Button onClick={() => {
-          openConfirm({
-            isConfirming: true,
-            confirmEffect: 'Are you sure you want to delete these schedules? This cannot be undone.',
-            confirmAction: async () => {
-              await deleteGroupSchedule({ groupScheduleIds: selected.join(',') }).unwrap();
-              void getGroupSchedules();
-              setSelected([]);
-            }
-          });
-        }}>
+        <Button
+          {...targets(`manage schedules delete`, `delete the currently selected schedule or schedules`)}
+          onClick={() => {
+            openConfirm({
+              isConfirming: true,
+              confirmEffect: 'Are you sure you want to delete these schedules? This cannot be undone.',
+              confirmAction: async () => {
+                await deleteGroupSchedule({ groupScheduleIds: selected.join(',') }).unwrap();
+                void getGroupSchedules();
+                setSelected([]);
+              }
+            });
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
           <DeleteIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -78,10 +84,13 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
     toolbar: () => <>
       <Typography variant="button">Master Schedules:</Typography>
       <Tooltip key={'manage_role'} title="Create">
-        <Button onClick={() => {
-          setGroupSchedule(undefined);
-          setDialog('manage_schedule')
-        }}>
+        <Button
+          {...targets(`manage schedules create`, `create a new master group schedule`)}
+          onClick={() => {
+            setGroupSchedule(undefined);
+            setDialog('manage_schedule')
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
           <MoreTimeIcon sx={classes.variableButtonIcon} />
         </Button>

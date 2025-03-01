@@ -12,7 +12,7 @@ import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs } from 'awayto/hooks';
+import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs, targets } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
@@ -168,7 +168,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
   }, [lookupsRetrieved, schedule.id]);
 
   useEffect(() => {
-    if (!groupSchedule.schedule?.scheduleTimeUnitName) {
+    if (!groupSchedule.schedule?.scheduleTimeUnitName && scheduleTimeUnitName && bracketTimeUnitName && slotTimeUnitName) {
       setGroupSchedule({
         schedule: {
           ...groupSchedule.schedule,
@@ -193,9 +193,9 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
 
             <Box mb={4}>
               <TextField
+                {...targets(`manage schedule modal schedule name`, `Schedule Name`, `change the name of the schedule`)}
                 fullWidth
                 disabled={!!schedule.id}
-                label="Name"
                 helperText="Ex: Spring 2022 Campaign, Q1 Offering"
                 value={schedule.name || ''}
                 required
@@ -208,8 +208,8 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
                 <Grid size={6}>
 
                   <TextField
+                    {...targets(`manage schedule modal start date`, `Start Date`, `set when the schedule should start`)}
                     fullWidth
-                    label="Start Date"
                     type="date"
                     value={schedule.startTime || ''}
                     required
@@ -236,8 +236,8 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
                 </Grid>
                 <Grid size={6}>
                   <TextField
+                    {...targets(`manage schedule modal end date`, `End Date`, `set when the schedule should end`)}
                     fullWidth
-                    label="End Date"
                     type="date"
                     value={schedule.endTime || ''}
                     helperText="Optional. No bookings will be allowed after this date."
@@ -259,8 +259,16 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
             <Box mb={4}>
               {!schedule.id ? <>
                 <Typography variant="body2">Use premade selections for this schedule.</Typography>
-                <Button color="secondary" onClick={() => setDefault('hoursweekly30minsessions')}>reset weekly, 30 minute appointments</Button><br />
-                <Button color="secondary" onClick={() => setDefault('dailybookingpermonth')}>reset monthly, full-day booking</Button>
+                <Button
+                  {...targets(`manage schedule modal preset hoursweekly`, `use schedule preset that resets weekly and has 30 minute appointments`)}
+                  color="secondary"
+                  onClick={() => setDefault('hoursweekly30minsessions')}
+                >reset weekly, 30 minute appointments</Button><br />
+                <Button
+                  {...targets(`manage schedule modal preset dailymonth`, `use schedule preset that resets monthly and has full day bookings`)}
+                  color="secondary"
+                  onClick={() => setDefault('dailybookingpermonth')}
+                >reset monthly, full-day booking</Button>
               </> : <>
                 <Alert color="info">Schedule template durations are read-only after creation.</Alert>
               </>}
@@ -346,9 +354,9 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
 
             <Box mb={4}>
               <TextField
+                {...targets(`manage schedule modal slot context name`, `Booking Slot Length`, `an uneditable field showing the currently selected slot context name`)}
                 disabled={true}
                 defaultValue={schedule.slotTimeUnitName}
-                label="Booking Slot Length"
                 helperText={`The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.`}
                 slotProps={{
                   inputLabel: {
@@ -360,6 +368,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
               {slotDurationMarks.length > 1 && <Box mt={2} sx={{ display: 'flex', alignItems: 'baseline' }}>
                 <Box>{schedule.slotDuration} <span>&nbsp;</span> &nbsp;</Box>
                 <Slider
+                  {...targets(`manage schedule modal slot value`, `adjust the numeric value of the slot duration`)}
                   disabled={!!schedule.id}
                   value={schedule.slotDuration}
                   step={null}
@@ -384,8 +393,15 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
     </CardContent>
     {!onValidChanged && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
-        {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-        <Button disabled={!schedule.name || !schedule.startTime} onClick={handleSubmit}>Save Schedule</Button>
+        {showCancel && <Button
+          {...targets(`manage schedule modal close`, `close the schedule management modal`)}
+          onClick={closeModal}
+        >Cancel</Button>}
+        <Button
+          {...targets(`manage schedule modal submit`, `submit the current schedule for editing or creation`)}
+          disabled={!schedule.name || !schedule.startTime}
+          onClick={handleSubmit}
+        >Save Schedule</Button>
       </Grid>
     </CardActions>}
   </Card >

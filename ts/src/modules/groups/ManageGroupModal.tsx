@@ -15,7 +15,7 @@ import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { useDebounce, useUtil, refreshToken, siteApi, IGroup } from 'awayto/hooks';
+import { useDebounce, useUtil, refreshToken, siteApi, IGroup, targets } from 'awayto/hooks';
 
 const {
   VITE_REACT_APP_AI_ENABLED
@@ -144,12 +144,10 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
         <Grid container spacing={4}>
           <Grid size={12}>
             <TextField
+              {...targets(`manage group modal group name`, `Group Name`, `edit the group's name`)}
               fullWidth
-              id="name"
-              label="Group Name"
               value={group.displayName}
               error={badName}
-              name="name"
               onChange={e => {
                 setGroup({ ...group, displayName: e.target.value });
               }}
@@ -179,10 +177,9 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
 
           <Grid size={12}>
             <TextField
-              id={`group-purpose-entry`}
+              {...targets(`manage group modal group purpose`, `Group Description`, `edit the group's description`)}
               fullWidth
               helperText={'Enter a short phrase about the function of your group (max. 100 characters).'}
-              label={`Group Description`}
               required
               error={purposeEdited.current && (group.purpose.length == 0 || group.purpose.length > 100)}
               onChange={e => {
@@ -196,15 +193,15 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
 
           <Grid size={12}>
             <TextField
-              id={`group-allowed-domains-entry`}
+              {...targets(`group allowed domains entry`, `Allowed Email Domains`, `input an email domain to be added to the approved list`)}
               fullWidth
               helperText={`These email domains will be allowed to join the group. Leaving this empty means anyone can join.`}
-              label={`Allowed Email Domains`}
               onChange={e => setAllowedDomain(e.target.value)}
               value={allowedDomain}
               slotProps={{
                 input: {
                   endAdornment: <Button
+                    {...targets(`manage group modal add email`, `add the current domain input to the list of approved email domains`)}
                     variant="text"
                     color="secondary"
                     onClick={() => {
@@ -222,7 +219,7 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
             <Grid container>
               {allowedDomains.map((ad, i) => <Box key={`allowed-domain-selection-${i}`} mt={2} mr={2}>
                 <Chip
-                  label={ad}
+                  {...targets(`group allowed domains delete ${i}`, ad, `remove ${ad} from the list of allowed domains`)}
                   color="secondary"
                   onDelete={() => {
                     setAllowedDomains(allowedDomains.filter(da => da !== ad))
@@ -235,14 +232,13 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
           {'1' == VITE_REACT_APP_AI_ENABLED && <Grid size={12}>
             <FormGroup>
               <FormControlLabel
-                id={`group-disable-ai-entry`}
+                {...targets(`manage group modal ai`, `Use AI Suggestions`, `toggle ai suggestions being shown across the site when filling certain inputs`)}
                 control={
                   <Checkbox
                     checked={group.ai}
                     onChange={() => setGroup({ ...group, ai: !group.ai })}
                   />
                 }
-                label="Use AI Suggestions"
               />
               <Typography variant="caption">AI suggestions will be seen by all group members. This functionality can be toggled on/off in group settings. Group name and description are used to generate suggestions.</Typography>
             </FormGroup>
@@ -251,8 +247,17 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
       </CardContent>
       {!onValidChanged && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
-          {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-          <Button color="info" size="large" disabled={!editGroup?.id && (group.purpose.length > 100 || badName)} onClick={handleSubmit}>
+          {showCancel && <Button
+            {...targets(`manage group modal close`, `close the edit group details modal`)}
+            onClick={closeModal}
+          >Cancel</Button>}
+          <Button
+            {...targets(`manage group modal submit`, `submit the current group details for editing or creation`)}
+            color="info"
+            size="large"
+            disabled={!editGroup?.id && (group.purpose.length > 100 || badName)}
+            onClick={handleSubmit}
+          >
             Save Group
           </Button>
         </Grid>

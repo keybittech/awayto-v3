@@ -15,7 +15,7 @@ import IconButton from '@mui/material/IconButton';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
-import { shortNSweet } from 'awayto/hooks';
+import { shortNSweet, targets } from 'awayto/hooks';
 
 import PendingQuotesContext, { PendingQuotesContextType } from './PendingQuotesContext';
 
@@ -59,8 +59,8 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
           secondaryAction={!!selectedPendingQuotes.length && <>
             <Tooltip title="Approve">
               <IconButton
+                {...targets(`pending requests menu approve`, `approve selected pending requests`)}
                 edge="end"
-                aria-label={"approve selected pending quotes"}
                 onClick={approvePendingQuotes}
               >
                 <ApprovalIcon />
@@ -69,8 +69,8 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
             &nbsp;&nbsp;&nbsp;
             <Tooltip title="Deny">
               <IconButton
+                {...targets(`pending requests menu deny`, `deny selected pending requests`)}
                 edge="end"
-                aria-label="deny selected pending quotes"
                 onClick={denyPendingQuotes}
               >
                 <DoNotDisturbIcon />
@@ -81,13 +81,13 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
           <ListItemButton role={undefined} dense>
             <ListItemIcon>
               <Checkbox
+                {...targets(`pending requests menu select all`, `select all pending requests in the list`)}
                 disableRipple
                 tabIndex={-1}
                 onClick={handleSelectPendingQuoteAll}
                 checked={selectedPendingQuotes.length === pendingQuotes.length && pendingQuotes.length !== 0}
                 indeterminate={selectedPendingQuotes.length !== pendingQuotes.length && selectedPendingQuotes.length !== 0}
                 disabled={pendingQuotes.length === 0}
-                inputProps={{ 'aria-label': 'all pending requests selected' }}
               />
             </ListItemIcon>
             <ListItemText primary="Pending Requests" />
@@ -104,14 +104,13 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
             <ListItemButton role={undefined} onClick={() => handleSelectPendingQuote(pq.id)} dense>
               <ListItemIcon>
                 <Checkbox
+                  {...targets(`pending requests menu select ${i}`, `select a single pending request from the list`)}
                   checked={selectedPendingQuotes.indexOf(pq.id) !== -1}
                   tabIndex={-1}
                   disableRipple
-                  inputProps={{ 'aria-labelledby': `checkbox-list-label-${i}` }}
                 />
               </ListItemIcon>
               <ListItemText
-                id={`checkbox-list-label-${i}`}
                 primary={`${shortNSweet(pq.slotDate, pq.startTime)}`}
                 secondary={`${pq.serviceName} ${pq.serviceTierName}`}
               />

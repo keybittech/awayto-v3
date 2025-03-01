@@ -9,7 +9,7 @@ import MenuItem from '@mui/material/MenuItem';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { IUserProfile, siteApi } from 'awayto/hooks';
+import { IUserProfile, siteApi, targets } from 'awayto/hooks';
 
 interface ManageUserModalProps extends IComponent {
   editRoleId: string;
@@ -107,8 +107,16 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: ManageUser
             <Grid container direction="column" spacing={4} justifyContent="space-evenly" >
 
               <Grid>
-                <TextField select fullWidth id="roleId" label="Role" value={roleId} name="roleId" onChange={e => setRoleId(e.target.value)}>
-                  {groupRolesRequest?.groupRoles?.map(gr => <MenuItem key={`${gr.role?.id}_user_profile_role_select`} value={gr.role?.id}>{gr.role?.name}</MenuItem>)}
+                <TextField
+                  {...targets(`manage user modal role selection`, `Role`, `edit the user's role`)}
+                  select
+                  fullWidth
+                  value={roleId}
+                  onChange={e => setRoleId(e.target.value)}
+                >
+                  {groupRolesRequest?.groupRoles?.map(gr =>
+                    <MenuItem key={`${gr.role?.id}_user_profile_role_select`} value={gr.role?.id}>{gr.role?.name}</MenuItem>
+                  )}
                 </TextField>
               </Grid>
 
@@ -144,8 +152,14 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: ManageUser
       <CardActions>
 
         <Grid container justifyContent="space-between">
-          <Button onClick={closeModal}>Cancel</Button>
-          <Button onClick={handleSubmit}>{profile.sub ? 'update' : 'create'}</Button>
+          <Button
+            {...targets(`manage users modal close`, `close the user management modal`)}
+            onClick={closeModal}
+          >Cancel</Button>
+          <Button
+            {...targets(`mange users modal submit`, `submit changes to the current user`)}
+            onClick={handleSubmit}
+          >{profile.sub ? 'update' : 'create'}</Button>
         </Grid>
       </CardActions>
     </Card>

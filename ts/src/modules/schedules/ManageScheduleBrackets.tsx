@@ -12,7 +12,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, useUtil, siteApi, dayjs, plural, ISchedule } from 'awayto/hooks';
+import { useGrid, useUtil, siteApi, dayjs, plural, ISchedule, targets } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from '../groups/GroupContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -57,16 +57,20 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
     const { length } = selected;
     const acts = length == 1 ? [
       <Tooltip key={'manage_schedule'} title="Edit">
-        <IconButton key={'manage_schedule'} onClick={() => {
-          const sched = schedulesRequest?.schedules.find(sc => sc.id == selected[0])
-          if (sched?.id && !isFetching) {
-            getScheduleById({ id: sched.id }).unwrap().then(({ schedule: sbid }) => {
-              setSchedule(sbid);
-              setDialog('manage_schedule');
-              setSelected([]);
-            }).catch(console.error);
-          }
-        }}>
+        <IconButton
+          {...targets(`manage schedule brackets edit`, `edit the currently selected schedule`)}
+          key={'manage_schedule'}
+          onClick={() => {
+            const sched = schedulesRequest?.schedules.find(sc => sc.id == selected[0])
+            if (sched?.id && !isFetching) {
+              getScheduleById({ id: sched.id }).unwrap().then(({ schedule: sbid }) => {
+                setSchedule(sbid);
+                setDialog('manage_schedule');
+                setSelected([]);
+              }).catch(console.error);
+            }
+          }}
+        >
           <CreateIcon />
         </IconButton>
       </Tooltip>
@@ -75,25 +79,28 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
     return [
       ...acts,
       <Tooltip key={'delete_schedule'} title="Delete">
-        <IconButton onClick={() => {
-          openConfirm({
-            isConfirming: true,
-            confirmEffect: `Remove ${plural(selected.length, 'schedule', 'schedules')}. This cannot be undone.`,
-            confirmAction: async () => {
-              const ids = selected.join(',');
-              await deleteGroupUserScheduleByUserScheduleId({ ids }).unwrap();
-              await deleteSchedule({ ids }).unwrap();
+        <IconButton
+          {...targets(`manage schedule brackets delete`, `delete the currently selected schedule or schedules`)}
+          onClick={() => {
+            openConfirm({
+              isConfirming: true,
+              confirmEffect: `Remove ${plural(selected.length, 'schedule', 'schedules')}. This cannot be undone.`,
+              confirmAction: async () => {
+                const ids = selected.join(',');
+                await deleteGroupUserScheduleByUserScheduleId({ ids }).unwrap();
+                await deleteSchedule({ ids }).unwrap();
 
-              void getSchedules();
-              void refetchGroupSchedules().then(() => {
-                void refetchGroupUserSchedules();
-                void refetchGroupUserScheduleStubs();
-              });
+                void getSchedules();
+                void refetchGroupSchedules().then(() => {
+                  void refetchGroupUserSchedules();
+                  void refetchGroupUserScheduleStubs();
+                });
 
-              setSnack({ snackType: 'success', snackOn: 'Successfully removed schedule records.' });
-            }
-          });
-        }}>
+                setSnack({ snackType: 'success', snackOn: 'Successfully removed schedule records.' });
+              }
+            });
+          }}
+        >
           <DeleteIcon />
         </IconButton>
       </Tooltip>
@@ -112,14 +119,18 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
       {/* <GroupSelect /> */}
       <Box pt={2} sx={{ width: '100%' }}>
         <Typography variant="button">Schedules:</Typography>
-        <Button key={'create_schedule_button'} onClick={() => {
-          if (groupSchedules?.length) {
-            setSchedule({});
-            setDialog('manage_schedule');
-          } else {
-            setSnack({ snackType: 'warning', snackOn: 'There are no available master schedules.' })
-          }
-        }}>Create</Button>
+        <Button
+          {...targets(`manage schedule brackets create`, `create a new personal schedule`)}
+          key={'create_schedule_button'}
+          onClick={() => {
+            if (groupSchedules?.length) {
+              setSchedule({});
+              setDialog('manage_schedule');
+            } else {
+              setSnack({ snackType: 'warning', snackOn: 'There are no available master schedules.' })
+            }
+          }}
+        >Create</Button>
         {!!selected.length && <Box sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Box>}
       </Box>
     </>

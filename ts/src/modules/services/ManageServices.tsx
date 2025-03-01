@@ -13,7 +13,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupService, IGroup } from 'awayto/hooks';
+import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupService, IGroup, targets } from 'awayto/hooks';
 import ManageServiceModal from './ManageServiceModal';
 
 export function ManageServices(_: IComponent): React.JSX.Element {
@@ -35,15 +35,18 @@ export function ManageServices(_: IComponent): React.JSX.Element {
     const { length } = selected;
     const acts = length == 1 ? [
       <Tooltip key={'manage_service'} title="Edit">
-        <Button onClick={() => {
-          const gs = groupServicesRequest?.groupServices.find(gs => gs.serviceId === selected[0]);
-          if (gs?.groupId && userProfileRequest?.userProfile.groups) {
-            setGroup(userProfileRequest.userProfile.groups[gs.groupId]);
-            setGroupService(gs);
-            setDialog('manage_service');
-            setSelected([]);
-          }
-        }}>
+        <Button
+          {...targets(`manage services edit`, `edit the currently selected service`)}
+          onClick={() => {
+            const gs = groupServicesRequest?.groupServices.find(gs => gs.serviceId === selected[0]);
+            if (gs?.groupId && userProfileRequest?.userProfile.groups) {
+              setGroup(userProfileRequest.userProfile.groups[gs.groupId]);
+              setGroupService(gs);
+              setDialog('manage_service');
+              setSelected([]);
+            }
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -53,18 +56,21 @@ export function ManageServices(_: IComponent): React.JSX.Element {
     return [
       ...acts,
       <Tooltip key={'delete_service'} title="Delete">
-        <Button onClick={() => {
-          openConfirm({
-            isConfirming: true,
-            confirmEffect: 'Are you sure you want to delete these services? This cannot be undone.',
-            confirmAction: () => {
-              deleteGroupService({ ids: selected.join(',') }).unwrap().then(() => {
-                void getGroupServices();
-                setSelected([]);
-              }).catch(console.error);
-            }
-          });
-        }}>
+        <Button
+          {...targets(`manage services delete`, `delete the currently selected service or services`)}
+          onClick={() => {
+            openConfirm({
+              isConfirming: true,
+              confirmEffect: 'Are you sure you want to delete these services? This cannot be undone.',
+              confirmAction: () => {
+                deleteGroupService({ ids: selected.join(',') }).unwrap().then(() => {
+                  void getGroupServices();
+                  setSelected([]);
+                }).catch(console.error);
+              }
+            });
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
           <DeleteIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -84,10 +90,13 @@ export function ManageServices(_: IComponent): React.JSX.Element {
     toolbar: () => <>
       <Typography variant="button">Services:</Typography>
       <Tooltip key={'create_service'} title="Create">
-        <Button onClick={() => {
-          setGroupService({});
-          setDialog('manage_service');
-        }}>
+        <Button
+          {...targets(`manage services create`, `create a new service`)}
+          onClick={() => {
+            setGroupService({});
+            setDialog('manage_service');
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
           <DomainAddIcon sx={classes.variableButtonIcon} />
         </Button>

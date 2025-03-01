@@ -6,7 +6,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 
-import { siteApi, useUtil, UserEmail } from 'awayto/hooks';
+import { siteApi, useUtil, UserEmail, targets } from 'awayto/hooks';
 import { TextField } from '@mui/material';
 
 export function InviteUsersModal({ closeModal }: IComponent): React.JSX.Element {
@@ -45,7 +45,7 @@ export function InviteUsersModal({ closeModal }: IComponent): React.JSX.Element 
             <Grid container>
               <Grid size={12}>
                 <TextField
-                  label="Email"
+                  {...targets(`invite users modal email`, `Email`, `provide an email to use for inviting the user`)}
                   type="email"
                   placeholder="Type an email and press enter..."
                   fullWidth
@@ -75,8 +75,14 @@ export function InviteUsersModal({ closeModal }: IComponent): React.JSX.Element 
       </CardContent>
       <CardActions>
         <Grid container justifyContent="flex-end">
-          <Button onClick={closeModal}>Cancel</Button>
-          <Button onClick={handleSubmit}>Submit</Button>
+          <Button
+            {...targets(`invite users modal close`, `close the invite users modal`)}
+            onClick={closeModal}
+          >Cancel</Button>
+          <Button
+            {...targets(`invite users modal submit`, `submit the form to invite new members to the group`)}
+            onClick={handleSubmit}
+          >Submit</Button>
         </Grid>
       </CardActions>
     </Card>

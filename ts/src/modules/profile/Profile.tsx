@@ -5,7 +5,7 @@ import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { siteApi, useStyles, useUtil, IUserProfile, PatchUserProfileRequest } from 'awayto/hooks';
+import { siteApi, useStyles, useUtil, IUserProfile, PatchUserProfileRequest, targets } from 'awayto/hooks';
 import PickTheme from '../common/PickTheme';
 import ManageGroups from '../groups/ManageGroups';
 
@@ -91,13 +91,31 @@ export function Profile(props: IComponent): React.JSX.Element {
             <Typography variant="h6">Profile</Typography>
           </Grid>
           <Grid>
-            <TextField fullWidth id="firstName" label="First Name" autoComplete="on" value={profile.firstName} name="firstName" onChange={e => setProfile({ ...profile, firstName: e.target.value })} />
+            <TextField
+              {...targets(`profile first name`, `First Name`, `edit the first name of your profile`)}
+              fullWidth
+              autoComplete="on"
+              value={profile.firstName}
+              onChange={e => setProfile({ ...profile, firstName: e.target.value })}
+            />
           </Grid>
           <Grid>
-            <TextField fullWidth id="lastName" label="Last Name" autoComplete="on" value={profile.lastName} name="lastName" onChange={e => setProfile({ ...profile, lastName: e.target.value })} />
+            <TextField
+              {...targets(`profile last name`, `Last Name`, `edit the last name of your profile`)}
+              fullWidth
+              autoComplete="on"
+              value={profile.lastName}
+              onChange={e => setProfile({ ...profile, lastName: e.target.value })}
+            />
           </Grid>
           <Grid>
-            <TextField fullWidth id="email" label="Email" autoComplete="on" value={profile.email} name="email" onChange={e => setProfile({ ...profile, email: e.target.value })} />
+            <TextField
+              {...targets(`profile email`, `Email`, `edit the email of your profile`)}
+              fullWidth
+              autoComplete="on"
+              value={profile.email}
+              onChange={e => setProfile({ ...profile, email: e.target.value })}
+            />
           </Grid>
           {/* <Grid>
             <Typography variant="h6">Image</Typography>
@@ -152,7 +170,11 @@ export function Profile(props: IComponent): React.JSX.Element {
         </Grid>
       </Grid>
       <Grid size={12}>
-        <Button sx={classes.red} onClick={handleSubmit}>Submit</Button>
+        <Button
+          {...targets(`profile submit`, `submit edits to your profile`)}
+          sx={classes.red}
+          onClick={handleSubmit}
+        >Submit</Button>
       </Grid>
     </Grid>
   </>

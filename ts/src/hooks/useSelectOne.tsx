@@ -5,6 +5,7 @@ import MenuItem from '@mui/material/MenuItem';
 
 import { ILookup } from './api';
 import { UseSiteQuery } from './store';
+import { targets, toSnakeCase } from './util';
 
 export type UseSelectOneResponse<T> = {
   item?: T;
@@ -37,7 +38,7 @@ export function useSelectOne<T extends Partial<ILookup>>(label: string, { data: 
     item: (items ? items?.find(it => it.id === itemId) : {}) as T,
     setId: setItemId,
     comp: (props) => items?.length ? <TextField
-      label={label}
+      {...targets(`select one selection ${label}`, label, `make a selection for ${label}`)}
       select
       fullWidth
       value={itemId}

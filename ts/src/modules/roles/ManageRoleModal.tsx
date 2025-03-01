@@ -9,7 +9,7 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Checkbox from '@mui/material/Checkbox';
 
-import { useUtil, siteApi, IRole } from 'awayto/hooks';
+import { useUtil, siteApi, IRole, targets } from 'awayto/hooks';
 import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
@@ -62,11 +62,9 @@ export function ManageRoleModal({ editRole, isDefault, closeModal }: ManageRoleM
               </Grid>
               <Grid>
                 <TextField
+                  {...targets(`manage role modal name`, `Role Name`, `edit the role's name`)}
                   fullWidth
                   autoFocus
-                  id="name"
-                  label="Name"
-                  name="name"
                   value={role.name}
                   onKeyDown={e => {
                     if ('Enter' === e.key) {
@@ -78,14 +76,13 @@ export function ManageRoleModal({ editRole, isDefault, closeModal }: ManageRoleM
               <Grid>
                 <FormGroup>
                   <FormControlLabel
-                    id={`default-role-selection`}
+                    {...targets(`manage role modal default`, `Use as Default`, `toggle whether this role should be applied to new members of the group automatically`)}
                     control={
                       <Checkbox
                         checked={defaultRole}
                         onChange={() => setDefaultRole(!defaultRole)}
                       />
                     }
-                    label="Use as Default Role"
                   />
                 </FormGroup>
               </Grid>
@@ -95,8 +92,14 @@ export function ManageRoleModal({ editRole, isDefault, closeModal }: ManageRoleM
       </CardContent>
       <CardActions>
         <Grid container justifyContent="space-between">
-          <Button onClick={closeModal}>Cancel</Button>
-          <Button onClick={() => void handleSubmit()}>Submit</Button>
+          <Button
+            {...targets(`manage role modal close`, `close the role details editing modal`)}
+            onClick={closeModal}
+          >Cancel</Button>
+          <Button
+            {...targets(`manage role modal submit`, `submit the role details for editing or creation`)}
+            onClick={() => void handleSubmit()}
+          >Submit</Button>
         </Grid>
       </CardActions>
     </Card>

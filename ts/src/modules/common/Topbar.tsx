@@ -27,7 +27,7 @@ import GroupIcon from '@mui/icons-material/Group';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-import { useSecure, siteApi, keycloak, useStyles, SiteRoles } from 'awayto/hooks';
+import { useSecure, siteApi, keycloak, useStyles, SiteRoles, targets } from 'awayto/hooks';
 
 import UpcomingBookingsMenu from '../bookings/UpcomingBookingsMenu';
 import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
@@ -90,8 +90,8 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
     <Grid sx={{ display: { xs: 'flex', md: true ? 'flex' : !props.forceSiteMenu ? 'none' : 'flex' } }}>
       <Tooltip title="Menu">
         <Button
+          {...targets(`topbar open menu`, `show main menu`)}
           role="navigation"
-          aria-label="show mobile main menu"
           aria-controls={mobileMenuId}
           aria-haspopup="true"
           onClick={e => setMobileMoreAnchorEl(e.currentTarget)}
@@ -116,7 +116,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
             <IconButton
               disableRipple
               color="primary"
-              aria-label={`view ${upcomingBookings.length} exchanges`}
+              {...targets(`topbar exchange toggle`, `view ${upcomingBookings.length} exchanges`)}
               aria-controls={upcomingBookingsMenuId}
               aria-haspopup="true"
               onClick={e => setUpcomingBookingsAnchorEl(e.currentTarget)}
@@ -147,7 +147,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
             <IconButton
               disableRipple
               color="primary"
-              aria-label={`show ${pendingQuotes.length} pending exchange requests`}
+              {...targets(`topbar pending toggle`, `show ${pendingQuotes.length} pending exchange requests`)}
               aria-controls={pendingQuotesMenuId}
               aria-haspopup="true"
               onClick={e => setPendingQuotesAnchorEl(e.currentTarget)}
@@ -171,7 +171,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
             <IconButton
               disableRipple
               color="primary"
-              aria-label={`submit group or site feedback`}
+              {...targets(`topbar feedback toggle`, `submit group or site feedback`)}
               aria-controls={feedbackMenuId}
               aria-haspopup="true"
               onClick={e => setFeedbackAnchorEl(e.currentTarget)}
@@ -204,20 +204,27 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
       <Box sx={{ width: 250 }}>
         <MenuList>
 
-          <MenuItem aria-label="navigate to home" onClick={e => handleNavAndClose(e, '/')}>
+          <MenuItem
+            {...targets(`main menu go home`, `go to the home page`)}
+            onClick={e => handleNavAndClose(e, '/')}
+          >
             <ListItemIcon><GroupIcon color={location.pathname === '/' ? "secondary" : "primary"} /></ListItemIcon>
             <ListItemText>Home</ListItemText>
           </MenuItem>
 
-          <MenuItem aria-label="navigate to profile" onClick={e => handleNavAndClose(e, '/profile')}>
+          <MenuItem
+            {...targets(`main menu profile`, `go to your profile page`)}
+            onClick={e => handleNavAndClose(e, '/profile')}
+          >
             <ListItemIcon><AccountCircleIcon color={location.pathname === '/profile' ? "secondary" : "primary"} /></ListItemIcon>
             <ListItemText>Profile</ListItemText>
           </MenuItem>
 
-          <MenuItem aria-label="switch between dark and light theme">
+          <MenuItem>
             <ListItemText>
               Dark
               <Switch
+                {...targets(`main menu toggle color mode`, `toggle to switch between dark and light mode`)}
                 checked={mode == 'light'}
                 onChange={e => {
                   setMode(e.target.checked ? 'light' : 'dark');
@@ -239,25 +246,36 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
             <ListItemText>Service</ListItemText>
           </MenuItem> */}
 
-          <MenuItem hidden={!hasRole([SiteRoles.APP_GROUP_SCHEDULES])} aria-label="navigate to create schedule" onClick={e => handleNavAndClose(e, '/schedule')}>
+          <MenuItem
+            {...targets(`main menu manage personal schedules`, `view your personal schedules`)}
+            hidden={!hasRole([SiteRoles.APP_GROUP_SCHEDULES])}
+            onClick={e => handleNavAndClose(e, '/schedule')}
+          >
             <ListItemIcon><EventNoteIcon color={location.pathname === '/schedule' ? "secondary" : "primary"} /></ListItemIcon>
             <ListItemText>Schedule</ListItemText>
           </MenuItem>
 
-          <MenuItem hidden={!hasRole([SiteRoles.APP_GROUP_BOOKINGS])} aria-label="navigate to create request" onClick={e => handleNavAndClose(e, '/request')}>
+          <MenuItem
+            {...targets(`main menu request quote`, `go to make a request for service`)}
+            hidden={!hasRole([SiteRoles.APP_GROUP_BOOKINGS])}
+            onClick={e => handleNavAndClose(e, '/request')}
+          >
             <ListItemIcon><MoreTimeIcon color={location.pathname === '/request' ? "secondary" : "primary"} /></ListItemIcon>
             <ListItemText>Request</ListItemText>
           </MenuItem>
 
           <Divider />
 
-          <MenuItem aria-label="logout of the application" onClick={() => {
-            async function go() {
-              localStorage.clear();
-              await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
-            }
-            void go();
-          }}>
+          <MenuItem
+            {...targets(`main menu logout`, `logout of the website`)}
+            onClick={() => {
+              async function go() {
+                localStorage.clear();
+                await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
+              }
+              void go();
+            }}
+          >
             <ListItemIcon><LogoutIcon color="error" /></ListItemIcon>
             <ListItemText>Logout</ListItemText>
           </MenuItem>

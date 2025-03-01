@@ -9,7 +9,7 @@ import Grid from '@mui/material/Grid';
 
 import ClearIcon from '@mui/icons-material/Clear';
 
-import { useUtil, ILookup, isStringArray, toSnakeCase, targets } from 'awayto/hooks';
+import { useUtil, ILookup, isStringArray, targets } from 'awayto/hooks';
 
 type ActionBody = Record<string, string>;
 
@@ -180,10 +180,16 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
       }}
     >
       {!multiple && !noEmptyValue && <MenuItem value="">No selection</MenuItem>}
-      {createAction && <Button value="new" sx={{ mx: 1, mb: 1 }} variant="text" color="info" onClick={e => {
-        e.preventDefault();
-        setAddingNew(true);
-      }}>create {lookupName}</Button>}
+      {createAction && <Button
+        {...targets(`lookup creation toggle ${lookupName}`, `toggle to create a ${lookupName}`)}
+        value="new"
+        sx={{ mx: 1, mb: 1 }}
+        variant="text"
+        color="info"
+        onClick={e => {
+          e.preventDefault();
+          setAddingNew(true);
+        }}>create {lookupName}</Button>}
       {!lookups?.length && <MenuItem disabled>
         You have no pre-defined {lookupName}s.<br />
       </MenuItem>}

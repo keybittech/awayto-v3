@@ -1,7 +1,7 @@
 import React, { useCallback, useMemo, useEffect } from 'react';
 import Grid from '@mui/material/Grid';
 
-import { IForm, IFormSubmission } from 'awayto/hooks';
+import { IForm, IFormSubmission, targets } from 'awayto/hooks';
 import Field from './Field';
 
 interface FormDisplayProps extends IComponent {
@@ -50,8 +50,6 @@ export default function FormDisplay({ form, setForm }: FormDisplayProps): React.
               field={cell}
               fullWidth
               editable={true}
-              label={cell.l}
-              type={cell.t || 'text'}
               helperText={`${cell.r ? 'Required. aaa' : ''}${cell.h || ''}`}
               onBlur={(e: React.FocusEvent<HTMLInputElement>) => { setCellAttr(rowId, j, e.target.value, 'v') }}
               defaultValue={cell.v || ''}

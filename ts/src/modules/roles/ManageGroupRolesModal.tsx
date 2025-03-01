@@ -10,7 +10,7 @@ import Alert from '@mui/material/Alert';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 
-import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IRole } from 'awayto/hooks';
+import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IRole, targets } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 
 interface ManageGroupRolesModalProps extends IComponent {
@@ -130,11 +130,10 @@ export function ManageGroupRolesModal({ children, editGroup, onValidChanged, sav
           </Grid>
           {!!roleIds.length && <Grid size={12}>
             <TextField
+              {...targets(`manage group roles modal default role selection`, `Default Role`, `select the group's default role from the list`)}
               select
-              id={`group-default-role-selection`}
               fullWidth
               helperText={'Set the group default role. When members join the group, this role will be assigned.'}
-              label={`Default Role`}
               required
               onChange={e => setDefaultRoleId(e.target.value)}
               value={defaultRoleId}
@@ -149,8 +148,15 @@ export function ManageGroupRolesModal({ children, editGroup, onValidChanged, sav
       </CardContent>
       {!onValidChanged && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
-          {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-          <Button disabled={!defaultRoleId} onClick={handleSubmit}>Save Roles</Button>
+          {showCancel && <Button
+            {...targets(`manage group roles modal close`, `close the group role management modal`)}
+            onClick={closeModal}
+          >Cancel</Button>}
+          <Button
+            {...targets(`manage group roles modal submit`, `submit the current list of group roles for editing or creation`)}
+            disabled={!defaultRoleId}
+            onClick={handleSubmit}
+          >Save Roles</Button>
         </Grid>
       </CardActions>}
     </Card>

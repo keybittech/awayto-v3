@@ -11,7 +11,7 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { IGroupUserScheduleStub, shortNSweet, siteApi } from 'awayto/hooks';
+import { IGroupUserScheduleStub, shortNSweet, siteApi, targets } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
@@ -89,7 +89,6 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
       <CardContent>
 
         {groupSchedule && !getGroupUserSchedulesRequest?.groupUserSchedules?.length ? <Alert severity="info">
-
           The master schedule {groupSchedule.schedule?.name} has no available user schedules.
         </Alert> : <>
           {originalReplacement && <>
@@ -97,7 +96,13 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
               <Typography>Use an existing slot at the same date and time:</Typography>
             </Box>
             <Box mb={4}>
-              <Button fullWidth variant="contained" color="secondary" onClick={handleSubmit}>Reassign to {originalReplacement.username}</Button>
+              <Button
+                {...targets(`manage schedule stub modal reassign recommended`, `reassign the slot to the first recommended user`)}
+                fullWidth
+                variant="contained"
+                color="secondary"
+                onClick={handleSubmit}
+              >Reassign to {originalReplacement.username}</Button>
             </Box>
 
             <Grid container direction="row" alignItems="center" spacing={2} mb={4}>
@@ -132,7 +137,13 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
           </Box>
 
           {replacement?.username && <Box my={2}>
-            <Button onClick={handleSubmit} fullWidth variant="contained" color="secondary">Reassign to {replacement.username}</Button>
+            <Button
+              {...targets(`manage schedule stubs modal reassign specific`, `reassign the slot to a specifically assigned user`)}
+              onClick={handleSubmit}
+              fullWidth
+              variant="contained"
+              color="secondary"
+            >Reassign to {replacement.username}</Button>
           </Box>}
         </>}
 
@@ -140,7 +151,10 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
       </CardContent>
       <CardActions>
         <Grid container justifyContent="space-between">
-          <Button onClick={closeModal}>Close</Button>
+          <Button
+            {...targets(`manage schedule stubs modal close`, `close the slot reassignment modal`)}
+            onClick={closeModal}
+          >Close</Button>
         </Grid>
       </CardActions>
     </Card>

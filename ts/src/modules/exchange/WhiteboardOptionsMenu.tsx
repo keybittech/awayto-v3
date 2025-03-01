@@ -27,7 +27,7 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 
-import { SocketActions, useDebounce, useStyles, IWhiteboard } from 'awayto/hooks';
+import { SocketActions, useDebounce, useStyles, IWhiteboard, targets } from 'awayto/hooks';
 import type { PopoverOrigin } from '@mui/material';
 
 const scales = [.1, .25, .5, .8, 1, 1.25, 1.5, 2, 2.5, 3, 4];
@@ -145,6 +145,8 @@ export function WhiteboardOptionsMenu({
   return <Box sx={{ position: 'absolute', zIndex: 100, ...directions[dir].position }}>
     <Tooltip title="Board Options" children={
       <Button
+        {...targets(`whiteboard toggle settings`, `toggle whiteboard settings and tools`)}
+        aria-haspopup={true}
         sx={classes.darkRounded}
         endIcon={<ArrowDropDownIcon fontSize="small" />}
         ref={node => {
@@ -178,9 +180,9 @@ export function WhiteboardOptionsMenu({
         >
           <ListItem>
             <TextField
+              {...targets(`whiteboard zoom select`, `Zoom`, `change the whiteboard zoom setting`)}
               select
               fullWidth
-              label="Zoom"
               variant="standard"
               value={scale}
               onChange={e => setScale(parseFloat(e.target.value))}
@@ -195,12 +197,18 @@ export function WhiteboardOptionsMenu({
 
             <Box sx={{ minWidth: '72px', alignSelf: 'flex-end', ...classes.darkRounded }}>
               <Tooltip title="Zoom Out" children={
-                <IconButton onClick={() => setScale(false)}>
+                <IconButton
+                  {...targets(`whiteboard zoom out`, `zoom the whiteboard out`)}
+                  onClick={() => setScale(false)}
+                >
                   <RemoveIcon fontSize="small" />
                 </IconButton>
               } />
               <Tooltip title="Zoom In" children={
-                <IconButton onClick={() => setScale(true)}>
+                < IconButton
+                  {...targets(`whiteboard zoom in`, `zoom the whiteboard in`)}
+                  onClick={() => setScale(true)}
+                >
                   <AddIcon fontSize="small" />
                 </IconButton>
               } />
@@ -210,7 +218,7 @@ export function WhiteboardOptionsMenu({
           <ListItem>
             <TextField
               fullWidth
-              label="Page"
+              {...targets(`whiteboard page number`, `Page`, `change to a specific page of the currently shared document`)}
               type="number"
               variant="standard"
               value={pageNumber}
@@ -225,22 +233,34 @@ export function WhiteboardOptionsMenu({
 
             <Box sx={{ minWidth: '144px', alignSelf: 'flex-end', ...classes.darkRounded }}>
               <Tooltip title="First Page" children={
-                <IconButton onClick={() => setPage(1)}>
+                <IconButton
+                  {...targets(`whiteboard first page`, `go to the first page of shared document`)}
+                  onClick={() => setPage(1)}
+                >
                   <KeyboardDoubleArrowLeftIcon fontSize="small" />
                 </IconButton>
               } />
               <Tooltip title="Previous Page" children={
-                <IconButton onClick={() => setPage(false)}>
+                <IconButton
+                  {...targets(`whiteboard previous page`, `go to the previous page of shared document`)}
+                  onClick={() => setPage(false)}
+                >
                   <KeyboardArrowLeftIcon fontSize="small" />
                 </IconButton>
               } />
               <Tooltip title="Next Page" children={
-                <IconButton onClick={() => setPage(true)}>
+                <IconButton
+                  {...targets(`whiteboard next page`, `go to the next page of shared document`)}
+                  onClick={() => setPage(true)}
+                >
                   <KeyboardArrowRightIcon fontSize="small" />
                 </IconButton>
               } />
               <Tooltip title="Last Page" children={
-                <IconButton onClick={() => setPage(numPages)}>
+                <IconButton
+                  {...targets(`whiteboard last page`, `go to the last page of shared document`)}
+                  onClick={() => setPage(numPages)}
+                >
                   <KeyboardDoubleArrowRightIcon fontSize="small" />
                 </IconButton>
               } />
@@ -258,6 +278,7 @@ export function WhiteboardOptionsMenu({
             secondaryAction={
               <Tooltip title="Clear Canvas">
                 <IconButton
+                  {...targets(`whiteboard clear canvas`, `remove all drawings from whiteboard`)}
                   color="error"
                   onClick={() => {
                     if (whiteboardRef) {
@@ -272,25 +293,37 @@ export function WhiteboardOptionsMenu({
             }
           >
             <Tooltip title="Pan">
-              <IconButton onClick={() => setPointerEvents('none')} >
+              <IconButton
+                {...targets(`whiteboard pan`, `set the mouse to pan mode in order to drag the whiteboard around`)}
+                onClick={() => setPointerEvents('none')}
+              >
                 <PanToolIcon color={panning ? 'info' : 'primary'} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Pen">
-              <IconButton onClick={() => setDrawStyle(false)} >
+              <IconButton
+                {...targets(`whiteboard pen`, `set the mouse to pen drawing mode`)}
+                onClick={() => setDrawStyle(false)}
+              >
                 <EditIcon color={!panning && penning ? 'info' : 'primary'} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Brush">
-              <IconButton onClick={() => setDrawStyle(true)} >
+              <IconButton
+                {...targets(`whiteboard brush`, `set the mouse to brush drawing mode`)}
+                onClick={() => setDrawStyle(true)}
+              >
                 <BrushIcon color={!panning && !penning ? 'info' : 'primary'} />
               </IconButton>
             </Tooltip>
 
             <Tooltip title="Select Color">
-              <IconButton onClick={console.log}>
+              <IconButton
+                {...targets(`whiteboard color select`, `select a color to draw with`)}
+                onClick={console.log}
+              >
                 <Box
                   sx={{
                     width: '24px',
@@ -318,6 +351,7 @@ export function WhiteboardOptionsMenu({
 
             <Tooltip title="Reposition" children={
               <IconButton
+                {...targets(`whiteboard settings reposition`, `reposition the settings menu to a different part of the whiteboard`)}
                 component="div"
                 ref={repositoningRef}
                 sx={{ background: directions[dir].background }}

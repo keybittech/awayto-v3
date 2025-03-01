@@ -11,7 +11,7 @@ import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 
-import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService, useDebounce } from 'awayto/hooks';
+import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService, useDebounce, targets } from 'awayto/hooks';
 import { Checkbox, FormControlLabel } from '@mui/material';
 import FormPicker from '../forms/FormPicker';
 import SelectLookup from '../common/SelectLookup';
@@ -46,7 +46,7 @@ interface ManageServiceModalProps extends IComponent {
   saveToggle?: number;
 }
 
-export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupService, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageServiceModalProps) {
+export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupService, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageServiceModalProps): React.JSX.Element {
 
   const classes = useStyles();
 
@@ -198,8 +198,8 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
             <Typography variant="caption">Services relate to the work performed during appointments. They can be specific or more broad. For example, a "Tutoring" service where all consultants handle all subjects, versus two separate "Math Tutoring" and "English Tutoring" services.</Typography>
             <Box my={2}>
               <TextField
+                {...targets(`manage service modal service name`, `Service Name`, `edit the name of the service`)}
                 fullWidth
-                label="Service Name"
                 required
                 value={newService.name}
                 onChange={e => setNewService({ ...newService, name: e.target.value })}
@@ -227,7 +227,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
             </Box> */}
 
             <FormControlLabel
-              label="Include Service Forms"
+              {...targets(`manage service modal service forms`, `Include Service Forms`, `toggle if forms should be included with the service`)}
               control={
                 <Checkbox
                   checked={hasServiceFormOrSurvey}
@@ -240,7 +240,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
               <Box my={2}>
                 <FormPicker
                   formId={newService.formId}
-                  label="Intake Form"
+                  label="Service Intake Form"
                   helperText="Optional. Shown during appointment creation."
                   onSelectForm={(formId: string) => {
                     setNewService({ ...newService, formId });
@@ -250,7 +250,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
               <Box my={2}>
                 <FormPicker
                   formId={newService.surveyId}
-                  label="Survey Form"
+                  label="Service Survey Form"
                   helperText="Optional. Shown during post-appointment summary."
                   onSelectForm={(surveyId: string) => {
                     setNewService({ ...newService, surveyId });
@@ -269,8 +269,8 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
             </Box>
             <Box my={2}>
               <TextField
+                {...targets(`manage service modal service tier name`, `Tier Name`, `edit the name of the service tier`)}
                 fullWidth
-                label="Tier Name"
                 required
                 value={newServiceTier.name}
                 onChange={e => setNewServiceTier({ ...newServiceTier, name: e.target.value })}
@@ -354,7 +354,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
 
             <Box>
               <FormControlLabel
-                label="Include Tier Forms"
+                {...targets(`manage service modal tier forms`, `Include Tier Forms`, `toggle if forms should be included with the current service tier`)}
                 control={
                   <Checkbox
                     checked={hasTierFormOrSurvey}
@@ -368,7 +368,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                   <Box my={2}>
                     <FormPicker
                       formId={newServiceTier.formId}
-                      label="Intake Form"
+                      label="Tier Intake Form"
                       helperText="Optional. Shown during appointment creation."
                       onSelectForm={(formId: string) => {
                         setNewServiceTier({ ...newServiceTier, formId });
@@ -378,7 +378,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                   <Box my={2}>
                     <FormPicker
                       formId={newServiceTier.surveyId}
-                      label="Survey Form"
+                      label="Tier Survey Form"
                       helperText="Optional. Shown during post-appointment summary."
                       onSelectForm={(surveyId: string) => {
                         setNewServiceTier({ ...newServiceTier, surveyId });
@@ -398,6 +398,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
             </Box> */}
             <Grid container size="grow" justifyContent="space-between">
               {newServiceTier.id ? <Button
+                {...targets(`manage service modal delete service tier`, `delete the selected service tier`)}
                 color="error"
                 onClick={() => {
                   const tiers = { ...newService.tiers };
@@ -412,6 +413,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                 Delete
               </Button> : <Box />}
               <Button
+                {...targets(`manage service modal edit tier`, `add service tier to the service or save changes to the currently selected tier`)}
                 color="secondary"
                 onClick={() => {
                   let st = { ...newServiceTier };
@@ -475,8 +477,15 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
     </CardContent>
     {!onValidChanged && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
-        {showCancel && <Button onClick={closeModal}>Cancel</Button>}
-        <Button disabled={!newService.name || newService.tiers && !Object.keys(newService.tiers).length} onClick={handleSubmit}>Save Service</Button>
+        {showCancel && <Button
+          {...targets(`manage service modal close`, `close the service management modal`)}
+          onClick={closeModal}
+        >Cancel</Button>}
+        <Button
+          {...targets(`manage service modal submit`, `submit this service for editing or creation`)}
+          disabled={!newService.name || newService.tiers && !Object.keys(newService.tiers).length}
+          onClick={handleSubmit}
+        >Save Service</Button>
       </Grid>
     </CardActions>}
   </Card >;

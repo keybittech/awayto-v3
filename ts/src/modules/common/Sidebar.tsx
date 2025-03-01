@@ -1,4 +1,4 @@
-import React, { useContext } from 'react';
+import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
@@ -9,18 +9,16 @@ import ListItemText from '@mui/material/ListItemText';
 import Button from '@mui/material/Button';
 
 import GroupIcon from '@mui/icons-material/Group';
-import TtyIcon from '@mui/icons-material/Tty';
 import AccountBoxIcon from '@mui/icons-material/AccountBox';
 import ExitToAppIcon from '@mui/icons-material/ExitToApp';
 import MoreTimeIcon from '@mui/icons-material/MoreTime';
-import BusinessIcon from '@mui/icons-material/Business';
 import EventNoteIcon from '@mui/icons-material/EventNote';
 
 import Icon from '../../img/kbt-icon.png';
 
 const { VITE_REACT_APP_APP_HOST_URL } = import.meta.env;
 
-import { useSecure, useStyles, keycloak, SiteRoles } from 'awayto/hooks';
+import { useSecure, useStyles, keycloak, SiteRoles, targets } from 'awayto/hooks';
 
 export function Sidebar(): React.JSX.Element {
   const hasRole = useSecure();
@@ -34,7 +32,9 @@ export function Sidebar(): React.JSX.Element {
   return <Grid container style={{ height: '100vh' }} alignContent="space-between">
     <Grid size={12} style={{ marginTop: '20px' }}>
       <Grid container justifyContent="center">
-        <Button onClick={() => navigate('/')}>
+        <Button
+          {...targets(`sidebar go home`, `go to the home page`)}
+          onClick={() => navigate('/')}>
           <img src={Icon} width="64" alt="kbt-icon" />
         </Button>
       </Grid>

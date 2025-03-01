@@ -12,7 +12,7 @@ import DeleteIcon from '@mui/icons-material/Delete';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { siteApi, useGrid, useStyles, dayjs, IGroupForm, IForm } from 'awayto/hooks';
+import { siteApi, useGrid, useStyles, dayjs, IGroupForm, IForm, targets } from 'awayto/hooks';
 
 import ManageFormModal from './ManageFormModal';
 
@@ -30,11 +30,14 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     const { length } = selected;
     const acts = length == 1 ? [
       <Tooltip key={'manage_form'} title="Edit">
-        <Button onClick={() => {
-          setGroupForm(groupFormsRequest?.groupForms?.find(gf => gf.formId === selected[0]));
-          setDialog('manage_form');
-          setSelected([]);
-        }}>
+        <Button
+          {...targets(`manage forms edit`, `edit the selected form`)}
+          onClick={() => {
+            setGroupForm(groupFormsRequest?.groupForms?.find(gf => gf.formId === selected[0]));
+            setDialog('manage_form');
+            setSelected([]);
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -44,14 +47,16 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     return [
       ...acts,
       <Tooltip key={'delete_group'} title="Delete">
-        <Button onClick={() => {
-          if (selected.length) {
-            deleteGroupForm({ ids: selected.join(',') }).unwrap().then(() => {
-              setSelected([]);
-              void getGroupForms();
-            }).catch(console.error);
-          }
-        }}>
+        <Button
+          {...targets(`manage forms delete`, `delete the selected form or forms`)}
+          onClick={() => {
+            if (selected.length) {
+              deleteGroupForm({ ids: selected.join(',') }).unwrap().then(() => {
+                setSelected([]);
+                void getGroupForms();
+              }).catch(console.error);
+            }
+          }}>
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
           <DeleteIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -71,10 +76,12 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     toolbar: () => <>
       <Typography variant="button">Forms:</Typography>
       <Tooltip key={'manage_form'} title="Create">
-        <Button onClick={() => {
-          setGroupForm(undefined);
-          setDialog('manage_form')
-        }}
+        <Button
+          {...targets(`manage forms create`, `create a new form`)}
+          onClick={() => {
+            setGroupForm(undefined);
+            setDialog('manage_form')
+          }}
         >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
           <NoteAddIcon sx={classes.variableButtonIcon} />

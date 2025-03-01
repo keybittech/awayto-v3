@@ -12,7 +12,7 @@ import Tooltip from '@mui/material/Tooltip';
 import JoinFullIcon from '@mui/icons-material/JoinFull';
 import DoneIcon from '@mui/icons-material/Done';
 
-import { useUtil, bookingDT, dayjs, shortNSweet } from 'awayto/hooks';
+import { useUtil, bookingDT, dayjs, shortNSweet, targets } from 'awayto/hooks';
 
 import BookingContext, { BookingContextType } from './BookingContext';
 
@@ -39,8 +39,8 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
   return exchangeId ?
     <Tooltip title="Go to Exchange Summary">
       <Button
+        {...targets(`exchange summary navigate`, `go to exchange summary`)}
         color="success"
-        aria-label={`go to exchange summary`}
         onClick={() => {
           openConfirm({
             isConfirming: true,
@@ -92,7 +92,7 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
                 secondaryAction={dayjs().isAfter(dt.add(minsAgo15)) && <>
                   <Tooltip title="Join Exchange">
                     <Button
-                      aria-label={`go to exchange for ${shortNSweet(booking.slotDate, booking.scheduleBracketSlot?.startTime)}`}
+                      {...targets(`join exchange ${booking.slotDate} ${booking.scheduleBracketSlot?.startTime}`, `go to exchange for ${shortNSweet(booking.slotDate, booking.scheduleBracketSlot?.startTime)}`)}
                       onClick={() => {
                         navigate(`/exchange/${booking.id}`);
                       }}

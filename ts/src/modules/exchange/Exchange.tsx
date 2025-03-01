@@ -16,7 +16,7 @@ import CallIcon from '@mui/icons-material/Call';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 import InsertPageBreak from '@mui/icons-material/InsertPageBreak';
 
-import { ExchangeActions, useStyles, IFile, OrderedFiles } from 'awayto/hooks';
+import { ExchangeActions, useStyles, IFile, OrderedFiles, targets } from 'awayto/hooks';
 
 import ExchangeContext, { ExchangeContextType } from './ExchangeContext';
 import WSTextContext, { WSTextContextType } from '../web_socket/WSTextContext';
@@ -108,6 +108,7 @@ export function Exchange(_: IComponent): React.JSX.Element {
               <ListItem secondaryAction={
                 sharedFile && <Tooltip title="Close File">
                   <IconButton
+                    {...targets(`exchange close file`, `close the currently shared file`)}
                     color="error"
                     onClick={() => setSharedFile(undefined)}
                     children={<InsertPageBreak />}
@@ -115,27 +116,48 @@ export function Exchange(_: IComponent): React.JSX.Element {
                 </Tooltip>
               }>
                 <Box sx={classes.darkRounded} mr={1}>
-                  {connected && <Button onClick={() => leaveCall()}>
-                    Leave Call
-                  </Button>}
+                  {connected && <Tooltip title="Stop Voice or Video" children={
+                    <Button
+                      {...targets(`exchange leave call`, `leave the voice or video call`)}
+                      onClick={() => leaveCall()}
+                    >
+                      Leave Call
+                    </Button>
+                  } />}
                   {(!connected || audioOnly) && <Tooltip title="Start Video" children={
-                    <IconButton disabled={'start' !== canStartStop} onClick={() => setLocalStreamAndBroadcast(true)}>
+                    <IconButton
+                      {...targets(`exchange start video call`, `start a video call`)}
+                      disabled={'start' !== canStartStop}
+                      onClick={() => setLocalStreamAndBroadcast(true)}
+                    >
                       <VideocamIcon fontSize="small" />
                     </IconButton>
                   } />}
                   {!connected && <Tooltip title="Start Audio" children={
-                    <IconButton disabled={'start' !== canStartStop} onClick={() => setLocalStreamAndBroadcast(false)}>
+                    <IconButton
+                      {...targets(`exchange start voice call`, `start a voice call`)}
+                      disabled={'start' !== canStartStop}
+                      onClick={() => setLocalStreamAndBroadcast(false)}
+                    >
                       <CallIcon fontSize="small" />
                     </IconButton>
                   } />}
                 </Box>
                 <Tooltip title="Hide/Show Messages" children={
-                  <IconButton color="primary" onClick={() => setChatOpen(!chatOpen)}>
+                  <IconButton
+                    {...targets(`exchange toggle chat`, `toggle the chat visbility`)}
+                    color="primary"
+                    onClick={() => setChatOpen(!chatOpen)}
+                  >
                     <ChatBubbleIcon fontSize="small" />
                   </IconButton>
                 } />
                 <Tooltip title="Open File" children={
-                  <IconButton color="primary" onClick={() => setDialog('file_selection')}>
+                  <IconButton
+                    {...targets(`exchange select file`, `select a file to view and share`)}
+                    color="primary"
+                    onClick={() => setDialog('file_selection')}
+                  >
                     <FileCopyIcon fontSize="small" />
                   </IconButton>
                 } />

@@ -14,7 +14,7 @@ import Logout from '@mui/icons-material/Logout';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useSecure, useGrid, useUtil, useStyles, keycloak, siteApi, dayjs, IGroup, SiteRoles } from 'awayto/hooks';
+import { useSecure, useGrid, useUtil, useStyles, keycloak, siteApi, dayjs, IGroup, SiteRoles, targets } from 'awayto/hooks';
 
 import ManageGroupModal from './ManageGroupModal';
 import JoinGroupModal from './JoinGroupModal';
@@ -45,19 +45,22 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
     const grldr = gr?.ldr;
     const acts = length == 1 ? [
       !grldr && <Tooltip key={'leave_group'} title="Leave">
-        <Button onClick={() => {
-          openConfirm({
-            isConfirming: true,
-            confirmEffect: 'Leave the group ' + gr.name + ' and refresh the session.',
-            confirmAction: () => {
-              if (gr.code) {
-                leaveGroup({ leaveGroupRequest: { code: gr.code } }).unwrap().then(() =>
-                  keycloak.clearToken()
-                ).catch(console.error);
+        <Button
+          {...targets(`manage groups leave`, `leave the selected group`)}
+          onClick={() => {
+            openConfirm({
+              isConfirming: true,
+              confirmEffect: 'Leave the group ' + gr.name + ' and refresh the session.',
+              confirmAction: () => {
+                if (gr.code) {
+                  leaveGroup({ leaveGroupRequest: { code: gr.code } }).unwrap().then(() =>
+                    keycloak.clearToken()
+                  ).catch(console.error);
+                }
               }
-            }
-          });
-        }}>
+            });
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Leave</Typography>
           <Logout sx={classes.variableButtonIcon} />
         </Button>
@@ -85,15 +88,18 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
     return [
       ...acts,
       grldr && <Tooltip key={'delete_group'} title="Delete">
-        <Button onClick={() => {
-          openConfirm({
-            isConfirming: true,
-            confirmEffect: 'Delete the group ' + gr.name + ' and refresh the session.',
-            confirmAction: () => {
-              deleteGroup({ ids: selected.join(',') }).unwrap().then(() => keycloak.clearToken()).catch(console.error);
-            }
-          });
-        }}>
+        <Button
+          {...targets(`manage groups delete`, `delete the selected group`)}
+          onClick={() => {
+            openConfirm({
+              isConfirming: true,
+              confirmEffect: 'Delete the group ' + gr.name + ' and refresh the session.',
+              confirmAction: () => {
+                deleteGroup({ ids: selected.join(',') }).unwrap().then(() => keycloak.clearToken()).catch(console.error);
+              }
+            });
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
           <DeleteIcon sx={classes.variableButtonIcon} />
         </Button>
@@ -114,9 +120,13 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
           headerName: '',
           field: 'id',
           renderCell: () => <Tooltip key={'view_group_details'} title="Details">
-            <Button color="secondary" onClick={() => {
-              navigate(`/group/manage/users`);
-            }}>
+            <Button
+              {...targets(`manage groups details`, `navigate to the group management area`)}
+              color="secondary"
+              onClick={() => {
+                navigate(`/group/manage/users`);
+              }}
+            >
               <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Details</Typography>
               <ManageAccountsIcon sx={classes.variableButtonIcon} />
             </Button>
@@ -129,10 +139,14 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
     toolbar: () => <>
       <Typography variant="button">Groups:</Typography>
       <Tooltip key={'join_group'} title="Join">
-        <Button key={'join_group_button'} onClick={() => {
-          setGroup({});
-          setDialog('join_group');
-        }}>
+        <Button
+          {...targets(`manage groups join`, `open the group join modal to join a group using its code`)}
+          key={'join_group_button'}
+          onClick={() => {
+            setGroup({});
+            setDialog('join_group');
+          }}
+        >
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Join</Typography>
           <DomainAddIcon sx={classes.variableButtonIcon} />
         </Button>

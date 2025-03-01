@@ -14,7 +14,7 @@ import CardContent from '@mui/material/CardContent';
 
 import DoubleArrorIcon from '@mui/icons-material/DoubleArrow';
 
-import { IKiosk } from 'awayto/hooks';
+import { IKiosk, targets } from 'awayto/hooks';
 import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 export function Kiosk(): React.JSX.Element {
@@ -66,9 +66,9 @@ export function Kiosk(): React.JSX.Element {
       <CardHeader title="Group Name Services" subheader="The following times are currently available." />
       <CardContent>
         {!scheduleName && <TextField
+          {...targets(`kiosk group schedule selection`, `Group Schedule`, `select a group schedule to view the times of`)}
           sx={{ width: 300 }}
           select
-          label="Group Schedule"
           value={scheduleId}
           onChange={e => setScheduleId(e.target.value)}
         >
@@ -79,7 +79,13 @@ export function Kiosk(): React.JSX.Element {
         </Box>
         <Box sx={{ my: 2, width: '100%', height: '100%' }}>
           <ScheduleDisplay isKiosk={true} schedule={kiosk.schedules[scheduleId]} />
-          <Button variant="contained" sx={{ mt: 4, fontSize: '1.5rem' }} onClick={() => window.location.assign(`${window.location.origin}/join/${kiosk.code}`)} endIcon={<DoubleArrorIcon />}>
+          <Button
+            {...targets(`kiosk join group`, `join the group to schedule an appointment`)}
+            variant="contained"
+            sx={{ mt: 4, fontSize: '1.5rem' }}
+            onClick={() => window.location.assign(`${window.location.origin}/join/${kiosk.code}`)}
+            endIcon={<DoubleArrorIcon />}
+          >
             Create account to schedule your appointment
           </Button>
         </Box>

@@ -7,7 +7,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
 import MenuItem from '@mui/material/MenuItem';
 
-import { siteApi } from 'awayto/hooks';
+import { siteApi, targets } from 'awayto/hooks';
 import ManageFormModal from './ManageFormModal';
 import Dialog from '@mui/material/Dialog';
 
@@ -25,17 +25,21 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
 
   return <>
     {groupFormsLoaded && onSelectForm && <TextField
+      {...targets(`form pick select`, label, `select a form to use`)}
       select
       fullWidth
       value={formId}
-      label={label}
       helperText={helperText}
       onChange={e => onSelectForm(e.target.value)}
       slotProps={{
         input: {
           endAdornment: <InputAdornment position="end" sx={{ mr: 2 }}>
-            <Tooltip key={'create_form'} title="New">
-              <Button color="secondary" onClick={() => setDialog('manage_form')}>
+            <Tooltip title="Create Form">
+              <Button
+                {...targets(`form pick new`, `create a new form`)}
+                color="secondary"
+                onClick={() => setDialog('create_form')}
+              >
                 <Typography variant="button">New</Typography>
               </Button>
             </Tooltip>
@@ -44,10 +48,11 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
       }}
     >
       {formId && <MenuItem key="unset-selection" value=""><Typography variant="caption">Remove selection</Typography></MenuItem>}
-      {groupFormsRequest?.groupForms?.map(gf => <MenuItem key={`form-version-select${gf.form?.id}`} value={gf.form?.id}>{gf.form?.name}</MenuItem>) || <MenuItem key={`no-forms`} value="">No forms created</MenuItem>}
+      {groupFormsRequest?.groupForms?.map(gf => <MenuItem key={`form-version-select${gf.form?.id}`} value={gf.form?.id}>{gf.form?.name}</MenuItem>)}
+      {!groupFormsRequest.groupForms && <MenuItem key={`no-forms`} value="">No forms created</MenuItem>}
     </TextField>}
 
-    <Dialog open={dialog === 'manage_form'} fullWidth maxWidth="lg">
+    <Dialog open={dialog === 'create_form'} fullWidth maxWidth="lg">
       <Suspense>
         <ManageFormModal {...props} closeModal={() => {
           setDialog('')

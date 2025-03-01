@@ -7,7 +7,7 @@ import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 
-import { useSchedule, useTimeName, deepClone, getRelativeDuration, ISchedule, IScheduleBracket, IScheduleBracketSlot, useStyles, useUtil, plural } from 'awayto/hooks';
+import { useSchedule, useTimeName, deepClone, getRelativeDuration, ISchedule, IScheduleBracket, IScheduleBracketSlot, useStyles, useUtil, plural, targets } from 'awayto/hooks';
 
 type GridCell = {
   columnIndex: number, rowIndex: number, style: CSSProperties
@@ -201,7 +201,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
               if (!bracket.slots) bracket.slots = {};
               return <Box key={`bracket-chip${i + 1}new`} m={1}>
                 <Chip
-                  label={`${getRelativeDuration(bracket.duration, bracketTimeUnitName, slotTimeUnitName) - (Object.keys(bracket.slots).length * scheduleDisplay.slotDuration)} ${slotTimeUnitName}s for ${Object.values(bracket.services).map(s => s.name).join(', ')}`}
+                  {...targets(`schedule display bracket selection ${i}`, `${getRelativeDuration(bracket.duration, bracketTimeUnitName, slotTimeUnitName) - (Object.keys(bracket.slots).length * scheduleDisplay.slotDuration)} ${slotTimeUnitName}s for ${Object.values(bracket.services).map(s => s.name).join(', ')}`, `interact with or delete a bracket from the schedule`)}
                   sx={{
                     '&:hover': {
                       backgroundColor: 'rgba(48, 64, 80, 0.4)',
@@ -251,7 +251,6 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
       <Box component="fieldset" p={2} sx={classes.legendBox}>
         <legend>Step 2. Design your Schedule</legend>
         <Typography variant="body1">Select a time by clicking on it. Press and hold to select multiple times. Selections will remove time from the bracket.</Typography>
-
         <Box onMouseLeave={() => setButtonDown(false)}>
           <RenderedGrid />
         </Box>

@@ -14,7 +14,7 @@ import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
 
-import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName } from 'awayto/hooks';
+import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName, targets } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from '../groups/GroupContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -178,10 +178,10 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
         <Box mb={4}>
           <Typography variant="body1"></Typography>
           <TextField
+            {...targets(`manage schedule brackets modal remaining time`, `# of ${bracketTimeUnitName}s`, `set the number of ${bracketTimeUnitName}s which should available to schedule`)}
             fullWidth
             type="number"
             helperText={`Number of ${bracketTimeUnitName}s for this schedule. (Remaining: ${remainingBracketTime})`}
-            label={`# of ${bracketTimeUnitName}s`}
             value={bracket.duration || ''}
             onChange={e => setBracket({ ...bracket, duration: Math.min(Math.max(0, parseInt(e.target.value || '', 10)), remainingBracketTime) })}
           />
@@ -192,7 +192,14 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
           <Typography variant="body2">Affects the cost of all services in this bracket.</Typography>
           <Box sx={{ display: 'flex', alignItems: 'baseline' }}>
             <Box>{(bracket.multiplier || 100) / 100}x <span>&nbsp;</span> &nbsp;</Box>
-            <Slider value={bracket.multiplier || 100} onChange={(_, val) => setBracket({ ...bracket, multiplier: val as number })} step={1} min={0} max={500} />
+            <Slider
+              {...targets(`manage schedule brackets modal multiplier`, `set a multiplier to be applied to the cost of the selected services`)}
+              value={bracket.multiplier || 100}
+              onChange={(_, val) => setBracket({ ...bracket, multiplier: val as number })}
+              step={1}
+              min={0}
+              max={500}
+            />
           </Box>
         </Box>
 
@@ -204,9 +211,9 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
 
         {groupServices && <Box mb={4}>
           <TextField
+            {...targets(`manage schedule brackets modal services selection`, `Services`, `select the services to be available on the schedule`)}
             select
             fullWidth
-            label="Services"
             helperText="Select the services available to be scheduled."
             value={''}
             onChange={e => {
@@ -226,7 +233,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
             {bracketServicesValues.map((service, i) => {
               return <Box key={`service-chip${i + 1}new`} m={1}>
                 <Chip
-                  label={`${service.name} ${service.cost ? `Cost: ${service.cost}` : ''}`}
+                  {...targets(`manage schedule brackets modal delete service ${i}`, `${service.name} ${service.cost ? `Cost: ${service.cost}` : ''}`, `remove ${service} from the schedule's services`)}
                   onDelete={() => {
                     delete bracket.services[service.id];
                     setBracket({ ...bracket, services: { ...bracket.services } });
@@ -244,14 +251,18 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
     </DialogContent>
     <DialogActions>
       <Grid container justifyContent="space-between">
-        <Button onClick={() => {
-          if (closeModal) {
-            firstLoad.current = true;
-            closeModal();
-          }
-        }}>Cancel</Button>
+        <Button
+          {...targets(`manage personal schedule modal close`, `close the schedule editing modal`)}
+          onClick={() => {
+            if (closeModal) {
+              firstLoad.current = true;
+              closeModal();
+            }
+          }}
+        >Cancel</Button>
         {1 === viewStep ? <Grid>
           {!!scheduleBracketsValues.length && <Button
+            {...targets(`manage personal schedule modal cancel addition`, `continue to the next page of personal schedule mangement without adding another bracket`)}
             onClick={() => {
               setViewStep(2);
               setBracket({ ...bracketSchema, services: {}, slots: {} } as Required<IScheduleBracket>);
@@ -260,6 +271,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
             Cancel Add
           </Button>}
           <Button
+            {...targets(`manage personal schedule modal next`, `continue to the next page of personal schedule management`)}
             disabled={!bracket.duration || !bracketServicesValues.length}
             onClick={() => {
               if (schedule.id && bracket.duration && Object.keys(bracket.services).length) {
@@ -278,8 +290,14 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
             Continue
           </Button>
         </Grid> : <Grid>
-          <Button onClick={() => { setViewStep(1); }}>Add bracket</Button>
-          <Button onClick={handleSubmit}>Submit</Button>
+          <Button
+            {...targets(`manage personal schedule modal previous`, `go to the first page of personal schedule management`)}
+            onClick={() => { setViewStep(1); }}
+          >Add bracket</Button>
+          <Button
+            {...targets(`manage personal schedule modal submit`, `submit the current personal schedule for editing or creation`)}
+            onClick={handleSubmit}
+          >Submit</Button>
         </Grid>}
       </Grid>
     </DialogActions>

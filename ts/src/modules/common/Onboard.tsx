@@ -21,7 +21,7 @@ import SubtitlesOffIcon from '@mui/icons-material/SubtitlesOff';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
 
-import { useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak } from 'awayto/hooks';
+import { useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak, targets } from 'awayto/hooks';
 import { Breadcrumbs, CircularProgress, Dialog } from '@mui/material';
 
 import KbtIcon from '../../img/kbt-icon.png';
@@ -64,6 +64,7 @@ function OnboardingVideo(_: IComponent): React.JSX.Element {
         />
         <Box sx={{ position: 'absolute', display: 'block', bottom: '64px', right: '12px' }}>
           <IconButton
+            {...targets(`show subtitles`, `overlay subtitles on to the video`)}
             sx={{ visibility: showSubtitlesBtn ? 'visible' : 'hidden' }}
             onClick={() => { setShowSubtitles(!showSubtitles); }}
           >
@@ -222,6 +223,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
           <Grid>
             <Tooltip title="Logout">
               <Button
+                {...targets(`site logout`, `logout of the website`)}
                 sx={{ fontSize: '10px' }}
                 onClick={() => {
                   async function go() {
@@ -242,16 +244,20 @@ export function Onboard(_: IComponent): React.JSX.Element {
               <CardHeader title="Join with Group Code" />
               <CardContent sx={{ textAlign: 'right' }}>
                 <TextField
+                  {...targets(`onboard group code input`, `Group Code`, `provide a group code to join a group with`)}
                   fullWidth
                   sx={{ mb: 2 }}
                   value={groupCode}
                   required
                   margin="none"
                   onChange={e => setGroupCode(e.target.value)}
-                  label="Group Code"
                   slotProps={{
                     input: {
-                      endAdornment: <Button color="info" onClick={joinGroupCb}>Join</Button>
+                      endAdornment: <Button
+                        {...targets(`group join submit`, `join a group using the provided code`)}
+                        color="info"
+                        onClick={joinGroupCb}
+                      >Join</Button>
                     }
                   }}
                 />
@@ -351,6 +357,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
         <Grid container size={12} direction="row" justifyContent="space-between" sx={{ alignItems: "center" }}>
           <Grid height={{ sx: 'unset', sm: '100%' }}>
             <Button
+              {...targets(`onboarding previous page`, `return to the previous page`)}
               sx={classes.onboardingProgress}
               color="warning"
               disableRipple
@@ -364,7 +371,10 @@ export function Onboard(_: IComponent): React.JSX.Element {
           </Grid>
           <Grid size={{ xs: 12, sm: 'grow' }} order={{ xs: 3, sm: 2 }}>
             <Alert action={
-              !group.id && <Button sx={{ fontSize: '10px' }} onClick={() => setHasCode(!hasCode)}>
+              !group.id && <Button
+                {...targets(`use group code`, `toggle group code entry to join a group instead of creating one`)}
+                sx={{ fontSize: '10px' }}
+                onClick={() => setHasCode(!hasCode)}>
                 {!hasCode ? 'Use Group Code' : 'Cancel'}
               </Button>
             } severity="info" color="success" variant="standard" sx={{ alignItems: 'center' }}>
@@ -374,6 +384,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
           </Grid>
           <Grid height={{ sx: 'unset', sm: '100%' }} order={{ xs: 2, sm: 3 }}>
             <Button
+              {...targets(`onboarding next page`, `go to the next page`)}
               sx={classes.onboardingProgress}
               color="warning"
               disableRipple
@@ -393,7 +404,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
       <Grid size="grow" p={4}>
         <Typography ml={3} variant="body1">Onboarding Help</Typography>
         <IconButton
-          aria-label="close"
+          {...targets(`close assist modal`, `close the assistance modal`)}
           onClick={() => { setAssist(''); }}
           sx={(theme) => ({
             position: 'absolute',
