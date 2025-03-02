@@ -1,46 +1,31 @@
 import { TypedUseSelectorHook, useDispatch, useSelector } from 'react-redux';
-import { configureStore, Middleware } from '@reduxjs/toolkit';
+import { configureStore } from '@reduxjs/toolkit';
 import { MutationDefinition, QueryDefinition, setupListeners } from '@reduxjs/toolkit/query';
-import { siteApi } from './api';
-import { ConfirmActionProps, encodeVal, IUtil, utilSlice } from './util';
-import { authSlice } from './auth';
-import { CustomBaseQuery } from './api.template';
 import { TypedUseQueryHookResult } from '@reduxjs/toolkit/query/react';
 
-export type ConfirmActionType = (...props: ConfirmActionProps) => void | Promise<void>;
-export type ActionRegistry = Record<string, ConfirmActionType>;
-const actionRegistry: ActionRegistry = {};
+import { CustomBaseQuery } from './api.template';
+import { siteApi } from './api';
+import { utilSlice } from './util';
+import { validSlice, initialState as initialValidState } from './valid';
+import { authSlice } from './auth';
+import { customUtilMiddleware, listenerMiddleware } from './middleware';
 
-function registerAction(id: string, action: ConfirmActionType): void {
-  actionRegistry[id] = action;
-}
-
-export function getUtilRegisteredAction(id: string): ConfirmActionType {
-  return actionRegistry[id];
-}
-const customUtilMiddleware: Middleware = _ => next => action => {
-  const a = action as { type: string, payload: Partial<IUtil> };
-  if (a.type.includes('openConfirm')) {
-    const { confirmEffect, confirmAction } = a.payload;
-    if (confirmEffect && confirmAction) {
-      registerAction(encodeVal(confirmEffect), confirmAction)
-      a.payload.confirmAction = undefined;
-    }
-  }
-
-  return next(action);
-}
 
 export const store = configureStore({
+  preloadedState: {
+    valid: JSON.parse(localStorage.getItem("validations") || "null") ?? initialValidState
+  },
   reducer: {
     [siteApi.reducerPath]: siteApi.reducer,
-    util: utilSlice.reducer,
     auth: authSlice.reducer,
+    util: utilSlice.reducer,
+    valid: validSlice.reducer,
   },
   middleware(getDefaultMiddleware) {
     return getDefaultMiddleware().concat([
       siteApi.middleware,
       customUtilMiddleware,
+      listenerMiddleware.middleware,
     ])
   },
 });

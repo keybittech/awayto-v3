@@ -10,19 +10,22 @@ import Alert from '@mui/material/Alert';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 
-import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IRole, targets } from 'awayto/hooks';
+import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IRole, targets, IValidationAreas, useValid } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 
 interface ManageGroupRolesModalProps extends IComponent {
   editGroup?: IGroup;
-  onValidChanged?: (valid: boolean) => void;
+  validArea?: keyof IValidationAreas;
   showCancel?: boolean;
   saveToggle?: number;
 }
 
-export function ManageGroupRolesModal({ children, editGroup, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageGroupRolesModalProps): React.JSX.Element {
+export function ManageGroupRolesModal({ children, editGroup, validArea, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageGroupRolesModalProps): React.JSX.Element {
+
+  console.log({ editGroup });
 
   const { setSnack } = useUtil();
+  const { setValid } = useValid();
 
   const {
     comp: RoleSuggestions,
@@ -49,7 +52,7 @@ export function ManageGroupRolesModal({ children, editGroup, onValidChanged, sav
     }
 
     void patchGroupRoles({ patchGroupRolesRequest: { roles: newRoles, defaultRoleId } }).unwrap().then(() => {
-      closeModal && closeModal(newRoles);
+      closeModal && closeModal({ roles: newRoles, defaultRoleId });
     });
   }, [roleIds, newRoles, defaultRoleId]);
 
@@ -62,16 +65,16 @@ export function ManageGroupRolesModal({ children, editGroup, onValidChanged, sav
 
   // Onboarding handling
   useEffect(() => {
-    if (onValidChanged) {
-      onValidChanged(Boolean(defaultRoleId.length && roleIds.length));
+    if (validArea) {
+      setValid({ area: validArea, schema: 'roles', valid: Boolean(defaultRoleId.length && roleIds.length) });
     }
-  }, [defaultRoleId, roleIds]);
+  }, [validArea, defaultRoleId, roleIds]);
 
   useEffect(() => {
-    if (editGroup) {
+    if (editGroup?.name && editGroup?.purpose) {
       void suggestRoles({ id: IPrompts.SUGGEST_ROLE, prompt: `${editGroup.name}!$${editGroup.purpose}` });
     }
-  }, []);
+  }, [editGroup]);
 
   return <>
     <Card>
@@ -146,7 +149,7 @@ export function ManageGroupRolesModal({ children, editGroup, onValidChanged, sav
           </Grid>
         </Grid>
       </CardContent>
-      {!onValidChanged && <CardActions>
+      {validArea != 'onboarding' && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button
             {...targets(`manage group roles modal close`, `close the group role management modal`)}

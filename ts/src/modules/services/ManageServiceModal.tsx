@@ -11,8 +11,8 @@ import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 
-import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService, useDebounce, targets } from 'awayto/hooks';
-import { Checkbox, FormControlLabel } from '@mui/material';
+import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService, useDebounce, targets, useValid, IValidationAreas } from 'awayto/hooks';
+import { Checkbox, debounce, FormControlLabel } from '@mui/material';
 import FormPicker from '../forms/FormPicker';
 import SelectLookup from '../common/SelectLookup';
 import ServiceTierAddons from './ServiceTierAddons';
@@ -41,16 +41,17 @@ interface ManageServiceModalProps extends IComponent {
   showCancel?: boolean;
   groupDisplayName?: string;
   groupPurpose?: string;
+  validArea?: keyof IValidationAreas;
   editGroupService?: IGroupService;
-  onValidChanged?: (valid: boolean) => void;
   saveToggle?: number;
 }
 
-export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupService, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageServiceModalProps): React.JSX.Element {
+export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupService, validArea, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageServiceModalProps): React.JSX.Element {
 
   const classes = useStyles();
 
   const { setSnack } = useUtil();
+  const { setValid } = useValid();
 
   const [newService, setNewService] = useState({ ...serviceSchema, ...editGroupService?.service });
   const debouncedService = useDebounce(newService, 50);
@@ -92,7 +93,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
       return;
     }
 
-    if (!onValidChanged) {
+    if (validArea != 'onboarding') {
       if (editGroupService?.serviceId) {
         await patchService({ patchServiceRequest: { service: newService } }).unwrap();
       } else {
@@ -131,10 +132,11 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
 
   // Onboarding handling
   useEffect(() => {
-    if (onValidChanged) {
-      onValidChanged(Boolean(debouncedService.name && Object.keys(debouncedService.tiers || {}).length));
+    if (validArea) {
+      localStorage.setItem('onboarding_service', JSON.stringify({ service: debouncedService }));
+      setValid({ area: validArea, schema: 'service', valid: Boolean(debouncedService.name && Object.keys(debouncedService.tiers || {}).length) });
     }
-  }, [debouncedService]);
+  }, [validArea, debouncedService]);
 
   // Onboarding handling
   useEffect(() => {
@@ -475,7 +477,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
       </Grid>
 
     </CardContent>
-    {!onValidChanged && <CardActions>
+    {validArea != 'onboarding' && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button
           {...targets(`manage service modal close`, `close the service management modal`)}

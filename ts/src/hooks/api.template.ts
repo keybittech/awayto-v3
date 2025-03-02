@@ -1,8 +1,8 @@
 import { FetchArgs, BaseQueryFn, createApi, fetchBaseQuery, FetchBaseQueryError, retry } from '@reduxjs/toolkit/query/react'
 
 import { keycloak, refreshToken } from './auth';
-import { utilSlice } from './util';
 import { RootState } from './store';
+import { utilSlice } from './util';
 
 const {
   VITE_REACT_APP_APP_HOST_URL,

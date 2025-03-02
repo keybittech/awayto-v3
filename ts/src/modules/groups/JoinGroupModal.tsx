@@ -1,4 +1,6 @@
 import React, { useState, useCallback } from 'react';
+
+import TextField from '@mui/material/TextField';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -7,23 +9,26 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 
 import { siteApi, targets, useUtil } from 'awayto/hooks';
-import { TextField } from '@mui/material';
 
-export function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
+function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
   const [joinGroup] = siteApi.useGroupUtilServiceJoinGroupMutation();
+  const [attachUser] = siteApi.useGroupUtilServiceAttachUserMutation();
+  const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
   const [code, setCode] = useState('');
 
   const handleSubmit = useCallback(() => {
-    if (!code) {
-      setSnack({ snackType: 'error', snackOn: 'Please provide at least 1 code.' });
+    if (!code || !/^[a-zA-Z0-9]{8}$/.test(code)) {
+      setSnack({ snackType: 'warning', snackOn: 'Invalid group code.' });
       return;
     }
 
-    joinGroup({ joinGroupRequest: { code } }).unwrap().then(() => {
+    joinGroup({ joinGroupRequest: { code: code } }).unwrap().then(async () => {
+      await attachUser({ attachUserRequest: { code: code } }).unwrap().catch(console.error);
+      await activateProfile().unwrap().catch(console.error);
       if (closeModal)
-        closeModal();
+        closeModal(true);
     }).catch(console.error);
   }, [code]);
 

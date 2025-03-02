@@ -1,10 +1,9 @@
-import React, { useCallback, useState, useEffect, Suspense, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import DialogContent from '@mui/material/DialogContent';
-import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
@@ -19,14 +18,15 @@ import Link from '@mui/material/Link';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
 
-import { useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak, targets } from 'awayto/hooks';
+import { useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak, targets, useAppSelector } from 'awayto/hooks';
 import { Breadcrumbs, CircularProgress, Dialog } from '@mui/material';
 
+import OnboardingVideo from './OnboardingVideo';
 import ManageGroupModal from '../groups/ManageGroupModal';
 import ManageGroupRolesModal from '../roles/ManageGroupRolesModal';
 import ManageServiceModal from '../services/ManageServiceModal';
 import ManageSchedulesModal from '../group_schedules/ManageSchedulesModal';
-import OnboardingVideo from './OnboardingVideo';
+import JoinGroupModal from '../groups/JoinGroupModal';
 
 const {
   VITE_REACT_APP_APP_HOST_URL
@@ -41,26 +41,32 @@ export function Onboard(_: IComponent): React.JSX.Element {
   // const location = useLocation();
   const classes = useStyles();
 
+  const { onboarding } = useAppSelector(state => state.valid);
+
   const { setSnack, openConfirm } = useUtil();
 
   const [group, setGroup] = useState({} as IGroup);
   const [groupService, setGroupService] = useState(JSON.parse(localStorage.getItem('onboarding_service') || '{}') as IGroupService);
   const [groupSchedule, setGroupSchedule] = useState(JSON.parse(localStorage.getItem('onboarding_schedule') || '{}') as IGroupSchedule);
-  const [hasCode, setHasCode] = useState(false);
   const [saveToggle, setSaveToggle] = useState(0);
-  const [formValidity, setFormValidity] = useState('00000');
 
   const [assist, setAssist] = useState('');
-  const [groupCode, setGroupCode] = useState('');
-  const [currentPage, setCurrentPage] = useState(0);
-  // const [currPage, setCurrPage] = useState<string | false>(location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'create_group');
+  const pages = [
+    { id: 0, name: 'group', complete: onboarding.group },
+    { id: 1, name: 'roles', complete: onboarding.roles },
+    { id: 2, name: 'service', complete: onboarding.service },
+    { id: 3, name: 'schedule', complete: onboarding.schedule },
+    { id: 4, name: 'review', complete: false },
+  ];
+
+  const loadedPage = location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'group';
+  const lp = pages.find(p => p.name == loadedPage);
+
+  const [currentPage, setCurrentPage] = useState(lp ? lp.id : 0);
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
   const { data: profileReq, refetch: getUserProfileDetails, isUninitialized, isLoading } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
-  const [joinGroup] = siteApi.useGroupUtilServiceJoinGroupMutation();
-  const [attachUser] = siteApi.useGroupUtilServiceAttachUserMutation();
-  const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
   const [completeOnboarding] = siteApi.useGroupUtilServiceCompleteOnboardingMutation();
 
   const reloadProfile = async (): Promise<void> => {
@@ -70,31 +76,11 @@ export function Onboard(_: IComponent): React.JSX.Element {
     }).catch(console.error);
   }
 
-  const joinGroupCb = useCallback(() => {
-    if (!groupCode || !/^[a-zA-Z0-9]{8}$/.test(groupCode)) {
-      setSnack({ snackType: 'warning', snackOn: 'Invalid group code.' });
-      return;
-    }
-    joinGroup({ joinGroupRequest: { code: groupCode } }).unwrap().then(async () => {
-      await attachUser({ attachUserRequest: { code: groupCode } }).unwrap().catch(console.error);
-      await activateProfile().unwrap().catch(console.error);
-      reloadProfile && await reloadProfile().catch(console.error);
-    }).catch(console.error);
-  }, [groupCode]);
-
-  const updateValidity = (idx: number, valid: boolean) => {
-    setFormValidity(fv => {
-      let nfv = [...fv];
-      nfv[idx] = valid ? '1' : '0';
-      return nfv.join('');
-    });
-  }
-
   const changePage = (dir: number) => {
     const nextPage = dir + currentPage;
     if (nextPage >= 0 && nextPage < 5) {
       setCurrentPage(nextPage);
-      navigate('#');
+      navigate('#' + pages[nextPage].name);
     }
   }
 
@@ -122,7 +108,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
               {['Group', 'Roles', 'Services', 'Schedule', 'Review'].map((pg, i) => {
                 const curr = i == currentPage;
                 return <span id={`acc-progress-${i}`} key={`acc-progress-${i}`}><Typography
-                  color={formValidity[i] == '1' ? "success" : "primary"}
+                  color={pages[i].complete ? "success" : "primary"}
                   sx={{
                     fontWeight: 'bold',
                     textDecoration: curr ? 'underline' : 'none',
@@ -150,121 +136,89 @@ export function Onboard(_: IComponent): React.JSX.Element {
           </Grid>
         </Grid>
         <Grid size={12}>
-          <Suspense>
-            {hasCode ? <Card>
-              <CardHeader title="Join with Group Code" />
-              <CardContent sx={{ textAlign: 'right' }}>
-                <TextField
-                  {...targets(`onboard group code input`, `Group Code`, `provide a group code to join a group with`)}
-                  fullWidth
-                  sx={{ mb: 2 }}
-                  value={groupCode}
-                  required
-                  margin="none"
-                  onChange={e => setGroupCode(e.target.value)}
-                  slotProps={{
-                    input: {
-                      endAdornment: <Button
-                        {...targets(`group join submit`, `join a group using the provided code`)}
-                        color="info"
-                        onClick={joinGroupCb}
-                      >Join</Button>
-                    }
-                  }}
-                />
+          {currentPage === 0 ? !isUninitialized && ((profileReq?.userProfile?.groups && group.name) || !profileReq?.userProfile?.groups) && <ManageGroupModal
+            showCancel={false}
+            editGroup={group}
+            saveToggle={saveToggle}
+            validArea='onboarding'
+            closeModal={(g: IGroup) => {
+              changePage(1);
+              setSaveToggle(0);
+              setGroup({ ...group, ...g });
+            }}
+          /> : currentPage == 1 ? !isUninitialized && ((profileReq?.userProfile?.groups && group.name) || !profileReq?.userProfile?.groups) && <ManageGroupRolesModal
+            showCancel={false}
+            editGroup={group}
+            validArea='onboarding'
+            saveToggle={saveToggle}
+            closeModal={(g: IGroup) => {
+              changePage(1);
+              setSaveToggle(0);
+              setGroup({ ...group, ...g });
+            }}
+          /> : currentPage == 2 ? <ManageServiceModal
+            showCancel={false}
+            groupDisplayName={group.displayName}
+            groupPurpose={group.purpose}
+            editGroupService={groupService}
+            validArea='onboarding'
+            saveToggle={saveToggle}
+            closeModal={(savedService: IGroupService) => {
+              changePage(1);
+              setSaveToggle(0);
+              setGroupService({ ...groupService, service: savedService });
+            }}
+          /> : currentPage == 3 ? <ManageSchedulesModal
+            showCancel={false}
+            editGroupSchedule={groupSchedule}
+            validArea='onboarding'
+            saveToggle={saveToggle}
+            closeModal={(savedSchedule: IGroupSchedule) => {
+              changePage(1);
+              setSaveToggle(0);
+              setGroupSchedule(savedSchedule);
+            }}
+          /> : currentPage == 4 ? <>
+            <Card>
+              <CardHeader title="Review" />
+              <CardContent>
+                <Typography variant="caption">Group Name</Typography> <Typography mb={2} variant="h5">{group.displayName}</Typography>
+                <Typography variant="caption">Roles</Typography> <Typography mb={2} variant="h5">{groupRoleValues.map(r => r.name).join(', ')}</Typography>
+                <Typography variant="caption">Default Role</Typography> <Typography mb={2} variant="h5">{groupRoleValues.find(r => r.id === group.defaultRoleId)?.name || ''}</Typography>
+                <Typography variant="caption">Service Name</Typography> <Typography mb={2} variant="h5">{groupService.service?.name}</Typography>
+                <Typography variant="caption">Schedule Name</Typography> <Typography mb={2} variant="h5">{groupSchedule.schedule?.name}</Typography>
               </CardContent>
-            </Card> :
-              currentPage === 0 ? <>
-                <Grid container size="grow" spacing={2}>
-                  {!isUninitialized && ((profileReq?.userProfile?.groups && group.name) || !profileReq?.userProfile?.groups) && <ManageGroupModal
-                    showCancel={false}
-                    editGroup={group}
-                    saveToggle={saveToggle}
-                    onValidChanged={valid => { updateValidity(0, valid) }}
-                    closeModal={() => {
-                      changePage(1);
-                      setSaveToggle(0);
-                      getUserProfileDetails();
-                    }}
-                  />}
-                </Grid>
-              </> :
-                currentPage == 1 ? <ManageGroupRolesModal
-                  showCancel={false}
-                  editGroup={group}
-                  onValidChanged={valid => { updateValidity(1, valid) }}
-                  saveToggle={saveToggle}
-                  closeModal={() => {
-                    changePage(1);
-                    setSaveToggle(0);
-                    getUserProfileDetails();
-                  }}
-                /> :
-                  currentPage == 2 ? <ManageServiceModal
-                    showCancel={false}
-                    groupDisplayName={group.displayName}
-                    groupPurpose={group.purpose}
-                    editGroupService={groupService}
-                    onValidChanged={valid => { updateValidity(2, valid) }}
-                    saveToggle={saveToggle}
-                    closeModal={(savedService: IGroupService) => {
-                      changePage(1);
-                      setSaveToggle(0);
-                      const newGroupService = { ...groupService, service: savedService };
-                      localStorage.setItem('onboarding_service', JSON.stringify(newGroupService));
-                      setGroupService(newGroupService);
-                    }}
-                  /> :
-                    currentPage == 3 ? <ManageSchedulesModal
-                      showCancel={false}
-                      editGroupSchedule={groupSchedule}
-                      onValidChanged={valid => { updateValidity(3, valid) }}
-                      saveToggle={saveToggle}
-                      closeModal={(savedSchedule: IGroupSchedule) => {
-                        changePage(1);
-                        setSaveToggle(0);
-                        localStorage.setItem('onboarding_schedule', JSON.stringify(savedSchedule));
-                        setGroupSchedule(savedSchedule);
-                      }}
-                    /> :
-                      currentPage == 4 ? <>
-                        <Card>
-                          <CardHeader title="Review" />
-                          <CardContent>
-                            <Typography variant="caption">Group Name</Typography> <Typography mb={2} variant="h5">{group.displayName}</Typography>
-                            <Typography variant="caption">Roles</Typography> <Typography mb={2} variant="h5">{groupRoleValues.map(r => r.name).join(', ')}</Typography>
-                            <Typography variant="caption">Default Role</Typography> <Typography mb={2} variant="h5">{groupRoleValues.find(r => r.id === group.defaultRoleId)?.name || ''}</Typography>
-                            <Typography variant="caption">Service Name</Typography> <Typography mb={2} variant="h5">{groupService.service?.name}</Typography>
-                            <Typography variant="caption">Schedule Name</Typography> <Typography mb={2} variant="h5">{groupSchedule.schedule?.name}</Typography>
-                          </CardContent>
-                          <CardActionArea onClick={() => {
-                            openConfirm({
-                              isConfirming: true,
-                              confirmEffect: `Create the group ${group.displayName}.`,
-                              confirmAction: submit => {
-                                if (submit) {
-                                  completeOnboarding({
-                                    completeOnboardingRequest: {
-                                      service: groupService.service!,
-                                      schedule: groupSchedule.schedule!
-                                    }
-                                  }).unwrap().then(() => {
-                                    localStorage.removeItem('onboarding_service');
-                                    localStorage.removeItem('onboarding_schedule');
-                                    reloadProfile && reloadProfile().catch(console.error);
-                                  }).catch(console.error);
-                                }
-                              }
-                            });
-                          }}>
-                            <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
-                              <Typography color="secondary" variant="button">Create Group</Typography>
-                            </Box>
-                          </CardActionArea>
-                        </Card>
-                      </> : <></>}
+              <CardActionArea onClick={() => {
+                if (!pages[0].complete || !pages[1].complete || !pages[2].complete || !pages[3].complete) {
+                  setSnack({ snackType: 'error', snackOn: 'All pages must be completed' });
+                  return;
+                }
+                openConfirm({
+                  isConfirming: true,
+                  confirmEffect: `Create the group ${group.displayName}.`,
+                  confirmAction: submit => {
+                    if (submit) {
+                      completeOnboarding({
+                        completeOnboardingRequest: {
+                          service: groupService.service!,
+                          schedule: groupSchedule.schedule!
+                        }
+                      }).unwrap().then(() => {
+                        localStorage.removeItem('onboarding_service');
+                        localStorage.removeItem('onboarding_schedule');
+                        void reloadProfile();
+                      }).catch(console.error);
+                    }
+                  }
+                });
+              }}>
+                <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
+                  <Typography color="secondary" variant="button">Create Group</Typography>
+                </Box>
+              </CardActionArea>
+            </Card>
+          </> : <></>}
 
-          </Suspense>
         </Grid>
         <Grid container size={12} direction="row" justifyContent="space-between" sx={{ alignItems: "center" }}>
           <Grid height={{ sx: 'unset', sm: '100%' }}>
@@ -286,8 +240,9 @@ export function Onboard(_: IComponent): React.JSX.Element {
               !group.id && <Button
                 {...targets(`use group code`, `toggle group code entry to join a group instead of creating one`)}
                 sx={{ fontSize: '10px' }}
-                onClick={() => setHasCode(!hasCode)}>
-                {!hasCode ? 'Use Group Code' : 'Cancel'}
+                onClick={() => { setAssist('join_group') }}
+              >
+                Use Group Code
               </Button>
             } severity="info" color="success" variant="standard" sx={{ alignItems: 'center' }}>
               <Typography sx={{ display: 'inline' }}>Need help?</Typography>&nbsp;
@@ -302,7 +257,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
               disableRipple
               disableElevation
               variant="contained"
-              disabled={saveToggle > 0 || formValidity[currentPage] != '1' || currentPage + 1 == 5}
+              disabled={saveToggle > 0 || !pages[currentPage].complete || currentPage + 1 == 5}
               onClick={() => { setSaveToggle((new Date()).getTime()); }}
             >
               {saveToggle == 0 ? 'Next' : <CircularProgress size={16} />}
@@ -312,7 +267,17 @@ export function Onboard(_: IComponent): React.JSX.Element {
       </Grid>
     </Grid >
 
-    <Dialog slotProps={{ paper: { elevation: 8 } }} open={!!assist} onClose={() => { setAssist(''); }} fullWidth maxWidth="md">
+
+    <Dialog open={assist == 'join_group'} fullWidth maxWidth="sm">
+      <JoinGroupModal closeModal={(joined: boolean) => {
+        setAssist('');
+        if (joined) {
+          void reloadProfile();
+        }
+      }} />
+    </Dialog>
+
+    <Dialog slotProps={{ paper: { elevation: 8 } }} open={assist == 'demo'} onClose={() => { setAssist(''); }} fullWidth maxWidth="md">
       <Grid size="grow" p={4}>
         <Typography ml={3} variant="body1">Onboarding Help</Typography>
         <IconButton

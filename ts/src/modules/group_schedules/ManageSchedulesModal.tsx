@@ -12,7 +12,7 @@ import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs, targets } from 'awayto/hooks';
+import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs, targets, IValidationAreas, useValid } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
@@ -34,14 +34,16 @@ export const scheduleSchema = {
 interface ManageSchedulesModalProps extends IComponent {
   showCancel?: boolean;
   editGroupSchedule?: IGroupSchedule;
-  onValidChanged?: (valid: boolean) => void;
+  validArea?: keyof IValidationAreas;
   saveToggle?: number;
 }
 
-export function ManageSchedulesModal({ children, editGroupSchedule, onValidChanged, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageSchedulesModalProps): React.JSX.Element {
+export function ManageSchedulesModal({ children, editGroupSchedule, validArea, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageSchedulesModalProps): React.JSX.Element {
 
   const classes = useStyles();
+
   const { setSnack } = useUtil();
+  const { setValid } = useValid();
 
   const [patchGroupSchedule] = siteApi.useGroupScheduleServicePatchGroupScheduleMutation();
   const [postGroupSchedule] = siteApi.useGroupScheduleServicePostGroupScheduleMutation();
@@ -58,6 +60,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
   } as IGroupSchedule);
 
   const schedule = useMemo(() => (groupSchedule.schedule || { ...scheduleSchema }) as Required<ISchedule>, [groupSchedule.schedule]);
+
 
   const debouncedSchedule = useDebounce(schedule, 50);
 
@@ -128,7 +131,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
       return;
     }
 
-    if (!onValidChanged) {
+    if (validArea != 'onboarding') {
       if (groupSchedule.schedule.id) {
         await patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap();
       } else {
@@ -141,10 +144,11 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
 
   // Onboarding handling
   useEffect(() => {
-    if (onValidChanged) {
-      onValidChanged(Boolean(debouncedSchedule.name && debouncedSchedule.startTime));
+    if (validArea) {
+      localStorage.setItem('onboarding_schedule', JSON.stringify({ schedule: debouncedSchedule }));
+      setValid({ area: validArea, schema: 'schedule', valid: Boolean(debouncedSchedule.name && debouncedSchedule.startTime) });
     }
-  }, [debouncedSchedule]);
+  }, [validArea, debouncedSchedule]);
 
   // Onboarding handling
   useEffect(() => {
@@ -159,13 +163,13 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
         if (schedule.id) {
           const { groupSchedule } = await getGroupScheduleMasterById({ groupScheduleId: schedule.id }).unwrap();
           setGroupSchedule({ ...scheduleSchema, ...groupSchedule });
-        } else if (!editGroupSchedule?.schedule?.name) {
+        } else if (!schedule.scheduleTimeUnitId) {
           setDefault('hoursweekly30minsessions');
         }
       }
     }
     void go();
-  }, [lookupsRetrieved, schedule.id]);
+  }, [lookupsRetrieved, schedule]);
 
   useEffect(() => {
     if (!groupSchedule.schedule?.scheduleTimeUnitName && scheduleTimeUnitName && bracketTimeUnitName && slotTimeUnitName) {
@@ -356,7 +360,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
               <TextField
                 {...targets(`manage schedule modal slot context name`, `Booking Slot Length`, `an uneditable field showing the currently selected slot context name`)}
                 disabled={true}
-                defaultValue={schedule.slotTimeUnitName}
+                value={schedule.slotTimeUnitName}
                 helperText={`The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.`}
                 slotProps={{
                   inputLabel: {
@@ -385,13 +389,13 @@ export function ManageSchedulesModal({ children, editGroupSchedule, onValidChang
         <Grid size={12} sx={{}}>
           <Box component="fieldset" p={2} sx={classes.legendBox}>
             <legend>Step 3. Review</legend>
-            <Typography pb={2} variant="body1">This is what your users will see when filling out their own schedules.</Typography>
+            <Typography pb={2} variant="body1">Preview what your users will see when filling out their own schedules.</Typography>
             <ScheduleDisplay schedule={schedule} />
           </Box>
         </Grid>
       </Grid>
     </CardContent>
-    {!onValidChanged && <CardActions>
+    {validArea != 'onboarding' && <CardActions>
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button
           {...targets(`manage schedule modal close`, `close the schedule management modal`)}

@@ -15,7 +15,7 @@ import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { useDebounce, useUtil, refreshToken, siteApi, IGroup, targets } from 'awayto/hooks';
+import { useDebounce, useUtil, refreshToken, siteApi, IGroup, targets, IValidationAreas, useValid } from 'awayto/hooks';
 
 const {
   VITE_REACT_APP_AI_ENABLED
@@ -23,14 +23,15 @@ const {
 
 interface ManageGroupModalProps extends IComponent {
   editGroup: IGroup;
-  onValidChanged?: (valid: boolean) => void;
+  validArea?: keyof IValidationAreas;
   showCancel?: boolean;
   saveToggle?: number;
 }
 
-export function ManageGroupModal({ children, editGroup, onValidChanged, showCancel = true, saveToggle = 0, closeModal }: ManageGroupModalProps): React.JSX.Element {
+export function ManageGroupModal({ children, editGroup, validArea, showCancel = true, saveToggle = 0, closeModal }: ManageGroupModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
+  const { setValid } = useValid();
 
   const [group, setGroup] = useState({
     name: '',
@@ -46,7 +47,7 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
   const [checkName, checkState] = siteApi.useLazyGroupUtilServiceCheckGroupNameQuery();
 
   const [groupValid, setGroupValid] = useState(false);
-  const debouncedValidity = useDebounce(groupValid, 50);
+  const debouncedValidity = useDebounce(groupValid, 150);
 
   // const [editedPurpose, setEditedPurpose] = useState(false);
   const [allowedDomains, setAllowedDomains] = useState([] as string[]);
@@ -130,10 +131,10 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
   }, [group, debouncedName, checkState]);
 
   useEffect(() => {
-    if (onValidChanged) {
-      onValidChanged(debouncedValidity);
+    if (validArea) {
+      setValid({ area: validArea, schema: 'group', valid: debouncedValidity });
     }
-  }, [debouncedValidity]);
+  }, [validArea, debouncedValidity]);
 
   return <>
     <Card>
@@ -245,7 +246,7 @@ export function ManageGroupModal({ children, editGroup, onValidChanged, showCanc
           </Grid>}
         </Grid>
       </CardContent>
-      {!onValidChanged && <CardActions>
+      {validArea != 'onboarding' && <CardActions>
         <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
           {showCancel && <Button
             {...targets(`manage group modal close`, `close the edit group details modal`)}

@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
+import { authSlice, IAuth } from './auth';
 import { useAppDispatch } from './store';
-import { IAuth, authSlice } from './auth';
 
 export function useAuth(): typeof authSlice.actions {
   const dispatch = useAppDispatch();

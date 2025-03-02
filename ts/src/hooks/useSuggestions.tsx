@@ -85,7 +85,7 @@ export function useSuggestions(refName: string): {
             {...targets(`suggestion selection ${compId} ${i}`, `select the suggested value of ${suggestion}`)}
             sx={{ cursor: 'pointer' }}
             onClick={() => {
-              handleSuggestion(suggestion);
+              handleSuggestion(suggestion.trim());
             }}
           >
             {suggestion}
