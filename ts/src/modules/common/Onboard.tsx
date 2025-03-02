@@ -232,7 +232,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
               disabled={currentPage == 0}
               onClick={() => changePage(-1)}
             >
-              Back
+              Prev
             </Button>
           </Grid>
           <Grid size={{ xs: 12, sm: 'grow' }} order={{ xs: 3, sm: 2 }}>

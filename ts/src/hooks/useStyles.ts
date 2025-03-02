@@ -169,11 +169,18 @@ export const useStyles = (): { [key: string]: SxProps } => {
     height: '100%'
   };
 
-  const disabledOverride = {
+  // const disabledOverrideGray = {
+  //   '&.Mui-disabled': {
+  //     color: '#111',
+  //     backgroundColor: '#aaa',
+  //     opacity: '0.8'
+  //   }
+  // };
+
+  const disabledOverrideClear = {
     '&.Mui-disabled': {
-      color: '#111',
-      backgroundColor: '#aaa',
-      opacity: '0.8'
+      color: '#444',
+      backgroundColor: 'transparent',
     }
   };
 
@@ -219,7 +226,16 @@ export const useStyles = (): { [key: string]: SxProps } => {
     green: { color: green[500] },
     red: { color: red[500] },
 
-    onboardingProgress: { ...disabledOverride, width: { xs: '80px', sm: '100px', md: '120px' }, height: '100%', alignItems: 'center' },
+    onboardingProgress: {
+      ...disabledOverrideClear,
+      backgroundColor: 'transparent',
+      color: '#fff',
+      fontWeight: 700,
+      fontSize: '2rem',
+      width: { xs: '80px', sm: '100px', md: '120px' },
+      height: '100%',
+      alignItems: 'center'
+    },
     audioButton: { cursor: 'pointer' },
 
     overflowEllipsis: { textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' },
