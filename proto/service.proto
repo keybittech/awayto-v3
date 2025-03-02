@@ -3,6 +3,7 @@ package types;
 
 import "service_tier.proto";
 
+import "validate.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -50,7 +51,7 @@ service ServiceService {
 
 message IService {
   string id = 1;
-  string name = 2;
+  string name = 2 [(buf.validate.field).string.min_len = 1];
   int32 cost = 3;
   map<string, IServiceTier> tiers = 4;
   string formId = 5;

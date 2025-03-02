@@ -21,6 +21,7 @@ ts/src/hooks/api.ts
 ts/openapi.yaml
 go/pkg/types/
 go/pkg/mocks/
+go/buf.build/
 java/target/
 java/.project
 java/.settings

@@ -14,6 +14,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/bufbuild/protovalidate-go"
 	"github.com/google/uuid"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -122,6 +123,12 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 										}
 									}
 
+									err := protovalidate.Validate(pb)
+									if err != nil {
+										deferredError = util.ErrCheck(err)
+										return
+									}
+
 									pbVal = reflect.ValueOf(pb).Elem()
 
 									// Parse query and path parameters
@@ -137,7 +144,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 									results := []reflect.Value{}
 
-									err := a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+									err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
 										results = handlerFunc.Call([]reflect.Value{
 											reflect.ValueOf(w),
 											reflect.ValueOf(req),

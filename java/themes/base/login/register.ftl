@@ -1,3 +1,4 @@
+<!-- /opt/keycloak/lib/lib/main/org.keycloak.keycloak-themes-26.1.2.jar -->
 <#import "template.ftl" as layout>
 <#import "user-profile-commons.ftl" as userProfileCommons>
 <#import "register-commons.ftl" as registerCommons>
@@ -126,7 +127,12 @@
         </form>
         <script type="module" src="${url.resourcesPath}/js/passwordVisibility.js"></script>
         <script>
-          document.getElementById('timezone').value = Intl.DateTimeFormat().resolvedOptions().timeZone
+          const registerForm = document.getElementById('kc-register-form');
+          registerForm.addEventListener('submit', function(e) {
+            e.preventDefault();
+            localStorage.clear();
+            registerForm.submit();
+          });
         </script>
     </#if>
 </@layout.registrationLayout>
