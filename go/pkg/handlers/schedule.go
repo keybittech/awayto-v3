@@ -16,20 +16,23 @@ import (
 )
 
 func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *types.PostScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostScheduleResponse, error) {
-	schedule := data.GetSchedule()
-
-	var scheduleEndTime *string
-	if schedule.GetEndTime() != "" {
-		scheduleEndTime = &schedule.EndTime
-	}
-
 	var scheduleId string
+
+	var startTime, endTime *string
+	if data.StartTime != nil {
+		st := data.StartTime.AsTime().Format(time.RFC3339Nano)
+		startTime = &st
+	}
+	if data.EndTime != nil {
+		et := data.EndTime.AsTime().Format(time.RFC3339Nano)
+		endTime = &et
+	}
 
 	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_time, end_time, timezone)
 		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9)
 		RETURNING id
-	`, schedule.GetName(), session.UserSub, schedule.GetSlotDuration(), schedule.GetScheduleTimeUnitId(), schedule.GetBracketTimeUnitId(), schedule.GetSlotTimeUnitId(), schedule.GetStartTime(), scheduleEndTime, schedule.GetTimezone()).Scan(&scheduleId)
+	`, data.GetName(), session.UserSub, data.GetSlotDuration(), data.GetScheduleTimeUnitId(), data.GetBracketTimeUnitId(), data.GetSlotTimeUnitId(), &startTime, &endTime, session.Timezone).Scan(&scheduleId)
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) && pgErr.Constraint == "unique_enabled_name_created_sub" {
@@ -60,11 +63,11 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 			return nil, util.ErrCheck(err)
 		}
 
-		for _, serv := range b.Services {
+		for _, servId := range data.ServiceIds {
 			_, err = tx.Exec(`
 				INSERT INTO dbtable_schema.schedule_bracket_services (schedule_bracket_id, service_id, created_sub, group_id)
 				VALUES ($1, $2, $3::uuid, $4::uuid)
-			`, bracket.Id, serv.Id, session.UserSub, session.GroupId)
+			`, bracket.Id, servId, session.UserSub, session.GroupId)
 
 			if err != nil {
 				return nil, util.ErrCheck(err)
@@ -112,16 +115,21 @@ func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data 
 	schedule := data.GetSchedule()
 	// TODO add a what to expect page
 
-	var scheduleEndTime *string
-	if schedule.GetEndTime() != "" {
-		scheduleEndTime = &schedule.EndTime
+	var startTime, endTime *string
+	if schedule.StartTime != nil {
+		st := schedule.StartTime.AsTime().Format(time.RFC3339Nano)
+		startTime = &st
+	}
+	if schedule.EndTime != nil {
+		et := schedule.EndTime.AsTime().Format(time.RFC3339Nano)
+		endTime = &et
 	}
 
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.schedules
 		SET name = $2, start_time = $3, end_time = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, schedule.GetId(), schedule.GetName(), schedule.GetStartTime(), scheduleEndTime, session.UserSub, time.Now().Local().UTC())
+		`, schedule.GetId(), schedule.GetName(), &startTime, &endTime, session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

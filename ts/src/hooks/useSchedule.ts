@@ -39,7 +39,7 @@ export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTim
 
     const xAxisTypeName = timeUnitOrder[timeUnitOrder.indexOf(scheduleTimeUnitName) - 1];
     const yAxisTypeName = slotTimeUnitName == bracketTimeUnitName ? bracketTimeUnitName : slotTimeUnitName;
-    const columns = getRelativeDuration(1, scheduleTimeUnitName, xAxisTypeName);
+    const columns = Math.floor(getRelativeDuration(1, scheduleTimeUnitName, xAxisTypeName));
     const rows = getRelativeDuration(1, xAxisTypeName, yAxisTypeName) / slotDuration;
     const durations = [] as CellDuration[][];
 
@@ -68,25 +68,27 @@ export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTim
     }
 
     let rowDuration = dayjs.duration(0);
+    const dayColumns = 'day' == xAxisTypeName;
+    const daySlots = 'day' == slotTimeUnitName;
 
     for (let y = 1; y < rows + 1; y++) {
 
       let djst = baseTime.day(rowDuration.days()).hour(rowDuration.hours()).minute(rowDuration.minutes());
 
       durations[0][y] = {
-        contextFormat: 'day' == xAxisTypeName ? djst.format('A') : djst.format('ddd')
+        contextFormat: dayColumns ? djst.format('A') : djst.format('ddd')
       } as CellDuration;
 
       for (let x = 1; x < columns + 1; x++) {
 
-        const axisCorrectedDjst = djst.add(x, 'day' == xAxisTypeName ? 'day' : 'week');
+        const axisCorrectedDjst = djst.add(x, dayColumns ? 'day' : 'week');
 
         durations[x][y] = {
-          contextFormat: 'day' == slotTimeUnitName ? 'Full Day' : axisCorrectedDjst.format('hh:mm'),
-          completeContextFormat: 'day' == slotTimeUnitName ? `${axisCorrectedDjst.format('ddd')} Week ${x}, Full Day` : axisCorrectedDjst.format('ddd, hh:mm A'),
+          contextFormat: daySlots ? 'Full Day' : axisCorrectedDjst.format('hh:mm'),
+          completeContextFormat: daySlots ? `${axisCorrectedDjst.format('ddd')} Week ${x}, Full Day` : axisCorrectedDjst.format('ddd, hh:mm A'),
           scheduleBracketSlotIds: [],
           active: false,
-          startTime: rowDuration.toISOString(),
+          startTime: rowDuration.add(x - 1, dayColumns ? 'day' : 'week').toISOString(),
           x, y
         } as CellDuration;
 

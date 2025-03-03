@@ -5,7 +5,7 @@ import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
 import Typography from '@mui/material/Typography';
-import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
 
 import CreateIcon from '@mui/icons-material/Create';
 import DeleteIcon from '@mui/icons-material/Delete';
@@ -45,7 +45,7 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
   const [deleteGroupUserScheduleByUserScheduleId] = siteApi.useGroupUserScheduleServiceDeleteGroupUserScheduleByUserScheduleIdMutation();
   const [deleteSchedule] = siteApi.useScheduleServiceDeleteScheduleMutation();
 
-  const [schedule, setSchedule] = useState<ISchedule>({});
+  const [schedule, setSchedule] = useState<ISchedule>();
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState('');
 
@@ -117,27 +117,29 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
     onSelected: selection => setSelected(selection as string[]),
     toolbar: () => <>
       {/* <GroupSelect /> */}
-      <Box pt={2} sx={{ width: '100%' }}>
-        <Typography variant="button">Schedules:</Typography>
-        <Button
-          {...targets(`manage schedule brackets create`, `create a new personal schedule`)}
-          key={'create_schedule_button'}
-          onClick={() => {
-            if (groupSchedules?.length) {
-              setSchedule({});
-              setDialog('manage_schedule');
-            } else {
-              setSnack({ snackType: 'warning', snackOn: 'There are no available master schedules.' })
-            }
-          }}
-        >Create</Button>
-        {!!selected.length && <Box sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Box>}
-      </Box>
+      <Grid container size="grow" alignItems="center">
+        <Typography sx={{ textTransform: 'uppercase' }}>Schedules:</Typography>
+        <Grid size="grow">
+          <Button
+            {...targets(`manage schedule brackets create`, `create a new personal schedule`)}
+            color="info"
+            onClick={() => {
+              if (groupSchedules?.length) {
+                setSchedule(undefined);
+                setDialog('manage_schedule');
+              } else {
+                setSnack({ snackType: 'warning', snackOn: 'There are no available master schedules.' })
+              }
+            }}
+          >Create</Button>
+        </Grid>
+        {!!selected.length && <Grid sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Grid>}
+      </Grid>
     </>
   })
 
   return <>
-    <Dialog fullScreen open={dialog === 'manage_schedule'} fullWidth maxWidth="sm">
+    <Dialog fullScreen open={dialog === 'manage_schedule'}>
       <ManageScheduleBracketsModal
         editSchedule={schedule}
         closeModal={(shouldReload: boolean) => {

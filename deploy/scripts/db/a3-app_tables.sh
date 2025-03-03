@@ -202,8 +202,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE TABLE dbtable_schema.schedules (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     name VARCHAR (50),
-    start_time DATE,
-    end_time DATE,
+    start_time TIMESTAMPTZ,
+    end_time TIMESTAMPTZ,
     timezone VARCHAR(128),
     schedule_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),
     bracket_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),

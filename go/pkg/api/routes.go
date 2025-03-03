@@ -4,7 +4,6 @@ import (
 	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
-	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -115,7 +114,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 										defer req.Body.Close()
 
 										if len(body) > 0 {
-											err = json.Unmarshal(body, pb)
+											err = protojson.Unmarshal(body, pb)
 											if err != nil {
 												deferredError = util.ErrCheck(err)
 												return

@@ -1,4 +1,4 @@
-import React, { useMemo, useState, useRef, useCallback, Suspense, useContext } from 'react';
+import React, { useMemo, useState, useRef, useCallback, useContext } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
@@ -6,7 +6,6 @@ import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import Switch from '@mui/material/Switch';
 import Chip from '@mui/material/Chip';
-import CircularProgress from '@mui/material/CircularProgress';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
@@ -27,10 +26,10 @@ const bracketSchema = {
 };
 
 interface ManageScheduleBracketsModalProps extends IComponent {
-  editSchedule: ISchedule;
+  editSchedule?: ISchedule;
 }
 
-export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ManageScheduleBracketsModalProps): React.JSX.Element {
+export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: ManageScheduleBracketsModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -57,16 +56,16 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
 
   const [schedule, setSchedule] = useState(editSchedule);
 
-  if (groupSchedule?.schedule && !editSchedule && (!schedule || groupSchedule.schedule.id !== schedule.id)) {
+  if (groupSchedule?.schedule && !editSchedule.id && (!schedule.id || groupSchedule.schedule.id !== schedule.id)) {
     setSchedule({ ...groupSchedule?.schedule, brackets: {} });
   }
 
-  const scheduleTimeUnitName = useTimeName(schedule.scheduleTimeUnitId);
-  const bracketTimeUnitName = useTimeName(schedule.bracketTimeUnitId);
+  const scheduleTimeUnitName = useTimeName(schedule?.scheduleTimeUnitId);
+  const bracketTimeUnitName = useTimeName(schedule?.bracketTimeUnitId);
 
   const firstLoad = useRef(true);
   const [viewStep, setViewStep] = useState(1);
-  if (firstLoad.current && viewStep === 1 && Object.keys(schedule.brackets || {}).length) {
+  if (firstLoad.current && viewStep === 1 && Object.keys(schedule?.brackets || {}).length) {
     setViewStep(2);
   }
 
@@ -79,7 +78,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
   // const scheduleParent = useRef<HTMLDivElement>(null);
   const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as Required<IScheduleBracket>);
 
-  const scheduleBracketsValues = useMemo(() => Object.values(schedule.brackets || {}) as Required<IScheduleBracket>[], [schedule.brackets]);
+  const scheduleBracketsValues = useMemo(() => Object.values(schedule.brackets || {}) as Required<IScheduleBracket>[], [schedule?.brackets]);
   const bracketServicesValues = useMemo(() => Object.values(bracket.services || {}) as Required<IService>[], [bracket.services]);
 
   const remainingBracketTime = useMemo(() => {
@@ -102,14 +101,26 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
         let userScheduleId = editSchedule?.id;
 
         if (!userScheduleId) {
-          const newSchedule = await postSchedule({ postScheduleRequest: { schedule } }).unwrap().catch(console.error);
+          const newSchedule = await postSchedule({
+            postScheduleRequest: {
+              name: schedule.name,
+              startTime: schedule.startTime,
+              endTime: schedule.endTime,
+              scheduleTimeUnitId: schedule.scheduleTimeUnitId,
+              bracketTimeUnitId: schedule.bracketTimeUnitId,
+              slotTimeUnitId: schedule.slotTimeUnitId,
+              slotDuration: schedule.slotDuration
+            }
+          }).unwrap().catch(console.error);
           userScheduleId = newSchedule?.id;
         }
 
         if (!userScheduleId || !groupScheduleId) return;
 
+        const serviceIds = scheduleBracketsValues.flatMap(x => Object.keys(x.services)).filter((x, i, arr) => arr.indexOf(x) == i);
+
         const newBrackets = scheduleBracketsValues.reduce<Record<string, IScheduleBracket>>(
-          (m, { id, duration, automatic, multiplier, slots, services }) => ({
+          (m, { id, duration, automatic, multiplier, slots }) => ({
             ...m,
             [id]: {
               id,
@@ -117,7 +128,6 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
               automatic,
               multiplier,
               slots,
-              services
             } as IScheduleBracket
           }), {}
         );
@@ -125,7 +135,8 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
         await postScheduleBrackets({
           postScheduleBracketsRequest: {
             scheduleId: userScheduleId,
-            brackets: newBrackets
+            brackets: newBrackets,
+            serviceIds
           }
         }).unwrap().catch(console.error);
 
@@ -141,7 +152,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
           void refetchGroupUserScheduleStubs();
         });
 
-        setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule.name, snackType: 'info' });
+        setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule?.name, snackType: 'info' });
         if (closeModal) {
           firstLoad.current = true;
           closeModal(true);
@@ -243,11 +254,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
             })}
           </Box>
         </Box>}
-      </> : <>
-        <Suspense fallback={<CircularProgress />}>
-          <ScheduleDisplay schedule={schedule} setSchedule={setSchedule} />
-        </Suspense>
-      </>}
+      </> : <ScheduleDisplay schedule={schedule} setSchedule={setSchedule} />}
     </DialogContent>
     <DialogActions>
       <Grid container justifyContent="space-between">
@@ -274,7 +281,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
             {...targets(`manage personal schedule modal next`, `continue to the next page of personal schedule management`)}
             disabled={!bracket.duration || !bracketServicesValues.length}
             onClick={() => {
-              if (schedule.id && bracket.duration && Object.keys(bracket.services).length) {
+              if (schedule?.id && bracket.duration && Object.keys(bracket.services).length) {
                 bracket.id = (new Date()).getTime().toString();
                 bracket.scheduleId = schedule.id;
                 const newBrackets = { ...schedule.brackets };

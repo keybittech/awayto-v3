@@ -4,6 +4,8 @@ package types;
 import "quote.proto";
 import "service.proto";
 
+import "validate.proto";
+import "google/protobuf/timestamp.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -86,24 +88,60 @@ message IScheduleBracket {
 
 message ISchedule {
   string id = 1;
-  string name = 2;
-  string startTime = 3;
-  string endTime = 4;
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+  google.protobuf.Timestamp startTime = 3;
+  google.protobuf.Timestamp endTime = 4 [
+    (buf.validate.field).timestamp.gt_now = true,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
   string timezone = 5;
-  string scheduleTimeUnitId = 6;
+  string scheduleTimeUnitId = 6 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
   string scheduleTimeUnitName = 7;
-  string bracketTimeUnitId = 8;
+  string bracketTimeUnitId = 8 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
   string bracketTimeUnitName = 9;
-  string slotTimeUnitId = 10;
+  string slotTimeUnitId = 10 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
   string slotTimeUnitName = 11;
-  int32 slotDuration = 12;
+  int32 slotDuration = 12 [
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
   map<string, IScheduleBracket> brackets = 13;
   string createdOn = 14;
   int32 row = 15;
+
+  option (buf.validate.message).cel = {
+    id: "ISchedule.endTime",
+    message: "End date must be after start date",
+    expression: "has(this.endTime) ? this.endTime > this.startTime : true"
+  };
 }
 
 message PostScheduleRequest {
-  ISchedule schedule = 1 [(google.api.field_behavior) = REQUIRED];
+  string name = 1 [(buf.validate.field).string.min_len = 1];
+  google.protobuf.Timestamp startTime = 2;
+  google.protobuf.Timestamp endTime = 3 [
+    (buf.validate.field).timestamp.gt_now = true,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
+  string scheduleTimeUnitId = 4 [(buf.validate.field).string.uuid = true];
+  string bracketTimeUnitId = 5 [(buf.validate.field).string.uuid = true];
+  string slotTimeUnitId = 6 [(buf.validate.field).string.uuid = true];
+  int32 slotDuration = 7 [(buf.validate.field).int32.gt = 0];
+
+  option (buf.validate.message).cel = {
+    id: "PostScheduleRequest.endTime",
+    message: "End date must be after start date",
+    expression: "has(this.endTime) ? this.endTime > this.startTime : true"
+  };
 }
 
 message PostScheduleResponse {
@@ -113,6 +151,7 @@ message PostScheduleResponse {
 message PostScheduleBracketsRequest {
   string scheduleId = 1 [(google.api.field_behavior) = REQUIRED];
   map<string, IScheduleBracket> brackets = 2 [(google.api.field_behavior) = REQUIRED];
+  repeated string serviceIds = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostScheduleBracketsResponse {

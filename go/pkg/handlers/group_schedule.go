@@ -17,7 +17,15 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 		return nil, util.ErrCheck(err)
 	}
 
-	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, &clients.UserSession{UserSub: session.GroupSub}, tx)
+	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{
+		Name:               data.GroupSchedule.Schedule.Name,
+		StartTime:          data.GroupSchedule.Schedule.StartTime,
+		EndTime:            data.GroupSchedule.Schedule.EndTime,
+		ScheduleTimeUnitId: data.GroupSchedule.Schedule.ScheduleTimeUnitId,
+		BracketTimeUnitId:  data.GroupSchedule.Schedule.BracketTimeUnitId,
+		SlotTimeUnitId:     data.GroupSchedule.Schedule.SlotTimeUnitId,
+		SlotDuration:       data.GroupSchedule.Schedule.SlotDuration,
+	}, &clients.UserSession{UserSub: session.GroupSub}, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

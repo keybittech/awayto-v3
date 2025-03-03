@@ -14,6 +14,8 @@ import (
 	"database/sql"
 
 	_ "github.com/lib/pq"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 type Database struct {
@@ -452,9 +454,54 @@ func extractValue(dst, src reflect.Value) {
 		case colTypes.reflectBool:
 			dst.SetBool(src.FieldByName("Bool").Bool())
 		case colTypes.reflectMap:
-			protoStruct := reflect.New(dst.Type())
-			json.Unmarshal(src.Bytes(), protoStruct.Interface())
-			dst.Set(protoStruct.Elem())
+			jsonData := src.Interface().(ProtoMapSerializer)
+
+			// Check if destination is a map
+			if dst.Kind() == reflect.Map {
+				// Handle map<string, proto.Message> case
+				mapType := dst.Type()
+				valueType := mapType.Elem()
+
+				// Create a temporary Go map to hold the unmarshaled data
+				var tempMap map[string]json.RawMessage
+				if err := json.Unmarshal(jsonData, &tempMap); err != nil {
+					println("Error parsing JSON map:", err.Error())
+					return
+				}
+
+				// Initialize the destination map if it's nil
+				if dst.IsNil() {
+					dst.Set(reflect.MakeMap(mapType))
+				}
+
+				// For each key-value pair in the map
+				for key, rawValue := range tempMap {
+					// Create a new instance of the map value type
+					protoMsgValue := reflect.New(valueType.Elem()).Interface().(proto.Message)
+
+					// Unmarshal the raw JSON into the proto message
+					if err := protojson.Unmarshal(rawValue, protoMsgValue); err != nil {
+						println("Error unmarshaling map value for key:", key, "type:", valueType.Elem().Name(), "error:", err.Error())
+						continue
+					}
+
+					// Set the key-value pair in the destination map
+					dst.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(protoMsgValue))
+				}
+			} else if dst.Type().Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
+				// Handle regular proto.Message case
+				protoMsg := reflect.New(dst.Type().Elem()).Interface().(proto.Message)
+
+				if err := protojson.Unmarshal(jsonData, protoMsg); err != nil {
+					msgTypeName := dst.Type().Elem().Name()
+					println("Error unmarshaling proto message type:", msgTypeName, "error:", err.Error())
+					return
+				}
+
+				dst.Set(reflect.ValueOf(protoMsg))
+			} else {
+				println("Destination type is neither a map nor a proto.Message:", dst.Type().String())
+			}
 		default:
 			println("no match for extractValue, setting default")
 			dst.Set(src)

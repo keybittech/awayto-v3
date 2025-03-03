@@ -12,12 +12,11 @@ import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
-import { useUtil, siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs, targets, IValidationAreas, useValid } from 'awayto/hooks';
+import { siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs, targets, IValidationAreas, useValid } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 export const scheduleSchema = {
-  id: '',
   name: '',
   startTime: '',
   endTime: '',
@@ -29,7 +28,7 @@ export const scheduleSchema = {
   bracketTimeUnitName: '',
   slotTimeUnitId: '',
   slotTimeUnitName: ''
-};
+} as ISchedule;
 
 interface ManageSchedulesModalProps extends IComponent {
   showCancel?: boolean;
@@ -42,7 +41,6 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
 
   const classes = useStyles();
 
-  const { setSnack } = useUtil();
   const { setValid } = useValid();
 
   const [patchGroupSchedule] = siteApi.useGroupScheduleServicePatchGroupScheduleMutation();
@@ -112,7 +110,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
 
     const minimumSlotDuration = 'minute' == slotTimeUnitName ? 5 : 1;
 
-    for (let value = minimumSlotDuration; value < relativeDuration; value++) {
+    for (let value = minimumSlotDuration; value <= Math.ceil(relativeDuration / 2); value++) {
       if (relativeDuration % value === 0) {
         factors.push({ value, label: value });
       }
@@ -121,21 +119,34 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
   }, [bracketTimeUnitName, slotTimeUnitName, scheduleTimeUnitName]);
 
   const handleSubmit = useCallback(async () => {
-    if (!groupSchedule.schedule || !groupSchedule.schedule.name) {
-      setSnack({ snackOn: 'A name must be provided.', snackType: 'warning' });
-      return;
-    }
-
-    if (groupSchedule.schedule.endTime && dayjs(groupSchedule.schedule.startTime).isAfter(dayjs(groupSchedule.schedule.endTime))) {
-      setSnack({ snackOn: 'End date must be on or before start date.', snackType: 'warning' });
-      return;
-    }
-
-    if (validArea != 'onboarding') {
-      if (groupSchedule.schedule.id) {
-        await patchGroupSchedule({ patchGroupScheduleRequest: { groupSchedule } }).unwrap();
+    if (validArea != 'onboarding' && groupSchedule.schedule) {
+      const s = groupSchedule.schedule;
+      const newSchedule = {
+        name: s.name,
+        startTime: s.startTime?.length ? s.startTime : undefined,
+        endTime: s.endTime?.length ? s.endTime : undefined
+      } as ISchedule;
+      if (s.id) {
+        newSchedule.id = s.id;
+        await patchGroupSchedule({
+          patchGroupScheduleRequest: {
+            groupSchedule: {
+              schedule: newSchedule
+            }
+          }
+        }).unwrap();
       } else {
-        await postGroupSchedule({ postGroupScheduleRequest: { groupSchedule } }).unwrap();
+        newSchedule.scheduleTimeUnitId = s.scheduleTimeUnitId
+        newSchedule.bracketTimeUnitId = s.bracketTimeUnitId
+        newSchedule.slotTimeUnitId = s.slotTimeUnitId
+        newSchedule.slotDuration = s.slotDuration
+        await postGroupSchedule({
+          postGroupScheduleRequest: {
+            groupSchedule: {
+              schedule: newSchedule
+            }
+          }
+        }).unwrap();
       }
     }
 
@@ -160,16 +171,16 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
   useEffect(() => {
     async function go() {
       if (lookupsRetrieved) {
-        if (schedule.id) {
-          const { groupSchedule } = await getGroupScheduleMasterById({ groupScheduleId: schedule.id }).unwrap();
-          setGroupSchedule({ ...scheduleSchema, ...groupSchedule });
+        if (editGroupSchedule?.schedule?.id) {
+          const masterSchedule = await getGroupScheduleMasterById({ groupScheduleId: editGroupSchedule.schedule.id }).unwrap();
+          setGroupSchedule({ ...scheduleSchema, ...masterSchedule.groupSchedule });
         } else if (!schedule.scheduleTimeUnitId) {
           setDefault('hoursweekly30minsessions');
         }
       }
     }
     void go();
-  }, [lookupsRetrieved, schedule]);
+  }, [lookupsRetrieved, editGroupSchedule]);
 
   useEffect(() => {
     if (!groupSchedule.schedule?.scheduleTimeUnitName && scheduleTimeUnitName && bracketTimeUnitName && slotTimeUnitName) {
@@ -215,10 +226,10 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                     {...targets(`manage schedule modal start date`, `Start Date`, `set when the schedule should start`)}
                     fullWidth
                     type="date"
-                    value={schedule.startTime || ''}
+                    value={schedule.startTime ? dayjs(schedule.startTime).format('YYYY-MM-DD') : ''}
                     required
                     helperText="Schedule is active after this date. Clear this date to deactivate the schedule. Deactivated schedules do not allow new bookings to be made."
-                    onChange={e => setGroupSchedule({ schedule: { ...schedule, startTime: e.target.value } })}
+                    onChange={e => setGroupSchedule({ schedule: { ...schedule, startTime: e.target.value ? dayjs(e.target.value).toISOString() : undefined } })}
                     slotProps={{
                       inputLabel: {
                         shrink: true
@@ -243,9 +254,9 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                     {...targets(`manage schedule modal end date`, `End Date`, `set when the schedule should end`)}
                     fullWidth
                     type="date"
-                    value={schedule.endTime || ''}
+                    value={schedule.endTime ? dayjs(schedule.endTime).format('YYYY-MM-DD') : ''}
                     helperText="Optional. No bookings will be allowed after this date."
-                    onChange={e => setGroupSchedule({ schedule: { ...schedule, endTime: e.target.value } })}
+                    onChange={e => setGroupSchedule({ schedule: { ...schedule, endTime: e.target.value ? dayjs(e.target.value).toISOString() : undefined } })}
                     slotProps={{
                       inputLabel: {
                         shrink: true
@@ -360,7 +371,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
               <TextField
                 {...targets(`manage schedule modal slot context name`, `Booking Slot Length`, `an uneditable field showing the currently selected slot context name`)}
                 disabled={true}
-                value={schedule.slotTimeUnitName}
+                value={slotTimeUnitName}
                 helperText={slotDurationMarks.length > 1 ? `The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.` : 'The booking slot will be for an entire day.'}
                 slotProps={{
                   inputLabel: {
