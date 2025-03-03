@@ -10,6 +10,7 @@ const paletteTheme = createTheme({
         primary: {
           main: '#121f31',
           dark: '#ddeeff',
+          light: 'rgba(255, 255, 255, .12)',
           contrastText: '#333'
         },
         secondary: { main: 'rgb(100 150 200)' }
@@ -20,6 +21,7 @@ const paletteTheme = createTheme({
         primary: {
           main: '#ddd',
           contrastText: '#333',
+          light: 'rgba(255, 255, 255, .12)',
           dark: '#203040'
         },
         secondary: {
@@ -39,7 +41,7 @@ export const theme = createTheme(paletteTheme, {
         root: {
           '&:not(.Mui-disabled)': {
             backgroundColor: 'rgb(64 64 64)',
-            color: '#fff'
+            color: '#fff',
           },
           '&.Mui-selected': {
             backgroundColor: '#009cc8 !important'

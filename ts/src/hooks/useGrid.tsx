@@ -20,7 +20,13 @@ export function useGrid<T extends GridValidRowModel>({ rows, columns, columnHead
   const grid = useMemo(() => {
     return {
       autoHeight: true,
-      sx: { bgcolor: 'secondary.dark' },
+      sx: {
+        bgcolor: 'primary.dark',
+        borderColor: 'primary.light',
+        '& [role="row"]': {
+          bgcolor: 'inherit !important'
+        }
+      },
       rows,
       columns,
       columnHeaderHeight: columnHeaderHeight || defaultHeight,

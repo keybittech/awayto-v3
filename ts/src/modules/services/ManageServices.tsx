@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense, useEffect } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
@@ -113,21 +113,19 @@ export function ManageServices(_: IComponent): React.JSX.Element {
 
   return <>
     <Dialog open={dialog === 'manage_service'} fullWidth maxWidth="lg">
-      <Suspense>
-        <Grid container>
-          <Grid size={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
-            <ManageServiceModal
-              groupDisplayName={group.displayName}
-              groupPurpose={group.purpose}
-              editGroupService={groupService}
-              closeModal={() => {
-                setDialog('')
-                void getGroupServices();
-              }}
-            />
-          </Grid>
+      <Grid container>
+        <Grid size={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
+          <ManageServiceModal
+            groupDisplayName={group.displayName}
+            groupPurpose={group.purpose}
+            editGroupService={groupService}
+            closeModal={() => {
+              setDialog('')
+              void getGroupServices();
+            }}
+          />
         </Grid>
-      </Suspense>
+      </Grid>
     </Dialog>
     <DataGrid {...serviceGridProps} />
   </>

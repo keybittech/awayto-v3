@@ -6,7 +6,6 @@ import TopLevelProviders from './TopLevelProviders';
 import Topbar from './Topbar';
 import Home from './Home';
 import Profile from '../profile/Profile';
-import RequestQuote from '../quotes/RequestQuote';
 import ScheduleHome from '../schedules/ScheduleHome';
 import GroupPaths from '../groups/GroupPaths';
 import ExchangeSummary from '../exchange/ExchangeSummary';
@@ -41,7 +40,6 @@ const Layout = (props: IComponent): React.JSX.Element => {
         }>
           <Route path="/" element={<Home {...props} />} />
           <Route path="/profile" element={<Profile {...props} />} />
-          <Route path="/request" element={<RequestQuote {...props} />} />
           <Route path="/schedule" element={<ScheduleHome {...props} />} />
           <Route path="/group/*" element={<GroupPaths {...props} />} />
           <Route path="/exchange/:summaryId/summary" element={<ExchangeSummary {...props} />} />
