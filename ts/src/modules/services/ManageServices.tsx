@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, Suspense, useEffect } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
@@ -24,7 +24,7 @@ export function ManageServices(_: IComponent): React.JSX.Element {
   const [deleteGroupService] = siteApi.useGroupServiceServiceDeleteGroupServiceMutation();
 
   const { data: groupServicesRequest, refetch: getGroupServices } = siteApi.useGroupServiceServiceGetGroupServicesQuery();
-  const { data: userProfileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
+  const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
   const [group, setGroup] = useState<IGroup>({});
   const [groupService, setGroupService] = useState<IGroupService>({});
@@ -39,8 +39,7 @@ export function ManageServices(_: IComponent): React.JSX.Element {
           {...targets(`manage services edit`, `edit the currently selected service`)}
           onClick={() => {
             const gs = groupServicesRequest?.groupServices.find(gs => gs.serviceId === selected[0]);
-            if (gs?.groupId && userProfileRequest?.userProfile.groups) {
-              setGroup(userProfileRequest.userProfile.groups[gs.groupId]);
+            if (gs) {
               setGroupService(gs);
               setDialog('manage_service');
               setSelected([]);
@@ -103,7 +102,14 @@ export function ManageServices(_: IComponent): React.JSX.Element {
       </Tooltip>
       {!!selected.length && <Box sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Box>}
     </>
-  })
+  });
+
+  useEffect(() => {
+    if (!group.displayName && profileRequest?.userProfile.groups) {
+      const g = Object.values(profileRequest?.userProfile?.groups || {}).find(g => g.active);
+      if (g) setGroup(g);
+    }
+  }, [group, profileRequest]);
 
   return <>
     <Dialog open={dialog === 'manage_service'} fullWidth maxWidth="lg">

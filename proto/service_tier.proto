@@ -51,8 +51,8 @@ service ServiceTierService {
 message IServiceTier {
   string id = 1;
   string serviceId = 2;
-  string formId = 3;
-  string surveyId = 4;
+  optional string formId = 3;
+  optional string surveyId = 4;
   string name = 5;
   int32 multiplier = 6;
   map<string, IServiceAddon> addons = 7;

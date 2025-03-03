@@ -16,21 +16,25 @@ interface FormPickerProps extends IComponent {
   label: string;
   helperText: string;
   formId?: string;
-  onSelectForm: (formId: string) => void;
+  onSelectForm: (formId?: string) => void;
 }
 
 export function FormPicker({ formId, label, helperText, onSelectForm, ...props }: FormPickerProps): React.JSX.Element {
   const { data: groupFormsRequest, refetch: getGroupForms, isSuccess: groupFormsLoaded } = siteApi.useGroupFormServiceGetGroupFormsQuery();
   const [dialog, setDialog] = useState('');
+  const [value, setValue] = useState(formId || '');
 
   return <>
     {groupFormsLoaded && onSelectForm && <TextField
       {...targets(`form pick select`, label, `select a form to use`)}
       select
       fullWidth
-      value={formId}
+      value={value}
       helperText={helperText}
-      onChange={e => onSelectForm(e.target.value)}
+      onChange={e => {
+        setValue(e.target.value);
+        onSelectForm(e.target.value.length ? e.target.value : undefined);
+      }}
       slotProps={{
         input: {
           endAdornment: <InputAdornment position="end" sx={{ mr: 2 }}>

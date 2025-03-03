@@ -4,6 +4,7 @@ import (
 	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
+	"encoding/json"
 	"errors"
 	"net/http"
 	"strings"
@@ -15,22 +16,11 @@ import (
 func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *types.PostServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostServiceResponse, error) {
 	service := data.GetService()
 
-	var serviceFormId *string
-	if service.GetFormId() != "" {
-		serviceFormId = &service.FormId
-	}
-
-	var serviceSurveyId *string
-	if service.GetSurveyId() != "" {
-		serviceSurveyId = &service.SurveyId
-	}
-
-	var serviceId string
 	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.services (name, cost, form_id, survey_id, created_sub)
 		VALUES ($1, $2::integer, $3, $4, $5::uuid)
 		RETURNING id
-	`, service.GetName(), service.GetCost(), serviceFormId, serviceSurveyId, session.UserSub).Scan(&serviceId)
+	`, service.GetName(), service.Cost, service.FormId, service.SurveyId, session.UserSub).Scan(&service.Id)
 
 	if err != nil {
 		var dbErr *pq.Error
@@ -40,21 +30,21 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.PostServiceResponse{Id: serviceId}, nil
+	_, err = h.PatchService(w, req, &types.PatchServiceRequest{Service: service}, session, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = h.PostGroupService(w, req, &types.PostGroupServiceRequest{ServiceId: service.Id}, session, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return &types.PostServiceResponse{Id: service.Id}, nil
 }
 
 func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchServiceResponse, error) {
 	service := data.GetService()
-
-	var serviceFormId *string
-	if service.GetFormId() != "" {
-		serviceFormId = &service.FormId
-	}
-
-	var serviceSurveyId *string
-	if service.GetSurveyId() != "" {
-		serviceSurveyId = &service.SurveyId
-	}
 
 	rows, err := tx.Query(`
 		SELECT st.id
@@ -98,7 +88,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		UPDATE dbtable_schema.services
 		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, service.GetId(), service.GetName(), serviceFormId, serviceSurveyId, session.UserSub, time.Now().Local().UTC())
+	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -106,16 +96,6 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	// build tiers
 	for _, tier := range service.GetTiers() {
 		var tierId string
-
-		var tierFormId *string
-		if tier.GetFormId() != "" {
-			tierFormId = &tier.FormId
-		}
-
-		var tierSurveyId *string
-		if tier.GetSurveyId() != "" {
-			tierSurveyId = &tier.SurveyId
-		}
 
 		err = tx.QueryRow(`
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
@@ -130,7 +110,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 			SELECT st.id
 			FROM input_rows
 			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), service.GetId(), tier.GetMultiplier(), tierFormId, tierSurveyId, session.UserSub).Scan(&tierId)
+		`, tier.GetName(), service.GetId(), tier.GetMultiplier(), tier.FormId, tier.SurveyId, session.UserSub).Scan(&tierId)
 
 		if err != nil {
 			return nil, util.ErrCheck(err)
@@ -167,22 +147,26 @@ func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *t
 }
 
 func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data *types.GetServiceByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceByIdResponse, error) {
-	var services []*types.IService
+	service := &types.IService{}
 
-	err := tx.QueryRows(&services, `
-		SELECT * FROM dbview_schema.enabled_services_ext
+	var tierBytes []byte
+	err := tx.QueryRow(`
+		SELECT id, name, "formId", "surveyId", "createdOn", tiers FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
-	`, data.GetId())
-
+	`, data.GetId()).Scan(&service.Id, &service.Name, &service.FormId, &service.SurveyId, &service.CreatedOn, &tierBytes)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if len(services) == 0 {
-		return nil, util.ErrCheck(errors.New("service not found"))
+	serviceTiers := make(map[string]*types.IServiceTier)
+	err = json.Unmarshal(tierBytes, &serviceTiers)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetServiceByIdResponse{Service: services[0]}, nil
+	service.Tiers = serviceTiers
+
+	return &types.GetServiceByIdResponse{Service: service}, nil
 }
 
 func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteServiceResponse, error) {

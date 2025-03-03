@@ -45,24 +45,26 @@ export function Onboard(_: IComponent): React.JSX.Element {
 
   const { setSnack, openConfirm } = useUtil();
 
+  const validArea = 'onboarding';
+
   const [group, setGroup] = useState({} as IGroup);
-  const [groupService, setGroupService] = useState(JSON.parse(localStorage.getItem('onboarding_service') || '{}') as IGroupService);
-  const [groupSchedule, setGroupSchedule] = useState(JSON.parse(localStorage.getItem('onboarding_schedule') || '{}') as IGroupSchedule);
+  const [groupService, setGroupService] = useState(JSON.parse(localStorage.getItem(`${validArea}_service`) || '{}') as IGroupService);
+  const [groupSchedule, setGroupSchedule] = useState(JSON.parse(localStorage.getItem(`${validArea}_schedule`) || '{}') as IGroupSchedule);
   const [saveToggle, setSaveToggle] = useState(0);
 
   const [assist, setAssist] = useState('');
   const pages = [
-    { id: 0, name: 'group', complete: onboarding.group },
-    { id: 1, name: 'roles', complete: onboarding.roles },
-    { id: 2, name: 'service', complete: onboarding.service },
-    { id: 3, name: 'schedule', complete: onboarding.schedule },
-    { id: 4, name: 'review', complete: false },
+    { name: 'group', complete: onboarding.group },
+    { name: 'roles', complete: onboarding.roles },
+    { name: 'service', complete: onboarding.service },
+    { name: 'schedule', complete: onboarding.schedule },
+    { name: 'review', complete: false },
   ];
 
   const loadedPage = location.hash.replace('#state', '').includes('#') ? location.hash.substring(1).split('&')[0] : 'group';
   const lp = pages.find(p => p.name == loadedPage);
 
-  const [currentPage, setCurrentPage] = useState(lp ? lp.id : 0);
+  const [currentPage, setCurrentPage] = useState(lp ? pages.indexOf(lp) : 0);
 
   const groupRoleValues = useMemo(() => Object.values(group.roles || {}), [group.roles]);
 
@@ -105,16 +107,17 @@ export function Onboard(_: IComponent): React.JSX.Element {
         <Grid container size="grow" direction="row" sx={{ alignItems: 'center', backgroundColor: '#000', borderRadius: '4px', p: '8px 12px' }}>
           <Grid container size="grow" justifyItems="center">
             <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
-              {['Group', 'Roles', 'Services', 'Schedule', 'Review'].map((pg, i) => {
-                const curr = i == currentPage;
-                return <span id={`acc-progress-${i}`} key={`acc-progress-${i}`}><Typography
-                  color={pages[i].complete ? "success" : "primary"}
-                  sx={{
-                    fontWeight: 'bold',
-                    textDecoration: curr ? 'underline' : 'none',
-                  }}
-                >{pg}</Typography></span>
-              })}
+              {pages.map((pg, i) => <span id={`acc-progress-${i}`} key={`acc-progress-${i}`}><Typography
+                color={pg.complete ? "success" : "primary"}
+                sx={{
+                  textTransform: 'capitalize',
+                  fontWeight: 'bold',
+                  textDecoration: i == currentPage ? 'underline' : 'none',
+                }}
+              >
+                {pg.name}
+              </Typography></span>
+              )}
             </Breadcrumbs>
           </Grid>
           <Grid>
@@ -140,7 +143,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
             showCancel={false}
             editGroup={group}
             saveToggle={saveToggle}
-            validArea='onboarding'
+            validArea={validArea}
             closeModal={(g: IGroup) => {
               changePage(1);
               setSaveToggle(0);
@@ -149,7 +152,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
           /> : currentPage == 1 ? !isUninitialized && ((profileReq?.userProfile?.groups && group.name) || !profileReq?.userProfile?.groups) && <ManageGroupRolesModal
             showCancel={false}
             editGroup={group}
-            validArea='onboarding'
+            validArea={validArea}
             saveToggle={saveToggle}
             closeModal={(g: IGroup) => {
               changePage(1);
@@ -160,23 +163,21 @@ export function Onboard(_: IComponent): React.JSX.Element {
             showCancel={false}
             groupDisplayName={group.displayName}
             groupPurpose={group.purpose}
-            editGroupService={groupService}
-            validArea='onboarding'
+            validArea={validArea}
             saveToggle={saveToggle}
             closeModal={(savedService: IGroupService) => {
               changePage(1);
               setSaveToggle(0);
-              setGroupService({ ...groupService, service: savedService });
+              setGroupService({ service: { ...savedService } });
             }}
           /> : currentPage == 3 ? <ManageSchedulesModal
             showCancel={false}
-            editGroupSchedule={groupSchedule}
-            validArea='onboarding'
+            validArea={validArea}
             saveToggle={saveToggle}
             closeModal={(savedSchedule: IGroupSchedule) => {
               changePage(1);
               setSaveToggle(0);
-              setGroupSchedule(savedSchedule);
+              setGroupSchedule({ ...savedSchedule });
             }}
           /> : currentPage == 4 ? <>
             <Card>

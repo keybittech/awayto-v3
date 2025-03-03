@@ -91,7 +91,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE TABLE dbtable_schema.services (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     name VARCHAR (50) NOT NULL,
-    cost INTEGER NOT NULL,
+    cost INTEGER,
     form_id uuid REFERENCES dbtable_schema.forms (id),
     survey_id uuid REFERENCES dbtable_schema.forms (id),
     created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),

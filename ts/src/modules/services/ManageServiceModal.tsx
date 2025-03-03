@@ -9,27 +9,22 @@ import CardActions from '@mui/material/CardActions';
 import CardHeader from '@mui/material/CardHeader';
 import Grid from '@mui/material/Grid';
 import Chip from '@mui/material/Chip';
+import Checkbox from '@mui/material/Checkbox';
+import FormControlLabel from '@mui/material/FormControlLabel';
 import Button from '@mui/material/Button';
 
-import { useStyles, siteApi, useUtil, useSuggestions, IGroup, IService, IServiceTier, IPrompts, IGroupService, useDebounce, targets, useValid, IValidationAreas } from 'awayto/hooks';
-import { Checkbox, debounce, FormControlLabel } from '@mui/material';
+import { useStyles, siteApi, useUtil, useSuggestions, IService, IServiceTier, IPrompts, IGroupService, useDebounce, targets, useValid, IValidationAreas } from 'awayto/hooks';
 import FormPicker from '../forms/FormPicker';
 import SelectLookup from '../common/SelectLookup';
 import ServiceTierAddons from './ServiceTierAddons';
 
 const serviceSchema = {
   name: '',
-  cost: 0,
-  formId: '',
-  surveyId: '',
   tiers: {}
 } as IService;
 
 const serviceTierSchema = {
   name: '',
-  multiplier: 100,
-  formId: '',
-  surveyId: '',
   addons: {}
 } as IServiceTier;
 
@@ -53,14 +48,18 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   const { setSnack } = useUtil();
   const { setValid } = useValid();
 
-  const [newService, setNewService] = useState({ ...serviceSchema, ...editGroupService?.service });
-  const debouncedService = useDebounce(newService, 50);
+  const [newService, setNewService] = useState({
+    ...serviceSchema,
+    ...editGroupService?.service,
+    ...(JSON.parse(localStorage.getItem(`${validArea}_service`) || '{}') as IGroupService).service
+  });
+  const debouncedService = useDebounce(newService, 150);
   const [newServiceTier, setNewServiceTier] = useState({ ...serviceTierSchema });
   const [serviceTierAddonIds, setServiceTierAddonIds] = useState<string[]>([]);
   const [hasServiceFormOrSurvey, setHasServiceFormOrSurvey] = useState(!!newService.formId || !!newService.surveyId);
   const [hasTierFormOrSurvey, setHasTierFormOrSurvey] = useState(!!newServiceTier.formId || !!newServiceTier.surveyId);
 
-  const { data: existingServiceRequest } = siteApi.useServiceServiceGetServiceByIdQuery({ id: editGroupService?.id || newService?.id || '' }, { skip: !editGroupService?.id });
+  const { data: existingServiceRequest } = siteApi.useServiceServiceGetServiceByIdQuery({ id: newService.id || '' }, { skip: !newService.id });
   const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery();
 
   const {
@@ -83,7 +82,6 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   const [deleteGroupServiceAddon] = siteApi.useGroupServiceAddonsServiceDeleteGroupServiceAddonMutation();
   const [patchService] = siteApi.useServiceServicePatchServiceMutation();
   const [postService] = siteApi.useServiceServicePostServiceMutation();
-  const [postGroupService] = siteApi.useGroupServiceServicePostGroupServiceMutation();
 
   const serviceTiers = useMemo(() => Object.values(newService.tiers || {}), [newService.tiers]);
 
@@ -97,23 +95,12 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
       if (editGroupService?.serviceId) {
         await patchService({ patchServiceRequest: { service: newService } }).unwrap();
       } else {
-        const { id: serviceId } = await postService({
+        const { id } = await postService({
           postServiceRequest: {
-            service: {
-              name: newService.name,
-              cost: newService.cost,
-              formId: newService.formId,
-              surveyId: newService.surveyId,
-            }
+            service: newService
           }
         }).unwrap();
-        const newServiceRef = {
-          ...newService,
-          id: serviceId
-        };
-        await patchService({ patchServiceRequest: { service: newServiceRef } }).unwrap();
-        await postGroupService({ postGroupServiceRequest: { serviceId } }).unwrap();
-        setNewService(newServiceRef);
+        setNewService({ ...newService, id });
       }
     }
 
@@ -133,7 +120,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   // Onboarding handling
   useEffect(() => {
     if (validArea) {
-      localStorage.setItem('onboarding_service', JSON.stringify({ service: debouncedService }));
+      localStorage.setItem(`${validArea}_service`, JSON.stringify({ service: debouncedService }));
       setValid({ area: validArea, schema: 'service', valid: Boolean(debouncedService.name && Object.keys(debouncedService.tiers || {}).length) });
     }
   }, [validArea, debouncedService]);
@@ -182,11 +169,11 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   }, [existingServiceRequest]);
 
   useEffect(() => {
-    setHasServiceFormOrSurvey(!!(newService.formId || newService.surveyId));
+    setHasServiceFormOrSurvey(Boolean(newService.formId || newService.surveyId));
   }, [newService]);
 
   useEffect(() => {
-    setHasTierFormOrSurvey(!!(newServiceTier.formId || newServiceTier.surveyId));
+    setHasTierFormOrSurvey(Boolean(newServiceTier.formId || newServiceTier.surveyId));
   }, [newServiceTier]);
 
   return <Card>
@@ -233,7 +220,14 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
               control={
                 <Checkbox
                   checked={hasServiceFormOrSurvey}
-                  onChange={() => setHasServiceFormOrSurvey(!hasServiceFormOrSurvey)}
+                  onChange={() => {
+                    if (newService.surveyId || newService.formId && hasServiceFormOrSurvey) {
+                      delete newService.surveyId;
+                      delete newService.formId;
+                      setNewService({ ...newService });
+                    }
+                    setHasServiceFormOrSurvey(!hasServiceFormOrSurvey)
+                  }}
                 />
               }
             />
@@ -244,7 +238,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                   formId={newService.formId}
                   label="Service Intake Form"
                   helperText="Optional. Shown during appointment creation."
-                  onSelectForm={(formId: string) => {
+                  onSelectForm={(formId?: string) => {
                     setNewService({ ...newService, formId });
                   }}
                 />
@@ -254,7 +248,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                   formId={newService.surveyId}
                   label="Service Survey Form"
                   helperText="Optional. Shown during post-appointment summary."
-                  onSelectForm={(surveyId: string) => {
+                  onSelectForm={(surveyId?: string) => {
                     setNewService({ ...newService, surveyId });
                   }}
                 />
@@ -360,7 +354,14 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                 control={
                   <Checkbox
                     checked={hasTierFormOrSurvey}
-                    onChange={() => setHasTierFormOrSurvey(!hasTierFormOrSurvey)}
+                    onChange={() => {
+                      if (newServiceTier.surveyId || newServiceTier.formId && hasTierFormOrSurvey) {
+                        delete newServiceTier.surveyId;
+                        delete newServiceTier.formId;
+                        setNewServiceTier({ ...newServiceTier });
+                      }
+                      setHasTierFormOrSurvey(!hasTierFormOrSurvey)
+                    }}
                   />
                 }
               />
@@ -423,7 +424,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                     const et = serviceTiers.find(x => x.name == st.name);
                     if (et) {
                       if (et.id != st.id) {
-                        setSnack({ snackType: "warning", snackOn: "This tier already exists. Click on " });
+                        setSnack({ snackType: "warning", snackOn: "This tier already exists. You can edit it by clicking on its header cell in the table below." });
                         return
                       }
                       st = { ...st, id: et.id, createdOn: et.createdOn, order: et.order, addons: st.addons };

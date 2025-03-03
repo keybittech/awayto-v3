@@ -52,10 +52,10 @@ service ServiceService {
 message IService {
   string id = 1;
   string name = 2 [(buf.validate.field).string.min_len = 1];
-  int32 cost = 3;
-  map<string, IServiceTier> tiers = 4;
-  string formId = 5;
-  string surveyId = 6;
+  optional int32 cost = 3 [(buf.validate.field).int32.gt = 0];
+  map<string, IServiceTier> tiers = 4 [(buf.validate.field).map.min_pairs = 1];
+  optional string formId = 5 [(buf.validate.field).string.uuid = true];
+  optional string surveyId = 6 [(buf.validate.field).string.uuid = true];
   string createdOn = 7;
   int32 row = 8;
 }

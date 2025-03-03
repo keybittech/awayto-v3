@@ -56,13 +56,13 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
       ...scheduleSchema,
       timezone: Intl.DateTimeFormat().resolvedOptions().timeZone
     },
-    ...editGroupSchedule
+    ...editGroupSchedule,
+    ...JSON.parse(localStorage.getItem(`${validArea}_schedule`) || '{}') as IGroupSchedule
   } as IGroupSchedule);
 
   const schedule = useMemo(() => (groupSchedule.schedule || { ...scheduleSchema }) as Required<ISchedule>, [groupSchedule.schedule]);
 
-
-  const debouncedSchedule = useDebounce(schedule, 50);
+  const debouncedSchedule = useDebounce(schedule, 150);
 
   const scheduleTimeUnitName = useTimeName(schedule.scheduleTimeUnitId);
   const bracketTimeUnitName = useTimeName(schedule.bracketTimeUnitId);
@@ -145,7 +145,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
   // Onboarding handling
   useEffect(() => {
     if (validArea) {
-      localStorage.setItem('onboarding_schedule', JSON.stringify({ schedule: debouncedSchedule }));
+      localStorage.setItem(`${validArea}_schedule`, JSON.stringify({ schedule: debouncedSchedule }));
       setValid({ area: validArea, schema: 'schedule', valid: Boolean(debouncedSchedule.name && debouncedSchedule.startTime) });
     }
   }, [validArea, debouncedSchedule]);
@@ -361,7 +361,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                 {...targets(`manage schedule modal slot context name`, `Booking Slot Length`, `an uneditable field showing the currently selected slot context name`)}
                 disabled={true}
                 value={schedule.slotTimeUnitName}
-                helperText={`The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.`}
+                helperText={slotDurationMarks.length > 1 ? `The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.` : 'The booking slot will be for an entire day.'}
                 slotProps={{
                   inputLabel: {
                     shrink: true
@@ -408,7 +408,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
         >Save Schedule</Button>
       </Grid>
     </CardActions>}
-  </Card >
+  </Card>
 }
 
 export default ManageSchedulesModal;

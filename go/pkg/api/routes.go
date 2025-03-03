@@ -125,7 +125,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 
 									err := protovalidate.Validate(pb)
 									if err != nil {
-										deferredError = util.ErrCheck(err)
+										deferredError = util.ErrCheck(util.UserError(err.Error()))
 										return
 									}
 
