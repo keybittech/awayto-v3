@@ -204,7 +204,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     name VARCHAR (50),
     start_time TIMESTAMPTZ,
     end_time TIMESTAMPTZ,
-    timezone VARCHAR(128),
+    timezone VARCHAR(128) NOT NULL,
     schedule_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),
     bracket_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),
     slot_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),

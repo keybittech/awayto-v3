@@ -72,6 +72,7 @@ message IScheduleBracketSlot {
   string id = 1;
   string scheduleBracketId = 2;
   string startTime = 3;
+  int32 row = 4;
 }
 
 message IScheduleBracket {
@@ -84,6 +85,7 @@ message IScheduleBracket {
   map<string, IScheduleBracketSlot> slots = 7;
   map<string, IQuote> quotes = 8;
   string createdOn = 9;
+  int32 row = 10;
 }
 
 message ISchedule {
@@ -94,7 +96,10 @@ message ISchedule {
     (buf.validate.field).timestamp.gt_now = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string timezone = 5;
+  string timezone = 5 [
+    (buf.validate.field).string.min_len = 1,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
   string scheduleTimeUnitId = 6 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED

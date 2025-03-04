@@ -21,7 +21,7 @@ export default function App(props: IComponent): React.JSX.Element {
   const { data: profileRequest, isSuccess } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
   return <>
-    <LocalizationProvider dateAdapter={AdapterDayjs}>
+    <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale='en'>
       <ThemeProvider theme={theme}>
         <CssBaseline />
 

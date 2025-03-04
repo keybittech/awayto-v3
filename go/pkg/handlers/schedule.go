@@ -140,13 +140,10 @@ func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetSchedules(w http.ResponseWriter, req *http.Request, data *types.GetSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetSchedulesResponse, error) {
 	var schedules []*types.ISchedule
 
-	err := tx.QueryRows(&schedules, `
-		SELECT es.* 
+	err := tx.QueryRows(&schedules, `SELECT es.* 
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbtable_schema.schedules s ON s.id = es.id
-		WHERE s.created_sub = $1
-	`, session.UserSub)
-
+		WHERE s.created_sub = $1`, session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

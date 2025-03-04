@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { dayjs, IGroupScheduleDateSlots, IQuote, TimeUnit, quotedDT, userTimezone, siteApi } from 'awayto/hooks';
+import { dayjs, IGroupScheduleDateSlots, IQuote, TimeUnit, quotedDT, siteApi } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
@@ -16,9 +16,11 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
 
   const [quote, setQuote] = useState({} as IQuote);
 
-  const tz = useMemo(() => encodeURIComponent(btoa(userTimezone)), [userTimezone]);
-
   const [getScheduleDateSlots, { data: dateSlotsRequest, isFetching }] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleByDateQuery();
+
+  const dateSlots = useMemo(() => dateSlotsRequest?.groupScheduleDateSlots || [], [dateSlotsRequest]);
+
+  console.log({ dateSlots })
 
   if (dateSlotsRequest?.groupScheduleDateSlots?.length && !firstAvailable.scheduleBracketSlotId) {
     const [slot] = dateSlotsRequest.groupScheduleDateSlots as Required<IGroupScheduleDateSlots>[];
@@ -38,14 +40,13 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
   }, [selectedDate]);
 
   const getDateSlots = useCallback(() => {
-    if (groupSchedule?.schedule?.id?.length && startOfMonth && tz && !isFetching) {
+    if (groupSchedule?.schedule?.id?.length && startOfMonth && !isFetching) {
       getScheduleDateSlots({
         groupScheduleId: groupSchedule?.schedule?.id,
         date: startOfMonth.format("YYYY-MM-DD"),
-        timezone: tz,
       });
     }
-  }, [groupSchedule?.schedule, startOfMonth, tz, isFetching]);
+  }, [groupSchedule?.schedule, startOfMonth, isFetching]);
 
   useEffect(() => {
     if (!dateSlotsRequest?.groupScheduleDateSlots && groupSchedule?.schedule?.id) {
@@ -79,7 +80,7 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
     setSelectedTime,
     startOfMonth,
     setStartOfMonth,
-    dateSlots: dateSlotsRequest?.groupScheduleDateSlots || [],
+    dateSlots,
     getDateSlots,
     firstAvailable,
     bracketSlotDateDayDiff,

@@ -10,12 +10,14 @@ import (
 	"os"
 	"reflect"
 	"strings"
+	"sync"
 
 	"database/sql"
 
 	_ "github.com/lib/pq"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Database struct {
@@ -25,12 +27,13 @@ type Database struct {
 }
 
 type ColTypes struct {
-	reflectString  reflect.Type
-	reflectInt32   reflect.Type
-	reflectInt64   reflect.Type
-	reflectFloat64 reflect.Type
-	reflectBool    reflect.Type
-	reflectMap     reflect.Type
+	reflectString    reflect.Type
+	reflectInt32     reflect.Type
+	reflectInt64     reflect.Type
+	reflectFloat64   reflect.Type
+	reflectBool      reflect.Type
+	reflectJsonb     reflect.Type
+	reflectTimestamp reflect.Type
 }
 
 var colTypes *ColTypes
@@ -65,7 +68,8 @@ func InitDatabase() IDatabase {
 		reflect.TypeOf(sql.NullInt64{}),
 		reflect.TypeOf(sql.NullFloat64{}),
 		reflect.TypeOf(sql.NullBool{}),
-		reflect.TypeOf(ProtoMapSerializer{}),
+		reflect.TypeOf(JSONBSerializer{}),
+		reflect.TypeOf(&timestamppb.Timestamp{}),
 	}
 
 	var adminRoleId, adminSub string
@@ -224,28 +228,6 @@ func (r *IRowsWrapper) ColumnTypes() ([]*sql.ColumnType, error) {
 	return r.Rows.ColumnTypes()
 }
 
-type ProtoMapSerializer []byte
-
-func (pms *ProtoMapSerializer) Scan(src interface{}) error {
-
-	var source []byte
-
-	switch s := src.(type) {
-	case []byte:
-		source = s
-	case string:
-		source = []byte(s)
-	case nil:
-		source = []byte("{}")
-	default:
-		return errors.New("incompatible type for ProtoMapSerializer")
-	}
-
-	*pms = source
-
-	return nil
-}
-
 func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error {
 	if ids == nil || len(ids) != 3 {
 		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
@@ -357,63 +339,63 @@ func (tx *TxWrapper) QueryRows(protoStructSlice interface{}, query string, args 
 
 	protoValue := reflect.ValueOf(protoStructSlice)
 	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
-		return errors.New("must provide a pointer to a slice")
+		return util.ErrCheck(errors.New("must provide a pointer to a slice"))
 	}
 
 	protoType := protoValue.Elem().Type().Elem()
 
+	indexes := cachedFieldIndexes(protoType.Elem())
+
 	rows, err := tx.Query(query, args...)
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	defer rows.Close()
 
 	columns, err := rows.Columns()
 	if err != nil {
-		log.Fatal(err)
+		return util.ErrCheck(err)
 	}
 
 	columnTypes, err := rows.ColumnTypes()
 	if err != nil {
-		log.Fatal(err)
+		return util.ErrCheck(err)
 	}
 
 	for rows.Next() {
 		newElem := reflect.New(protoType.Elem())
-		values := make([]interface{}, len(columns))
-		deferrals := make([]func(), 0)
+		var values []interface{}
+		deferrals := make([]func() error, 0)
 
-		for i, col := range columnTypes {
+		for i, column := range columns {
+			index, ok := indexes[column]
+			if ok {
+				if "JSONB" == columnTypes[i].DatabaseTypeName() {
+					safeVal := reflect.New(colTypes.reflectJsonb)
+					values = append(values, safeVal.Interface())
 
-			colType := col.DatabaseTypeName()
-
-			for k := 0; k < protoType.Elem().NumField(); k++ {
-				fName := strings.Split(protoType.Elem().Field(k).Tag.Get("json"), ",")[0]
-
-				if fName != columns[i] {
-					continue
+					deferrals = append(deferrals, func() error {
+						return extractValue(newElem.Elem().Field(index), safeVal)
+					})
+				} else {
+					values = append(values, newElem.Elem().Field(index).Addr().Interface())
 				}
-
-				fVal := newElem.Elem().Field(k)
-
-				safeVal := reflect.New(mapTypeToNullType(colType))
-				values[i] = safeVal.Interface()
-
-				deferrals = append(deferrals, func() {
-					extractValue(fVal, safeVal)
-				})
-
-				break
+			} else {
+				var noMatch interface{}
+				values = append(values, &noMatch)
 			}
 		}
 
 		if err := rows.Scan(values...); err != nil {
-			return err
+			return util.ErrCheck(err)
 		}
 
 		for _, d := range deferrals {
-			d()
+			err := d()
+			if err != nil {
+				return util.ErrCheck(err)
+			}
 		}
 
 		protoValue.Elem().Set(reflect.Append(protoValue.Elem(), newElem.Elem().Addr()))
@@ -422,8 +404,59 @@ func (tx *TxWrapper) QueryRows(protoStructSlice interface{}, query string, args 
 	return nil
 }
 
+// fieldIndexes returns a map of database column name to struct field index.
+func fieldIndexes(structType reflect.Type) map[string]int {
+	indexes := make(map[string]int)
+	for i := 0; i < structType.NumField(); i++ {
+		field := structType.Field(i)
+		tag := strings.Split(field.Tag.Get("json"), ",")[0]
+		if tag != "" {
+			indexes[tag] = i
+		} else {
+			indexes[field.Name] = i
+		}
+	}
+	return indexes
+}
+
+var fieldIndexesCache sync.Map // map[reflect.Type]map[string]int
+
+// cachedFieldIndexes is like fieldIndexes, but cached per struct type.
+func cachedFieldIndexes(structType reflect.Type) map[string]int {
+	if f, ok := fieldIndexesCache.Load(structType); ok {
+		return f.(map[string]int)
+	}
+	indexes := fieldIndexes(structType)
+	fieldIndexesCache.Store(structType, indexes)
+	return indexes
+}
+
+type JSONBSerializer []byte
+
+func (pms *JSONBSerializer) Scan(src interface{}) error {
+
+	var source []byte
+
+	switch s := src.(type) {
+	case []byte:
+		source = s
+	case string:
+		source = []byte(s)
+	case nil:
+		source = []byte("{}")
+	default:
+		return errors.New("incompatible type for ProtoMapSerializer")
+	}
+
+	*pms = source
+
+	return nil
+}
+
 func mapTypeToNullType(t string) reflect.Type {
 	switch t {
+	case "TIMESTAMPTZ":
+		return colTypes.reflectTimestamp
 	case "VARCHAR", "CHAR", "TIMESTAMP", "DATE", "INTERVAL", "TEXT", "UUID":
 		return colTypes.reflectString
 	case "INT8", "INT4":
@@ -433,18 +466,20 @@ func mapTypeToNullType(t string) reflect.Type {
 	case "BOOL":
 		return colTypes.reflectBool
 	case "JSONB":
-		return colTypes.reflectMap
+		return colTypes.reflectJsonb
 	default:
 		return nil
 	}
 }
 
-func extractValue(dst, src reflect.Value) {
+func extractValue(dst, src reflect.Value) error {
 	if dst.IsValid() && dst.CanSet() {
 		if src.Kind() == reflect.Ptr || src.Kind() == reflect.Interface {
 			src = reflect.Indirect(src)
 		}
 		switch src.Type() {
+		case colTypes.reflectTimestamp:
+			dst.Set(reflect.ValueOf(src.Interface()))
 		case colTypes.reflectString:
 			dst.SetString(src.FieldByName("String").String())
 		case colTypes.reflectInt32:
@@ -453,59 +488,59 @@ func extractValue(dst, src reflect.Value) {
 			dst.SetInt(src.FieldByName("Int64").Int())
 		case colTypes.reflectBool:
 			dst.SetBool(src.FieldByName("Bool").Bool())
-		case colTypes.reflectMap:
-			jsonData := src.Interface().(ProtoMapSerializer)
+		case colTypes.reflectJsonb:
+			dstType := dst.Type()
 
-			// Check if destination is a map
-			if dst.Kind() == reflect.Map {
-				// Handle map<string, proto.Message> case
-				mapType := dst.Type()
-				valueType := mapType.Elem()
+			// The following serializes dbview JSONB data into existing proto structs
+			// The dbviews will select JSONB with the structure of one or many (map) of an object
+			// Handle map[string]*types.IExample as a top level proto struct field
+			if dstType.Kind() == reflect.Map {
 
-				// Create a temporary Go map to hold the unmarshaled data
-				var tempMap map[string]json.RawMessage
-				if err := json.Unmarshal(jsonData, &tempMap); err != nil {
-					println("Error parsing JSON map:", err.Error())
-					return
+				elemType := dstType.Elem()
+
+				dstMap := reflect.MakeMap(dstType)
+
+				var tmpMap map[string]json.RawMessage
+				err := json.Unmarshal(src.Bytes(), &tmpMap)
+				if err != nil {
+					return util.ErrCheck(err)
 				}
 
-				// Initialize the destination map if it's nil
-				if dst.IsNil() {
-					dst.Set(reflect.MakeMap(mapType))
-				}
-
-				// For each key-value pair in the map
-				for key, rawValue := range tempMap {
-					// Create a new instance of the map value type
-					protoMsgValue := reflect.New(valueType.Elem()).Interface().(proto.Message)
-
-					// Unmarshal the raw JSON into the proto message
-					if err := protojson.Unmarshal(rawValue, protoMsgValue); err != nil {
-						println("Error unmarshaling map value for key:", key, "type:", valueType.Elem().Name(), "error:", err.Error())
-						continue
+				for key, val := range tmpMap {
+					protoMessageElem := reflect.New(elemType.Elem())
+					protoMessage, ok := protoMessageElem.Interface().(proto.Message)
+					if !ok {
+						return util.ErrCheck(errors.New("mapped element is not a proto message"))
 					}
 
-					// Set the key-value pair in the destination map
-					dst.SetMapIndex(reflect.ValueOf(key), reflect.ValueOf(protoMsgValue))
-				}
-			} else if dst.Type().Implements(reflect.TypeOf((*proto.Message)(nil)).Elem()) {
-				// Handle regular proto.Message case
-				protoMsg := reflect.New(dst.Type().Elem()).Interface().(proto.Message)
+					err := protojson.Unmarshal(val, protoMessage)
+					if err != nil {
+						return util.ErrCheck(err)
+					}
 
-				if err := protojson.Unmarshal(jsonData, protoMsg); err != nil {
-					msgTypeName := dst.Type().Elem().Name()
-					println("Error unmarshaling proto message type:", msgTypeName, "error:", err.Error())
-					return
+					dstMap.SetMapIndex(reflect.ValueOf(key), protoMessageElem)
 				}
 
-				dst.Set(reflect.ValueOf(protoMsg))
+				dst.Set(dstMap)
+
+				// Handle *types.IExample as a top level proto struct field
 			} else {
-				println("Destination type is neither a map nor a proto.Message:", dst.Type().String())
+
+				newProtoMsg := reflect.New(dstType.Elem())
+				msg, ok := newProtoMsg.Interface().(proto.Message)
+				if !ok {
+					return util.ErrCheck(errors.New("special field is not a proto message"))
+				}
+
+				if err := protojson.Unmarshal(src.Bytes(), msg); err != nil {
+					return util.ErrCheck(err)
+				}
+
+				dst.Set(newProtoMsg)
 			}
 		default:
-			println("no match for extractValue, setting default")
 			dst.Set(src)
 		}
-
 	}
+	return nil
 }

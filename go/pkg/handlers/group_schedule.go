@@ -4,7 +4,6 @@ import (
 	"av3api/pkg/clients"
 	"av3api/pkg/types"
 	"av3api/pkg/util"
-	"encoding/base64"
 	"errors"
 	"net/http"
 	"strings"
@@ -98,17 +97,10 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 }
 
 func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupScheduleByDateResponse, error) {
-
-	// TODO limit to group only query
-	tzString, err := base64.StdEncoding.DecodeString(data.GetTimezone())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	var groupScheduleDateSlots []*types.IGroupScheduleDateSlots
-	err = tx.QueryRows(&groupScheduleDateSlots, `
+	err := tx.QueryRows(&groupScheduleDateSlots, `
 		SELECT * FROM dbfunc_schema.get_group_schedules($1, $2, $3)
-	`, data.GetDate(), data.GetGroupScheduleId(), tzString)
+	`, data.GetDate(), data.GetGroupScheduleId(), session.Timezone)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

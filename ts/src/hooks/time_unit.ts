@@ -118,8 +118,3 @@ export function utcNow(): dayjs.Dayjs {
 export function utcNowString(): string {
   return dayjs.utc(new Date()).toISOString();
 }
-
-/**
- * @category Time Unit
- */
-export const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;

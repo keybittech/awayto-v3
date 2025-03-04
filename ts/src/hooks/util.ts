@@ -1,12 +1,13 @@
+import { createSlice } from '@reduxjs/toolkit';
+
 import dayjs from 'dayjs';
 import duration from 'dayjs/plugin/duration';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import utc from 'dayjs/plugin/utc';
 import isoWeek from 'dayjs/plugin/isoWeek';
 import timezone from 'dayjs/plugin/timezone';
+import updateLocale from 'dayjs/plugin/updateLocale';
 
-import en from 'dayjs/locale/en';
-import { createSlice } from '@reduxjs/toolkit';
 import { BufferResponse, IFile } from './api';
 
 dayjs.extend(duration);
@@ -14,8 +15,11 @@ dayjs.extend(relativeTime);
 dayjs.extend(utc);
 dayjs.extend(isoWeek);
 dayjs.extend(timezone);
+dayjs.extend(updateLocale);
 
-dayjs.locale({ ...en, weekStart: 1 });
+dayjs.updateLocale('en', {
+  weekStart: 1
+});
 
 export { dayjs };
 
