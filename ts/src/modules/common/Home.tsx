@@ -37,22 +37,22 @@ export function Home(props: IComponent): React.JSX.Element {
     });
   }, [profileRequest?.userProfile.availableUserGroupRoles, navigate]);
 
-  return <Grid container size={{ xs: 12, md: 10, lg: 9, xl: 8 }}>
+  return <Grid container size="grow">
     <Grid container spacing={2}>
-      <Grid size={{ xs: 12, md: 3 }}>
+      <Grid size={{ xs: 12, md: 3, lg: 2 }}>
         <Card sx={{ p: 2 }} variant="outlined">
           <CardHeader
             title={`${profileRequest?.userProfile.firstName} ${profileRequest?.userProfile.lastName}`}
             subheader={`${profileRequest?.userProfile.roleName}`}
           // action={<GroupSelect />}
           />
-          {roleActions}
         </Card>
+        {roleActions}
       </Grid>
 
 
 
-      <Grid container size={{ xs: 12, md: 9 }} direction="column" spacing={2}>
+      <Grid container size={{ xs: 12, md: 9, lg: 10 }} direction="column" spacing={2}>
 
         {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <Grid size="grow">
           <RequestQuote {...props} />

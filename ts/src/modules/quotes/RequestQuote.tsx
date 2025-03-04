@@ -88,20 +88,16 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     {!groupUserSchedulesRequest?.groupUserSchedules ? <Alert sx={{ marginTop: '16px' }} severity="info">
       There are no active schedules or operations are currently halted.
     </Alert> : <>
-      <Grid container spacing={2} mt={1}>
-        <Grid container spacing={1} size={{ xs: 12, md: 4 }} direction="column">
-          <Grid>
-            <ScheduleDatePicker key={groupSchedule?.schedule?.id} />
-          </Grid>
-          <Grid>
-            <ScheduleTimePicker key={groupSchedule?.schedule?.id} />
-          </Grid>
+      <Grid container size="grow" spacing={2}>
+        <Grid container size={{ xs: 12, md: 4 }} direction="column">
+          <ScheduleDatePicker key={groupSchedule?.schedule?.id} />
+          <ScheduleTimePicker key={groupSchedule?.schedule?.id} />
         </Grid>
-        <Grid container size={{ xs: 12, md: 8, xl: 8 }} sx={{ mt: { xs: 0, sm: 1.5 } }} spacing={2} direction="column">
-          <Grid>
+        <Grid container size={{ xs: 12, md: 8 }} sx={{ my: 1.5 }} spacing={2} direction="column">
+          <Grid size="grow">
             <ServiceTierAddons service={groupScheduleService} />
           </Grid>
-          <Grid>
+          <Grid size="grow">
             <FileManager files={files} setFiles={setFiles} />
           </Grid>
         </Grid>
