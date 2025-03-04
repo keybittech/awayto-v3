@@ -5,7 +5,8 @@ import Keycloak from 'keycloak-js';
 const {
   VITE_REACT_APP_KC_REALM,
   VITE_REACT_APP_KC_CLIENT,
-  VITE_REACT_APP_KC_PATH
+  VITE_REACT_APP_KC_PATH,
+  VITE_REACT_APP_APP_HOST_URL,
 } = import.meta.env;
 
 export const keycloak = new Keycloak({
@@ -17,6 +18,24 @@ export const keycloak = new Keycloak({
 export const refreshToken = async (dur?: number) => {
   await keycloak.updateToken(dur);
   return true;
+}
+
+const getHeaders = () => {
+  return { headers: { 'Authorization': 'Bearer ' + keycloak.token } }
+}
+
+export const login = async () => {
+  const authenticated = await keycloak.init({ onLoad: 'login-required' });
+  if (authenticated) {
+    await fetch('/login', getHeaders());
+  }
+  return authenticated;
+}
+
+export const logout = async () => {
+  localStorage.clear();
+  await fetch('/logout', getHeaders());
+  await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
 }
 
 /**

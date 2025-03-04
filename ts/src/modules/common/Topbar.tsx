@@ -27,16 +27,12 @@ import GroupIcon from '@mui/icons-material/Group';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-import { useSecure, siteApi, keycloak, useStyles, SiteRoles, targets } from 'awayto/hooks';
+import { useSecure, siteApi, useStyles, SiteRoles, targets, logout } from 'awayto/hooks';
 
 import UpcomingBookingsMenu from '../bookings/UpcomingBookingsMenu';
 import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
 import PendingQuotesMenu from '../quotes/PendingQuotesMenu';
 import FeedbackMenu from '../feedback/FeedbackMenu';
-
-const {
-  VITE_REACT_APP_APP_HOST_URL
-} = import.meta.env;
 
 interface TopbarProps extends IComponent {
   forceSiteMenu?: boolean;
@@ -268,13 +264,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
 
           <MenuItem
             {...targets(`main menu logout`, `logout of the website`)}
-            onClick={() => {
-              async function go() {
-                localStorage.clear();
-                await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
-              }
-              void go();
-            }}
+            onClick={logout}
           >
             <ListItemIcon><LogoutIcon color="error" /></ListItemIcon>
             <ListItemText>Logout</ListItemText>

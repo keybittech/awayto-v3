@@ -2,12 +2,14 @@ package api
 
 import (
 	"av3api/pkg/clients"
+	"av3api/pkg/util"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"time"
 )
 
 func SetForwardingHeadersAndServe(prox *httputil.ReverseProxy, w http.ResponseWriter, r *http.Request) {
@@ -58,4 +60,40 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 			},
 		),
 	))
+
+	mux.Handle("/login",
+		a.LimitMiddleware(1, 1)(
+			a.ValidateTokenMiddleware(
+				func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+					http.SetCookie(w, &http.Cookie{
+						Name:     "valid_signature",
+						Value:    util.WriteSigned(util.LOGIN_SIGNATURE_NAME, fmt.Sprint(session.ExpiresAt)),
+						Path:     "/",
+						Expires:  time.Now().Add(24 * time.Hour),
+						SameSite: http.SameSiteStrictMode,
+						Secure:   true,
+						HttpOnly: true,
+					})
+				},
+			),
+		),
+	)
+
+	mux.Handle("/logout",
+		a.LimitMiddleware(1, 1)(
+			a.ValidateTokenMiddleware(
+				func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+					http.SetCookie(w, &http.Cookie{
+						Name:     "valid_signature",
+						Value:    "",
+						Path:     "/",
+						Expires:  time.Now(),
+						SameSite: http.SameSiteStrictMode,
+						Secure:   true,
+						HttpOnly: true,
+					})
+				},
+			),
+		),
+	)
 }

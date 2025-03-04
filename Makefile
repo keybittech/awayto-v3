@@ -112,7 +112,7 @@ AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 #           TARGETS             #
 #################################
 
-build: ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
+build: ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -142,15 +142,15 @@ else
 	sudo update-ca-certificates
 endif
 
-${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
+${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
 	@mkdir -p $(@D)
 	@chmod 750 $(@D)
 	install -m 640 /dev/null $@
-	openssl rand -hex 64 > $@
+	openssl rand -hex 64 > $@ | tr -d '\n'
 
 ${OAI_KEY_FILE}:
 	install -m 640 /dev/null $@
-	@if [[ ! -v OPENAI_API_KEY ]]; then \
+	if [[ ! -v OPENAI_API_KEY ]]; then \
 		echo "Provide an OPENAI_API_KEY if desired, or just press Enter"; \
 		read -s OAI_KEY; echo "$$OAI_KEY" > $@ ;\
 	else \

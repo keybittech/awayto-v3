@@ -108,21 +108,13 @@ func (a *API) ValidateTokenMiddleware(next SessionHandler) SessionHandler {
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "validation_cookie",
-			Value:    util.WriteSigned("validation_cookie", fmt.Sprint(kcUser.ExpiresAt)),
-			Path:     "/",
-			SameSite: http.SameSiteStrictMode,
-			Secure:   true,
-			HttpOnly: true,
-		})
-
 		session = &clients.UserSession{
 			UserSub:                 kcUser.Sub,
 			UserEmail:               kcUser.Email,
 			SubGroups:               kcUser.Groups,
 			AvailableUserGroupRoles: kcUser.ResourceAccess[kcUser.Azp].Roles,
 			Timezone:                req.Header.Get("X-TZ"),
+			ExpiresAt:               kcUser.ExpiresAt,
 			AnonIp:                  util.AnonIp(req.RemoteAddr),
 		}
 

@@ -67,14 +67,14 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 	mux.Handle("/demos/", http.StripPrefix("/demos/",
 		a.LimitMiddleware(.1, 1)(
 			func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
-				cookieValidation, err := req.Cookie("validation_cookie")
+				cookieValidation, err := req.Cookie("valid_signature")
 				if err != nil {
 					util.ErrorLog.Println(util.ErrCheck(err))
 					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 					return
 				}
 
-				err = util.VerifySigned("validation_cookie", cookieValidation.Value)
+				err = util.VerifySigned(util.LOGIN_SIGNATURE_NAME, cookieValidation.Value)
 				if err != nil {
 					util.ErrorLog.Println(util.ErrCheck(err))
 					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)

@@ -1,7 +1,7 @@
 import React, { startTransition, useEffect, useMemo, useState } from 'react';
 import { useLocation } from 'react-router-dom';
 
-import { keycloak, authSlice, useAppDispatch } from 'awayto/hooks';
+import { keycloak, authSlice, useAppDispatch, login } from 'awayto/hooks';
 
 import AuthContext from './AuthContext';
 import App from '../common/App';
@@ -28,7 +28,7 @@ function AuthProvider(): React.JSX.Element {
         }).catch(console.error);
       } else {
         try {
-          const authenticated = await keycloak.init({ onLoad: 'login-required' });
+          const authenticated = await login();
           dispatch(authSlice.actions.setAuthenticated({ authenticated }));
           setInit(true);
         } catch (e) {

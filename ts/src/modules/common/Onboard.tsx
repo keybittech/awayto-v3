@@ -18,7 +18,7 @@ import Link from '@mui/material/Link';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
 
-import { useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, keycloak, targets, useAppSelector } from 'awayto/hooks';
+import { logout, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, targets, useAppSelector } from 'awayto/hooks';
 import { Breadcrumbs, CircularProgress, Dialog } from '@mui/material';
 
 import OnboardingVideo from './OnboardingVideo';
@@ -27,10 +27,6 @@ import ManageGroupRolesModal from '../roles/ManageGroupRolesModal';
 import ManageServiceModal from '../services/ManageServiceModal';
 import ManageSchedulesModal from '../group_schedules/ManageSchedulesModal';
 import JoinGroupModal from '../groups/JoinGroupModal';
-
-const {
-  VITE_REACT_APP_APP_HOST_URL
-} = import.meta.env;
 
 export function Onboard(_: IComponent): React.JSX.Element {
 
@@ -125,13 +121,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
               <Button
                 {...targets(`site logout`, `logout of the website`)}
                 sx={{ fontSize: '10px' }}
-                onClick={() => {
-                  async function go() {
-                    localStorage.clear();
-                    await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
-                  }
-                  void go();
-                }}
+                onClick={logout}
               >
                 Logout
               </Button>

@@ -2,7 +2,6 @@ package util
 
 import (
 	"crypto/hmac"
-	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
 	"errors"
@@ -26,17 +25,18 @@ var (
 	LoggingMode    = flag.String("log", "", "Debug mode")
 	ErrorLog       *ErrLog
 	TitleCase      cases.Caser
-	HashData       []byte
 	DefaultPadding int
+	SigningToken   []byte
+
+	LOGIN_SIGNATURE_NAME = "login_signature_name"
 )
 
 func init() {
-	DefaultPadding = 5
-	randBytes := make([]byte, 64)
-	if _, err := rand.Read(randBytes); err != nil {
+	var err error
+	SigningToken, err = os.ReadFile(os.Getenv("SIGNING_TOKEN_FILE"))
+	if err != nil {
 		log.Fatal(err)
 	}
-	HashData = randBytes
 
 	file, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -44,6 +44,7 @@ func init() {
 	}
 	ErrorLog = &ErrLog{log.New(file, "", log.Ldate|log.Ltime)}
 	TitleCase = cases.Title(language.Und)
+	DefaultPadding = 5
 }
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
@@ -209,7 +210,7 @@ func Base64UrlDecode(str string) ([]byte, error) {
 }
 
 func WriteSigned(name, unsignedValue string) string {
-	mac := hmac.New(sha256.New, HashData)
+	mac := hmac.New(sha256.New, SigningToken)
 	mac.Write([]byte(name))
 	mac.Write([]byte(unsignedValue))
 	signature := mac.Sum(nil)
@@ -229,7 +230,7 @@ func VerifySigned(name, signedValue string) error {
 
 	value := signedValue[base64.StdEncoding.EncodedLen(sha256.Size):]
 
-	mac := hmac.New(sha256.New, HashData)
+	mac := hmac.New(sha256.New, SigningToken)
 	mac.Write([]byte(name))
 	mac.Write([]byte(value))
 	expectedSignature := mac.Sum(nil)

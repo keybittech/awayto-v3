@@ -110,14 +110,14 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       };
 
       ws.onclose = () => {
-        console.log('socket closed. reconnecting...');
-        if (!reconnectSnackShown.current) {
-          setSnack({ snackOn: 'Bad connection. Attempting to reconnect.', snackType: 'info' });
-          reconnectSnackShown.current = true;
-        }
         setTimeout(() => {
+          console.log('socket closed. reconnecting...');
+          if (!reconnectSnackShown.current) {
+            setSnack({ snackOn: 'Bad connection. Attempting to reconnect.', snackType: 'info' });
+            reconnectSnackShown.current = true;
+          }
           connect();
-        }, 5000);
+        }, 2000);
       };
 
       ws.onerror = (error) => {
