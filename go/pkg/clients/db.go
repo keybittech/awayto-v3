@@ -529,7 +529,15 @@ func extractValue(dst, src reflect.Value) error {
 				newProtoMsg := reflect.New(dstType.Elem())
 				msg, ok := newProtoMsg.Interface().(proto.Message)
 				if !ok {
-					return util.ErrCheck(errors.New("special field is not a proto message"))
+
+					// Fallback to regular json unmarshal
+					protoStruct := reflect.New(dstType)
+					err := json.Unmarshal(src.Bytes(), protoStruct.Interface())
+					if err != nil {
+						return util.ErrCheck(errors.New("fallback parsing failed during query rows"))
+					}
+					dst.Set(protoStruct.Elem())
+					return nil
 				}
 
 				if err := protojson.Unmarshal(src.Bytes(), msg); err != nil {
