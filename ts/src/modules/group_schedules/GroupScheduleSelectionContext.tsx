@@ -1,20 +1,23 @@
 import { FunctionComponent, createContext } from 'react';
 
 import { dayjs, IGroupScheduleDateSlots, IQuote } from 'awayto/hooks';
+import { Duration } from 'dayjs/plugin/duration';
+
+type DateSlotWithDuration = IGroupScheduleDateSlots & {
+  duration?: Duration;
+}
 
 export interface GroupScheduleSelectionContextType {
   quote: IQuote;
   setQuote(quote: IQuote): void;
-  selectedDate: dayjs.Dayjs;
-  setSelectedDate(date: dayjs.Dayjs): void;
-  selectedTime: dayjs.Dayjs;
-  setSelectedTime(time: dayjs.Dayjs): void;
+  selectedDate?: dayjs.Dayjs;
+  setSelectedDate(date: dayjs.Dayjs | undefined): void;
+  selectedTime?: dayjs.Dayjs;
+  setSelectedTime(time: dayjs.Dayjs | undefined): void;
   startOfMonth: dayjs.Dayjs;
   setStartOfMonth(start: dayjs.Dayjs): void;
-  dateSlots?: IGroupScheduleDateSlots[];
+  dateSlots?: DateSlotWithDuration[];
   getDateSlots: () => void;
-  firstAvailable: { time: dayjs.Dayjs, scheduleBracketSlotId: string };
-  bracketSlotDateDayDiff: number;
   GroupScheduleDateSelection?: FunctionComponent<IComponent>;
   GroupScheduleTimeSelection?: FunctionComponent<IComponent>;
 }

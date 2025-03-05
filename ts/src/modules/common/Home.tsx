@@ -10,8 +10,6 @@ import Chip from '@mui/material/Chip';
 import { siteApi, SiteRoleDetails, SiteRoles, targets, useSecure } from 'awayto/hooks';
 
 import BookingHome from '../bookings/BookingHome';
-import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
-import QuoteHome from '../quotes/QuoteHome';
 import RequestQuote from '../quotes/RequestQuote';
 
 export function Home(props: IComponent): React.JSX.Element {
@@ -56,13 +54,6 @@ export function Home(props: IComponent): React.JSX.Element {
 
         {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <Grid size="grow">
           <RequestQuote {...props} />
-        </Grid>}
-
-
-        {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <Grid size="grow">
-          <PendingQuotesProvider>
-            <QuoteHome {...props} />
-          </PendingQuotesProvider>
         </Grid>}
 
       </Grid>

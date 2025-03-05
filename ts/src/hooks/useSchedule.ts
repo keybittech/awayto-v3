@@ -6,10 +6,10 @@ import { getRelativeDuration, timeUnitOrder } from './time_unit';
 import { IScheduleBracketSlot } from './api';
 
 type UseScheduleProps = {
-  scheduleTimeUnitName: string;
-  bracketTimeUnitName: string;
-  slotTimeUnitName: string;
-  slotDuration: number;
+  scheduleTimeUnitName?: string;
+  bracketTimeUnitName?: string;
+  slotTimeUnitName?: string;
+  slotDuration?: number;
   bracketSlots?: IScheduleBracketSlot[];
   beginningOfMonth?: dayjs.Dayjs;
 };
@@ -25,16 +25,18 @@ type CellDuration = {
 }
 
 type UseScheduleResult = {
-  xAxisTypeName: string;
-  yAxisTypeName: string;
-  columns: number;
-  rows: number;
-  durations: CellDuration[][]
+  xAxisTypeName?: string;
+  yAxisTypeName?: string;
+  columns?: number;
+  rows?: number;
+  durations?: CellDuration[][]
 }
 
 export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTimeUnitName, slotDuration }: UseScheduleProps): UseScheduleResult {
 
   return useMemo(() => {
+    if (!scheduleTimeUnitName || !bracketTimeUnitName || !slotTimeUnitName || !slotDuration) return {};
+
     console.time('GENERATING_SCHEDULE');
 
     const xAxisTypeName = timeUnitOrder[timeUnitOrder.indexOf(scheduleTimeUnitName) - 1];

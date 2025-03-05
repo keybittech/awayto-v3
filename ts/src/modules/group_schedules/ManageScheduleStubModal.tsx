@@ -11,7 +11,7 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { IGroupUserScheduleStub, shortNSweet, siteApi, targets } from 'awayto/hooks';
+import { IGroupUserScheduleStub, shortNSweet, siteApi, targets, useUtil } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
@@ -24,6 +24,8 @@ interface ManageScheduleStubModalProps extends IComponent {
 
 export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal }: ManageScheduleStubModalProps): React.JSX.Element {
 
+  const { setSnack } = useUtil();
+
   const {
     selectGroupSchedule: { item: groupSchedule },
     getGroupUserSchedules: { data: getGroupUserSchedulesRequest }
@@ -31,8 +33,7 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
 
   const {
     quote,
-    selectedDate,
-    firstAvailable
+    selectedDate
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
   const [patchGroupUserScheduleStubReplacement] = siteApi.useGroupUserScheduleServicePatchGroupUserScheduleStubReplacementMutation();
@@ -62,11 +63,15 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
   }, [quote]);
 
   const handleSubmit = useCallback(() => {
+    if (!selectedDate) {
+      setSnack({ snackType: 'error', snackOn: 'Select a date to replace with.' });
+      return;
+    }
     patchGroupUserScheduleStubReplacement({
       patchGroupUserScheduleStubReplacementRequest: {
         userScheduleId: editGroupUserScheduleStub.userScheduleId!,
         quoteId: editGroupUserScheduleStub.quoteId!,
-        slotDate: (selectedDate || firstAvailable.time).format("YYYY-MM-DD"),
+        slotDate: selectedDate.format("YYYY-MM-DD"),
         startTime: replacement?.startTime!,
         serviceTierId: replacement?.serviceTierId!,
         scheduleBracketSlotId: replacement?.scheduleBracketSlotId!

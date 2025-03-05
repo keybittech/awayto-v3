@@ -1,5 +1,4 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { useNavigate } from 'react-router';
 
 import Alert from '@mui/material/Alert';
 import Grid from '@mui/material/Grid';
@@ -10,10 +9,10 @@ import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 
-import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, shortNSweet } from 'awayto/hooks';
 
-import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
+import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
 import ScheduleDatePicker from '../group_schedules/ScheduleDatePicker';
 import ScheduleTimePicker from '../group_schedules/ScheduleTimePicker';
 import ServiceTierAddons from '../services/ServiceTierAddons';
@@ -21,8 +20,7 @@ import FileManager from '../files/FileManager';
 
 export function RequestQuote(_: IComponent): React.JSX.Element {
 
-  const navigate = useNavigate();
-  const { setSnack } = useUtil();
+  const { setSnack, openConfirm } = useUtil();
   const [postQuote] = siteApi.useQuoteServicePostQuoteMutation();
   const [files, setFiles] = useState<IFile[]>([]);
 
@@ -44,7 +42,12 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     }
   } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
-  const { quote, getDateSlots } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
+  const {
+    quote,
+    getDateSlots,
+    setSelectedDate,
+    setSelectedTime,
+  } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
   const {
     form: serviceForm,
@@ -69,7 +72,6 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   }
 
   return <>
-
     <Card variant="outlined" sx={{ bgcolor: 'primary.dark' }}>
       <CardHeader
         title="Create Request"
@@ -87,7 +89,6 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
             <GroupScheduleServiceTierSelect />
           </Grid>
         </Grid>
-
       </CardContent>
     </Card>
 
@@ -121,30 +122,39 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
 
     {groupUserSchedulesRequest?.groupUserSchedules && <Card>
       <CardActionArea onClick={() => {
-        if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.scheduleBracketSlotId) {
-          setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out.' });
+        if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
+          setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
           return;
         }
 
-        postQuote({
-          postQuoteRequest: {
-            slotDate: quote.slotDate,
-            scheduleBracketSlotId: quote.scheduleBracketSlotId,
-            serviceTierId: groupScheduleServiceTier.id,
-            serviceFormVersionSubmission: (serviceForm ? {
-              formVersionId: serviceForm.version.id,
-              submission: serviceForm.version.submission
-            } : {}) as IFormVersionSubmission,
-            tierFormVersionSubmission: (tierForm ? {
-              formVersionId: tierForm.version.id,
-              submission: tierForm.version.submission
-            } : {}) as IFormVersionSubmission,
-            files
+        openConfirm({
+          isConfirming: true,
+          confirmEffect: 'Request service on ' + shortNSweet(quote.slotDate, quote.startTime) +
+            ' for ' + quote.serviceTierName + ' ' + quote.serviceName,
+          confirmAction: () => {
+            postQuote({
+              postQuoteRequest: {
+                slotDate: quote.slotDate!,
+                scheduleBracketSlotId: quote.scheduleBracketSlotId!,
+                serviceTierId: groupScheduleServiceTier.id!,
+                serviceFormVersionSubmission: (serviceForm ? {
+                  formVersionId: serviceForm.version.id,
+                  submission: serviceForm.version.submission
+                } : {}) as IFormVersionSubmission,
+                tierFormVersionSubmission: (tierForm ? {
+                  formVersionId: tierForm.version.id,
+                  submission: tierForm.version.submission
+                } : {}) as IFormVersionSubmission,
+                files
+              }
+            }).unwrap().then(() => {
+              setSnack({ snackOn: 'You\'re all set!' });
+              setSelectedDate(undefined);
+              setSelectedTime(undefined);
+            }).catch(console.error);
           }
-        }).unwrap().then(() => {
-          setSnack({ snackOn: 'Your request has been made successfully!' });
-          navigate('/');
-        }).catch(console.error);
+        });
+
       }}>
         <Box m={2} sx={{ display: 'flex' }}>
           <Typography color="secondary" variant="button">Submit Request</Typography>

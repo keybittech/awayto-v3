@@ -46,17 +46,17 @@ export const millisTimeUnits: Record<ITimeUnitNames, number> = {
 /**
  * @category Time Unit
  */
-export function getRelativeDuration(amount: number, fromUnit: ITimeUnitNames = TimeUnit.HOUR, toUnit: ITimeUnitNames = TimeUnit.MINUTE): number {
+export function getRelativeDuration(amount?: number, fromUnit: ITimeUnitNames = TimeUnit.HOUR, toUnit: ITimeUnitNames = TimeUnit.MINUTE): number {
   const fromDuration = millisTimeUnits[fromUnit];
   const toDuration = millisTimeUnits[toUnit];
-  return (amount * fromDuration) / toDuration;
+  return amount ? (amount * fromDuration) / toDuration : 0;
 }
 
 /**
  * @category Time Unit
  */
-export function plural(n: number, singular: string, plural: string): string {
-  return n.toString() + ' ' + (n === 1 ? singular : plural);
+export function plural(n?: number, singular?: string, plural?: string): string {
+  return !n || !singular || !plural ? '' : n.toString() + ' ' + (n == 1 ? singular : plural);
 }
 
 /**

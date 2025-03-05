@@ -73,6 +73,7 @@ message IScheduleBracketSlot {
   string scheduleBracketId = 2;
   string startTime = 3;
   int32 row = 4;
+  string color = 5;
 }
 
 message IScheduleBracket {
@@ -86,12 +87,15 @@ message IScheduleBracket {
   map<string, IQuote> quotes = 8;
   string createdOn = 9;
   int32 row = 10;
+  string color = 11;
 }
 
 message ISchedule {
   string id = 1;
   string name = 2 [(buf.validate.field).string.min_len = 1];
-  google.protobuf.Timestamp startTime = 3;
+  google.protobuf.Timestamp startTime = 3 [
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
   google.protobuf.Timestamp endTime = 4 [
     (buf.validate.field).timestamp.gt_now = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED

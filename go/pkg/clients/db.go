@@ -11,6 +11,7 @@ import (
 	"reflect"
 	"strings"
 	"sync"
+	"time"
 
 	"database/sql"
 
@@ -32,7 +33,7 @@ type ColTypes struct {
 	reflectInt64     reflect.Type
 	reflectFloat64   reflect.Type
 	reflectBool      reflect.Type
-	reflectJsonb     reflect.Type
+	reflectJson      reflect.Type
 	reflectTimestamp reflect.Type
 }
 
@@ -68,8 +69,8 @@ func InitDatabase() IDatabase {
 		reflect.TypeOf(sql.NullInt64{}),
 		reflect.TypeOf(sql.NullFloat64{}),
 		reflect.TypeOf(sql.NullBool{}),
-		reflect.TypeOf(JSONBSerializer{}),
-		reflect.TypeOf(&timestamppb.Timestamp{}),
+		reflect.TypeOf(JSONSerializer{}),
+		reflect.TypeOf(&time.Time{}),
 	}
 
 	var adminRoleId, adminSub string
@@ -371,16 +372,11 @@ func (tx *TxWrapper) QueryRows(protoStructSlice interface{}, query string, args 
 		for i, column := range columns {
 			index, ok := indexes[column]
 			if ok {
-				if "JSONB" == columnTypes[i].DatabaseTypeName() {
-					safeVal := reflect.New(colTypes.reflectJsonb)
-					values = append(values, safeVal.Interface())
-
-					deferrals = append(deferrals, func() error {
-						return extractValue(newElem.Elem().Field(index), safeVal)
-					})
-				} else {
-					values = append(values, newElem.Elem().Field(index).Addr().Interface())
-				}
+				safeVal := reflect.New(mapTypeToNullType(columnTypes[i].DatabaseTypeName()))
+				values = append(values, safeVal.Interface())
+				deferrals = append(deferrals, func() error {
+					return extractValue(newElem.Elem().Field(index), safeVal)
+				})
 			} else {
 				var noMatch interface{}
 				values = append(values, &noMatch)
@@ -431,9 +427,9 @@ func cachedFieldIndexes(structType reflect.Type) map[string]int {
 	return indexes
 }
 
-type JSONBSerializer []byte
+type JSONSerializer []byte
 
-func (pms *JSONBSerializer) Scan(src interface{}) error {
+func (pms *JSONSerializer) Scan(src interface{}) error {
 
 	var source []byte
 
@@ -465,8 +461,8 @@ func mapTypeToNullType(t string) reflect.Type {
 		return colTypes.reflectInt64
 	case "BOOL":
 		return colTypes.reflectBool
-	case "JSONB":
-		return colTypes.reflectJsonb
+	case "JSON", "JSONB":
+		return colTypes.reflectJson
 	default:
 		return nil
 	}
@@ -479,7 +475,12 @@ func extractValue(dst, src reflect.Value) error {
 		}
 		switch src.Type() {
 		case colTypes.reflectTimestamp:
-			dst.Set(reflect.ValueOf(src.Interface()))
+			if !src.IsNil() {
+				timestamp, ok := src.Interface().(*time.Time)
+				if ok {
+					dst.Set(reflect.ValueOf(&timestamppb.Timestamp{Seconds: timestamp.Unix()}))
+				}
+			}
 		case colTypes.reflectString:
 			dst.SetString(src.FieldByName("String").String())
 		case colTypes.reflectInt32:
@@ -488,11 +489,11 @@ func extractValue(dst, src reflect.Value) error {
 			dst.SetInt(src.FieldByName("Int64").Int())
 		case colTypes.reflectBool:
 			dst.SetBool(src.FieldByName("Bool").Bool())
-		case colTypes.reflectJsonb:
+		case colTypes.reflectJson:
 			dstType := dst.Type()
 
-			// The following serializes dbview JSONB data into existing proto structs
-			// The dbviews will select JSONB with the structure of one or many (map) of an object
+			// The following serializes dbview JSON data into existing proto structs
+			// The dbviews will select JSON with the structure of one or many (map) of an object
 			// Handle map[string]*types.IExample as a top level proto struct field
 			if dstType.Kind() == reflect.Map {
 
@@ -528,8 +529,9 @@ func extractValue(dst, src reflect.Value) error {
 
 				newProtoMsg := reflect.New(dstType.Elem())
 				msg, ok := newProtoMsg.Interface().(proto.Message)
-				if !ok {
 
+				// It's not a top level proto struct
+				if !ok {
 					// Fallback to regular json unmarshal
 					protoStruct := reflect.New(dstType)
 					err := json.Unmarshal(src.Bytes(), protoStruct.Interface())

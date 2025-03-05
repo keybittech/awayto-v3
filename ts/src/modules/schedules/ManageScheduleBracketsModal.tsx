@@ -1,19 +1,20 @@
-import React, { useMemo, useState, useRef, useCallback, useContext } from 'react';
+import React, { useMemo, useState, useRef, useCallback, useContext, useEffect } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Slider from '@mui/material/Slider';
 import Switch from '@mui/material/Switch';
-import Chip from '@mui/material/Chip';
 import Button from '@mui/material/Button';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
 import DialogContent from '@mui/material/DialogContent';
 import DialogTitle from '@mui/material/DialogTitle';
 import DialogActions from '@mui/material/DialogActions';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
-import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName, targets } from 'awayto/hooks';
+import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName, targets, plural, generateLightBgColor } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from '../groups/GroupContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -56,32 +57,21 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
 
   const [schedule, setSchedule] = useState(editSchedule);
 
-  if (groupSchedule?.schedule && !editSchedule.id && (!schedule.id || groupSchedule.schedule.id !== schedule.id)) {
-    setSchedule({ ...groupSchedule?.schedule, brackets: {} });
-  }
-
-
   const scheduleTimeUnitName = useTimeName(schedule?.scheduleTimeUnitId);
   const bracketTimeUnitName = useTimeName(schedule?.bracketTimeUnitId);
+  const slotTimeUnitName = useTimeName(schedule?.slotTimeUnitId);
 
   const firstLoad = useRef(true);
   const [viewStep, setViewStep] = useState(1);
-  if (firstLoad.current && viewStep === 1 && Object.keys(schedule?.brackets || {}).length) {
-    setViewStep(2);
-  }
-
-  firstLoad.current = false;
 
   const [postSchedule] = siteApi.useScheduleServicePostScheduleMutation();
   const [postScheduleBrackets] = siteApi.useScheduleServicePostScheduleBracketsMutation();
   const [postGroupUserSchedule] = siteApi.useGroupUserScheduleServicePostGroupUserScheduleMutation();
 
-  // const scheduleParent = useRef<HTMLDivElement>(null);
-  const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as Required<IScheduleBracket>);
+  const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as IScheduleBracket);
 
-  const groupServicesValues = useMemo(() => groupServices.map(gs => ({ ...(gs.service || false) })).filter(x => x), [groupServices]);
-  const scheduleBracketsValues = useMemo(() => Object.values(schedule.brackets || {}) as Required<IScheduleBracket>[], [schedule?.brackets]);
-  const bracketServicesValues = useMemo(() => Object.values(bracket.services || {}) as Required<IService>[], [bracket.services]);
+  const scheduleBracketsValues = useMemo(() => Object.values(schedule.brackets || {}) as IScheduleBracket[], [schedule?.brackets]);
+  const bracketServicesValues = useMemo(() => Object.values(bracket.services || {}) as IService[], [bracket.services]);
 
   const remainingBracketTime = useMemo(() => {
     if (scheduleTimeUnitName && bracketTimeUnitName) {
@@ -93,7 +83,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
       return Math.floor(totalDuration - usedDuration);
     }
     return 0;
-  }, [scheduleTimeUnitName, bracketTimeUnitName]);
+  }, [scheduleTimeUnitName, bracketTimeUnitName, scheduleBracketsValues]);
 
   const handleSubmit = useCallback(() => {
     async function go() {
@@ -120,7 +110,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
         if (!userScheduleId || !groupScheduleId) return;
 
         const newBrackets = scheduleBracketsValues.reduce<Record<string, IScheduleBracket>>(
-          (m, { id, duration, automatic, multiplier, slots, services }) => ({
+          (m, { id, duration, automatic, multiplier, slots, services }) => !id ? m : ({
             ...m,
             [id]: {
               id,
@@ -129,7 +119,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
               multiplier,
               slots,
               services,
-            } as IScheduleBracket
+            }
           }), {}
         );
 
@@ -164,6 +154,38 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
     void go();
   }, [schedule, groupSchedule, scheduleBracketsValues]);
 
+  const changeColors = () => {
+    if (schedule.brackets) {
+      const brackets: typeof schedule.brackets = {};
+      Object.values(schedule.brackets).forEach(b => {
+        if (!b.id) return;
+        brackets[b.id] = {
+          ...b,
+          color: generateLightBgColor()
+        };
+      });
+      setSchedule({ ...schedule, brackets });
+    }
+  }
+
+  // reset on group schedule change or init
+  if (groupSchedule?.schedule && !editSchedule.id && (!schedule.id || groupSchedule.schedule.id !== schedule.id)) {
+    setSchedule({ ...groupSchedule?.schedule, brackets: {} });
+    setBracket({ ...bracketSchema, services: {}, slots: {} });
+  }
+
+  if (firstLoad.current && viewStep === 1 && schedule.brackets) {
+    setViewStep(2);
+    changeColors();
+  }
+  firstLoad.current = false;
+
+  useEffect(() => {
+    if (!scheduleBracketsValues.length) {
+      setViewStep(1);
+    }
+  }, [scheduleBracketsValues]);
+
   return <>
     <DialogTitle>{!editSchedule?.id ? 'Create' : 'Manage'} Schedule Bracket</DialogTitle>
     <DialogContent>
@@ -172,7 +194,12 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
         <Box mt={2} />
 
         <Box mb={4}>
-          <GroupScheduleSelect>
+          <GroupScheduleSelect
+            disabled={Boolean(editSchedule.id)}
+            helperText={
+              schedule.slotDuration && slotTimeUnitName && `This schedule represents 1 ${scheduleTimeUnitName} of ${bracketTimeUnitName}s where every ${plural(schedule.slotDuration, slotTimeUnitName, slotTimeUnitName + 's')} is schedulable.`
+            }
+          >
             {groupSchedules.map(s => {
               return <MenuItem
                 key={`schedule-select${s.id}`}
@@ -187,14 +214,23 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
         </Box>
 
         <Box mb={4}>
-          <Typography variant="body1"></Typography>
           <TextField
             {...targets(`manage schedule brackets modal remaining time`, `# of ${bracketTimeUnitName}s`, `set the number of ${bracketTimeUnitName}s which should available to schedule`)}
             fullWidth
             type="number"
             helperText={`Number of ${bracketTimeUnitName}s for this schedule. (Remaining: ${remainingBracketTime})`}
             value={bracket.duration || ''}
-            onChange={e => setBracket({ ...bracket, duration: Math.min(Math.max(0, parseInt(e.target.value || '', 10)), remainingBracketTime) })}
+            onChange={e => {
+              const numVal = parseInt(e.target.value || '0', 10);
+              if (numVal > 0) {
+                setBracket({ ...bracket, duration: Math.min(Math.max(0, numVal), remainingBracketTime) })
+              }
+            }}
+            slotProps={{
+              inputLabel: {
+                shrink: true
+              }
+            }}
           />
         </Box>
 
@@ -220,54 +256,57 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
           <Switch color="primary" value={bracket.automatic} onChange={e => setBracket({ ...bracket, automatic: e.target.checked })} />
         </Box>
 
-        {groupServices && <Box mb={4}>
-          <TextField
-            {...targets(`manage schedule brackets modal services selection`, `Services`, `select the services to be available on the schedule`)}
-            select
-            fullWidth
-            helperText="Select the services available to be scheduled."
-            value={''}
-            onChange={e => {
-              const serv = groupServices?.find(gs => gs.service?.id === e.target.value)?.service;
-              if (serv && bracket.services) {
-                bracket.services[e.target.value] = serv;
-                setBracket({ ...bracket, services: { ...bracket.services } });
-              }
+        {groupServices.length && <Box mb={4}>
+          <Box mb={2}>
+            <Typography>Services</Typography>
+            <Typography variant="caption">Users will be able to select from these when making their appointment. At least 1 service is required.</Typography>
+          </Box>
+          <ToggleButtonGroup
+            value={Object.keys(bracket.services || {})}
+            onChange={(_, serviceIds: string[]) => {
+              bracket.services = serviceIds.reduce((m, serviceId) => {
+                const groupService = groupServices.find(gs => gs.service?.id == serviceId);
+                if (groupService) {
+                  return {
+                    ...m,
+                    [serviceId]: groupService.service
+                  }
+                }
+                return { ...m }
+              }, {})
+              setBracket({ ...bracket });
             }}
           >
-            {groupServices.filter(s => s.service?.id && !Object.keys(bracket.services).includes(s.service?.id)).map(gs =>
-              <MenuItem key={`service-select${gs.service?.id}`} value={gs.service?.id}>{gs.service?.name}</MenuItem>
-            )}
-          </TextField>
-
-          <Box sx={{ display: 'flex', alignItems: 'flex-end', flexWrap: 'wrap' }}>
-            {bracketServicesValues.map((service, i) => {
-              return <Box key={`service-chip${i + 1}new`} m={1}>
-                <Chip
-                  {...targets(`manage schedule brackets modal delete service ${i}`, `${service.name} ${service.cost ? `Cost: ${service.cost}` : ''}`, `remove ${service} from the schedule's services`)}
-                  onDelete={() => {
-                    delete bracket.services[service.id];
-                    setBracket({ ...bracket, services: { ...bracket.services } });
-                  }}
-                />
-              </Box>
+            {groupServices.map((gs, i) => {
+              return <ToggleButton
+                key={`bracket_service_toggle_${i}`}
+                value={gs.service?.id || ''}
+                aria-label={gs.service?.name}
+              >
+                {gs.service?.name}
+              </ToggleButton>;
             })}
-          </Box>
+          </ToggleButtonGroup>
         </Box>}
-      </> : <ScheduleDisplay schedule={schedule} setSchedule={setSchedule} />}
+      </> :
+        <ScheduleDisplay schedule={schedule} setSchedule={setSchedule} />
+      }
     </DialogContent>
     <DialogActions>
-      <Grid container justifyContent="space-between">
-        <Button
-          {...targets(`manage personal schedule modal close`, `close the schedule editing modal`)}
-          onClick={() => {
-            if (closeModal) {
-              firstLoad.current = true;
-              closeModal();
-            }
-          }}
-        >Cancel</Button>
-        {1 === viewStep ? <Grid>
+      <Grid container size="grow" justifyContent="space-between">
+        <Grid size="grow">
+          <Button
+            {...targets(`manage personal schedule modal close`, `close the schedule editing modal`)}
+            color="error"
+            onClick={() => {
+              if (closeModal) {
+                firstLoad.current = true;
+                closeModal();
+              }
+            }}
+          >Cancel</Button>
+        </Grid>
+        {1 === viewStep ? <>
           {!!scheduleBracketsValues.length && <Button
             {...targets(`manage personal schedule modal cancel addition`, `continue to the next page of personal schedule mangement without adding another bracket`)}
             onClick={() => {
@@ -280,14 +319,17 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
           <Button
             {...targets(`manage personal schedule modal next`, `continue to the next page of personal schedule management`)}
             disabled={!bracket.duration || !bracketServicesValues.length}
+            variant="outlined"
+            color="info"
             onClick={() => {
-              if (schedule?.id && bracket.duration && Object.keys(bracket.services).length) {
+              if (schedule?.id && bracket.duration && Object.keys(bracket.services || {}).length) {
                 bracket.id = (new Date()).getTime().toString();
                 bracket.scheduleId = schedule.id;
+                bracket.color = generateLightBgColor();
                 const newBrackets = { ...schedule.brackets };
                 newBrackets[bracket.id] = bracket;
                 setSchedule({ ...schedule, brackets: newBrackets })
-                setBracket({ ...bracketSchema, services: {}, slots: {} } as Required<IScheduleBracket>);
+                setBracket({ ...bracketSchema, services: {}, slots: {} });
                 setViewStep(2);
               } else {
                 void setSnack({ snackOn: 'Provide a duration, and at least 1 service.', snackType: 'info' });
@@ -296,16 +338,22 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
           >
             Continue
           </Button>
-        </Grid> : <Grid>
+        </> : <>
           <Button
-            {...targets(`manage personal schedule modal previous`, `go to the first page of personal schedule management`)}
+            {...targets(`manage personal schedule modal change colors`, `change the colors used to highlight the brackets`)}
+            onClick={changeColors}
+          >Change Colors</Button>
+          <Button
+            {...targets(`manage personal schedule modal add bracket`, `add a new bracket to the personal schedule`)}
             onClick={() => { setViewStep(1); }}
           >Add bracket</Button>
           <Button
             {...targets(`manage personal schedule modal submit`, `submit the current personal schedule for editing or creation`)}
+            color="info"
+            variant="outlined"
             onClick={handleSubmit}
           >Submit</Button>
-        </Grid>}
+        </>}
       </Grid>
     </DialogActions>
   </>

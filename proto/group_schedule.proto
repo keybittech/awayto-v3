@@ -6,6 +6,7 @@ import "util.proto";
 import "group.proto";
 
 import "validate.proto";
+import "google/protobuf/struct.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -66,6 +67,7 @@ message IGroupScheduleDateSlots {
   int32 hour = 5;
   int32 minute = 6;
   string time = 7;
+  google.protobuf.Value duration = 8;
 }
 
 message IGroupSchedule {

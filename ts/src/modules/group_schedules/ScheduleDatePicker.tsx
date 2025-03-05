@@ -12,26 +12,23 @@ export function ScheduleDatePicker(_: IComponent): React.JSX.Element {
     setStartOfMonth,
     selectedDate,
     setSelectedDate,
-    firstAvailable,
     dateSlots,
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
   return <DesktopDatePicker
     {...targets(`date picker selection`, `Date`, `select a date`)}
-    value={selectedDate}
+    value={selectedDate || null}
+    format="MM/DD/YYYY"
+    onMonthChange={date => date && setStartOfMonth(date.startOf('month'))}
+    onChange={(date: dayjs.Dayjs | null) => setSelectedDate(date ? date : undefined)}
+    onYearChange={date => date && setStartOfMonth(date.startOf('month'))}
+    disableHighlightToday={true}
     sx={{
       mt: '12px'
     }}
     slotProps={{
-      textField: { fullWidth: true }
+      textField: { fullWidth: true, required: true }
     }}
-    onChange={(date: dayjs.Dayjs | null) => setSelectedDate(date ? date.isBefore(firstAvailable.time) ? firstAvailable.time : date : firstAvailable.time)}
-    format="MM/DD/YYYY"
-    minDate={firstAvailable.time}
-    onOpen={() => setSelectedDate(selectedDate.isAfter(firstAvailable.time) ? selectedDate : firstAvailable.time)}
-    onMonthChange={date => date && setStartOfMonth(date.startOf('month'))}
-    onYearChange={date => date && setStartOfMonth(date.startOf('month'))}
-    disableHighlightToday={true}
     shouldDisableDate={date => {
       if (date && dateSlots?.length) {
         return !dateSlots.filter(s => s.startDate === date.format("YYYY-MM-DD")).length;

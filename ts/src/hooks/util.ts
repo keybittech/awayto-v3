@@ -228,12 +228,12 @@ type ElementTargets = {
   'aria-label': string;
 }
 
-export const targets = (name: string, label: string, aria?: string): ElementTargets => {
+export const targets = (name: string, label?: string, aria?: string): ElementTargets => {
   return {
     name,
     id: toSnakeCase(name),
-    label,
-    'aria-label': aria || label
+    label: label || '',
+    'aria-label': aria || label || ''
   };
 }
 
