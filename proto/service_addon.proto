@@ -51,6 +51,7 @@ message IServiceAddon {
   string name = 2;
   int32 order = 3;
   string createdOn = 4;
+  int32 row = 5;
 }
 
 message PostServiceAddonRequest {

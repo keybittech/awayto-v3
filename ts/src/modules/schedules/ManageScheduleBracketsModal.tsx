@@ -60,6 +60,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
     setSchedule({ ...groupSchedule?.schedule, brackets: {} });
   }
 
+
   const scheduleTimeUnitName = useTimeName(schedule?.scheduleTimeUnitId);
   const bracketTimeUnitName = useTimeName(schedule?.bracketTimeUnitId);
 
@@ -78,6 +79,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
   // const scheduleParent = useRef<HTMLDivElement>(null);
   const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as Required<IScheduleBracket>);
 
+  const groupServicesValues = useMemo(() => groupServices.map(gs => ({ ...(gs.service || false) })).filter(x => x), [groupServices]);
   const scheduleBracketsValues = useMemo(() => Object.values(schedule.brackets || {}) as Required<IScheduleBracket>[], [schedule?.brackets]);
   const bracketServicesValues = useMemo(() => Object.values(bracket.services || {}) as Required<IService>[], [bracket.services]);
 
@@ -117,10 +119,8 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
 
         if (!userScheduleId || !groupScheduleId) return;
 
-        const serviceIds = scheduleBracketsValues.flatMap(x => Object.keys(x.services)).filter((x, i, arr) => arr.indexOf(x) == i);
-
         const newBrackets = scheduleBracketsValues.reduce<Record<string, IScheduleBracket>>(
-          (m, { id, duration, automatic, multiplier, slots }) => ({
+          (m, { id, duration, automatic, multiplier, slots, services }) => ({
             ...m,
             [id]: {
               id,
@@ -128,6 +128,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
               automatic,
               multiplier,
               slots,
+              services,
             } as IScheduleBracket
           }), {}
         );
@@ -135,8 +136,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
         await postScheduleBrackets({
           postScheduleBracketsRequest: {
             scheduleId: userScheduleId,
-            brackets: newBrackets,
-            serviceIds
+            brackets: newBrackets
           }
         }).unwrap().catch(console.error);
 

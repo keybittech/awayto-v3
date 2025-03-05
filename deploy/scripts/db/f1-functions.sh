@@ -49,8 +49,8 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
         slot.id as schedule_bracket_slot_id,
         schedule.timezone as schedule_timezone
       FROM generate_series(
-        DATE_TRUNC('week', p_month_start_date::DATE + INTERVAL '1 day') - INTERVAL '1 day',
-        DATE_TRUNC('week', p_month_start_date::DATE + INTERVAL '1 day') - INTERVAL '1 day' + INTERVAL '1 month',
+        DATE_TRUNC('week', p_month_start_date::DATE + INTERVAL '1 day'),
+        DATE_TRUNC('week', p_month_start_date::DATE + INTERVAL '1 day') + INTERVAL '1 month',
         interval '1 week'
       ) AS week_start
       CROSS JOIN dbview_schema.enabled_schedule_bracket_slots slot

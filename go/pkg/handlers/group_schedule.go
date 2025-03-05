@@ -11,10 +11,14 @@ import (
 
 func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupScheduleResponse, error) {
 
+	// The group db user owns master schedule records
 	err := tx.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	groupSession := session
+	groupSession.UserSub = session.GroupSub
 
 	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{
 		Name:               data.GroupSchedule.Schedule.Name,
@@ -24,7 +28,7 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 		BracketTimeUnitId:  data.GroupSchedule.Schedule.BracketTimeUnitId,
 		SlotTimeUnitId:     data.GroupSchedule.Schedule.SlotTimeUnitId,
 		SlotDuration:       data.GroupSchedule.Schedule.SlotDuration,
-	}, &clients.UserSession{UserSub: session.GroupSub}, tx)
+	}, groupSession, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

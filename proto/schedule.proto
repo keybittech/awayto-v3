@@ -156,7 +156,6 @@ message PostScheduleResponse {
 message PostScheduleBracketsRequest {
   string scheduleId = 1 [(google.api.field_behavior) = REQUIRED];
   map<string, IScheduleBracket> brackets = 2 [(google.api.field_behavior) = REQUIRED];
-  repeated string serviceIds = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostScheduleBracketsResponse {

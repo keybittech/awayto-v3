@@ -227,7 +227,6 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                     fullWidth
                     type="date"
                     value={schedule.startTime ? dayjs(schedule.startTime).format('YYYY-MM-DD') : ''}
-                    required
                     helperText="Schedule is active after this date. Clear this date to deactivate the schedule. Deactivated schedules do not allow new bookings to be made."
                     onChange={e => setGroupSchedule({ schedule: { ...schedule, startTime: e.target.value ? dayjs(e.target.value).toISOString() : undefined } })}
                     slotProps={{
@@ -272,7 +271,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
           <Box component="fieldset" p={2} sx={classes.legendBox}>
             <legend>Step 2. Configure durations</legend>
             <Box mb={4}>
-              {!schedule.id ? <>
+              {!schedule.id && <>
                 <Typography variant="body2">Use premade selections for this schedule.</Typography>
                 <Button
                   {...targets(`manage schedule modal preset hoursweekly`, `use schedule preset that resets weekly and has 30 minute appointments`)}
@@ -284,8 +283,6 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                   color="secondary"
                   onClick={() => setDefault('dailybookingpermonth')}
                 >reset monthly, full-day booking</Button>
-              </> : <>
-                <Alert color="info">Schedule template durations are read-only after creation.</Alert>
               </>}
             </Box>
 
@@ -404,6 +401,9 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
             <ScheduleDisplay schedule={schedule} />
           </Box>
         </Grid>
+        <Grid size={12}>
+          <Alert color="info">Note: Schedules become read-only after creation, excluding start and end date. Make sure everything looks good here before saving!</Alert>
+        </Grid>
       </Grid>
     </CardContent>
     {validArea != 'onboarding' && <CardActions>
@@ -414,7 +414,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
         >Cancel</Button>}
         <Button
           {...targets(`manage schedule modal submit`, `submit the current schedule for editing or creation`)}
-          disabled={!schedule.name || !schedule.startTime}
+          disabled={!schedule.name}
           onClick={handleSubmit}
         >Save Schedule</Button>
       </Grid>

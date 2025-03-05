@@ -62,6 +62,12 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     getDateSlots();
   }, []);
 
+  if (!groupSchedule?.id) {
+    return <Alert severity="info">
+      There are no group schedules, or they are currently paused.
+    </Alert>
+  }
+
   return <>
 
     <Card variant="outlined" sx={{ bgcolor: 'primary.dark' }}>
@@ -86,12 +92,12 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     </Card>
 
     {!groupUserSchedulesRequest?.groupUserSchedules ? <Alert sx={{ marginTop: '16px' }} severity="info">
-      There are no active schedules or operations are currently halted.
+      There are no active user schedules, or they are currently paused.
     </Alert> : <>
       <Grid container size="grow" spacing={2}>
         <Grid container size={{ xs: 12, md: 4 }} direction="column">
-          <ScheduleDatePicker key={groupSchedule?.schedule?.id} />
-          <ScheduleTimePicker key={groupSchedule?.schedule?.id} />
+          <ScheduleDatePicker key={`${groupSchedule?.schedule?.id}_date_picker`} />
+          <ScheduleTimePicker key={`${groupSchedule?.schedule?.id}_time_picker`} />
         </Grid>
         <Grid container size={{ xs: 12, md: 8 }} sx={{ my: 1.5 }} spacing={2} direction="column">
           <Grid size="grow">

@@ -35,6 +35,7 @@ message IGroupServiceAddon {
   string id = 1;
   string groupId = 2;
   IServiceAddon serviceAddon = 3;
+  int32 row = 4;
 }
 
 message PostGroupServiceAddonRequest {

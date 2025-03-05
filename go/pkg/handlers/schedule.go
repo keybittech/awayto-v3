@@ -63,11 +63,11 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 			return nil, util.ErrCheck(err)
 		}
 
-		for _, servId := range data.ServiceIds {
+		for _, serv := range b.Services {
 			_, err = tx.Exec(`
 				INSERT INTO dbtable_schema.schedule_bracket_services (schedule_bracket_id, service_id, created_sub, group_id)
 				VALUES ($1, $2, $3::uuid, $4::uuid)
-			`, bracket.Id, servId, session.UserSub, session.GroupId)
+			`, bracket.Id, serv.Id, session.UserSub, session.GroupId)
 
 			if err != nil {
 				return nil, util.ErrCheck(err)

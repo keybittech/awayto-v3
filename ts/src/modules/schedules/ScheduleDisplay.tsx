@@ -4,7 +4,6 @@ import { FixedSizeGrid } from 'react-window';
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
 import Typography from '@mui/material/Typography';
 import Tooltip from '@mui/material/Tooltip';
 

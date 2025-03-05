@@ -20,8 +20,6 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
 
   const dateSlots = useMemo(() => dateSlotsRequest?.groupScheduleDateSlots || [], [dateSlotsRequest]);
 
-  console.log({ dateSlots })
-
   if (dateSlotsRequest?.groupScheduleDateSlots?.length && !firstAvailable.scheduleBracketSlotId) {
     const [slot] = dateSlotsRequest.groupScheduleDateSlots as Required<IGroupScheduleDateSlots>[];
     const time = quotedDT(slot.startDate, slot.startTime);
