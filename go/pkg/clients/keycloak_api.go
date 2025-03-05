@@ -4,7 +4,7 @@ package clients
 
 import (
 	// Error Handling
-	"av3api/pkg/util"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"

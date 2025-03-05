@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"av3api/pkg/clients"
-	"av3api/pkg/mocks"
-	"av3api/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/mocks"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"net/http"
 	"testing"
 

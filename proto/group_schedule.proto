@@ -5,12 +5,11 @@ import "schedule.proto";
 import "util.proto";
 import "group.proto";
 
-import "validate.proto";
 import "google/protobuf/struct.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
-option go_package = "pkg/types";
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 service GroupScheduleService {
   rpc PostGroupSchedule(PostGroupScheduleRequest) returns (PostGroupScheduleResponse) {

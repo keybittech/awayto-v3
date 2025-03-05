@@ -4,12 +4,12 @@ package types;
 import "quote.proto";
 import "service.proto";
 
-import "validate.proto";
+import "validate/validate.proto";
 import "google/protobuf/timestamp.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
-option go_package = "pkg/types";
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 service ScheduleService {
   rpc PostSchedule(PostScheduleRequest) returns (PostScheduleResponse) {

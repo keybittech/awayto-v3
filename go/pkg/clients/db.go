@@ -1,7 +1,7 @@
 package clients
 
 import (
-	"av3api/pkg/util"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"context"
 	"encoding/json"
 	"errors"

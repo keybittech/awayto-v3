@@ -1,7 +1,6 @@
 package main
 
 import (
-	"av3api/pkg/types"
 	"flag"
 	"fmt"
 	"io"
@@ -15,6 +14,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 
 	"github.com/playwright-community/playwright-go"
 )

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"av3api/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 )
 
 type Handlers struct {

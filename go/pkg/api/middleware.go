@@ -1,9 +1,9 @@
 package api
 
 import (
-	"av3api/pkg/clients"
-	"av3api/pkg/types"
-	"av3api/pkg/util"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"bytes"
 	"encoding/json"
 	"errors"

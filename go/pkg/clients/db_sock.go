@@ -1,8 +1,8 @@
 package clients
 
 import (
-	"av3api/pkg/types"
-	"av3api/pkg/util"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"encoding/json"
 	"slices"
 	"time"

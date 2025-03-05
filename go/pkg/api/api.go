@@ -1,9 +1,10 @@
 package api
 
 import (
-	handlers "av3api/pkg/handlers"
 	"fmt"
 	"net/http"
+
+	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"

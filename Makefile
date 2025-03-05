@@ -44,6 +44,7 @@ LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_TARGET=${PWD}/$(BINARY_NAME)
 GO_MOCK_TARGET=$(GO_MOCKS_GEN_DIR)/clients.go
+PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
 
 # host locations
 
@@ -183,17 +184,31 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 	pnpm --dir $(TS_SRC) i
 	pnpm run --dir $(TS_SRC) build
 
-$(GO_TARGET): $(shell find $(GO_SRC)/{main.go,flags.go,pkg} -type f) $(shell find proto/ -type f)
+$(PROTO_MOD_TARGET): $(shell find proto/ -type f)
+	@mkdir -p $(@D)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
-		--go_out=$(GO_SRC) \
+		--go_out=$(GO_GEN_DIR) \
+		--go_opt=module=${PROJECT_REPO}/go/pkg/types \
 		$(PROTO_FILES)
+	cd $(@D) && go mod init ${PROJECT_REPO}/go/pkg/types && go mod tidy && cd -
+
+$(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
 $(GO_MOCK_TARGET): 
 	@mkdir -p $(@D)
 	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCK_TARGET) -package=mocks
+	cd $(@D) && \
+		go mod init ${PROJECT_REPO}/go/pkg/mocks && \
+		go mod tidy && \
+		go mod edit -replace ${PROJECT_REPO}/go/pkg/api=../api && \
+		go mod edit -replace ${PROJECT_REPO}/go/pkg/clients=../clients && \
+		go mod edit -replace ${PROJECT_REPO}/go/pkg/handlers=../handlers && \
+		go mod edit -replace ${PROJECT_REPO}/go/pkg/types=../types && \
+		go mod edit -replace ${PROJECT_REPO}/go/pkg/util=../util && \
+		cd -
 
 #################################
 #           DEVELOP             #
@@ -202,7 +217,7 @@ $(GO_MOCK_TARGET):
 .PHONY: go_dev
 go_dev: $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
-	exec ./$(BINARY_NAME) --log debug
+	cd go && go run main.go --log debug
 
 .PHONY: ts_dev
 ts_dev:
@@ -230,7 +245,7 @@ go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 	go test -C $(GO_SRC) -v ./...
 
 .PHONY: go_coverage
-go_coverage: $(GO_TARGET) $(GO_MOCK_TARGET)
+go_coverage: $(GO_MOCK_TARGET)
 	go test -C $(GO_SRC) -coverpkg=./... ./...
 
 .PHONY: test_clean
@@ -292,7 +307,7 @@ docker_redis:
 host_up: 
 	@mkdir -p $(HOST_LOCAL_DIR)
 	date >> "$(HOST_LOCAL_DIR)/start_time"
-	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ${RSA_PUB})&g; s&project-prefix&${PROJECT_PREFIX}&g; s&ssh-port&${SSH_PORT}&g; s&project-repo&${PROJECT_REPO}&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g;' "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ${RSA_PUB})&g; s&project-prefix&${PROJECT_PREFIX}&g; s&ssh-port&${SSH_PORT}&g; s&project-repo&https://${PROJECT_REPO}.git&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g;' "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
 	sed -e 's&ssh-port&${SSH_PORT}&g;' "$(DEPLOY_HOST_SCRIPTS)/public-firewall.json" > "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud firewall create --name "${PROJECT_PREFIX}-public-firewall" --rules-file "$(HOST_LOCAL_DIR)/public-firewall.json" >/dev/null
 	hcloud firewall describe "${PROJECT_PREFIX}-public-firewall" -o json > "$(HOST_LOCAL_DIR)/public-firewall.json"

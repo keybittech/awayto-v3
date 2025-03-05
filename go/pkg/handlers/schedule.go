@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"av3api/pkg/clients"
-	"av3api/pkg/types"
-	"av3api/pkg/util"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"context"
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -68,7 +69,6 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 				INSERT INTO dbtable_schema.schedule_bracket_services (schedule_bracket_id, service_id, created_sub, group_id)
 				VALUES ($1, $2, $3::uuid, $4::uuid)
 			`, bracket.Id, serv.Id, session.UserSub, session.GroupId)
-
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -140,10 +140,12 @@ func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetSchedules(w http.ResponseWriter, req *http.Request, data *types.GetSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetSchedulesResponse, error) {
 	var schedules []*types.ISchedule
 
-	err := tx.QueryRows(&schedules, `SELECT es.* 
+	err := tx.QueryRows(&schedules, `
+		SELECT es.* 
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbtable_schema.schedules s ON s.id = es.id
-		WHERE s.created_sub = $1`, session.UserSub)
+		WHERE s.created_sub = $1
+	`, session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -270,7 +272,21 @@ func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, scheduleId string
 
 		if hasSlots || hasServices {
 
+			println(1)
 			if hasSlots {
+				println(fmt.Sprintf("%+v", scheduledSlots.GetIds()))
+
+				// var strTest string
+				// err = tx.QueryRow(`
+				// 	SELECT 1 FROM dbtable_schema.schedule_bracket_slots
+				// 	WHERE schedule_bracket_id = $1 AND id <> ALL($2::uuid[])
+				// `, bracketId, pq.Array(scheduledSlots.GetIds())).Scan(&strTest)
+				// if err != nil {
+				// 	return util.ErrCheck(err)
+				// }
+				//
+				// println("STR TEST", strTest)
+
 				_, err = tx.Exec(`
 					DELETE FROM dbtable_schema.schedule_bracket_slots
 					WHERE schedule_bracket_id = $1 AND id <> ALL($2::uuid[])
@@ -282,17 +298,18 @@ func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, scheduleId string
 					UPDATE dbtable_schema.schedule_bracket_slots
 					SET enabled = false
 					WHERE schedule_bracket_id = $1 AND id = ANY($2::uuid[])
-				`, bracketId, scheduledSlots.GetIds())
+				`, bracketId, pq.Array(scheduledSlots.GetIds()))
 				if err != nil {
 					return util.ErrCheck(err)
 				}
 			}
 
 			if hasServices {
+				println(1)
 				_, err = tx.Exec(`
 					DELETE FROM dbtable_schema.schedule_bracket_services
 					WHERE schedule_bracket_id = $1 AND id <> ALL($2::uuid[])
-				`, bracketId, scheduledServices.GetIds())
+				`, bracketId, pq.Array(scheduledServices.GetIds()))
 				if err != nil {
 					return util.ErrCheck(err)
 				}
@@ -301,11 +318,28 @@ func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, scheduleId string
 					UPDATE dbtable_schema.schedule_bracket_services
 					SET enabled = false
 					WHERE schedule_bracket_id = $1 AND id = ANY($2::uuid[])
-				`, bracketId, scheduledServices.GetIds())
+				`, bracketId, pq.Array(scheduledServices.GetIds()))
 				if err != nil {
 					return util.ErrCheck(err)
 				}
 			}
+
+			println(fmt.Sprintf("%s %+v %+v", bracketId, pq.Array(scheduledSlots.GetIds()), pq.Array(scheduledServices.GetIds())))
+
+			var deleteIds string
+			err = tx.QueryRow(`
+				SELECT JSON_AGG(sb.id) #>> '{}' FROM dbtable_schema.schedule_brackets sb
+				JOIN dbtable_schema.schedule_bracket_slots slot ON slot.schedule_bracket_id = sb.id
+				JOIN dbtable_schema.schedule_bracket_services service ON service.schedule_bracket_id = sb.id
+				WHERE sb.schedule_brackets.id = $1
+				AND slot.id <> ALL($2::uuid[])
+				AND service.id <> ALL($3::uuid[])
+			`, bracketId, pq.Array(scheduledSlots.GetIds()), pq.Array(scheduledServices.GetIds())).Scan(&deleteIds)
+			if err != nil {
+				return util.ErrCheck(err)
+			}
+
+			println(fmt.Sprintf("%+v", deleteIds))
 
 			_, err = tx.Exec(`
 				DELETE FROM dbtable_schema.schedule_brackets
@@ -316,11 +350,12 @@ func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, scheduleId string
 				AND slot.schedule_bracket_id = service.schedule_bracket_id
 				AND slot.id <> ALL($2::uuid[])
 				AND service.id <> ALL($3::uuid[])
-			`, bracketId, scheduledSlots.GetIds(), scheduledServices.GetIds())
+			`, bracketId, pq.Array(scheduledSlots.GetIds()), pq.Array(scheduledServices.GetIds()))
 			if err != nil {
 				return util.ErrCheck(err)
 			}
 
+			println(2)
 			_, err = tx.Exec(`
 				UPDATE dbtable_schema.schedule_brackets
 				SET enabled = false
@@ -330,11 +365,12 @@ func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, scheduleId string
 				AND slot.schedule_bracket_id = dbtable_schema.schedule_brackets.id
 				AND (slot.id = ANY($2::uuid[])
 				OR service.id = ANY($3::uuid[]))
-			`, bracketId, scheduledSlots.GetIds(), scheduledServices.GetIds())
+			`, bracketId, pq.Array(scheduledSlots.GetIds()), pq.Array(scheduledServices.GetIds()))
 			if err != nil {
 				return util.ErrCheck(err)
 			}
 		} else {
+			println(3)
 			_, err = tx.Exec(`
 				DELETE FROM dbtable_schema.schedule_brackets
 				WHERE id = $1

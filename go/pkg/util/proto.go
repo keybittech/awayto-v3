@@ -1,7 +1,7 @@
 package util
 
 import (
-	"av3api/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"fmt"
 	"io"
 	"net/http"

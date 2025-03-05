@@ -6,7 +6,7 @@ import "google/api/field_behavior.proto";
 
 import "time_unit.proto";
 
-option go_package = "pkg/types";
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 service LookupService {
   rpc GetLookups(GetLookupsRequest) returns (GetLookupsResponse) {

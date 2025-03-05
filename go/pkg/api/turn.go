@@ -1,7 +1,7 @@
 package api
 
 import (
-	"av3api/pkg/util"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"fmt"
 	"io"
 	"net"
