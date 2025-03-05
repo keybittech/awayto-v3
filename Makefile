@@ -202,12 +202,12 @@ $(GO_MOCK_TARGET):
 	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCK_TARGET) -package=mocks
 	cd $(@D) && \
 		go mod init ${PROJECT_REPO}/go/pkg/mocks && \
-		go mod tidy && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/api=../api && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/clients=../clients && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/handlers=../handlers && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/types=../types && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/util=../util && \
+		go mod tidy && \
 		cd -
 
 #################################
@@ -217,7 +217,7 @@ $(GO_MOCK_TARGET):
 .PHONY: go_dev
 go_dev: $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
-	cd go && go run main.go --log debug
+	cd go && gow -e=go,mod run main.go --log debug
 
 .PHONY: ts_dev
 ts_dev:
