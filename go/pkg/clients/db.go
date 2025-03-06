@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"context"
 	"encoding/json"
 	"errors"
@@ -12,6 +11,8 @@ import (
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"database/sql"
 
@@ -160,6 +161,10 @@ func (db *DBWrapper) QueryRow(query string, args ...interface{}) IRow {
 // TX Wrappers
 type TxWrapper struct {
 	*sql.Tx
+}
+
+func (tx *TxWrapper) Prepare(stmt string) (*sql.Stmt, error) {
+	return tx.Tx.Prepare(stmt)
 }
 
 func (tx *TxWrapper) Commit() error {

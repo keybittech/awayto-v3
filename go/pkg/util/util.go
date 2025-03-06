@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
@@ -35,16 +36,23 @@ func init() {
 	var err error
 	SigningToken, err = os.ReadFile(os.Getenv("SIGNING_TOKEN_FILE"))
 	if err != nil {
+		println("Failed to get signing token")
 		log.Fatal(err)
 	}
 
-	file, err := os.OpenFile("errors.log", os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	file, err := os.OpenFile(os.Getenv("GO_ERROR_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
+		println("Failed to open error log")
 		log.Fatal(err)
 	}
 	ErrorLog = &ErrLog{log.New(file, "", log.Ldate|log.Ltime)}
 	TitleCase = cases.Title(language.Und)
 	DefaultPadding = 5
+
+	if LoggingMode == nil || *LoggingMode == "" {
+		logLevel := os.Getenv("LOG_LEVEL")
+		LoggingMode = &logLevel
+	}
 }
 
 const ForbiddenResponse = `{ "error": { "status": 403 } }`
@@ -118,6 +126,16 @@ func ErrCheck(err error) error {
 	_, file, line, _ := runtime.Caller(1)
 
 	return errors.New(fmt.Sprintf("%s %s:%d", err.Error(), file, line))
+}
+
+func IsUUID(id string) bool {
+	uuidPattern := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+	return uuidPattern.MatchString(id)
+}
+
+func IsEpoch(id string) bool {
+	_, err := strconv.ParseInt(id, 10, 64)
+	return err == nil
 }
 
 func PaddedLen(padTo int, length int) string {

@@ -1,8 +1,6 @@
 package clients
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"context"
 	"errors"
 	"fmt"
@@ -10,6 +8,9 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/sashabaranov/go-openai"
 )
@@ -36,6 +37,8 @@ func InitAi() IAi {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		log.Fatal(util.ErrCheck(err))
 	}
+
+	println("got key")
 
 	var oaiClient *openai.Client
 

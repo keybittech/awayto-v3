@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/joho/godotenv"
 	a "github.com/keybittech/awayto-v3/go/pkg/api"
 	c "github.com/keybittech/awayto-v3/go/pkg/clients"
 	h "github.com/keybittech/awayto-v3/go/pkg/handlers"
@@ -30,7 +31,6 @@ var (
 )
 
 var (
-	// sockPort         = flag.Int("sockPort", 6677, "Socket port")
 	httpPortFlag         = flag.Int("httpPort", httpPortDefault, "Server HTTP port")
 	httpsPortFlag        = flag.Int("httpsPort", httpsPortDefault, "Server HTTPS port")
 	turnListenerPortFlag = flag.Int("turnListenerPort", turnListenerPortDefault, "Turn listener port")
@@ -44,6 +44,8 @@ func init() {
 	turnListenerPort = *turnListenerPortFlag
 	turnInternalPort = *turnInternalPortFlag
 	unixPath = *unixPathFlag
+
+	godotenv.Load(os.Getenv("GO_ENVFILE_LOC"))
 
 	if httpPortEnv := os.Getenv("GO_HTTP_PORT"); httpPortEnv != "" && *httpPortFlag == httpPortDefault {
 		httpPortEnvI, err := strconv.Atoi(httpPortEnv)

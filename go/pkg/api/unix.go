@@ -1,16 +1,18 @@
 package api
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"bufio"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"net"
 	"net/http"
 	"os"
 	"reflect"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (a *API) InitUnixServer(unixPath string) {
@@ -18,7 +20,7 @@ func (a *API) InitUnixServer(unixPath string) {
 
 	unixListener, err := net.Listen("unix", unixPath)
 	if err != nil {
-		panic(err)
+		log.Fatal(err)
 	}
 
 	defer unixListener.Close()

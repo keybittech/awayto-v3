@@ -1,12 +1,13 @@
 package clients
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"context"
 	"database/sql"
 	"net"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -38,6 +39,7 @@ type IDatabaseClient interface {
 }
 
 type IDatabaseTx interface {
+	Prepare(stmt string) (*sql.Stmt, error)
 	Commit() error
 	Rollback() error
 	Exec(query string, args ...any) (sql.Result, error)

@@ -1,8 +1,6 @@
 package api
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"compress/gzip"
 	"crypto/tls"
 	"fmt"
@@ -12,6 +10,9 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 type StaticGzip struct {
@@ -47,13 +48,15 @@ func (sr *StaticRedirect) WriteHeader(code int) {
 }
 
 func (a *API) InitStatic(mux *http.ServeMux) {
+	staticDir := os.Getenv("PROJECT_DIR")
+
 	devServerUrl, err := url.Parse(os.Getenv("TS_DEV_SERVER_URL"))
 	if err != nil {
 		fmt.Printf("please set TS_DEV_SERVER_URL %s", err.Error())
 	}
 
 	// Attach landing/ to domain url root /
-	landingFiles := http.FileServer(http.Dir("landing/public/"))
+	landingFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/landing/public/", staticDir)))
 	mux.Handle("/", http.StripPrefix("/",
 		a.LimitMiddleware(10, 10)(
 			func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
@@ -63,7 +66,7 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 	))
 
 	// Attach demos
-	demoFiles := http.FileServer(http.Dir("demos/final/"))
+	demoFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/demos/final/", staticDir)))
 	mux.Handle("/demos/", http.StripPrefix("/demos/",
 		a.LimitMiddleware(.1, 1)(
 			func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
@@ -92,7 +95,7 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 		util.ErrCheck(err)
 		println("Using build folder")
 
-		fileServer := http.FileServer(http.Dir("ts/build/"))
+		fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", staticDir)))
 
 		mux.Handle("GET /app/", http.StripPrefix("/app/",
 			a.LimitMiddleware(10, 10)(

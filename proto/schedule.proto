@@ -163,8 +163,7 @@ message PostScheduleBracketsRequest {
 }
 
 message PostScheduleBracketsResponse {
-  string id = 1 [(google.api.field_behavior) = REQUIRED];
-  map<string, IScheduleBracket> brackets = 2 [(google.api.field_behavior) = REQUIRED];
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchScheduleRequest {

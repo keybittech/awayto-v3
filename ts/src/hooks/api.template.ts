@@ -1,4 +1,4 @@
-import { FetchArgs, BaseQueryFn, createApi, fetchBaseQuery, FetchBaseQueryError, retry } from '@reduxjs/toolkit/query/react'
+import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, retry, reactHooksModule, buildCreateApi, coreModule } from '@reduxjs/toolkit/query/react'
 
 import { keycloak, refreshToken } from './auth';
 import { RootState } from './store';
@@ -64,6 +64,11 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = as
 }
 
 export type CustomBaseQuery = typeof customBaseQuery;
+
+const createApi = buildCreateApi(
+  coreModule(),
+  reactHooksModule({ unstable__sideEffectsInRender: false })
+);
 
 export const siteApiTemplate = createApi({
   refetchOnMountOrArgChange: 180,

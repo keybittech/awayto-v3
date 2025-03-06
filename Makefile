@@ -42,7 +42,7 @@ DEMOS_DIR=demos/final
 JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
-GO_TARGET=${PWD}/$(BINARY_NAME)
+GO_TARGET=${PWD}/go/$(BINARY_NAME)
 GO_MOCK_TARGET=$(GO_MOCKS_GEN_DIR)/clients.go
 PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
 
@@ -83,7 +83,9 @@ DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
 DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 
-# APP_IP=$(shell hcloud server ip ${APP_HOST})
+
+# flags
+GO_DEV_FLAGS=GO_ENVFILE_LOC=${PWD}/.env GO_ERROR_LOG=${GO_ERROR_LOG} SIGNING_TOKEN_FILE=${SIGNING_TOKEN_FILE} LOG_LEVEL=debug
 SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 
 LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
@@ -100,12 +102,15 @@ endef
 
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
+CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;" $(ENVFILE))
+$(shell sed -i -e "/^\(#\|\)PROJECT_DIR=/s&^.*$$&PROJECT_DIR=$(CURRENT_PROJECT_DIR)&;" $(ENVFILE))
 
 $(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
+$(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 
 AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 
@@ -189,9 +194,11 @@ $(PROTO_MOD_TARGET): $(shell find proto/ -type f)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
-		--go_opt=module=${PROJECT_REPO}/go/pkg/types \
+		--go_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
-	cd $(@D) && go mod init ${PROJECT_REPO}/go/pkg/types && go mod tidy && cd -
+	if [ ! -f "$(GO_GEN_DIR)/go.mod" ]; then \
+		cd $(@D) && go mod init ${PROJECT_REPO}/$(GO_GEN_DIR) && go mod tidy && cd -; \
+	fi
 
 $(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
@@ -215,9 +222,24 @@ $(GO_MOCK_TARGET):
 #################################
 
 .PHONY: go_dev
-go_dev: $(GO_TARGET)
+go_dev:
 	$(call set_local_unix_sock_dir)
-	cd go && gow -e=go,mod run main.go --log debug
+	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) .
+
+.PHONY: go_watch
+go_watch:
+	$(call set_local_unix_sock_dir)
+	$(GO_DEV_FLAGS) gow -e=go,mod build -C $(GO_SRC) -o $(GO_TARGET) .
+
+.PHONY: go_debug
+go_debug:
+	$(call set_local_unix_sock_dir)
+	cd go && $(GO_DEV_FLAGS) dlv debug --wd ${PWD}
+
+.PHONY: go_debug_exec
+go_debug_exec:
+	$(call set_local_unix_sock_dir)
+	$(GO_DEV_FLAGS) dlv exec --wd ${PWD} $(GO_TARGET)
 
 .PHONY: ts_dev
 ts_dev:

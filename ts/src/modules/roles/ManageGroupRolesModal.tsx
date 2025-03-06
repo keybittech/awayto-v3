@@ -22,8 +22,6 @@ interface ManageGroupRolesModalProps extends IComponent {
 
 export function ManageGroupRolesModal({ children, editGroup, validArea, saveToggle = 0, showCancel = true, closeModal, ...props }: ManageGroupRolesModalProps): React.JSX.Element {
 
-  console.log({ editGroup });
-
   const { setSnack } = useUtil();
   const { setValid } = useValid();
 
