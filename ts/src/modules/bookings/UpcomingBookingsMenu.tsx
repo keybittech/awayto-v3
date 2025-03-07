@@ -12,7 +12,7 @@ import Tooltip from '@mui/material/Tooltip';
 import JoinFullIcon from '@mui/icons-material/JoinFull';
 import DoneIcon from '@mui/icons-material/Done';
 
-import { useUtil, bookingDT, dayjs, shortNSweet, targets } from 'awayto/hooks';
+import { useUtil, bookingDT, dayjs, bookingFormat, targets } from 'awayto/hooks';
 
 import BookingContext, { BookingContextType } from './BookingContext';
 
@@ -92,7 +92,7 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
                 secondaryAction={dayjs().isAfter(dt.add(minsAgo15)) && <>
                   <Tooltip title="Join Exchange">
                     <Button
-                      {...targets(`join exchange ${booking.slotDate} ${booking.scheduleBracketSlot?.startTime}`, `go to exchange for ${shortNSweet(booking.slotDate, booking.scheduleBracketSlot?.startTime)}`)}
+                      {...targets(`join exchange ${booking.slotDate} ${booking.scheduleBracketSlot?.startTime}`, `go to exchange for ${bookingFormat(booking.slotDate, booking.scheduleBracketSlot?.startTime)}`)}
                       onClick={() => {
                         navigate(`/exchange/${booking.id}`);
                       }}
@@ -105,7 +105,7 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
                 </>}
               >
                 <ListItemText
-                  primary={`${shortNSweet(booking.slotDate, booking.scheduleBracketSlot.startTime)}`}
+                  primary={`${bookingFormat(booking.slotDate, booking.scheduleBracketSlot.startTime)}`}
                   secondary={`${booking.service.name} ${booking.serviceTier.name}`}
                 />
               </ListItem>

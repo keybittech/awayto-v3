@@ -1,9 +1,10 @@
 import React, { useContext, useMemo } from 'react';
 
-import Box from '@mui/material/Box';
-import { DigitalClock } from '@mui/x-date-pickers/DigitalClock';
+import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
+import Alert from '@mui/material/Alert';
 
-import { dayjs, staticDT, targets } from 'awayto/hooks';
+import { targets, bookingDTHours } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
 
@@ -13,48 +14,33 @@ export function ScheduleTimePicker(_: IComponent): React.JSX.Element {
     selectedDate,
     selectedTime,
     setSelectedTime,
-    dateSlots,
+    selectedSlots,
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
-  const selectedDateFormat = selectedDate?.format('YYYY-MM-DD');
-  const todayFormat = dayjs().format('YYYY-MM-DD');
-  const hasSlotsToday = useMemo(() => {
-    return dateSlots?.find(ds => {
-      if (!ds.weekStart || !ds.startTime || ds.startDate != todayFormat) return false;
-      return staticDT(dayjs(ds.weekStart), ds.startTime).isAfter(dayjs());
-    })
-  }, [dateSlots, todayFormat]);
+  const selections = useMemo(() => selectedSlots?.map((ds, i) => {
+    return ds.startTime && ds.startDate && <MenuItem key={`date-slot-selection-key-${i}`} value={ds.startTime}>
+      {bookingDTHours(ds.startDate, ds.startTime)}
+    </MenuItem>
+  }).filter(x => !!x), [selectedSlots]);
 
-  return <Box component="fieldset" sx={{
-    border: '1px solid #666',
-    borderRadius: '4px',
-    '&:hover': {
-      borderColor: '#fff'
-    }
-  }}>
-    <legend style={{ fontSize: '12px', color: 'rgba(255, 255, 255, 0.7)' }}>Select Time <span style={{ display: 'contents', color: 'red', fontSize: '24px' }}>*</span></legend>
-    {!hasSlotsToday && selectedDateFormat == todayFormat ? <>No available times remain.</> :
-      !selectedDateFormat || !dateSlots?.length ? <>Select a date. Times will appear here.</> :
-        <DigitalClock
-          {...targets(`service time selection`)}
-          disablePast={selectedDateFormat == todayFormat}
-          skipDisabled
-          value={selectedTime || null}
-          onChange={time => setSelectedTime(time)}
-          shouldDisableTime={time => {
-            const durationToCheck = dayjs.duration(time.hour(), 'hour').add(time.minute(), 'minute');
-            const checkHours = durationToCheck.hours();
-            const checkMinutes = durationToCheck.minutes();
-            return !dateSlots.some(dateSlot => {
-              if (!dateSlot.startDate || !dateSlot.duration) return false;
-              return dateSlot.startDate == selectedDateFormat &&
-                checkHours == dateSlot.hour &&
-                checkMinutes == dateSlot.minute;
-            });
-          }}
+  if (!selectedDate || !selectedTime) {
+    return <Alert sx={{ width: '100%' }} variant="outlined" color="info" severity="info">Select a date. Times will appear here.</Alert>;
+  }
 
-        />}
-  </Box>
+  if (!selectedSlots?.length) {
+    return <Alert sx={{ width: '100%' }} variant="outlined" color="warning" severity="warning">No available times remain.</Alert>;
+  }
+
+  return <TextField
+    {...targets('select time picker select', 'Time', 'select a time')}
+    select
+    fullWidth
+    required
+    value={selectedTime}
+    onChange={e => setSelectedTime(e.target.value)}
+  >
+    {selections}
+  </TextField>;
 }
 
 export default ScheduleTimePicker;

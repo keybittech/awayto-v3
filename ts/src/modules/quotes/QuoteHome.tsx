@@ -10,7 +10,7 @@ import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, utcDTLocal, shortNSweet } from 'awayto/hooks';
+import { useGrid, utcDTLocal, bookingFormat } from 'awayto/hooks';
 
 import PendingQuotesContext, { PendingQuotesContextType } from './PendingQuotesContext';
 
@@ -48,7 +48,7 @@ function QuoteHome(_: IComponent): React.JSX.Element {
   const quoteGridProps = useGrid({
     rows: pendingQuotes,
     columns: [
-      { flex: 1, headerName: 'Booking Slot', field: 'slotDate', renderCell: ({ row }) => shortNSweet(row.slotDate, row.startTime) },
+      { flex: 1, headerName: 'Booking Slot', field: 'slotDate', renderCell: ({ row }) => bookingFormat(row.slotDate, row.startTime) },
       { flex: 1, headerName: 'Service', field: 'serviceName' },
       { flex: 1, headerName: 'Tier', field: 'serviceTierName' },
       { flex: 1, headerName: 'Requested On', field: 'createdOn', renderCell: ({ row }) => utcDTLocal(row.createdOn) }

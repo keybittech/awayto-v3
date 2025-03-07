@@ -88,13 +88,13 @@ export function bookingDT(slotDate: string, startTime: string): dayjs.Dayjs {
  * @category Time Unit
  */
 export function bookingDTHours(slotDate: string, startTime: string): string {
-  return bookingDT(slotDate, startTime).format("hh:mm a");
+  return dayjs(slotDate).startOf('week').add(dayjs.duration(startTime)).format("hh:mm a");
 }
 
 /**
  * @category Time Unit
  */
-export function shortNSweet(slotDate: string, startTime: string): string {
+export function bookingFormat(slotDate: string, startTime: string): string {
   return `${dayjs(slotDate).format("ddd, MMM D")} at ${bookingDTHours(slotDate, startTime)}`;
 }
 

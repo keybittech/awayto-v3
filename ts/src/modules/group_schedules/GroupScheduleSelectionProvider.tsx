@@ -11,25 +11,32 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
 
   const [startOfMonth, setStartOfMonth] = useState(dayjs().startOf(TimeUnit.MONTH));
   const [selectedDate, setSelectedDate] = useState<dayjs.Dayjs>();
-  const [selectedTime, setSelectedTime] = useState<dayjs.Dayjs>();
+  const [selectedTime, setSelectedTime] = useState<string>();
 
   const [quote, setQuote] = useState({} as IQuote);
 
   const [getScheduleDateSlots, { data: dateSlotsRequest, isFetching }] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleByDateQuery();
 
-  const dateSlots = useMemo(() => {
-    const ds = dateSlotsRequest?.groupScheduleDateSlots || [];
-    return ds.map(x => {
-      if (!x.startTime) return undefined;
-      const duration = dayjs.duration(x.startTime);
-      return {
-        ...x,
-        duration,
-        hour: duration.hours(),
-        minute: duration.minutes(),
+  const selectedDateFormat = selectedDate?.format('YYYY-MM-DD');
+
+  const dateSlots = dateSlotsRequest?.groupScheduleDateSlots || [];
+
+  if (dateSlots.length && !selectedDate) {
+    setSelectedDate(dayjs(dateSlots[0].startDate));
+    setSelectedTime(dateSlots[0].startTime);
+  }
+
+  const selectedSlots = useMemo(() => {
+    const ds = dateSlots.map(x => {
+      if (x.startTime && selectedDateFormat == x.startDate && dayjs(x.weekStart).add(dayjs.duration(x.startTime)).isAfter(dayjs())) {
+        return x
       }
-    }).filter(x => !!x); // remove undef
-  }, [dateSlotsRequest]);
+    }).filter(x => !!x);
+    if (ds.length) {
+      setSelectedTime(ds[0].startTime);
+    }
+    return ds;
+  }, [dateSlots, selectedDateFormat]);
 
   const getDateSlots = useCallback(() => {
     if (groupSchedule?.schedule?.id?.length && startOfMonth && !isFetching) {
@@ -48,21 +55,15 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
   }, [startOfMonth, groupSchedule?.schedule]);
 
   useEffect(() => {
-    if (!dateSlots.length || !selectedTime || !selectedDate) {
-      setQuote({});
-      return;
+    if (selectedTime) {
+      const slot = selectedSlots.find(s => s.startTime == selectedTime);
+      setQuote(!slot ? {} : {
+        scheduleBracketSlotId: slot.scheduleBracketSlotId,
+        startTime: slot.startTime,
+        slotDate: selectedDateFormat,
+      });
     }
-    const selectedDateFormat = selectedDate.format('YYYY-MM-DD');
-    const selectedTimeHours = selectedTime.hour();
-    const selectedTimeMinutes = selectedTime.minute();
-    const slot = dateSlots.find(s => s.startDate === selectedDateFormat && selectedTimeHours === s.hour && selectedTimeMinutes === s.minute);
-    if (!slot) return;
-    setQuote({
-      scheduleBracketSlotId: slot.scheduleBracketSlotId,
-      startTime: slot.startTime,
-      slotDate: selectedDateFormat,
-    });
-  }, [selectedDate, selectedTime, dateSlots]);
+  }, [selectedDateFormat, selectedTime, selectedSlots]);
 
   const groupScheduleSelectionContext: GroupScheduleSelectionContextType = {
     quote,
@@ -75,6 +76,7 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
     setStartOfMonth,
     dateSlots,
     getDateSlots,
+    selectedSlots,
   };
 
   return useMemo(() => <GroupScheduleSelectionContext.Provider value={groupScheduleSelectionContext}>

@@ -15,7 +15,7 @@ import IconButton from '@mui/material/IconButton';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
 
-import { shortNSweet, targets } from 'awayto/hooks';
+import { bookingFormat, targets } from 'awayto/hooks';
 
 import PendingQuotesContext, { PendingQuotesContextType } from './PendingQuotesContext';
 
@@ -111,7 +111,7 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
                 />
               </ListItemIcon>
               <ListItemText
-                primary={`${shortNSweet(pq.slotDate, pq.startTime)}`}
+                primary={`${bookingFormat(pq.slotDate, pq.startTime)}`}
                 secondary={`${pq.serviceName} ${pq.serviceTierName}`}
               />
             </ListItemButton>

@@ -1,6 +1,6 @@
 import React, { useMemo, useState } from 'react';
 
-import { siteApi, useUtil, plural, shortNSweet, IBooking, IQuote } from 'awayto/hooks';
+import { siteApi, useUtil, plural, bookingFormat, IBooking, IQuote } from 'awayto/hooks';
 
 import PendingQuotesContext, { PendingQuotesContextType } from './PendingQuotesContext';
 
@@ -54,10 +54,10 @@ export function PendingQuotesProvider({ children }: IComponent): React.JSX.Eleme
 
       openConfirm({
         isConfirming: true,
-        confirmEffect: `Approve ${plural(selectedValues.length, 'request', 'requests')}, creating ${plural(selectedValues.length, 'booking', 'bookings')}, for ${shortNSweet(slotDate, startTime)}.`,
+        confirmEffect: `Approve ${plural(selectedValues.length, 'request', 'requests')}, creating ${plural(selectedValues.length, 'booking', 'bookings')}, for ${bookingFormat(slotDate, startTime)}.`,
         confirmSideEffect: !copies.length ? undefined : {
           approvalAction: 'Auto-Deny Remaining',
-          approvalEffect: `Automatically deny all other requests for ${shortNSweet(slotDate, startTime)} (this cannot be undone).`,
+          approvalEffect: `Automatically deny all other requests for ${bookingFormat(slotDate, startTime)} (this cannot be undone).`,
           rejectionAction: 'Confirm Quote/Booking Only',
           rejectionEffect: 'Just submit the approvals.',
         },

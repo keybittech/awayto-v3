@@ -10,7 +10,7 @@ import CreateIcon from '@mui/icons-material/Create';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, IGroupUserScheduleStub, shortNSweet } from 'awayto/hooks';
+import { useGrid, IGroupUserScheduleStub, bookingFormat } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import ManageScheduleStubModal from './ManageScheduleStubModal';
@@ -46,7 +46,7 @@ export function ManageScheduleStubs(_: IComponent): React.JSX.Element {
   const scheduleStubGridProps = useGrid({
     rows: (groupUserScheduleStubsRequest?.groupUserScheduleStubs || []) as Required<IGroupUserScheduleStub>[],
     columns: [
-      { flex: 1, headerName: 'Date', field: 'slotDate', renderCell: ({ row }) => shortNSweet(row.slotDate!, row.startTime!) },
+      { flex: 1, headerName: 'Date', field: 'slotDate', renderCell: ({ row }) => bookingFormat(row.slotDate!, row.startTime!) },
       { flex: 1, headerName: 'Service', field: 'serviceName' },
       { flex: 1, headerName: 'Tier', field: 'tierName' },
       { flex: 1, headerName: 'Created', field: 'replacement', renderCell: ({ row }) => Object.keys(row.replacement || {}).length ? 'Yes' : 'No' }

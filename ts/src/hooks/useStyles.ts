@@ -39,36 +39,29 @@ export const theme = createTheme(paletteTheme, {
     MuiPickersDay: {
       styleOverrides: {
         root: {
-          '&:not(.Mui-disabled)': {
-            backgroundColor: 'rgb(64 64 64)',
-            color: '#fff',
-          },
           '&.Mui-selected': {
             backgroundColor: '#009cc8 !important'
           },
-          '&:hover': {
-            backgroundColor: '#bbb'
-          }
         }
       }
     },
-    MuiDigitalClock: {
-      styleOverrides: {
-        item: {
-          '&:not(.Mui-disabled)': {
-            backgroundColor: '#fff',
-            color: '#000'
-          },
-          '&.Mui-selected': {
-            backgroundColor: '#009cc8 !important',
-            color: '#fff'
-          },
-          '&:hover': {
-            backgroundColor: '#bbb'
-          }
-        }
-      }
-    },
+    // MuiDigitalClock: {
+    //   styleOverrides: {
+    //     item: {
+    //       '&:not(.Mui-disabled)': {
+    //         backgroundColor: '#fff',
+    //         color: '#000'
+    //       },
+    //       '&.Mui-selected': {
+    //         backgroundColor: '#009cc8 !important',
+    //         color: '#fff'
+    //       },
+    //       '&:hover': {
+    //         backgroundColor: '#bbb'
+    //       }
+    //     }
+    //   }
+    // },
     // MuiClockPointer: {
     //   styleOverrides: {
     //     thumb: {

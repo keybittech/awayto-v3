@@ -11,7 +11,7 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { IGroupUserScheduleStub, shortNSweet, siteApi, targets, useUtil } from 'awayto/hooks';
+import { IGroupUserScheduleStub, bookingFormat, siteApi, targets, useUtil } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
@@ -88,7 +88,7 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
   return <>
     <Card>
       <CardHeader
-        title={`${shortNSweet(editGroupUserScheduleStub.slotDate, editGroupUserScheduleStub.startTime)}`}
+        title={`${bookingFormat(editGroupUserScheduleStub.slotDate, editGroupUserScheduleStub.startTime)}`}
         subheader={`${editGroupUserScheduleStub.serviceName} ${editGroupUserScheduleStub.tierName}`}
       />
       <CardContent>

@@ -75,7 +75,15 @@ export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTim
 
     for (let y = 1; y < rows + 1; y++) {
 
-      let djst = baseTime.day(rowDuration.days()).hour(rowDuration.hours()).minute(rowDuration.minutes());
+      let djst;
+
+      if (daySlots) {
+        djst = baseTime.startOf('week').add(rowDuration.days(), 'day');
+      } else {
+        djst = baseTime.day(rowDuration.days());
+      }
+
+      djst = djst.hour(rowDuration.hours()).minute(rowDuration.minutes());
 
       durations[0][y] = {
         contextFormat: dayColumns ? djst.format('A') : djst.format('ddd')

@@ -23,9 +23,6 @@ export function ScheduleDatePicker(_: IComponent): React.JSX.Element {
     onChange={(date: dayjs.Dayjs | null) => setSelectedDate(date ? date : undefined)}
     onYearChange={date => date && setStartOfMonth(date.startOf('month'))}
     disableHighlightToday={true}
-    sx={{
-      mt: '12px'
-    }}
     slotProps={{
       textField: { fullWidth: true, required: true }
     }}
