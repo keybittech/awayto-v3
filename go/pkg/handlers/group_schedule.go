@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"errors"
 	"net/http"
 	"strings"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupScheduleResponse, error) {
@@ -28,6 +29,7 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 		BracketTimeUnitId:  data.GroupSchedule.Schedule.BracketTimeUnitId,
 		SlotTimeUnitId:     data.GroupSchedule.Schedule.SlotTimeUnitId,
 		SlotDuration:       data.GroupSchedule.Schedule.SlotDuration,
+		Brackets:           map[string]*types.IScheduleBracket{},
 	}, groupSession, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)

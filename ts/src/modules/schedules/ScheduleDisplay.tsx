@@ -21,7 +21,6 @@ export interface ScheduleDisplayProps extends IComponent {
   isKiosk?: boolean;
 };
 
-
 export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ScheduleDisplayProps): React.JSX.Element {
 
   const scheduleDisplay = useMemo(() => deepClone(schedule), [schedule]);

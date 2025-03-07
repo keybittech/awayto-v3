@@ -288,14 +288,17 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
     updated_on TIMESTAMP,
     updated_sub uuid REFERENCES dbtable_schema.users (sub),
-    enabled BOOLEAN NOT NULL DEFAULT true,
-    UNIQUE (schedule_bracket_id, start_time)
+    enabled BOOLEAN NOT NULL DEFAULT true
   );
   ALTER TABLE dbtable_schema.schedule_bracket_slots ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.schedule_bracket_slots FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.schedule_bracket_slots FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
   CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slots FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slots FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
+
+  CREATE UNIQUE INDEX idx_unique_enabled_slots 
+  ON dbtable_schema.schedule_bracket_slots(schedule_bracket_id, start_time) 
+  WHERE enabled = true;
 
   CREATE TABLE dbtable_schema.schedule_bracket_slot_exclusions (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

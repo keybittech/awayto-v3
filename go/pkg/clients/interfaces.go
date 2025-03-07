@@ -28,6 +28,7 @@ type IDatabase interface {
 	GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error)
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 	TxExec(doFunc func(IDatabaseTx) error, ids ...string) error
+	BuildInserts(query string, values []interface{}, records ...interface{}) (string, []interface{})
 }
 
 type IDatabaseClient interface {

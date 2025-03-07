@@ -2,6 +2,8 @@ package clients
 
 import (
 	"encoding/json"
+	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -108,12 +110,12 @@ func InitKeycloak() IKeycloak {
 
 	go func() {
 		for cmd := range cmds {
-			// defer func() {
-			// 	if r := recover(); r != nil {
-			// 		err := errors.New(fmt.Sprintf("Did recover from %+v", r))
-			// 		cmd.ReplyChan <- KeycloakResponse{Error: err}
-			// 	}
-			// }()
+			defer func() {
+				if r := recover(); r != nil {
+					err := errors.New(fmt.Sprintf("Did recover from %+v", r))
+					cmd.ReplyChan <- KeycloakResponse{Error: err}
+				}
+			}()
 
 			switch cmd.Ty {
 			case SetKeycloakTokenKeycloakCommand:

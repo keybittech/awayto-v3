@@ -70,18 +70,40 @@ message ScheduledParts {
 
 message IScheduleBracketSlot {
   string id = 1;
-  string scheduleBracketId = 2;
-  string startTime = 3;
+  string scheduleBracketId = 2 [
+    (buf.validate.field).cel = {
+      id: "IScheduleBracketSlot.scheduleBracketId"
+      message: "value must be a UUID or timestamp"
+      expression: "this.matches('^[0-9]{13}$') || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+    },
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
+  string startTime = 3 [
+    (buf.validate.field).string.pattern = "^P(([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?)?(T(([0-9]+)H)?(([0-9]+)M)?(([0-9]+.?[0-9]*)S)?)?$"
+  ];
   int32 row = 4;
   string color = 5;
 }
 
 message IScheduleBracket {
-  string id = 1;
+  string id = 1 [
+    (buf.validate.field).cel = {
+      id: "IScheduleBracket.id"
+      message: "value must be a UUID or timestamp"
+      expression: "this.matches('^[0-9]{13}$') || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
+    }
+  ];
   bool automatic = 2;
-  string scheduleId = 3;
-  int32 duration = 4;
-  int32 multiplier = 5;
+  string scheduleId = 3 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
+  int32 duration = 4 [
+    (buf.validate.field).int32.gt = 0
+  ];
+  int32 multiplier = 5 [
+    (buf.validate.field).int32.gt = 0
+  ];
   map<string, IService> services = 6;
   map<string, IScheduleBracketSlot> slots = 7;
   map<string, IQuote> quotes = 8;
@@ -145,6 +167,10 @@ message PostScheduleRequest {
   string bracketTimeUnitId = 5 [(buf.validate.field).string.uuid = true];
   string slotTimeUnitId = 6 [(buf.validate.field).string.uuid = true];
   int32 slotDuration = 7 [(buf.validate.field).int32.gt = 0];
+  map<string, IScheduleBracket> brackets = 8 [
+    (buf.validate.field).map.min_pairs = 1
+  ];
+  string groupScheduleId = 9 [(buf.validate.field).string.uuid = true];
 
   option (buf.validate.message).cel = {
     id: "PostScheduleRequest.endTime",

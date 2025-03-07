@@ -30,7 +30,7 @@ interface ManageScheduleBracketsModalProps extends IComponent {
   editSchedule?: ISchedule;
 }
 
-export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: ManageScheduleBracketsModalProps): React.JSX.Element {
+export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ManageScheduleBracketsModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
@@ -40,15 +40,6 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
   } = useContext(GroupContext) as GroupContextType;
 
   const {
-    getGroupSchedules: {
-      refetch: refetchGroupSchedules
-    },
-    getGroupUserSchedules: {
-      refetch: refetchGroupUserSchedules
-    },
-    getGroupUserScheduleStubs: {
-      refetch: refetchGroupUserScheduleStubs
-    },
     selectGroupSchedule: {
       item: groupSchedule,
       comp: GroupScheduleSelect
@@ -66,11 +57,10 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
 
   const [postSchedule] = siteApi.useScheduleServicePostScheduleMutation();
   const [postScheduleBrackets] = siteApi.useScheduleServicePostScheduleBracketsMutation();
-  const [postGroupUserSchedule] = siteApi.useGroupUserScheduleServicePostGroupUserScheduleMutation();
 
   const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as IScheduleBracket);
 
-  const scheduleBracketsValues = useMemo(() => Object.values(schedule.brackets || {}) as IScheduleBracket[], [schedule?.brackets]);
+  const scheduleBracketsValues = useMemo(() => Object.values(schedule?.brackets || {}) as IScheduleBracket[], [schedule?.brackets]);
   const bracketServicesValues = useMemo(() => Object.values(bracket.services || {}) as IService[], [bracket.services]);
 
   const remainingBracketTime = useMemo(() => {
@@ -87,27 +77,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
 
   const handleSubmit = useCallback(() => {
     async function go() {
-      if (groupSchedule && schedule.name && scheduleBracketsValues.length) {
-
-        const groupScheduleId = groupSchedule.schedule?.id;
-        let userScheduleId = editSchedule?.id;
-
-        if (!userScheduleId) {
-          const newSchedule = await postSchedule({
-            postScheduleRequest: {
-              name: schedule.name,
-              startTime: schedule.startTime,
-              endTime: schedule.endTime,
-              scheduleTimeUnitId: schedule.scheduleTimeUnitId,
-              bracketTimeUnitId: schedule.bracketTimeUnitId,
-              slotTimeUnitId: schedule.slotTimeUnitId,
-              slotDuration: schedule.slotDuration
-            }
-          }).unwrap().catch(console.error);
-          userScheduleId = newSchedule?.id;
-        }
-
-        if (!userScheduleId || !groupScheduleId) return;
+      if (schedule && scheduleBracketsValues.length) {
 
         const newBrackets = scheduleBracketsValues.reduce<Record<string, IScheduleBracket>>(
           (m, { id, duration, automatic, multiplier, slots, services }) => !id ? m : ({
@@ -123,24 +93,28 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
           }), {}
         );
 
-        await postScheduleBrackets({
-          postScheduleBracketsRequest: {
-            scheduleId: userScheduleId,
-            brackets: newBrackets
-          }
-        }).unwrap().catch(console.error);
-
-        await postGroupUserSchedule({
-          postGroupUserScheduleRequest: {
-            userScheduleId: userScheduleId, // refers to the user's schedule record
-            groupScheduleId: groupScheduleId // refers to the master schedule record
-          }
-        }).unwrap().catch(console.error);
-
-        void refetchGroupSchedules().then(() => {
-          void refetchGroupUserSchedules();
-          void refetchGroupUserScheduleStubs();
-        });
+        if (!editSchedule?.id && groupSchedule?.schedule?.id) {
+          await postSchedule({
+            postScheduleRequest: {
+              groupScheduleId: groupSchedule.schedule.id,
+              brackets: newBrackets,
+              name: schedule.name,
+              startTime: schedule.startTime,
+              endTime: schedule.endTime,
+              scheduleTimeUnitId: schedule.scheduleTimeUnitId,
+              bracketTimeUnitId: schedule.bracketTimeUnitId,
+              slotTimeUnitId: schedule.slotTimeUnitId,
+              slotDuration: schedule.slotDuration
+            }
+          }).unwrap().catch(console.error);
+        } else if (editSchedule?.id) {
+          await postScheduleBrackets({
+            postScheduleBracketsRequest: {
+              scheduleId: editSchedule.id,
+              brackets: newBrackets
+            }
+          }).unwrap().catch(console.error);
+        }
 
         setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule?.name, snackType: 'info' });
         if (closeModal) {
@@ -152,10 +126,10 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
       }
     }
     void go();
-  }, [schedule, groupSchedule, scheduleBracketsValues]);
+  }, [schedule, editSchedule, groupSchedule, scheduleBracketsValues]);
 
   const changeColors = () => {
-    if (schedule.brackets) {
+    if (schedule?.brackets) {
       const brackets: typeof schedule.brackets = {};
       Object.values(schedule.brackets).forEach(b => {
         if (!b.id) return;
@@ -169,12 +143,12 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
   }
 
   // reset on group schedule change or init
-  if (groupSchedule?.schedule && !editSchedule.id && (!schedule.id || groupSchedule.schedule.id !== schedule.id)) {
+  if (groupSchedule?.schedule && !editSchedule?.id && (!schedule?.id || groupSchedule.schedule.id !== schedule?.id)) {
     setSchedule({ ...groupSchedule?.schedule, brackets: {} });
     setBracket({ ...bracketSchema, services: {}, slots: {} });
   }
 
-  if (firstLoad.current && viewStep === 1 && schedule.brackets) {
+  if (firstLoad.current && viewStep === 1 && schedule?.brackets) {
     setViewStep(2);
     changeColors();
   }
@@ -195,9 +169,9 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
 
         <Box mb={4}>
           <GroupScheduleSelect
-            disabled={Boolean(editSchedule.id)}
+            disabled={Boolean(editSchedule?.id)}
             helperText={
-              schedule.slotDuration && slotTimeUnitName && `This schedule represents 1 ${scheduleTimeUnitName} of ${bracketTimeUnitName}s where every ${plural(schedule.slotDuration, slotTimeUnitName, slotTimeUnitName + 's')} is schedulable.`
+              schedule?.slotDuration && slotTimeUnitName && `This schedule represents 1 ${scheduleTimeUnitName} of ${bracketTimeUnitName}s where every ${plural(schedule?.slotDuration, slotTimeUnitName, slotTimeUnitName + 's')} is schedulable.`
             }
           >
             {groupSchedules.map(s => {
@@ -289,7 +263,7 @@ export function ManageScheduleBracketsModal({ editSchedule = {}, closeModal }: M
           </ToggleButtonGroup>
         </Box>}
       </> :
-        <ScheduleDisplay schedule={schedule} setSchedule={setSchedule} />
+        <ScheduleDisplay schedule={schedule || {}} setSchedule={setSchedule} />
       }
     </DialogContent>
     <DialogActions>

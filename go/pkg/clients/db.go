@@ -8,6 +8,7 @@ import (
 	"log"
 	"os"
 	"reflect"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -127,6 +128,26 @@ func (db *Database) AdminSub() string {
 
 func (db *Database) AdminRoleId() string {
 	return db.DatabaseAdminRoleId
+}
+
+func (db *Database) BuildInserts(query string, values []interface{}, records ...interface{}) (string, []interface{}) {
+
+	numFields := len(records)
+	baseIndex := (len(values) / numFields) * numFields
+
+	query += "("
+
+	for i, record := range records {
+		query += "$" + strconv.Itoa(baseIndex+i+1)
+		if i < numFields-1 {
+			query += ", "
+		}
+		values = append(values, record)
+	}
+
+	query += "),"
+
+	return query, values
 }
 
 // DB Wrappers

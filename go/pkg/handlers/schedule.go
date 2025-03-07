@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"errors"
 	"fmt"
 	"net/http"
@@ -14,6 +13,37 @@ import (
 
 	"github.com/lib/pq"
 )
+
+// PostSchedule handles group schedules (via PostGroupSchedule) and user schedules.
+// Group schedules are owned by the group db user sub, while user schedules are owned by the user.
+// User schedules must have a set of "brackets", which keep track of the available times on the schedule.
+// Brackets also allow for supporting different services at different times, or where cost is available
+// brackets can have multipliers so that the cost of services is different based on the bracket:
+// for example standard cost from 9am-5pm, then an evening bracket where the cost is 1.5x
+
+// When schedules are created, all records are normally inserted as usual. But when modifications
+// are made to existing schedules/brackets, special attention must be paid to schedule/bracket/slot records
+// which have been associated with quote requests. If a user goes to request service (create a quote) for
+// 9:30AM on Tuesday Mar 11, 2025, this time is specifically recorded on the quote record using the MM-DD-YYYY
+// slot_date 03-11-2025, and a schedule_bracket_slot_id pointing to an ISO 8601 duration like P1DT9H30M.
+// The durations stored in the DB are always relative to the week start of the schedule in question, so it's
+// expected that when displaying this quote's scheduled time on the front end, that dayjs or something else
+// is used to figure out the week start for 03-11-2025, and then add P1DT9H30M, in this case it would
+// work out to be 03-10-2025 (monday) + P1DT9H30M, resulting in 9:30AM on Tuesday Mar 11th, 2025. A limitation
+// for now is that week start uses Monday for the 0 day, which is a limitation needing consideration when
+// dealing with various locales.
+
+// Therefore when modifying schedules/brackets, any related quotes must be identified and handled such that if
+// anything which would cause a schedule_bracket_slot to be removed, then it instead must be disabled, as it
+// related to an existing quote. This comes into play when deleting both brackets or slots. Any records disabled
+// in the modification process and which are still in the future will then appear in the user interface for
+// group admins to see so that they may perform manual rescheduling of the slot. This allows staff to create
+// schedules, users to request services from those schedules, while allowing for situations like the staff
+// member is no longer part of the group, or their schedule changes at some point, etc., existing upcoming
+// appointments will be gracefully disabled so that they may be handled by admins. These records needing
+// handling are referred to elsewhere as user_schedule_stubs and represent disabled schedule_bracket_slots.
+// For these reasons, the bracket modification process is spread across different focused functions, to help
+// ease the task of debugging and general understanding.
 
 func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *types.PostScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostScheduleResponse, error) {
 	var scheduleId string
@@ -41,6 +71,21 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 		return nil, util.ErrCheck(err)
 	}
 
+	if len(data.Brackets) > 0 && data.GroupScheduleId != "" {
+		err := h.InsertNewBrackets(scheduleId, data.Brackets, tx, session)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		_, err = h.PostGroupUserSchedule(w, req, &types.PostGroupUserScheduleRequest{
+			UserScheduleId:  scheduleId,
+			GroupScheduleId: data.GroupScheduleId,
+		}, session, tx)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
+
 	return &types.PostScheduleResponse{Id: scheduleId}, nil
 }
 
@@ -56,102 +101,28 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 			existingBrackets[key] = bracket
 		} else if util.IsEpoch(key) {
 			newBrackets[key] = bracket
-		} else {
-			return nil, util.ErrCheck(fmt.Errorf("invalid bracket key: %s (must be UUID or epoch timestamp)", key))
 		}
 	}
 
-	// 1. Handle existing bracket updates
 	if len(existingBracketIds) > 0 {
-		err := handleExistingBrackets(existingBracketIds, existingBrackets, tx, session)
+		err := h.HandleExistingBrackets(existingBracketIds, existingBrackets, tx, session)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	// 2. Insert new brackets and their components
-	if len(newBrackets) > 0 {
-		err := insertNewBrackets(data.ScheduleId, newBrackets, tx, session)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-	}
-
-	// 3. Handle brackets that should be deleted or disabled
 	err := handleDeletedBrackets(data.ScheduleId, existingBracketIds, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	// // When submitting brackets, it's a mix of new and existing
-	// // New brackets are just unix epoch timestamps while existing
-	// // records are uuids. collect just the uuids here to pass when
-	// // removing brackets, to ignore deleting existing brackets
-	// existingBracketIds := make([]string, 0, len(data.Brackets))
-	// for k := range data.Brackets {
-	// 	_, err := strconv.Atoi(k)
-	// 	if err != nil {
-	// 		existingBracketIds = append(existingBracketIds, k)
-	// 	}
-	// }
-	//
-	// if err := h.RemoveScheduleBrackets(req.Context(), tx, data.ScheduleId, existingBracketIds); err != nil {
-	// 	return nil, util.ErrCheck(err)
-	// }
-	//
-	// for _, b := range data.Brackets {
-	//
-	// 	err := tx.QueryRow(`
-	// 		INSERT INTO dbtable_schema.schedule_brackets (schedule_id, duration, multiplier, automatic, created_sub, group_id)
-	// 		VALUES ($1, $2, $3, $4, $5::uuid, $6)
-	// 		RETURNING id
-	// 	`, data.GetScheduleId(), b.Duration, b.Multiplier, b.Automatic, session.UserSub, session.GroupId).Scan(&b.Id)
-	//
-	// 	if err != nil {
-	// 		return nil, util.ErrCheck(err)
-	// 	}
-	//
-	// 	for _, serv := range b.Services {
-	// 		_, err = tx.Exec(`
-	// 			INSERT INTO dbtable_schema.schedule_bracket_services (schedule_bracket_id, service_id, created_sub, group_id)
-	// 			VALUES ($1, $2, $3::uuid, $4::uuid)
-	// 		`, b.Id, serv.Id, session.UserSub, session.GroupId)
-	// 		if err != nil {
-	// 			return nil, util.ErrCheck(err)
-	// 		}
-	// 	}
-	//
-	// 	newSlots := make(map[string]*types.IScheduleBracketSlot)
-	//
-	// 	_, err = tx.Exec(`
-	// 		DELETE FROM dbtable_schema.schedule_bracket_slots
-	// 		WHERE schedule_bracket_id = $1
-	// 	`, b.Id)
-	// 	if err != nil {
-	// 		return nil, util.ErrCheck(err)
-	// 	}
-	//
-	// 	for _, slot := range b.Slots {
-	// 		var slotId string
-	//
-	// 		err = tx.QueryRow(`
-	// 			INSERT INTO dbtable_schema.schedule_bracket_slots (schedule_bracket_id, start_time, created_sub, group_id)
-	// 			VALUES ($1, $2::interval, $3::uuid, $4::uuid)
-	// 			RETURNING id
-	// 		`, b.Id, slot.StartTime, session.UserSub, session.GroupId).Scan(&slotId)
-	// 		if err != nil {
-	// 			return nil, util.ErrCheck(err)
-	// 		}
-	//
-	// 		slot.Id = slotId
-	// 		slot.ScheduleBracketId = b.Id
-	// 		newSlots[slotId] = slot
-	// 	}
-	//
-	// 	b.Slots = newSlots
-	// }
+	if len(newBrackets) > 0 && data.ScheduleId != "" {
+		err := h.InsertNewBrackets(data.ScheduleId, newBrackets, tx, session)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
 	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules/"+data.GetScheduleId())
 	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules")
 
@@ -160,7 +131,6 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 
 func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchScheduleResponse, error) {
 	schedule := data.GetSchedule()
-	// TODO add a what to expect page
 
 	var startTime, endTime *string
 	if schedule.StartTime != nil {
@@ -221,12 +191,12 @@ func (h *Handlers) GetScheduleById(w http.ResponseWriter, req *http.Request, dat
 
 func (h *Handlers) DeleteSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteScheduleResponse, error) {
 	for _, scheduleId := range strings.Split(data.GetIds(), ",") {
-
-		if err := h.RemoveScheduleBrackets(req.Context(), tx, scheduleId); err != nil {
+		err := handleDeletedBrackets(scheduleId, []string{}, tx)
+		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err := tx.Exec(`
+		_, err = tx.Exec(`
 			UPDATE dbtable_schema.schedules
 			SET enabled = false
 			WHERE id = $1
@@ -269,289 +239,55 @@ func (h *Handlers) DisableSchedule(w http.ResponseWriter, req *http.Request, dat
 	return &types.DisableScheduleResponse{Success: true}, nil
 }
 
-// The method for a user to update their available times to work is
-// 1. get_scheduled_parts takes a scheduleId and returns rows for
-// bracket_slots and bracket_services if any are associated to
-// the schedule. this means that someone has requested services from
-// the schedule, and the slot/service are the when/what of the data
-// 2. next we get all the schedule_bracket ids using schedule_id and
-// loop through them, deleting
-
-func (h *Handlers) RemoveScheduleBrackets(ctx context.Context, tx clients.IDatabaseTx, scheduleId string, persistingBracketIds ...[]string) error {
-
-	// var serviceDel, slotDel, bracketDel, bracketUp, slotUp, serviceUp int64
-	// err := tx.QueryRow(`
-	// 	WITH scheduled_records AS ( -- use schedule id to find records attached to a quote
-	// 		SELECT brackets.id as bracket_id, slots.id as slot_id, services.id as service_id
-	// 		FROM dbtable_schema.schedules schedules
-	// 		JOIN dbtable_schema.schedule_brackets brackets ON brackets.schedule_id = schedules.id
-	// 		JOIN dbtable_schema.schedule_bracket_slots slots ON slots.schedule_bracket_id = brackets.id
-	// 		JOIN dbtable_schema.schedule_bracket_services services ON services.schedule_bracket_id = brackets.id
-	// 		LEFT JOIN dbtable_schema.quotes quotes ON quotes.schedule_bracket_slot_id = slots.id
-	// 		WHERE schedules.id = $1::uuid AND quotes.id IS NOT NULL
-	// 	),
-	// 	schedule_bracket_ids AS ( -- get all schedule_brackets for the schedule, except ones that are persisting
-	// 		SELECT id FROM dbtable_schema.schedule_brackets
-	// 		WHERE schedule_id = $1::uuid
-	// 		AND id <> ANY($2::uuid[])
-	// 	),
-	// 	service_deletions AS ( -- delete schedule brackets that are not attached to a quote, and are not persisting
-	// 		DELETE FROM dbtable_schema.schedule_bracket_services
-	// 		WHERE id NOT IN (SELECT service_id FROM scheduled_records)
-	// 		AND schedule_bracket_id IN (SELECT id FROM schedule_bracket_ids)
-	// 		RETURNING id
-	// 	),
-	// 	slot_deletions AS (
-	// 		DELETE FROM dbtable_schema.schedule_bracket_slots
-	// 		WHERE id NOT IN (SELECT slot_id FROM scheduled_records)
-	// 		AND schedule_bracket_id IN (SELECT id FROM schedule_bracket_ids)
-	// 		RETURNING id
-	// 	),
-	// 	bracket_deletions AS (
-	// 		DELETE FROM dbtable_schema.schedule_brackets schedule_bracket
-	// 		WHERE id NOT IN (SELECT bracket_id FROM scheduled_records)
-	// 		AND id IN (SELECT id FROM schedule_bracket_ids)
-	// 		RETURNING id
-	// 	),
-	// 	bracket_updates AS ( -- disable schedule_bracket related records that are attached to a quote but no longer attached to the user's schedule (they will need to be rescheduled later with the schedule stubs flow, disabling hides them in the ui)
-	// 		UPDATE dbtable_schema.schedule_brackets
-	// 		SET enabled = false
-	// 		FROM scheduled_records WHERE id = bracket_id
-	// 		AND id <> ANY($2::uuid[]) -- don't modify persisting brackets
-	// 		RETURNING id
-	// 	),
-	// 	slot_updates AS (
-	// 		UPDATE dbtable_schema.schedule_bracket_slots
-	// 		SET enabled = false
-	// 		FROM scheduled_records WHERE id = slot_id
-	// 		AND schedule_bracket_id <> ANY($2::uuid[])
-	// 		RETURNING id
-	// 	),
-	// 	service_updates AS (
-	// 		UPDATE dbtable_schema.schedule_bracket_services
-	// 		SET enabled = false
-	// 		FROM scheduled_records WHERE id = scheduled_records.service_id
-	// 		AND schedule_bracket_id <> ANY($2::uuid[])
-	// 		RETURNING id
-	// 	)
-	// 	SELECT
-	// 		(SELECT COUNT(*) FROM service_deletions),
-	// 		(SELECT COUNT(*) FROM slot_deletions),
-	// 		(SELECT COUNT(*) FROM bracket_deletions),
-	// 		(SELECT COUNT(*) FROM bracket_updates),
-	// 		(SELECT COUNT(*) FROM slot_updates),
-	// 		(SELECT COUNT(*) FROM service_updates)
-	//
-	// 	-- SELECT
-	// 	-- 	COUNT(bracket_id),
-	// 	-- 	COUNT(bracket_id),
-	// 	-- 	COUNT(slot_id),
-	// 	-- 	COUNT(slot_id),
-	// 	-- 	COUNT(service_id),
-	// 	-- 	COUNT(service_id) FROM scheduled_records
-	// `, scheduleId, pq.Array(persistingBracketIds)).Scan(&serviceDel, &slotDel, &bracketDel, &bracketUp, &slotUp, &serviceUp)
-	// if err != nil {
-	// 	return util.ErrCheck(err)
-	// }
-	//
-	// println(fmt.Sprintf("completed update with services: d%d u%d, slots: d%d u%d, brackets: d%d u%d", serviceDel, serviceUp, slotDel, slotUp, bracketDel, bracketUp))
-	//
-	// return nil
-	//
-	// var parts []*types.ScheduledParts
-	//
-	// err := tx.QueryRows(&parts, `
-	//    SELECT * FROM dbfunc_schema.get_scheduled_parts($1);
-	//  `, scheduleId)
-	// if err != nil {
-	// 	return util.ErrCheck(err)
-	// }
-	//
-	// scheduledSlots := &types.ScheduledParts{}
-	// hasSlots := false
-	// scheduledServices := &types.ScheduledParts{}
-	// hasServices := false
-	//
-	// for _, p := range parts {
-	// 	if len(p.GetIds()) > 0 {
-	// 		if p.GetParttype() == "slot" {
-	// 			scheduledSlots = p
-	// 			hasSlots = true
-	// 		} else {
-	// 			scheduledServices = p
-	// 			hasServices = true
-	// 		}
-	// 	}
-	// }
-	//
-	// rows, err := tx.Query(`
-	//    SELECT sb.id
-	// 	FROM dbtable_schema.schedule_brackets sb
-	//    WHERE sb.schedule_id = $1
-	//  `, scheduleId)
-	// if err != nil {
-	// 	return util.ErrCheck(err)
-	// }
-	//
-	// defer rows.Close()
-	//
-	// var ids []string
-	// for rows.Next() {
-	// 	var idstr string
-	// 	rows.Scan(&idstr)
-	// 	ids = append(ids, idstr)
-	// }
-	//
-	// for _, bracketId := range ids {
-	//
-	// 	if hasSlots || hasServices {
-	// 		var bracketDelCount, slotDelCount, serviceDelCount int64
-	//
-	// 		if hasSlots {
-	// 			err = tx.QueryRow(`
-	// 				WITH deletions AS (
-	// 					DELETE FROM dbtable_schema.schedule_bracket_slots
-	// 					WHERE schedule_bracket_id = $1 AND id <> ALL($2::uuid[])
-	// 					RETURNING id
-	// 				)
-	// 				SELECT COUNT(*) FROM deletions
-	// 			`, bracketId, pq.Array(scheduledSlots.GetIds())).Scan(&slotDelCount)
-	// 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	// 				return util.ErrCheck(err)
-	// 			}
-	// 			_, err = tx.Exec(`
-	// 				UPDATE dbtable_schema.schedule_bracket_slots
-	// 				SET enabled = false
-	// 				WHERE schedule_bracket_id = $1 AND id = ANY($2::uuid[])
-	// 			`, bracketId, pq.Array(scheduledSlots.GetIds()))
-	// 			if err != nil {
-	// 				return util.ErrCheck(err)
-	// 			}
-	// 		}
-	//
-	// 		if hasServices {
-	// 			err = tx.QueryRow(`
-	// 				WITH deletions AS (
-	// 					DELETE FROM dbtable_schema.schedule_bracket_services
-	// 					WHERE schedule_bracket_id = $1 AND id <> ALL($2::uuid[])
-	// 					RETURNING id
-	// 				)
-	// 				SELECT COUNT(*) FROM deletions
-	// 			`, bracketId, pq.Array(scheduledServices.GetIds())).Scan(&serviceDelCount)
-	// 			if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	// 				return util.ErrCheck(err)
-	// 			}
-	//
-	// 			_, err = tx.Exec(`
-	// 				UPDATE dbtable_schema.schedule_bracket_services
-	// 				SET enabled = false
-	// 				WHERE schedule_bracket_id = $1 AND id = ANY($2::uuid[])
-	// 			`, bracketId, pq.Array(scheduledServices.GetIds()))
-	// 			if err != nil {
-	// 				return util.ErrCheck(err)
-	// 			}
-	// 		}
-	//
-	// 		err = tx.QueryRow(`
-	// 			WITH scheduled_ids AS (
-	// 				SELECT $2::uuid[] as slot_ids, $3::uuid[] as service_ids
-	// 			),
-	// 			deletions AS (
-	// 				DELETE FROM dbtable_schema.schedule_brackets schedule_bracket
-	// 				WHERE schedule_bracket.id = $1::uuid
-	// 				AND NOT EXISTS(
-	// 					SELECT 1 FROM dbtable_schema.schedule_bracket_slots slots
-	// 					JOIN scheduled_ids sids ON slots.id = ANY(sids.slot_ids)
-	// 					WHERE slots.schedule_bracket_id = schedule_bracket.id
-	// 				)
-	// 				AND NOT EXISTS(
-	// 					SELECT 1 FROM dbtable_schema.schedule_bracket_services services
-	// 					JOIN scheduled_ids sids ON services.id = ANY(sids.service_ids)
-	// 					WHERE services.schedule_bracket_id = schedule_bracket.id
-	// 				)
-	// 				RETURNING schedule_bracket.id
-	// 			)
-	// 			SELECT COUNT(*) FROM deletions
-	// 		`, bracketId, pq.Array(scheduledSlots.GetIds()), pq.Array(scheduledServices.GetIds())).Scan(&bracketDelCount)
-	// 		if err != nil && !errors.Is(err, sql.ErrNoRows) {
-	// 			return util.ErrCheck(err)
-	// 		}
-	//
-	// 		_, err = tx.Exec(`
-	// 			UPDATE dbtable_schema.schedule_brackets
-	// 			SET enabled = false
-	// 			WHERE id = $1
-	// 		`, bracketId)
-	// 		if err != nil {
-	// 			return util.ErrCheck(err)
-	// 		}
-	// 	} else {
-	// 		println(3)
-	// 		_, err = tx.Exec(`
-	// 			DELETE FROM dbtable_schema.schedule_brackets
-	// 			WHERE id = $1
-	// 		`, bracketId)
-	// 		if err != nil {
-	// 			return util.ErrCheck(err)
-	// 		}
-	// 	}
-	// }
-	//
-	return nil
-}
-
-func handleExistingBrackets(existingIds []string, brackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *clients.UserSession) error {
+func (h *Handlers) HandleExistingBrackets(existingBracketIds []string, brackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *clients.UserSession) error {
 
 	// Step 1. Get all existing slots and services ids
 
-	// First, get all existing slots for these brackets
 	rows, err := tx.Query(`
 		SELECT id, schedule_bracket_id
 		FROM dbtable_schema.schedule_bracket_slots
 		WHERE schedule_bracket_id = ANY($1)
-	`, pq.Array(existingIds))
+	`, pq.Array(existingBracketIds))
 	if err != nil {
 		return fmt.Errorf("failed to query existing slots: %w", err)
 	}
 	defer rows.Close()
 
-	existingSlotIds := make(map[string][]string)
+	existingBracketSlotIds := make(map[string][]string)
 	allExistingSlotIds := make([]string, 0)
 
 	for rows.Next() {
 		var id, bracketId string
 		if err := rows.Scan(&id, &bracketId); err != nil {
-			return fmt.Errorf("failed to scan slot row: %w", err)
+			return util.ErrCheck(fmt.Errorf("failed to scan slot row: %w", err))
 		}
-		if _, ok := existingSlotIds[bracketId]; !ok {
-			existingSlotIds[bracketId] = make([]string, 0)
+		if _, ok := existingBracketSlotIds[bracketId]; !ok {
+			existingBracketSlotIds[bracketId] = make([]string, 0)
 		}
-		existingSlotIds[bracketId] = append(existingSlotIds[bracketId], id)
+		existingBracketSlotIds[bracketId] = append(existingBracketSlotIds[bracketId], id)
 		allExistingSlotIds = append(allExistingSlotIds, id)
 	}
 
-	// Get existing services for these brackets
 	rows, err = tx.Query(`
 		SELECT schedule_bracket_id, service_id
 		FROM dbtable_schema.schedule_bracket_services
 		WHERE schedule_bracket_id = ANY($1)
-	`, pq.Array(existingIds))
+	`, pq.Array(existingBracketIds))
 	if err != nil {
-		return fmt.Errorf("failed to query existing services: %w", err)
+		return util.ErrCheck(fmt.Errorf("failed to query existing services: %w", err))
 	}
 	defer rows.Close()
 
-	// Map of bracket ID -> service IDs
-	existingServices := make(map[string][]string)
+	existingBracketServiceIds := make(map[string][]string)
 	for rows.Next() {
 		var bracketId, serviceId string
 		if err := rows.Scan(&bracketId, &serviceId); err != nil {
-			return fmt.Errorf("failed to scan service row: %w", err)
+			return util.ErrCheck(fmt.Errorf("failed to scan service row: %w", err))
 		}
-		if _, ok := existingServices[bracketId]; !ok {
-			existingServices[bracketId] = make([]string, 0)
+		if _, ok := existingBracketServiceIds[bracketId]; !ok {
+			existingBracketServiceIds[bracketId] = make([]string, 0)
 		}
-		existingServices[bracketId] = append(existingServices[bracketId], serviceId)
+		existingBracketServiceIds[bracketId] = append(existingBracketServiceIds[bracketId], serviceId)
 	}
 
 	// Step 2. Figure out what should be preserved or inserted
@@ -568,19 +304,17 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 
 	slotsToKeep := make([]string, 0)
 
-	var copySlots, copyServices bool
+	slotsQuery := `
+		INSERT INTO dbtable_schema.schedule_bracket_slots
+		(schedule_bracket_id, start_time, created_sub, group_id)
+		VALUES `
+	slotsValues := []interface{}{}
 
-	slotStmt, err := tx.Prepare(pq.CopyInSchema("dbtable_schema", "schedule_bracket_slots",
-		"schedule_bracket_id", "start_time", "created_sub", "group_id"))
-	if err != nil {
-		return fmt.Errorf("failed to prepare CopyIn statement: %w", err)
-	}
-
-	serviceStmt, err := tx.Prepare(pq.CopyInSchema("dbtable_schema", "schedule_bracket_services",
-		"schedule_bracket_id", "service_id", "created_sub", "group_id"))
-	if err != nil {
-		return fmt.Errorf("failed to prepare CopyIn statement for services: %w", err)
-	}
+	servicesQuery := `
+		INSERT INTO dbtable_schema.schedule_bracket_services
+		(schedule_bracket_id, service_id, created_sub, group_id)
+		VALUES `
+	servicesValues := []interface{}{}
 
 	for bracketId, bracket := range brackets {
 
@@ -589,19 +323,14 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 				// Existing slot - mark to keep
 				slotsToKeep = append(slotsToKeep, slotId)
 			} else if util.IsEpoch(slotId) {
-				copySlots = true
-				_, err = slotStmt.Exec(slot.ScheduleBracketId, slot.StartTime, session.UserSub, session.GroupId)
-				if err != nil {
-					slotStmt.Close()
-					return fmt.Errorf("failed to execute CopyIn: %w", err)
-				}
+				slotsQuery, slotsValues = h.Database.BuildInserts(slotsQuery, slotsValues, bracketId, slot.StartTime, session.UserSub, session.GroupId)
 			}
 		}
 
 		for serviceId := range bracket.Services {
 			// Check if this service already exists for this bracket
 			found := false
-			if services, ok := existingServices[bracketId]; ok {
+			if services, ok := existingBracketServiceIds[bracketId]; ok {
 				for _, existing := range services {
 					if existing == serviceId {
 						found = true
@@ -611,41 +340,26 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 			}
 
 			if !found {
-				copyServices = true
-				_, err = serviceStmt.Exec(bracketId, serviceId, session.UserSub, session.GroupId)
-				if err != nil {
-					serviceStmt.Close()
-					return fmt.Errorf("failed to execute CopyIn for services: %w", err)
-				}
+				servicesQuery, servicesValues = h.Database.BuildInserts(servicesQuery, servicesValues, bracketId, serviceId, session.UserSub, session.GroupId)
 			}
 		}
 	}
 
-	if copySlots {
-		_, err = slotStmt.Exec()
+	if len(slotsValues) > 0 {
+		_, err := tx.Exec(strings.TrimSuffix(slotsQuery, ","), slotsValues...)
 		if err != nil {
-			return fmt.Errorf("failed to complete CopyIn: %w", err)
+			return util.ErrCheck(fmt.Errorf("failed to execute slot inserts: %w", err))
 		}
 	}
 
-	err = slotStmt.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close CopyIn statement: %w", err)
-	}
-
-	if copyServices {
-		_, err = serviceStmt.Exec()
+	if len(servicesValues) > 0 {
+		_, err := tx.Exec(strings.TrimSuffix(servicesQuery, ","), servicesValues...)
 		if err != nil {
-			return fmt.Errorf("failed to complete CopyIn for services: %w", err)
+			return util.ErrCheck(fmt.Errorf("failed to execute service inserts: %w", err))
 		}
 	}
 
-	err = serviceStmt.Close()
-	if err != nil {
-		return fmt.Errorf("failed to close CopyIn statement for services: %w", err)
-	}
-
-	// Step 3. Handle deletions or disables of existing slots and services
+	// Step 3. Handle deletions or disables of no longer required slots and services
 
 	if len(allExistingSlotIds) > 0 && len(slotsToKeep) > 0 {
 		// Find slots to potentially delete
@@ -671,7 +385,7 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 				WHERE schedule_bracket_slot_id = ANY($1) AND enabled = true
 			`, pq.Array(slotsToCheck))
 			if err != nil {
-				return fmt.Errorf("failed to check slots with quotes: %w", err)
+				return util.ErrCheck(fmt.Errorf("failed to check slots with quotes: %w", err))
 			}
 
 			slotsWithQuotes := make([]string, 0)
@@ -679,7 +393,7 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 				var slotId string
 				if err := rows.Scan(&slotId); err != nil {
 					rows.Close()
-					return fmt.Errorf("failed to scan slot with quote: %w", err)
+					return util.ErrCheck(fmt.Errorf("failed to scan slot with quote: %w", err))
 				}
 				slotsWithQuotes = append(slotsWithQuotes, slotId)
 			}
@@ -693,7 +407,7 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 					WHERE id = ANY($1)
 				`, pq.Array(slotsWithQuotes))
 				if err != nil {
-					return fmt.Errorf("failed to disable slots with quotes: %w", err)
+					return util.ErrCheck(fmt.Errorf("failed to disable slots with quotes: %w", err))
 				}
 			}
 
@@ -718,14 +432,14 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 					WHERE id = ANY($1)
 				`, pq.Array(slotsToDelete))
 				if err != nil {
-					return fmt.Errorf("failed to delete slots without quotes: %w", err)
+					return util.ErrCheck(fmt.Errorf("failed to delete slots without quotes: %w", err))
 				}
 			}
 		}
 	}
 
 	// Find services to disable or delete
-	for bracketId, existingServiceIds := range existingServices {
+	for bracketId, existingServiceIds := range existingBracketServiceIds {
 
 		// See if existingServices differs from the incoming brackets
 		bracketServices := make(map[string]bool)
@@ -752,30 +466,26 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 				WHERE sbs.schedule_bracket_id = $1 AND q.enabled = true
 			`, bracketId).Scan(&quoteCount)
 			if err != nil {
-				return fmt.Errorf("failed to check quotes for bracket %s: %w", bracketId, err)
+				return util.ErrCheck(fmt.Errorf("failed to check quotes for bracket %s: %w", bracketId, err))
 			}
 
 			for _, serviceId := range servicesToHandle {
 				if quoteCount > 0 {
-					// Disable service
 					_, err := tx.Exec(`
 						UPDATE dbtable_schema.schedule_bracket_services
 						SET enabled = false
 						WHERE schedule_bracket_id = $1 AND service_id = $2
 					`, bracketId, serviceId)
 					if err != nil {
-						return fmt.Errorf("failed to disable service %s for bracket %s: %w",
-							serviceId, bracketId, err)
+						return util.ErrCheck(fmt.Errorf("failed to disable service %s for bracket %s: %w", serviceId, bracketId, err))
 					}
 				} else {
-					// Delete service
 					_, err := tx.Exec(`
 						DELETE FROM dbtable_schema.schedule_bracket_services
 						WHERE schedule_bracket_id = $1 AND service_id = $2
 					`, bracketId, serviceId)
 					if err != nil {
-						return fmt.Errorf("failed to delete service %s for bracket %s: %w",
-							serviceId, bracketId, err)
+						return util.ErrCheck(fmt.Errorf("failed to delete service %s for bracket %s: %w", serviceId, bracketId, err))
 					}
 				}
 			}
@@ -786,10 +496,18 @@ func handleExistingBrackets(existingIds []string, brackets map[string]*types.ISc
 }
 
 // insertNewBrackets inserts new brackets with their slots and services
-func insertNewBrackets(scheduleId string, newBrackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *clients.UserSession) error {
-	if len(newBrackets) == 0 {
-		return nil
-	}
+func (h *Handlers) InsertNewBrackets(scheduleId string, newBrackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *clients.UserSession) error {
+	slotsQuery := `
+		INSERT INTO dbtable_schema.schedule_bracket_slots
+		(schedule_bracket_id, start_time, created_sub, group_id)
+		VALUES `
+	slotsValues := []interface{}{}
+
+	servicesQuery := `
+		INSERT INTO dbtable_schema.schedule_bracket_services
+		(schedule_bracket_id, service_id, created_sub, group_id)
+		VALUES `
+	servicesValues := []interface{}{}
 
 	for _, bracket := range newBrackets {
 		// Insert bracket and get its new ID
@@ -799,61 +517,29 @@ func insertNewBrackets(scheduleId string, newBrackets map[string]*types.ISchedul
 			RETURNING id
 		`, scheduleId, bracket.Duration, bracket.Multiplier, bracket.Automatic, session.UserSub, session.GroupId).Scan(&bracket.Id)
 		if err != nil {
-			return util.ErrCheck(err)
+			return util.ErrCheck(fmt.Errorf("failed to insert bracket new bracket record: %w", err))
 		}
 
-		// Batch insert slots
-		if len(bracket.Slots) > 0 {
-			stmt, err := tx.Prepare(pq.CopyInSchema("dbtable_schema", "schedule_bracket_slots",
-				"schedule_bracket_id", "start_time", "enabled"))
-			if err != nil {
-				return fmt.Errorf("failed to prepare CopyIn for slots: %w", err)
-			}
-
-			for _, slot := range bracket.Slots {
-				_, err = stmt.Exec(bracket.Id, slot.StartTime, true)
-				if err != nil {
-					stmt.Close()
-					return fmt.Errorf("failed to execute CopyIn for slots: %w", err)
-				}
-			}
-
-			_, err = stmt.Exec()
-			if err != nil {
-				return fmt.Errorf("failed to complete CopyIn for slots: %w", err)
-			}
-
-			err = stmt.Close()
-			if err != nil {
-				return fmt.Errorf("failed to close CopyIn statement for slots: %w", err)
-			}
+		for _, slot := range bracket.Slots {
+			slotsQuery, slotsValues = h.Database.BuildInserts(slotsQuery, slotsValues, bracket.Id, slot.StartTime, session.UserSub, session.GroupId)
 		}
 
-		// Batch insert services
-		if len(bracket.Services) > 0 {
-			stmt, err := tx.Prepare(pq.CopyInSchema("dbtable_schema", "schedule_bracket_services",
-				"schedule_bracket_id", "service_id", "enabled"))
-			if err != nil {
-				return fmt.Errorf("failed to prepare CopyIn for bracket services: %w", err)
-			}
+		for serviceId := range bracket.Services {
+			servicesQuery, servicesValues = h.Database.BuildInserts(servicesQuery, servicesValues, bracket.Id, serviceId, session.UserSub, session.GroupId)
+		}
+	}
 
-			for serviceId := range bracket.Services {
-				_, err = stmt.Exec(bracket.Id, serviceId, true)
-				if err != nil {
-					stmt.Close()
-					return fmt.Errorf("failed to execute CopyIn for bracket services: %w", err)
-				}
-			}
+	if len(slotsValues) > 0 {
+		_, err := tx.Exec(strings.TrimSuffix(slotsQuery, ","), slotsValues...)
+		if err != nil {
+			return util.ErrCheck(fmt.Errorf("failed to execute slot inserts: %w", err))
+		}
+	}
 
-			_, err = stmt.Exec()
-			if err != nil {
-				return fmt.Errorf("failed to complete CopyIn for bracket services: %w", err)
-			}
-
-			err = stmt.Close()
-			if err != nil {
-				return fmt.Errorf("failed to close CopyIn statement for bracket services: %w", err)
-			}
+	if len(servicesValues) > 0 {
+		_, err := tx.Exec(strings.TrimSuffix(servicesQuery, ","), servicesValues...)
+		if err != nil {
+			return util.ErrCheck(fmt.Errorf("failed to execute service inserts: %w", err))
 		}
 	}
 
@@ -872,7 +558,7 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 			WHERE sb.schedule_id = $1 AND q.enabled = true
 		`, scheduleId)
 		if err != nil {
-			return fmt.Errorf("failed to query brackets with quotes: %w", err)
+			return util.ErrCheck(fmt.Errorf("failed to query brackets with quotes: %w", err))
 		}
 		defer rows.Close()
 
@@ -880,7 +566,7 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 		for rows.Next() {
 			var id string
 			if err := rows.Scan(&id); err != nil {
-				return fmt.Errorf("failed to scan bracket row: %w", err)
+				return util.ErrCheck(fmt.Errorf("failed to scan bracket row: %w", err))
 			}
 			bracketsToDisable = append(bracketsToDisable, id)
 		}
@@ -893,7 +579,7 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 				WHERE id = ANY($1)
 			`, pq.Array(bracketsToDisable))
 			if err != nil {
-				return fmt.Errorf("failed to disable brackets with quotes: %w", err)
+				return util.ErrCheck(fmt.Errorf("failed to disable brackets with quotes: %w", err))
 			}
 
 			// Disable their slots and services
@@ -903,7 +589,7 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 				WHERE schedule_bracket_id = ANY($1)
 			`, pq.Array(bracketsToDisable))
 			if err != nil {
-				return fmt.Errorf("failed to disable slots for brackets with quotes: %w", err)
+				return util.ErrCheck(fmt.Errorf("failed to disable slots for brackets with quotes: %w", err))
 			}
 
 			_, err = tx.Exec(`
@@ -912,7 +598,7 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 				WHERE schedule_bracket_id = ANY($1)
 			`, pq.Array(bracketsToDisable))
 			if err != nil {
-				return fmt.Errorf("failed to disable services for brackets with quotes: %w", err)
+				return util.ErrCheck(fmt.Errorf("failed to disable services for brackets with quotes: %w", err))
 			}
 		}
 
@@ -928,7 +614,7 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 			)
 		`, scheduleId)
 		if err != nil {
-			return fmt.Errorf("failed to delete brackets without quotes: %w", err)
+			return util.ErrCheck(fmt.Errorf("failed to delete brackets without quotes: %w", err))
 		}
 
 		return nil
@@ -950,43 +636,8 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 		WHERE id IN (SELECT id FROM brackets_with_quotes)
 	`, scheduleId, pq.Array(existingBracketIds))
 	if err != nil {
-		return fmt.Errorf("failed to disable brackets with quotes: %w", err)
+		return util.ErrCheck(fmt.Errorf("failed to disable brackets with quotes: %w", err))
 	}
-
-	// // Disable slots and services for these brackets
-	// _, err = tx.Exec(`
-	// 	UPDATE dbtable_schema.schedule_bracket_slots
-	// 	SET enabled = false
-	// 	WHERE schedule_bracket_id IN (
-	// 		SELECT DISTINCT sb.id
-	// 		FROM dbtable_schema.schedule_brackets sb
-	// 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sb.id = sbs.schedule_bracket_id
-	// 		JOIN dbtable_schema.quotes q ON sbs.id = q.schedule_bracket_slot_id
-	// 		WHERE sb.schedule_id = $1
-	// 		AND sb.id NOT IN (SELECT unnest($2::uuid[]))
-	// 		AND q.enabled = true
-	// 	)
-	// `, scheduleId, pq.Array(existingBracketIds))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to disable slots for brackets with quotes: %w", err)
-	// }
-	//
-	// _, err = tx.Exec(`
-	// 	UPDATE dbtable_schema.schedule_bracket_services
-	// 	SET enabled = false
-	// 	WHERE schedule_bracket_id IN (
-	// 		SELECT DISTINCT sb.id
-	// 		FROM dbtable_schema.schedule_brackets sb
-	// 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sb.id = sbs.schedule_bracket_id
-	// 		JOIN dbtable_schema.quotes q ON sbs.id = q.schedule_bracket_slot_id
-	// 		WHERE sb.schedule_id = $1
-	// 		AND sb.id NOT IN (SELECT unnest($2::uuid[]))
-	// 		AND q.enabled = true
-	// 	)
-	// `, scheduleId, pq.Array(existingBracketIds))
-	// if err != nil {
-	// 	return fmt.Errorf("failed to disable services for brackets with quotes: %w", err)
-	// }
 
 	// Delete brackets without quotes
 	_, err = tx.Exec(`
@@ -1001,7 +652,7 @@ func handleDeletedBrackets(scheduleId string, existingBracketIds []string, tx cl
 		)
 	`, scheduleId, pq.Array(existingBracketIds))
 	if err != nil {
-		return fmt.Errorf("failed to delete brackets without quotes: %w", err)
+		return util.ErrCheck(fmt.Errorf("failed to delete brackets without quotes: %w", err))
 	}
 
 	return nil
