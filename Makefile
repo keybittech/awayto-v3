@@ -445,7 +445,7 @@ host_deploy_op:
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
-	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(BINARY_NAME) start.sh /usr/local/bin
+	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) start.sh /usr/local/bin
 	rm start.sh $(BINARY_SERVICE) $(BINARY_NAME)
 	sudo systemctl enable $(BINARY_SERVICE)
 	sudo systemctl restart $(BINARY_SERVICE)
