@@ -17,8 +17,6 @@ export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
   const [postGroupSeats] = siteApi.useGroupSeatServicePostGroupSeatMutation();
 
   const handleSubmit = function() {
-    console.log({ seatsToAdd })
-
     void postGroupSeats({ postGroupSeatRequest: { seats: seatsToAdd } });
   }
 

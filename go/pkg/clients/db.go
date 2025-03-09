@@ -130,24 +130,39 @@ func (db *Database) AdminRoleId() string {
 	return db.DatabaseAdminRoleId
 }
 
-func (db *Database) BuildInserts(query string, values []interface{}, records ...interface{}) (string, []interface{}) {
+// Go code
+func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
 
-	numFields := len(records)
-	baseIndex := (len(values) / numFields) * numFields
+	baseIndex := (current / size) * size
 
-	query += "("
-
-	for i, record := range records {
-		query += "$" + strconv.Itoa(baseIndex+i+1)
-		if i < numFields-1 {
-			query += ", "
-		}
-		values = append(values, record)
+	_, err := sb.WriteString("(")
+	if err != nil {
+		return util.ErrCheck(err)
 	}
 
-	query += "),"
+	for i := 0; i < size; i++ {
+		_, err = sb.WriteString("$")
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+		_, err = sb.WriteString(strconv.Itoa(baseIndex + i + 1))
+		if err != nil {
+			return err
+		}
+		if i < size-1 {
+			_, err = sb.WriteString(", ")
+			if err != nil {
+				return err
+			}
+		}
+	}
 
-	return query, values
+	_, err = sb.WriteString("),")
+	if err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // DB Wrappers
@@ -542,7 +557,7 @@ func extractValue(dst, src reflect.Value) error {
 
 					err := protojson.Unmarshal(val, protoMessage)
 					if err != nil {
-						return util.ErrCheck(err)
+						return util.ErrCheck(fmt.Errorf("failed to proto unmarshal %w %s", err, string(val)))
 					}
 
 					dstMap.SetMapIndex(reflect.ValueOf(key), protoMessageElem)

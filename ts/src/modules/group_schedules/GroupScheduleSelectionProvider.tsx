@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { dayjs, IQuote, TimeUnit, siteApi } from 'awayto/hooks';
+import { dayjs, IQuote, TimeUnit, siteApi, useTimeName } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
@@ -17,6 +17,8 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
 
   const [getScheduleDateSlots, { data: dateSlotsRequest, isFetching }] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleByDateQuery();
 
+  const scheduleTimeUnitName = useTimeName(groupSchedule?.schedule?.scheduleTimeUnitId);
+  const scheduleStartTime = dayjs(groupSchedule?.schedule?.startTime).startOf('week');
   const selectedDateFormat = selectedDate?.format('YYYY-MM-DD');
 
   const dateSlots = dateSlotsRequest?.groupScheduleDateSlots || [];
@@ -27,16 +29,25 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
   }
 
   const selectedSlots = useMemo(() => {
-    const ds = dateSlots.map(x => {
-      if (x.startTime && selectedDateFormat == x.startDate && dayjs(x.weekStart).add(dayjs.duration(x.startTime)).isAfter(dayjs())) {
-        return x
+    let ds = [];
+    let firstAvailable = '';
+    if (selectedDate && 'month' == scheduleTimeUnitName) { // There should only be a single available time for monthly schedules, the full day
+      const positionInCycle = selectedDate.tz(groupSchedule?.schedule?.timezone).diff(scheduleStartTime, 'day') % 28;
+      firstAvailable = positionInCycle ? `P${positionInCycle}D` : 'PT0S';
+      ds = dateSlots.filter(ds => ds.startTime == firstAvailable);
+    } else { // Weekly schedules will have an array of time slots on whatever date is selected
+      ds = dateSlots.map(x =>
+        x.startTime && selectedDateFormat == x.startDate && dayjs(x.weekStart).add(dayjs.duration(x.startTime)).isAfter(dayjs()) && x
+      ).filter(x => !!x);
+      if (ds.length && ds[0].startTime) {
+        firstAvailable = ds[0].startTime;
       }
-    }).filter(x => !!x);
-    if (ds.length) {
-      setSelectedTime(ds[0].startTime);
+    }
+    if (firstAvailable.length) {
+      setSelectedTime(firstAvailable);
     }
     return ds;
-  }, [dateSlots, selectedDateFormat]);
+  }, [dateSlots, selectedDate, selectedDateFormat]);
 
   const getDateSlots = useCallback(() => {
     if (groupSchedule?.schedule?.id?.length && startOfMonth && !isFetching) {

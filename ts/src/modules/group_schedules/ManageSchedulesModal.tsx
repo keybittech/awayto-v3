@@ -12,6 +12,8 @@ import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 
+import { DesktopDatePicker } from '@mui/x-date-pickers/DesktopDatePicker';
+
 import { siteApi, useTimeName, IGroupSchedule, ITimeUnit, TimeUnit, timeUnitOrder, getRelativeDuration, ISchedule, useDebounce, useStyles, dayjs, targets, IValidationAreas, useValid } from 'awayto/hooks';
 import SelectLookup from '../common/SelectLookup';
 import ScheduleDisplay from '../schedules/ScheduleDisplay';
@@ -221,44 +223,49 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
             <Box mb={4}>
               <Grid container spacing={2} direction="row">
                 <Grid size={6}>
-
-                  <TextField
+                  <DesktopDatePicker
                     {...targets(`manage schedule modal start date`, `Start Date`, `set when the schedule should start`)}
-                    fullWidth
-                    type="date"
-                    value={schedule.startTime ? dayjs(schedule.startTime).format('YYYY-MM-DD') : ''}
-                    helperText="Schedule is active after this date. Clear this date to deactivate the schedule. Deactivated schedules do not allow new bookings to be made."
-                    onChange={e => setGroupSchedule({ schedule: { ...schedule, startTime: e.target.value ? dayjs(e.target.value).toISOString() : undefined } })}
+                    value={schedule.startTime ? dayjs(schedule.startTime) : null}
+                    format="MM/DD/YYYY"
+                    formatDensity="spacious"
+                    onChange={date => setGroupSchedule({ schedule: { ...schedule, startTime: date ? date.toISOString() : undefined } })}
+                    disableHighlightToday={true}
                     slotProps={{
-                      inputLabel: {
-                        shrink: true
+                      openPickerButton: {
+                        color: 'secondary'
+                      },
+                      clearIcon: { sx: { color: 'red' } },
+                      field: {
+                        clearable: true,
+                        onClear: () => setGroupSchedule({ schedule: { ...schedule, startTime: undefined } })
+                      },
+                      textField: {
+                        fullWidth: true,
+                        helperText: 'Schedule is active after this date. Clear this date to disable service requests for this schedule.'
                       }
                     }}
                   />
-                  {/* <DesktopDatePicker
-                label="Start Date"
-                value={schedule.startTime ? schedule.startTime : null}
-                onChange={e => {
-                  // if (e) {
-                  //   console.log({ schedule, e, str: e ? nativeJs(new Date(e.toString())) : null })
-                  //   setGroupSchedule({ ...schedule, startTime: nativeJs(new Date(e.toString())).toString() })
-                  //   // setGroupSchedule({ ...schedule, startTime: e ? e.format(DateTimeFormatter.ofPattern("yyyy-mm-dd")) : '' });
-                  // }
-                }}
-                renderInput={(params) => <TextField helperText="Bookings can be scheduled any time after this date. Removing this value and saving the schedule will deactivate it, preventing it from being seen during booking." {...params} />}
-              /> */}
                 </Grid>
                 <Grid size={6}>
-                  <TextField
+                  <DesktopDatePicker
                     {...targets(`manage schedule modal end date`, `End Date`, `set when the schedule should end`)}
-                    fullWidth
-                    type="date"
-                    value={schedule.endTime ? dayjs(schedule.endTime).format('YYYY-MM-DD') : ''}
-                    helperText="Optional. No bookings will be allowed after this date."
-                    onChange={e => setGroupSchedule({ schedule: { ...schedule, endTime: e.target.value ? dayjs(e.target.value).toISOString() : undefined } })}
+                    value={schedule.endTime ? dayjs(schedule.endTime) : null}
+                    format="MM/DD/YYYY"
+                    formatDensity="spacious"
+                    onChange={date => setGroupSchedule({ schedule: { ...schedule, endTime: date ? date.toISOString() : undefined } })}
+                    disableHighlightToday={true}
                     slotProps={{
-                      inputLabel: {
-                        shrink: true
+                      openPickerButton: {
+                        color: 'secondary'
+                      },
+                      clearIcon: { sx: { color: 'red' } },
+                      field: {
+                        clearable: true,
+                        onClear: () => setGroupSchedule({ schedule: { ...schedule, endTime: undefined } })
+                      },
+                      textField: {
+                        fullWidth: true,
+                        helperText: 'Optional. No bookings will be allowed after this date.'
                       }
                     }}
                   />

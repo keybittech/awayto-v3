@@ -58,6 +58,7 @@ message IServiceTier {
   map<string, IServiceAddon> addons = 7;
   int32 order = 8;
   string createdOn = 9;
+  int32 row = 10;
 }
 
 

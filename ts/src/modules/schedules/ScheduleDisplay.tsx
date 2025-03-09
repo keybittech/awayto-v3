@@ -117,7 +117,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
     const target = `schedule_bracket_slot_selection_${startTime}`;
     const exists = selected[target];
 
-    return <Tooltip key={`grid_cell_tooltip_${gridCell.columnIndex}_${gridCell.rowIndex}`} title={completeContextFormat}>
+    return <Tooltip disableInteractive key={`grid_cell_tooltip_${gridCell.columnIndex}_${gridCell.rowIndex}`} title={completeContextFormat}>
       <Box
         style={gridCell.style}
         sx={{

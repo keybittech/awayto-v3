@@ -103,10 +103,48 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 }
 
 func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupScheduleByDateResponse, error) {
+
+	var scheduleTimeUnitName string
+	err := tx.QueryRow(`
+		SELECT tu.name
+		FROM dbtable_schema.schedules s
+		JOIN dbtable_schema.time_units tu ON tu.id = s.schedule_time_unit_id
+		WHERE s.id = $1
+	`, data.GroupScheduleId).Scan(&scheduleTimeUnitName)
+
 	var groupScheduleDateSlots []*types.IGroupScheduleDateSlots
-	err := tx.QueryRows(&groupScheduleDateSlots, `
-		SELECT * FROM dbfunc_schema.get_group_schedules($1, $2, $3)
-	`, data.GetDate(), data.GetGroupScheduleId(), session.Timezone)
+
+	if "week" == scheduleTimeUnitName {
+		err = tx.QueryRows(&groupScheduleDateSlots, `
+			SELECT
+        TO_CHAR(DATE_TRUNC('week', week_start::DATE), 'YYYY-MM-DD')::TEXT as "weekStart",
+        TO_CHAR(DATE_TRUNC('week', week_start::DATE) + slot."startTime"::INTERVAL, 'YYYY-MM-DD')::TEXT as "startDate",
+        slot."startTime"::INTERVAL,
+        slot.id as "scheduleBracketSlotId"
+      FROM generate_series($1::DATE, $1::DATE + INTERVAL '1 month', INTERVAL '1 week') AS week_start
+      CROSS JOIN dbview_schema.enabled_schedule_bracket_slots slot
+      JOIN dbtable_schema.schedule_brackets bracket ON bracket.id = slot."scheduleBracketId"
+      JOIN dbtable_schema.group_user_schedules gus ON gus.user_schedule_id = bracket.schedule_id
+      JOIN dbtable_schema.schedules schedule ON schedule.id = gus.group_schedule_id
+      WHERE
+				schedule.id = $2::uuid
+      AND 
+        (DATE_TRUNC('week', week_start::DATE) + slot."startTime"::INTERVAL) AT TIME ZONE schedule.timezone
+        AT TIME ZONE $3 > (NOW() AT TIME ZONE $3)
+      ORDER BY "startDate", "startTime"
+		`, data.Date, data.GroupScheduleId, session.Timezone)
+	} else {
+		err = tx.QueryRows(&groupScheduleDateSlots, `
+			SELECT
+        DISTINCT slot."startTime"::INTERVAL as "startTime",
+        slot.id as "scheduleBracketSlotId"
+      FROM dbview_schema.enabled_schedule_bracket_slots slot
+      JOIN dbtable_schema.schedule_brackets bracket ON bracket.id = slot."scheduleBracketId"
+      JOIN dbtable_schema.group_user_schedules gus ON gus.user_schedule_id = bracket.schedule_id
+      JOIN dbtable_schema.schedules schedule ON schedule.id = gus.group_schedule_id
+      WHERE schedule.id = $1;
+		`, data.GroupScheduleId)
+	}
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

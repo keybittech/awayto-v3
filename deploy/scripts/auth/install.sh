@@ -8,7 +8,7 @@ kcadm() {
 echo "Waiting for keycloak to start..."
 
 while true; do
-  kcadm config credentials --server $KC_INTERNAL --realm master --user $KC_ADMIN --password $(cat $PWD/$KC_PASS_FILE) 2> /dev/null
+  kcadm config credentials --server $KC_INTERNAL --realm master --user $KC_ADMIN --password $(cat $KC_PASS_FILE) 2> /dev/null
   if [ $? -eq 0 ]; then
     echo "Keycloak available."
     break
@@ -84,6 +84,6 @@ API_CLIENT_ID=$(kcadm create clients -r $KC_REALM -s clientId=$KC_API_CLIENT -s 
 
 kcadm add-roles -r $KC_REALM --uusername service-account-$KC_API_CLIENT --cclientid realm-management --rolename manage-clients --rolename manage-realm --rolename manage-users
 
-kcadm update clients/$API_CLIENT_ID -r $KC_REALM -s "secret=$(cat $PWD/$KC_API_CLIENT_SECRET_FILE)"
+kcadm update clients/$API_CLIENT_ID -r $KC_REALM -s "secret=$(cat $KC_API_CLIENT_SECRET_FILE)"
 
 echo "# Keycloak configuration finished"

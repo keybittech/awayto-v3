@@ -121,7 +121,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         openConfirm({
           isConfirming: true,
           confirmEffect: 'Request service on ' + bookingFormat(quote.slotDate, quote.startTime) +
-            ' for ' + quote.serviceTierName + ' ' + quote.serviceName,
+            ' for ' + groupScheduleService?.name + ': ' + groupScheduleServiceTier.name,
           confirmAction: () => {
             postQuote({
               postQuoteRequest: {

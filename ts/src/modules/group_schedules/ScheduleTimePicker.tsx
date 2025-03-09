@@ -4,11 +4,18 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import Alert from '@mui/material/Alert';
 
-import { targets, bookingDTHours } from 'awayto/hooks';
+import { targets, bookingDTHours, useTimeName } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
+import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 
 export function ScheduleTimePicker(_: IComponent): React.JSX.Element {
+
+  const {
+    selectGroupSchedule: {
+      item: groupSchedule,
+    },
+  } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
   const {
     selectedDate,
@@ -17,11 +24,13 @@ export function ScheduleTimePicker(_: IComponent): React.JSX.Element {
     selectedSlots,
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
+  const scheduleTimeUnitName = useTimeName(groupSchedule?.schedule?.scheduleTimeUnitId);
+
   const selections = useMemo(() => selectedSlots?.map((ds, i) => {
-    return ds.startTime && ds.startDate && <MenuItem key={`date-slot-selection-key-${i}`} value={ds.startTime}>
-      {bookingDTHours(ds.startDate, ds.startTime)}
+    return <MenuItem key={`date-slot-selection-key-${i}`} value={ds.startTime}>
+      {'week' == scheduleTimeUnitName && ds.startDate && ds.startTime ? bookingDTHours(ds.startDate, ds.startTime) : 'Full day'}
     </MenuItem>
-  }).filter(x => !!x), [selectedSlots]);
+  }).filter(x => !!x), [selectedSlots, scheduleTimeUnitName]);
 
   if (!selectedDate || !selectedTime) {
     return <Alert sx={{ width: '100%' }} variant="outlined" color="info" severity="info">Select a date. Times will appear here.</Alert>;

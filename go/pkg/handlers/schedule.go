@@ -31,7 +31,7 @@ import (
 // is used to figure out the week start for 03-11-2025, and then add P1DT9H30M, in this case it would
 // work out to be 03-10-2025 (monday) + P1DT9H30M, resulting in 9:30AM on Tuesday Mar 11th, 2025. A limitation
 // for now is that week start uses Monday for the 0 day, which is a limitation needing consideration when
-// dealing with various locales.
+// dealing with various locales. Schedules are also attached to a specific timezone for converting time on the client.
 
 // Therefore when modifying schedules/brackets, any related quotes must be identified and handled such that if
 // anything which would cause a schedule_bracket_slot to be removed, then it instead must be disabled, as it
@@ -104,16 +104,16 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 		}
 	}
 
+	err := handleDeletedBrackets(data.ScheduleId, existingBracketIds, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	if len(existingBracketIds) > 0 {
 		err := h.HandleExistingBrackets(existingBracketIds, existingBrackets, tx, session)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-	}
-
-	err := handleDeletedBrackets(data.ScheduleId, existingBracketIds, tx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
 	}
 
 	if len(newBrackets) > 0 && data.ScheduleId != "" {
@@ -292,41 +292,39 @@ func (h *Handlers) HandleExistingBrackets(existingBracketIds []string, brackets 
 
 	// Step 2. Figure out what should be preserved or inserted
 
-	type slotToInsert struct {
-		BracketID string
-		StartTime string
-	}
-
-	type serviceKey struct {
-		BracketID string
-		ServiceID string
-	}
-
 	slotsToKeep := make([]string, 0)
 
-	slotsQuery := `
+	var slotsQuery strings.Builder
+	slotsQuery.WriteString(`
 		INSERT INTO dbtable_schema.schedule_bracket_slots
 		(schedule_bracket_id, start_time, created_sub, group_id)
-		VALUES `
+		VALUES
+	`)
 	slotsValues := []interface{}{}
 
-	servicesQuery := `
+	var servicesQuery strings.Builder
+	servicesQuery.WriteString(`
 		INSERT INTO dbtable_schema.schedule_bracket_services
 		(schedule_bracket_id, service_id, created_sub, group_id)
-		VALUES `
+		VALUES
+	`)
 	servicesValues := []interface{}{}
 
 	for bracketId, bracket := range brackets {
 
+		var slotsLen int
 		for slotId, slot := range bracket.Slots {
 			if util.IsUUID(slotId) {
 				// Existing slot - mark to keep
 				slotsToKeep = append(slotsToKeep, slotId)
 			} else if util.IsEpoch(slotId) {
-				slotsQuery, slotsValues = h.Database.BuildInserts(slotsQuery, slotsValues, bracketId, slot.StartTime, session.UserSub, session.GroupId)
+				h.Database.BuildInserts(&slotsQuery, 4, slotsLen)
+				slotsValues = append(slotsValues, bracketId, slot.StartTime, session.UserSub, session.GroupId)
+				slotsLen += 4
 			}
 		}
 
+		var servicesLen int
 		for serviceId := range bracket.Services {
 			// Check if this service already exists for this bracket
 			found := false
@@ -340,28 +338,16 @@ func (h *Handlers) HandleExistingBrackets(existingBracketIds []string, brackets 
 			}
 
 			if !found {
-				servicesQuery, servicesValues = h.Database.BuildInserts(servicesQuery, servicesValues, bracketId, serviceId, session.UserSub, session.GroupId)
+				h.Database.BuildInserts(&servicesQuery, 4, servicesLen)
+				servicesValues = append(servicesValues, bracketId, serviceId, session.UserSub, session.GroupId)
+				servicesLen += 4
 			}
-		}
-	}
-
-	if len(slotsValues) > 0 {
-		_, err := tx.Exec(strings.TrimSuffix(slotsQuery, ","), slotsValues...)
-		if err != nil {
-			return util.ErrCheck(fmt.Errorf("failed to execute slot inserts: %w", err))
-		}
-	}
-
-	if len(servicesValues) > 0 {
-		_, err := tx.Exec(strings.TrimSuffix(servicesQuery, ","), servicesValues...)
-		if err != nil {
-			return util.ErrCheck(fmt.Errorf("failed to execute service inserts: %w", err))
 		}
 	}
 
 	// Step 3. Handle deletions or disables of no longer required slots and services
 
-	if len(allExistingSlotIds) > 0 && len(slotsToKeep) > 0 {
+	if len(allExistingSlotIds) > 0 {
 		// Find slots to potentially delete
 		slotsToCheck := make([]string, 0)
 		for _, id := range allExistingSlotIds {
@@ -492,25 +478,43 @@ func (h *Handlers) HandleExistingBrackets(existingBracketIds []string, brackets 
 		}
 	}
 
+	// Step 4. Perform data inserts
+
+	if len(slotsValues) > 0 {
+		_, err := tx.Exec(strings.TrimSuffix(slotsQuery.String(), ","), slotsValues...)
+		if err != nil {
+			return util.ErrCheck(fmt.Errorf("failed to execute slot inserts: %w", err))
+		}
+	}
+
+	if len(servicesValues) > 0 {
+		_, err := tx.Exec(strings.TrimSuffix(servicesQuery.String(), ","), servicesValues...)
+		if err != nil {
+			return util.ErrCheck(fmt.Errorf("failed to execute service inserts: %w", err))
+		}
+	}
+
 	return nil
 }
 
-// insertNewBrackets inserts new brackets with their slots and services
 func (h *Handlers) InsertNewBrackets(scheduleId string, newBrackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *clients.UserSession) error {
-	slotsQuery := `
+	var slotsQuery strings.Builder
+	slotsQuery.WriteString(`
 		INSERT INTO dbtable_schema.schedule_bracket_slots
 		(schedule_bracket_id, start_time, created_sub, group_id)
-		VALUES `
+		VALUES
+	`)
 	slotsValues := []interface{}{}
 
-	servicesQuery := `
+	var servicesQuery strings.Builder
+	servicesQuery.WriteString(`
 		INSERT INTO dbtable_schema.schedule_bracket_services
 		(schedule_bracket_id, service_id, created_sub, group_id)
-		VALUES `
+		VALUES
+	`)
 	servicesValues := []interface{}{}
 
 	for _, bracket := range newBrackets {
-		// Insert bracket and get its new ID
 		err := tx.QueryRow(`
 			INSERT INTO dbtable_schema.schedule_brackets (schedule_id, duration, multiplier, automatic, created_sub, group_id)
 			VALUES ($1, $2, $3, $4, $5::uuid, $6)
@@ -520,24 +524,30 @@ func (h *Handlers) InsertNewBrackets(scheduleId string, newBrackets map[string]*
 			return util.ErrCheck(fmt.Errorf("failed to insert bracket new bracket record: %w", err))
 		}
 
+		var slotsLen int
 		for _, slot := range bracket.Slots {
-			slotsQuery, slotsValues = h.Database.BuildInserts(slotsQuery, slotsValues, bracket.Id, slot.StartTime, session.UserSub, session.GroupId)
+			h.Database.BuildInserts(&slotsQuery, 4, slotsLen)
+			slotsValues = append(slotsValues, bracket.Id, slot.StartTime, session.UserSub, session.GroupId)
+			slotsLen += 4
 		}
 
+		var servicesLen int
 		for serviceId := range bracket.Services {
-			servicesQuery, servicesValues = h.Database.BuildInserts(servicesQuery, servicesValues, bracket.Id, serviceId, session.UserSub, session.GroupId)
+			h.Database.BuildInserts(&servicesQuery, 4, servicesLen)
+			servicesValues = append(servicesValues, bracket.Id, serviceId, session.UserSub, session.GroupId)
+			servicesLen += 4
 		}
 	}
 
 	if len(slotsValues) > 0 {
-		_, err := tx.Exec(strings.TrimSuffix(slotsQuery, ","), slotsValues...)
+		_, err := tx.Exec(strings.TrimSuffix(slotsQuery.String(), ","), slotsValues...)
 		if err != nil {
 			return util.ErrCheck(fmt.Errorf("failed to execute slot inserts: %w", err))
 		}
 	}
 
 	if len(servicesValues) > 0 {
-		_, err := tx.Exec(strings.TrimSuffix(servicesQuery, ","), servicesValues...)
+		_, err := tx.Exec(strings.TrimSuffix(servicesQuery.String(), ","), servicesValues...)
 		if err != nil {
 			return util.ErrCheck(fmt.Errorf("failed to execute service inserts: %w", err))
 		}

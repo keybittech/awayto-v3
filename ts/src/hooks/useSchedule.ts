@@ -44,12 +44,14 @@ export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTim
     const columns = Math.floor(getRelativeDuration(1, scheduleTimeUnitName, xAxisTypeName));
     const rows = getRelativeDuration(1, xAxisTypeName, yAxisTypeName) / slotDuration;
     const durations = [] as CellDuration[][];
+    const dayColumns = 'day' == xAxisTypeName;
+    const daySlots = 'day' == slotTimeUnitName;
 
     for (let x = 0; x < columns + 1; x++) {
       durations[x] = [] as CellDuration[];
     }
 
-    let baseTime = dayjs().startOf('day' == xAxisTypeName ? 'week' : 'year');
+    let baseTime = dayjs().startOf(dayColumns ? 'week' : 'year');
 
     let headerDuration = dayjs.duration(0);
 
@@ -58,7 +60,7 @@ export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTim
       headerDuration = headerDuration.add(1, xAxisTypeName as DurationUnitType);
 
       let headerLabel = '';
-      if ('day' == xAxisTypeName) {
+      if (dayColumns) {
         headerLabel = baseTime.day(headerDuration.days()).format('ddd');
       } else {
         headerLabel = `Week ${baseTime.add(headerDuration.weeks() - 1, 'w').format('W')}`;
@@ -69,22 +71,21 @@ export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTim
       } as CellDuration;
     }
 
-    let rowDuration = dayjs.duration(0);
-    const dayColumns = 'day' == xAxisTypeName;
-    const daySlots = 'day' == slotTimeUnitName;
+    let rowDuration = dayjs.duration(0, 'second');
 
     for (let y = 1; y < rows + 1; y++) {
 
       let djst;
 
-      if (daySlots) {
-        djst = baseTime.startOf('week').add(rowDuration.days(), 'day');
-      } else {
+      if (dayColumns) {
         djst = baseTime.day(rowDuration.days());
+      } else {
+        djst = baseTime.startOf('week').add(rowDuration.days(), 'day');
       }
 
       djst = djst.hour(rowDuration.hours()).minute(rowDuration.minutes());
 
+      // Left column labels
       durations[0][y] = {
         contextFormat: dayColumns ? djst.format('A') : djst.format('ddd')
       } as CellDuration;
@@ -93,12 +94,17 @@ export function useSchedule({ scheduleTimeUnitName, bracketTimeUnitName, slotTim
 
         const axisCorrectedDjst = djst.add(x, dayColumns ? 'day' : 'week');
 
+        let startTime = rowDuration.add(x - 1, dayColumns ? 'day' : 'week').toISOString();
+        if ('P0D' == startTime) { // match db formatting of zero durations
+          startTime = 'PT0S';
+        }
+
         durations[x][y] = {
           contextFormat: daySlots ? 'Full Day' : axisCorrectedDjst.format('hh:mm'),
           completeContextFormat: daySlots ? `${axisCorrectedDjst.format('ddd')} Week ${x}, Full Day` : axisCorrectedDjst.format('ddd, hh:mm A'),
           scheduleBracketSlotIds: [],
           active: false,
-          startTime: rowDuration.add(x - 1, dayColumns ? 'day' : 'week').toISOString(),
+          startTime,
           x, y
         } as CellDuration;
 

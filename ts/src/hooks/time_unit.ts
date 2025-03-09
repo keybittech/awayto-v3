@@ -118,3 +118,4 @@ export function utcNow(): dayjs.Dayjs {
 export function utcNowString(): string {
   return dayjs.utc(new Date()).toISOString();
 }
+

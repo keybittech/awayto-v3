@@ -242,7 +242,6 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: WSCallPr
       senderStreamsRef.current[sender] = startedSender;
 
     } else if (sdp) {
-      console.log(sdp)
       // Standard WebRTC SDP message handling
       setUpSender(sender);
       const currentSender = senderStreamsRef.current[sender];
@@ -275,7 +274,6 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: WSCallPr
         senderStreamsRef.current[sender] = currentSender;
       }
     } else if (ice) {
-      console.log(ice)
       // Standard WebRTC ICE message handling
       const currentSender = senderStreamsRef.current[sender];
       if (currentSender?.pc && !currentSender.pc.pendingLocalDescription && !currentSender.pc.pendingRemoteDescription && currentSender.pc.currentLocalDescription && currentSender.pc.currentRemoteDescription && !['failed', 'closed', 'disconnected'].includes(currentSender.pc.iceConnectionState)) {
@@ -287,7 +285,6 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: WSCallPr
 
   const setLocalStreamAndBroadcast = useCallback((video: boolean): void => {
     async function go() {
-      console.log({ localStream, canStartStop })
       try {
         if (!localStream.current && 'start' === canStartStop) {
           setCanStartStop('');

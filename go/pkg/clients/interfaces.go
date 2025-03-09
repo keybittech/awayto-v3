@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"net"
+	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -28,7 +29,7 @@ type IDatabase interface {
 	GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error)
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 	TxExec(doFunc func(IDatabaseTx) error, ids ...string) error
-	BuildInserts(query string, values []interface{}, records ...interface{}) (string, []interface{})
+	BuildInserts(sb *strings.Builder, size, current int) error
 }
 
 type IDatabaseClient interface {
