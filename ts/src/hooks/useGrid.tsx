@@ -21,7 +21,6 @@ export function useGrid<T extends GridValidRowModel>({ rows, columns, columnHead
     return {
       autoHeight: true,
       sx: {
-        bgcolor: 'primary.dark',
         borderColor: 'primary.light',
         '& [role="row"]': {
           bgcolor: 'inherit !important'

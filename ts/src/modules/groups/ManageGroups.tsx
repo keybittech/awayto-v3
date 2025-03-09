@@ -65,24 +65,6 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
           <Logout sx={classes.variableButtonIcon} />
         </Button>
       </Tooltip>,
-      // grldr && hasRole([SiteRoles.APP_GROUP_ADMIN]) && <Tooltip key={'view_group_details'} title="Details">
-      //   <Button onClick={() => {
-      //     navigate(`/group/${gr.name}/manage/users`)
-      //   }}>
-      //     <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Details</Typography>
-      //     <ManageAccountsIcon sx={classes.variableButtonIcon} />
-      //   </Button>
-      // </Tooltip>,
-      // grldr && <Tooltip key={'manage_group'} title="Edit">
-      //   <Button onClick={() => {
-      //     setGroup(groups[selected[0]]);
-      //     setDialog('manage_group');
-      //     setSelected([]);
-      //   }}>
-      //     <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
-      //     <CreateIcon sx={classes.variableButtonIcon} />
-      //   </Button>
-      // </Tooltip>
     ] : [];
 
     return [

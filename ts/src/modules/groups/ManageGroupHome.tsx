@@ -1,20 +1,17 @@
 import React, { Suspense, useContext, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
-import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
 import Grid from '@mui/material/Grid';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import Typography from '@mui/material/Typography';
-import Card from '@mui/material/Card';
-import CardHeader from '@mui/material/CardHeader';
-import CardContent from '@mui/material/CardContent';
+import TextField from '@mui/material/TextField';
 
 import CreateIcon from '@mui/icons-material/Create';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import AddIcon from '@mui/icons-material/Add';
 
-import { useUtil, SiteRoles, useStyles, siteApi, targets } from 'awayto/hooks';
+import { useUtil, SiteRoles, siteApi, targets } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from './GroupContext';
 import GroupSecure from './GroupSecure';
@@ -33,8 +30,6 @@ const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULE_KEYS, APP_GROUP_SER
 export function ManageGroupHome(props: IComponent): React.JSX.Element {
 
   const { component } = useParams();
-
-  const classes = useStyles();
 
   const [dialog, setDialog] = useState('');
 
@@ -64,11 +59,11 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
       <Grid>
         <Button
           {...targets(`manage group home nav ${comp}`, `navigate to the group ${comp} management page`)}
-          variant="text"
+          variant="underline"
           color={selected ? "primary" : "secondary"}
           sx={{
             cursor: 'pointer',
-            textDecoration: selected ? 'underline !important' : undefined
+            borderBottom: selected ? '2px solid white' : undefined
           }}
           onClick={() => {
             navigate(`/group/manage/${comp}`);
@@ -114,83 +109,102 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
   }
 
   return <>
-
-    <Card sx={{ mb: 2 }}>
-      <CardHeader title={
-        <>
-          {group.displayName}
-          <Tooltip key={'manage_group'} title="Edit">
-            <IconButton
-              {...targets(`manage group home edit`, `edit the group details`)}
-              color="info"
-              onClick={() => {
-                setDialog('manage_group');
-              }}
-            >
-              <CreateIcon sx={classes.variableButtonIcon} />
-            </IconButton>
-          </Tooltip>
-        </>
-      } subheader={group.purpose} />
-      <CardContent>
-
-        <Grid container mb={2} justifyContent="space-between">
-          <Grid flex={1}>
-            <Typography fontWeight="bold">
-              Group Code &nbsp;
-              <Tooltip title="Copy Group Code">
-                <IconButton
-                  {...targets(`manage group home copy code`, `copy the group code to your system clipboard`)}
-                  size="small"
-                  color="info"
-                  onClick={copyCode}
-                >
-                  <ContentCopyIcon />
-                </IconButton>
-              </Tooltip>
-            </Typography>
-            <Typography>{group.code}</Typography>
-          </Grid>
-          <Grid flex={1}>
-            <Typography fontWeight="bold">
-              Invite Url &nbsp;
-              <Tooltip title="Copy Invite URL">
-                <IconButton
-                  {...targets(`manage group home copy join url`, `copy a group join url to your system clipboard`)}
-                  size="small"
-                  color="info"
-                  onClick={copyUrl}
-                >
-                  <ContentCopyIcon />
-                </IconButton>
-              </Tooltip>
-            </Typography>
-            <Typography>{groupUrl}</Typography>
-          </Grid>
-          <Grid flex={1}>
-            <Typography fontWeight="bold">
-              Seats &nbsp;
-              <Tooltip title="Add Seats">
-                <Button
-                  {...targets(`manage group home add seats`, `open the group seats modal to add more seats to your group`)}
-                  sx={{ cursor: 'pointer' }}
-                  onClick={() => setDialog('add_seats')}
-                  color="info"
-                  size="small"
-                >Add</Button>
-              </Tooltip>
-            </Typography>
-            <Typography>Test</Typography>
-          </Grid>
-        </Grid>
-
-      </CardContent>
-    </Card>
-
-    <Grid container pb={2} spacing={2} justifyContent="flex-start" alignItems="center">
-      <Grid>
-        <Typography variant="button">Controls:</Typography>
+    <Grid container spacing={2}>
+      <Grid size={{ xs: 6, md: 3 }}>
+        <TextField
+          {...targets(`manage group home group name input`, `Group Info`, `details about the group`)}
+          fullWidth
+          variant="standard"
+          value={group.displayName}
+          helperText={group.purpose}
+          slotProps={{
+            inputLabel: {
+              shrink: true
+            },
+            input: {
+              endAdornment: <IconButton
+                {...targets(`manage group edit`, `edit the group details`)}
+                color="info"
+                onClick={() => {
+                  setDialog('manage_group');
+                }}
+              >
+                <CreateIcon />
+              </IconButton>
+            }
+          }}
+        />
       </Grid>
+      <Grid size={{ xs: 6, md: 3 }}>
+        <TextField
+          {...targets(`manage group home code input`, `Group Code`, `the group code used to join groups`)}
+          fullWidth
+          variant="standard"
+          value={group.code}
+          slotProps={{
+            inputLabel: {
+              shrink: true
+            },
+            input: {
+              endAdornment: <IconButton
+                {...targets(`manage group home copy code`, `copy the group code to your system clipboard`)}
+                color="info"
+                onClick={copyCode}
+              >
+                <ContentCopyIcon />
+              </IconButton>
+            }
+          }}
+        />
+      </Grid>
+      <Grid size={{ xs: 6, md: 3 }}>
+        <TextField
+          {...targets(`manage group home inviteurl input`, `Invite URL`, `the group invite url`)}
+          fullWidth
+          variant="standard"
+          value={groupUrl}
+          slotProps={{
+            inputLabel: {
+              shrink: true
+            },
+            input: {
+              endAdornment: <IconButton
+                {...targets(`manage group home copy join url`, `copy a group join url to your system clipboard`)}
+                color="info"
+                onClick={copyUrl}
+              >
+                <ContentCopyIcon />
+              </IconButton>
+            }
+          }}
+        />
+      </Grid>
+      <Grid size={{ xs: 6, md: 3 }}>
+        <TextField
+          {...targets(`manage group home seats input`, `Seats`, `number of available group seats`)}
+          fullWidth
+          variant="standard"
+          value={`∞`}
+          slotProps={{
+            inputLabel: {
+              shrink: true
+            },
+            input: {
+              endAdornment: <IconButton
+                {...targets(`manage group home add seats`, `open the group seats modal to add more seats to your group`)}
+                sx={{ cursor: 'pointer' }}
+                onClick={() => setDialog('add_seats')}
+                color="info"
+              >
+                <AddIcon />
+              </IconButton>
+            }
+          }}
+        />
+      </Grid>
+    </Grid>
+
+    <Grid container py={2} spacing={2} justifyContent="flex-start" alignItems="center">
       {menu}
     </Grid>
 
