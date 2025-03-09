@@ -57,6 +57,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
 
   const [postSchedule] = siteApi.useScheduleServicePostScheduleMutation();
   const [postScheduleBrackets] = siteApi.useScheduleServicePostScheduleBracketsMutation();
+  const [getGroupUserSchedules] = siteApi.useLazyGroupUserScheduleServiceGetGroupUserSchedulesQuery();
 
   const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as IScheduleBracket);
 
@@ -77,8 +78,9 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
 
   const handleSubmit = useCallback(() => {
     async function go() {
-      if (schedule && scheduleBracketsValues.length) {
-
+      if (!groupSchedule?.id || !schedule || !scheduleBracketsValues.length) {
+        setSnack({ snackOn: 'A schedule should have a name, a duration, and at least 1 bracket.', snackType: 'info' });
+      } else {
         const newBrackets = scheduleBracketsValues.reduce<Record<string, IScheduleBracket>>(
           (m, { id, duration, automatic, multiplier, slots, services }) => !id ? m : ({
             ...m,
@@ -93,7 +95,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
           }), {}
         );
 
-        if (!editSchedule?.id && groupSchedule?.schedule?.id) {
+        if (!editSchedule?.id && groupSchedule.schedule?.id) {
           await postSchedule({
             postScheduleRequest: {
               groupScheduleId: groupSchedule.schedule.id,
@@ -110,19 +112,20 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
         } else if (editSchedule?.id) {
           await postScheduleBrackets({
             postScheduleBracketsRequest: {
-              scheduleId: editSchedule.id,
+              groupScheduleId: groupSchedule.id,
+              userScheduleId: editSchedule.id,
               brackets: newBrackets
             }
           }).unwrap().catch(console.error);
         }
+
+        await getGroupUserSchedules({ groupScheduleId: groupSchedule.id }).unwrap();
 
         setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule?.name, snackType: 'info' });
         if (closeModal) {
           firstLoad.current = true;
           closeModal(true);
         }
-      } else {
-        setSnack({ snackOn: 'A schedule should have a name, a duration, and at least 1 bracket.', snackType: 'info' });
       }
     }
     void go();

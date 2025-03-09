@@ -36,7 +36,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   const { setSnack, openConfirm } = useUtil();
   const [postQuote] = siteApi.useQuoteServicePostQuoteMutation();
   const [files, setFiles] = useState<IFile[]>([]);
-  const [dialog, setDialog] = useState(false);
+  const [dialog, setDialog] = useState('');
 
   const {
     getGroupUserSchedules: {
@@ -96,22 +96,30 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
       </Alert> : <>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid container size={{ xs: 12, md: 4 }}>
+            <Grid container size={{ xs: 12, md: 5 }}>
               <GroupScheduleSelect />
               <GroupScheduleServiceSelect />
               <GroupScheduleServiceTierSelect />
             </Grid>
-            <Grid container size={{ xs: 12, md: 4 }} alignContent="flex-start">
+            <Grid container size={{ xs: 12, md: 5 }} alignContent="flex-start">
               <ScheduleDatePicker key={`${groupSchedule?.schedule?.id}_date_picker`} />
               <ScheduleTimePicker key={`${groupSchedule?.schedule?.id}_time_picker`} />
             </Grid>
-            <Grid size={{ xs: 12, md: 4 }}>
+            <Grid size={{ xs: 12, md: 2 }}>
               {groupScheduleServiceTier && <Button
                 fullWidth
-                onClick={() => { setDialog(true) }}
+                onClick={() => { setDialog('features') }}
+                variant="underline"
               >
                 View Features
               </Button>}
+              <Button
+                fullWidth
+                onClick={() => { setDialog('files') }}
+                variant="underline"
+              >
+                Add Files
+              </Button>
             </Grid>
           </Grid>
           <Grid container spacing={2} direction="column">
@@ -169,14 +177,17 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
       fullWidth
       keepMounted
       maxWidth="md"
-      open={dialog}
-      onClose={() => { setDialog(false) }}
+      open={!!dialog.length}
+      onClose={() => { setDialog('') }}
       slots={{
         transition: Transition
       }}
     >
-      <FileManager files={files} setFiles={setFiles} />
-      <ServiceTierAddons service={groupScheduleService} />
+      {dialog == 'features' ?
+        <ServiceTierAddons service={groupScheduleService} /> :
+        dialog == 'files' ? <FileManager files={files} setFiles={setFiles} /> :
+          <></>
+      }
     </Dialog>
   </>
 }

@@ -184,8 +184,15 @@ message PostScheduleResponse {
 }
 
 message PostScheduleBracketsRequest {
-  string scheduleId = 1 [(google.api.field_behavior) = REQUIRED];
-  map<string, IScheduleBracket> brackets = 2 [(google.api.field_behavior) = REQUIRED];
+  string userScheduleId = 1 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.uuid = true
+  ];
+  string groupScheduleId = 2 [
+    (google.api.field_behavior) = REQUIRED,
+    (buf.validate.field).string.uuid = true
+  ]; 
+  map<string, IScheduleBracket> brackets = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostScheduleBracketsResponse {

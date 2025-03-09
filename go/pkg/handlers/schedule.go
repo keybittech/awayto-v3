@@ -104,7 +104,7 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 		}
 	}
 
-	err := handleDeletedBrackets(data.ScheduleId, existingBracketIds, tx)
+	err := handleDeletedBrackets(data.UserScheduleId, existingBracketIds, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -116,14 +116,15 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 		}
 	}
 
-	if len(newBrackets) > 0 && data.ScheduleId != "" {
-		err := h.InsertNewBrackets(data.ScheduleId, newBrackets, tx, session)
+	if len(newBrackets) > 0 && data.UserScheduleId != "" {
+		err := h.InsertNewBrackets(data.UserScheduleId, newBrackets, tx, session)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules/"+data.GetScheduleId())
+	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules/"+data.UserScheduleId)
+	h.Redis.Client().Del(req.Context(), session.UserSub+"group/user_schedules/"+data.GroupScheduleId)
 	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules")
 
 	return &types.PostScheduleBracketsResponse{Success: true}, nil

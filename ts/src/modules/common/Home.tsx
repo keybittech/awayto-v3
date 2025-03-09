@@ -20,7 +20,7 @@ export function Home(props: IComponent): React.JSX.Element {
   const group = useMemo(() => Object.values(profileRequest?.userProfile.groups || {}).find(g => g.active), [profileRequest?.userProfile]);
 
   const roleActions = useMemo(() => {
-    const augr = profileRequest?.userProfile.availableUserGroupRoles;
+    const augr = profileRequest?.userProfile.availableUserGroupRoles?.filter(x => ![SiteRoles.APP_GROUP_BOOKINGS].includes(x as SiteRoles));
     if (!augr) return <></>;
     return Object.values(SiteRoles).filter(r => augr.includes(r)).map((r, i) => {
       const rd = SiteRoleDetails[r];
@@ -28,22 +28,20 @@ export function Home(props: IComponent): React.JSX.Element {
         {...targets(`available role actions ${rd.description}`, `perform the ${rd.description} action`)}
         fullWidth
         key={`role_listing_${i + 1}`}
+        variant="underline"
         sx={{
           my: .5,
           background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 33%)',
-          textAlign: 'left',
-          justifyContent: 'left',
-          borderRadius: 0,
-          textDecoration: 'underlined',
-          borderBottom: '1px solid #aaa',
+          '&:hover': {
+            background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 100%)'
+          },
         }}
-        variant="text"
         onClick={() => navigate(rd.resource)}
       >
         {rd.description}
       </Button>;
     });
-  }, [profileRequest?.userProfile.availableUserGroupRoles, navigate]);
+  }, [profileRequest?.userProfile.availableUserGroupRoles]);
 
   return <Grid container size="grow">
     <Grid container spacing={2}>
@@ -57,14 +55,10 @@ export function Home(props: IComponent): React.JSX.Element {
         {roleActions}
       </Grid>
 
-
-
-      <Grid container size={{ xs: 12, md: 9, lg: 10 }} direction="column" spacing={2}>
-
+      <Grid container size={{ xs: 12, md: 9, lg: 8, xl: 6 }} direction="column" spacing={2}>
         {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <Grid size="grow">
           <RequestQuote {...props} />
         </Grid>}
-
       </Grid>
     </Grid>
     <Grid size="grow">

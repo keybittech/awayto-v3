@@ -22,12 +22,11 @@ import CampaignIcon from '@mui/icons-material/Campaign';
 import ThreePIcon from '@mui/icons-material/ThreeP';
 import LogoutIcon from '@mui/icons-material/Logout';
 import EventNoteIcon from '@mui/icons-material/EventNote';
-import MoreTimeIcon from '@mui/icons-material/MoreTime';
 import GroupIcon from '@mui/icons-material/Group';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-import { useSecure, siteApi, useStyles, SiteRoles, targets, logout } from 'awayto/hooks';
+import { useSecure, siteApi, useStyles, SiteRoles, targets, logout, SiteRoleDetails } from 'awayto/hooks';
 
 import UpcomingBookingsMenu from '../bookings/UpcomingBookingsMenu';
 import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
@@ -81,6 +80,24 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
     handleMenuClose();
     navigate(path);
   };
+
+  const roleActions = useMemo(() => {
+    const augr = profileRequest?.userProfile.availableUserGroupRoles?.filter(x => ![SiteRoles.APP_GROUP_BOOKINGS].includes(x as SiteRoles));
+    if (!augr) return <></>;
+    return Object.values(SiteRoles).filter(r => augr.includes(r)).map((r, i) => {
+      const rd = SiteRoleDetails[r];
+      const ActionIcon = rd.icon;
+
+      return <MenuItem
+        {...targets(`available role actions ${rd.description}`, `perform the ${rd.description} action`)}
+        key={`role_menu_option_${i + 1}`}
+        onClick={e => handleNavAndClose(e, rd.resource)}
+      >
+        <ListItemIcon><ActionIcon color={location.pathname == rd.resource ? "secondary" : "primary"} /></ListItemIcon>
+        <ListItemText>{rd.name}</ListItemText>
+      </MenuItem>;
+    });
+  }, [location, profileRequest?.userProfile.availableUserGroupRoles]);
 
   return <Grid size={12} sx={{ height: '60px' }} container>
     <Grid sx={{ display: { xs: 'flex', md: true ? 'flex' : !props.forceSiteMenu ? 'none' : 'flex' } }}>
@@ -232,33 +249,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
 
           <Divider />
 
-          {/* <MenuItem aria-label="navigate to exchange" onClick={() => handleNavAndClose('/exchange')}>
-            <ListItemIcon><TtyIcon color={location.pathname === '/exchange' ? "secondary" : "primary"} /></ListItemIcon>
-            <ListItemText>Exchange</ListItemText>
-          </MenuItem> */}
-
-          {/* <MenuItem hidden={!hasRole([SiteRoles.APP_GROUP_SERVICES])} aria-label="navigate to create service" onClick={() => handleNavAndClose('/service')}>
-            <ListItemIcon><BusinessIcon color={location.pathname === '/service' ? "secondary" : "primary"} /></ListItemIcon>
-            <ListItemText>Service</ListItemText>
-          </MenuItem> */}
-
-          <MenuItem
-            {...targets(`main menu manage personal schedules`, `view your personal schedules`)}
-            hidden={!hasRole([SiteRoles.APP_GROUP_SCHEDULES])}
-            onClick={e => handleNavAndClose(e, '/schedule')}
-          >
-            <ListItemIcon><EventNoteIcon color={location.pathname === '/schedule' ? "secondary" : "primary"} /></ListItemIcon>
-            <ListItemText>Schedule</ListItemText>
-          </MenuItem>
-
-          <MenuItem
-            {...targets(`main menu request quote`, `go to make a request for service`)}
-            hidden={!hasRole([SiteRoles.APP_GROUP_BOOKINGS])}
-            onClick={e => handleNavAndClose(e, '/request')}
-          >
-            <ListItemIcon><MoreTimeIcon color={location.pathname === '/request' ? "secondary" : "primary"} /></ListItemIcon>
-            <ListItemText>Request</ListItemText>
-          </MenuItem>
+          {roleActions}
 
           <Divider />
 

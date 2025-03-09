@@ -1,6 +1,11 @@
 import { SxProps, createTheme } from '@mui/material';
 import { red, green } from '@mui/material/colors';
 
+declare module '@mui/material/Button' {
+  interface ButtonPropsVariantOverrides {
+    underline: true;
+  }
+}
 
 const drawerWidth = 175;
 const paletteTheme = createTheme({
@@ -45,40 +50,6 @@ export const theme = createTheme(paletteTheme, {
         }
       }
     },
-    // MuiDigitalClock: {
-    //   styleOverrides: {
-    //     item: {
-    //       '&:not(.Mui-disabled)': {
-    //         backgroundColor: '#fff',
-    //         color: '#000'
-    //       },
-    //       '&.Mui-selected': {
-    //         backgroundColor: '#009cc8 !important',
-    //         color: '#fff'
-    //       },
-    //       '&:hover': {
-    //         backgroundColor: '#bbb'
-    //       }
-    //     }
-    //   }
-    // },
-    // MuiClockPointer: {
-    //   styleOverrides: {
-    //     thumb: {
-    //       backgroundColor: 'inherit'
-    //     }
-    //   }
-    // },
-    // MuiClockNumber: {
-    //   styleOverrides: {
-    //     root: {
-    //       '&:not(.Mui-disabled)': {
-    //         color: 'rgb(100 150 200)'
-    //       }
-    //     }
-    //   }
-    // },,
-
     MuiDrawer: {
       styleOverrides: {
         paper: {
@@ -125,12 +96,23 @@ export const theme = createTheme(paletteTheme, {
     MuiButton: {
       styleOverrides: {
         root: {
+          variants: [{
+            props: { variant: "underline" },
+            style: {
+              textTransform: 'capitalize',
+              textAlign: 'left',
+              justifyContent: 'left',
+              borderRadius: 0,
+              textDecoration: 'underlined',
+              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              '&:hover': {
+                background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 100%)'
+              }
+            }
+          }],
           // marginBottom: '4px',
           padding: '6px 8px 4px',
           alignItems: 'baseline',
-          // '&:hover': {
-          //   color: 'white'
-          // },
         }
       }
     },
@@ -163,14 +145,6 @@ export const useStyles = (): { [key: string]: SxProps } => {
     width: '100%',
     height: '100%'
   };
-
-  // const disabledOverrideGray = {
-  //   '&.Mui-disabled': {
-  //     color: '#111',
-  //     backgroundColor: '#aaa',
-  //     opacity: '0.8'
-  //   }
-  // };
 
   const disabledOverrideClear = {
     '&.Mui-disabled': {
@@ -296,93 +270,5 @@ export const useStyles = (): { [key: string]: SxProps } => {
 
   }
 };
-
-// export const getThemedComponents: (mode: PaletteMode) => ThemeOptions = (mode) => ({
-//   components: {
-//     ...(
-//       mode === 'light' ? {
-//         // Light theme components
-//         MuiPickersDay: {
-//           styleOverrides: {
-//             root: {
-//               '&.Mui-selected': {
-//                 backgroundColor: '#333 !important'
-//               }
-//             }
-//           }
-//         },
-//         MuiClock: {
-//           styleOverrides: {
-//             pmButton: {
-//               color: '#aaa'
-//             },
-//             amButton: {
-//               color: '#aaa'
-//             }
-//           }
-//         },
-//         MuiClockNumber: {
-//           styleOverrides: {
-//             root: {
-//               '&.Mui-selected': {
-//                 backgroundColor: '#ccc'
-//               }
-//             }
-//           }
-//         },
-//         // MuiIconButton: {
-//         //   styleOverrides: {
-//         //     root: {
-//         //       color: 'rgb(100 150 200)'
-//         //     }
-//         //   }
-//         // },
-//         MuiButton: {
-//           styleOverrides: {
-//             root: {
-//               color: 'rgb(100 150 200)'
-//             }
-//           }
-//         }
-//       } : {
-//         // Dark theme components
-//         MuiInput: {
-//           styleOverrides: {
-//             underline: {
-//               '&:before': {
-//                 borderBottom: '1px solid #333'
-//               }
-//             }
-//           }
-//         },
-//         MuiDataGrid: {
-//           styleOverrides: {
-//             root: {
-//               '& .MuiDataGrid-container--top [role="row"]': {
-//                 backgroundColor: 'unset'
-//               }
-//             }
-//           }
-//         },
-//         // MuiIconButton: {
-//         //   styleOverrides: {
-//         //     root: {
-//         //       color: 'rgb(100 150 200)'
-//         //     }
-//         //   }
-//         // },
-//         MuiButton: {
-//           styleOverrides: {
-//             root: {
-//               ':not(.MuiButton-*Secondary)': {
-//                 color: 'rgb(100 150 200)'
-//               }
-//             }
-//           }
-//         }
-//       }
-//     )
-//   }
-// });
 
 
