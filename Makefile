@@ -202,6 +202,7 @@ $(PROTO_MOD_TARGET): $(shell find proto/ -type f)
 
 $(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
+	cd go && go mod tidy && cd -
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
 $(GO_MOCK_TARGET): 
@@ -364,6 +365,7 @@ host_install:
 		echo "clear && cd $(H_REM_DIR)" >> $(H_OP)/.bashrc; \
 	fi
 	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+	go install github.com/golang/mock/mockgen@v1.6.0
 	sudo tailscale up
 
 .PHONY: host_reboot
