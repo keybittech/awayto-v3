@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data *types.CheckGroupNameRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.CheckGroupNameResponse, error) {
@@ -156,16 +157,6 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 	}
 
 	service.Id = postServiceRes.GetId()
-
-	_, err = h.PatchService(w, req, &types.PatchServiceRequest{Service: service}, session, tx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	_, err = h.PostGroupService(w, req, &types.PostGroupServiceRequest{ServiceId: postServiceRes.GetId()}, session, tx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
 	_, err = h.PostGroupSchedule(w, req, &types.PostGroupScheduleRequest{GroupSchedule: &types.IGroupSchedule{Schedule: schedule}}, session, tx)
 	if err != nil {

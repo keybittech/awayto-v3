@@ -121,34 +121,41 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
   }, [bracketTimeUnitName, slotTimeUnitName, scheduleTimeUnitName]);
 
   const handleSubmit = useCallback(async () => {
-    if (validArea != 'onboarding' && groupSchedule.schedule) {
-      const s = groupSchedule.schedule;
-      const newSchedule = {
-        name: s.name,
-        startTime: s.startTime?.length ? s.startTime : undefined,
-        endTime: s.endTime?.length ? s.endTime : undefined
-      } as ISchedule;
-      if (s.id) {
-        newSchedule.id = s.id;
-        await patchGroupSchedule({
-          patchGroupScheduleRequest: {
-            groupSchedule: {
-              schedule: newSchedule
+    if (groupSchedule.schedule) {
+      groupSchedule.schedule.startTime = groupSchedule.schedule.startTime?.length ? groupSchedule.schedule.startTime : undefined;
+      groupSchedule.schedule.endTime = groupSchedule.schedule.endTime?.length ? groupSchedule.schedule.endTime : undefined;
+
+      if (validArea != 'onboarding') {
+        const s = groupSchedule.schedule;
+
+        const newSchedule = {
+          name: s.name,
+          startTime: s.startTime,
+          endTime: s.endTime
+        } as ISchedule;
+
+        if (s.id) {
+          newSchedule.id = s.id;
+          await patchGroupSchedule({
+            patchGroupScheduleRequest: {
+              groupSchedule: {
+                schedule: newSchedule
+              }
             }
-          }
-        }).unwrap();
-      } else {
-        newSchedule.scheduleTimeUnitId = s.scheduleTimeUnitId
-        newSchedule.bracketTimeUnitId = s.bracketTimeUnitId
-        newSchedule.slotTimeUnitId = s.slotTimeUnitId
-        newSchedule.slotDuration = s.slotDuration
-        await postGroupSchedule({
-          postGroupScheduleRequest: {
-            groupSchedule: {
-              schedule: newSchedule
+          }).unwrap();
+        } else {
+          newSchedule.scheduleTimeUnitId = s.scheduleTimeUnitId
+          newSchedule.bracketTimeUnitId = s.bracketTimeUnitId
+          newSchedule.slotTimeUnitId = s.slotTimeUnitId
+          newSchedule.slotDuration = s.slotDuration
+          await postGroupSchedule({
+            postGroupScheduleRequest: {
+              groupSchedule: {
+                schedule: newSchedule
+              }
             }
-          }
-        }).unwrap();
+          }).unwrap();
+        }
       }
     }
 
@@ -159,7 +166,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
   useEffect(() => {
     if (validArea) {
       localStorage.setItem(`${validArea}_schedule`, JSON.stringify({ schedule: debouncedSchedule }));
-      setValid({ area: validArea, schema: 'schedule', valid: Boolean(debouncedSchedule.name && debouncedSchedule.startTime) });
+      setValid({ area: validArea, schema: 'schedule', valid: Boolean(debouncedSchedule.name) });
     }
   }, [validArea, debouncedSchedule]);
 

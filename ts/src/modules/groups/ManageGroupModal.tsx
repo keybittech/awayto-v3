@@ -76,15 +76,20 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
     }
 
     group.allowedDomains = allowedDomains.join(',');
+    group.name = formatName(debouncedName);
 
-    if (!group.name) {
-      group.name = formatName(debouncedName);
-    }
+    const groupSubmit = {
+      name: group.name,
+      displayName: group.displayName,
+      purpose: group.purpose,
+      allowedDomains: group.allowedDomains,
+      ai: group.ai
+    };
 
     if (group.id) {
-      await patchGroup({ patchGroupRequest: { ...group } }).unwrap().catch(console.error);
+      await patchGroup({ patchGroupRequest: groupSubmit }).unwrap().catch(console.error);
     } else {
-      await postGroup({ postGroupRequest: { ...group } }).unwrap().then(resp => {
+      await postGroup({ postGroupRequest: groupSubmit }).unwrap().then(resp => {
         group.id = resp.id;
       }).catch(console.error);
     }

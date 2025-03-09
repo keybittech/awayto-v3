@@ -18,8 +18,8 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 		return nil, util.ErrCheck(err)
 	}
 
-	groupSession := session
-	groupSession.UserSub = session.GroupSub
+	userSub := session.UserSub
+	session.UserSub = session.GroupSub
 
 	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{
 		Name:               data.GroupSchedule.Schedule.Name,
@@ -30,7 +30,7 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 		SlotTimeUnitId:     data.GroupSchedule.Schedule.SlotTimeUnitId,
 		SlotDuration:       data.GroupSchedule.Schedule.SlotDuration,
 		Brackets:           map[string]*types.IScheduleBracket{},
-	}, groupSession, tx)
+	}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -44,6 +44,8 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	session.UserSub = userSub
 
 	err = tx.SetDbVar("user_sub", session.UserSub)
 	if err != nil {

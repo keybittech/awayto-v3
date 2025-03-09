@@ -91,89 +91,79 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         title="Service Request"
         subheader="Request services from a group. Some fields may be required depending on the service."
       />
-      <CardContent>
-        <Grid container spacing={2}>
-          <Grid container size={{ xs: 12, md: 4 }}>
-            <GroupScheduleSelect />
-            <GroupScheduleServiceSelect />
-            <GroupScheduleServiceTierSelect />
+      {!groupUserSchedulesRequest?.groupUserSchedules ? <Alert sx={{ marginTop: '16px' }} severity="info">
+        There are no active user schedules, or they are currently paused.
+      </Alert> : <>
+        <CardContent>
+          <Grid container spacing={2}>
+            <Grid container size={{ xs: 12, md: 4 }}>
+              <GroupScheduleSelect />
+              <GroupScheduleServiceSelect />
+              <GroupScheduleServiceTierSelect />
+            </Grid>
+            <Grid container size={{ xs: 12, md: 4 }} alignContent="flex-start">
+              <ScheduleDatePicker key={`${groupSchedule?.schedule?.id}_date_picker`} />
+              <ScheduleTimePicker key={`${groupSchedule?.schedule?.id}_time_picker`} />
+            </Grid>
+            <Grid size={{ xs: 12, md: 4 }}>
+              {groupScheduleServiceTier && <Button
+                fullWidth
+                onClick={() => { setDialog(true) }}
+              >
+                View Features
+              </Button>}
+            </Grid>
           </Grid>
-          <Grid container size={{ xs: 12, md: 4 }} alignContent="flex-start">
-            <ScheduleDatePicker key={`${groupSchedule?.schedule?.id}_date_picker`} />
-            <ScheduleTimePicker key={`${groupSchedule?.schedule?.id}_time_picker`} />
+          <Grid container spacing={2} direction="column">
+            {serviceForm && <Grid size="grow">
+              <ServiceForm />
+            </Grid>}
+            {tierForm && <Grid size="grow">
+              <TierForm />
+            </Grid>}
           </Grid>
-          <Grid size={{ xs: 12, md: 4 }}>
-            {groupScheduleServiceTier && <Button
-              fullWidth
-              onClick={() => { setDialog(true) }}
-            >
-              View Features
-            </Button>}
-          </Grid>
-        </Grid>
-      </CardContent>
-      <CardActionArea onClick={() => {
-        if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
-          setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
-          return;
-        }
-
-        openConfirm({
-          isConfirming: true,
-          confirmEffect: 'Request service on ' + bookingFormat(quote.slotDate, quote.startTime) +
-            ' for ' + groupScheduleService?.name + ': ' + groupScheduleServiceTier.name,
-          confirmAction: () => {
-            postQuote({
-              postQuoteRequest: {
-                slotDate: quote.slotDate!,
-                scheduleBracketSlotId: quote.scheduleBracketSlotId!,
-                serviceTierId: groupScheduleServiceTier.id!,
-                serviceFormVersionSubmission: (serviceForm ? {
-                  formVersionId: serviceForm.version.id,
-                  submission: serviceForm.version.submission
-                } : {}) as IFormVersionSubmission,
-                tierFormVersionSubmission: (tierForm ? {
-                  formVersionId: tierForm.version.id,
-                  submission: tierForm.version.submission
-                } : {}) as IFormVersionSubmission,
-                files
-              }
-            }).unwrap().then(() => {
-              setSnack({ snackType: 'success', snackOn: 'You\'re all set!' });
-              setSelectedDate(undefined);
-              setSelectedTime(undefined);
-            }).catch(console.error);
+        </CardContent>
+        <CardActionArea onClick={() => {
+          if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
+            setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
+            return;
           }
-        });
 
-      }}>
-        <Box m={2} sx={{ display: 'flex' }}>
-          <Typography color="secondary" variant="button">Submit Request</Typography>
-        </Box>
-      </CardActionArea>
+          openConfirm({
+            isConfirming: true,
+            confirmEffect: 'Request service on ' + bookingFormat(quote.slotDate, quote.startTime) +
+              ' for ' + groupScheduleService?.name + ': ' + groupScheduleServiceTier.name,
+            confirmAction: () => {
+              postQuote({
+                postQuoteRequest: {
+                  slotDate: quote.slotDate!,
+                  scheduleBracketSlotId: quote.scheduleBracketSlotId!,
+                  serviceTierId: groupScheduleServiceTier.id!,
+                  serviceFormVersionSubmission: (serviceForm ? {
+                    formVersionId: serviceForm.version.id,
+                    submission: serviceForm.version.submission
+                  } : {}) as IFormVersionSubmission,
+                  tierFormVersionSubmission: (tierForm ? {
+                    formVersionId: tierForm.version.id,
+                    submission: tierForm.version.submission
+                  } : {}) as IFormVersionSubmission,
+                  files
+                }
+              }).unwrap().then(() => {
+                setSnack({ snackType: 'success', snackOn: 'You\'re all set!' });
+                setSelectedDate(undefined);
+                setSelectedTime(undefined);
+              }).catch(console.error);
+            }
+          });
+
+        }}>
+          <Box m={2} sx={{ display: 'flex' }}>
+            <Typography color="secondary" variant="button">Submit Request</Typography>
+          </Box>
+        </CardActionArea>
+      </>}
     </Card>
-
-    {!groupUserSchedulesRequest?.groupUserSchedules ? <Alert sx={{ marginTop: '16px' }} severity="info">
-      There are no active user schedules, or they are currently paused.
-    </Alert> : <>
-      <Grid container size="grow" spacing={2}>
-        <Grid container size={{ xs: 12, md: 4 }} direction="column">
-        </Grid>
-        <Grid container size={{ xs: 12, md: 8 }} sx={{ my: 1.5 }} spacing={2} direction="column">
-          <Grid size="grow">
-          </Grid>
-        </Grid>
-      </Grid>
-
-      <Grid container spacing={2} direction="column">
-        {serviceForm && <Grid size="grow">
-          <ServiceForm />
-        </Grid>}
-        {tierForm && <Grid size="grow">
-          <TierForm />
-        </Grid>}
-      </Grid>
-    </>}
 
     <Dialog
       fullWidth
