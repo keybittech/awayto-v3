@@ -446,7 +446,7 @@ host_deploy_op:
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) start.sh /usr/local/bin
-	rm start.sh $(BINARY_SERVICE) $(BINARY_NAME)
+	rm start.sh $(BINARY_SERVICE) $(GO_TARGET)
 	sudo systemctl enable $(BINARY_SERVICE)
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo systemctl is-active $(BINARY_SERVICE)
