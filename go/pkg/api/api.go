@@ -16,16 +16,21 @@ type API struct {
 }
 
 func (a *API) InitMux() *http.ServeMux {
-	mux := http.NewServeMux()
+	apiMux := http.NewServeMux()
 
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
 		if fd.Services().Len() == 0 {
 			return true
 		}
 		println(fmt.Sprintf("Attaching services for %s", fd.Path()))
-		a.BuildProtoService(mux, fd)
+		a.BuildProtoService(apiMux, fd)
 		return true
 	})
+
+	mux := http.NewServeMux()
+	mux.Handle("/api/", a.LimitMiddleware(2, 20)(func(w http.ResponseWriter, r *http.Request) {
+		apiMux.ServeHTTP(w, r)
+	}))
 
 	a.Server.Handler = mux
 	return mux

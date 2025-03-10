@@ -29,12 +29,12 @@ type limitedClient struct {
 	lastSeen time.Time
 }
 
-var (
-	mu             sync.Mutex
-	limitedClients = make(map[string]*limitedClient)
-)
+func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.HandlerFunc) http.HandlerFunc {
+	var (
+		mu             sync.Mutex
+		limitedClients = make(map[string]*limitedClient)
+	)
 
-func init() {
 	go func() {
 		for {
 			time.Sleep(time.Minute)
@@ -48,10 +48,8 @@ func init() {
 			mu.Unlock()
 		}
 	}()
-}
 
-func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
-	return func(next SessionHandler) http.HandlerFunc {
+	return func(next http.HandlerFunc) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			// Extract the IP address from the request.
 			ip, _, err := net.SplitHostPort(req.RemoteAddr)
@@ -60,8 +58,6 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHand
 				util.ErrorLog.Println(util.ErrCheck(err))
 				return
 			}
-
-			ip = util.AnonIp(ip)
 
 			// Lock the mutex to protect this section from race conditions.
 			mu.Lock()
@@ -81,21 +77,19 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHand
 			w.Header().Set("Access-Control-Allow-Origin", os.Getenv("APP_HOST_URL"))
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-TZ")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH")
-			// hashes in order: index script tag, step1, step2, login-status-iframe
-			w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'sha256-y3T0aZcl0paCwkBS7eixK9c9aAb8RnLvrOw1UL86KwU=' 'sha256-/hguw44jn3mbRUnnDZRZKsKvlt3Z/0oE4CfEd1Ab10A=' 'sha256-Lq61U4jJNEGu4nXf3jYlJDSHho7XYSQQWaAQG1MyUko=' 'sha256-ghsdywc9xYxt3bFwNU4smqbJZ8ABQREKstVygrjrPVo='")
 
 			if req.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)
 				return
 			}
 
-			next(w, req, nil)
+			next(w, req)
 		})
 	}
 }
 
-func (a *API) ValidateTokenMiddleware(next SessionHandler) SessionHandler {
-	return func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+func (a *API) ValidateTokenMiddleware(next SessionHandler) http.HandlerFunc {
+	return func(w http.ResponseWriter, req *http.Request) {
 		var deferredErr error
 
 		defer func() {
@@ -117,7 +111,7 @@ func (a *API) ValidateTokenMiddleware(next SessionHandler) SessionHandler {
 			return
 		}
 
-		session = &clients.UserSession{
+		session := &clients.UserSession{
 			UserSub:                 kcUser.Sub,
 			UserEmail:               kcUser.Email,
 			SubGroups:               kcUser.Groups,

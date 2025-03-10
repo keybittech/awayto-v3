@@ -1,8 +1,6 @@
 package api
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,6 +8,9 @@ import (
 	"net/url"
 	"os"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func SetForwardingHeadersAndServe(prox *httputil.ReverseProxy, w http.ResponseWriter, r *http.Request) {
@@ -46,7 +47,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 		authRoute := fmt.Sprintf("/auth/realms/%s/%s", kcRealm, ur)
 		mux.Handle(authRoute, http.StripPrefix("/auth",
 			a.LimitMiddleware(10, 10)(
-				func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+				func(w http.ResponseWriter, req *http.Request) {
 					SetForwardingHeadersAndServe(authProxy, w, req)
 				},
 			),
@@ -55,7 +56,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
 	mux.Handle("/auth/resources/", http.StripPrefix("/auth",
 		a.LimitMiddleware(10, 20)(
-			func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+			func(w http.ResponseWriter, req *http.Request) {
 				SetForwardingHeadersAndServe(authProxy, w, req)
 			},
 		),

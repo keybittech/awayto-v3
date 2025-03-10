@@ -1,9 +1,6 @@
 package api
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"context"
 	"encoding/json"
 	"errors"
@@ -15,6 +12,10 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 type SocketServer struct {
@@ -23,7 +24,7 @@ type SocketServer struct {
 
 func (a *API) InitSockServer(mux *http.ServeMux) {
 
-	sockHandler := func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+	sockHandler := func(w http.ResponseWriter, req *http.Request) {
 		if strings.Contains(req.Header.Get("Connection"), "Upgrade") && req.Header.Get("Upgrade") == "websocket" {
 			w.Header().Set("Upgrade", "websocket")
 			w.Header().Set("Connection", "Upgrade")

@@ -1,5 +1,5 @@
 import React, { useEffect, Suspense } from 'react';
-import { Route, Outlet, Routes } from 'react-router-dom';
+import { Route, Outlet, Routes, Navigate } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
 import TopLevelProviders from './TopLevelProviders';
@@ -60,6 +60,7 @@ const Layout = (props: IComponent): React.JSX.Element => {
         }>
           <Route path="/exchange/:exchangeId" element={<Exchange {...props} />} />
         </Route>
+        <Route path="*" element={<Navigate replace to="/" />} />
       </Routes>
     </TopLevelProviders>
   </>

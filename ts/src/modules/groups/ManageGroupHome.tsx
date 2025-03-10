@@ -1,4 +1,4 @@
-import React, { Suspense, useContext, useMemo, useState } from 'react';
+import React, { Suspense, useContext, useEffect, useMemo, useState } from 'react';
 import { useNavigate, useParams } from 'react-router';
 
 import Dialog from '@mui/material/Dialog';
@@ -52,6 +52,12 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
     feedback: [APP_GROUP_ADMIN],
     forms: [APP_GROUP_ADMIN],
   }
+
+  useEffect(() => {
+    if (!component || !Object.keys(menuRoles).includes(component)) {
+      navigate('/');
+    }
+  }, [component]);
 
   const menu = Object.keys(menuRoles).map(comp => {
     const selected = comp === component || (!component && comp === 'services');
