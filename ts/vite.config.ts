@@ -4,6 +4,7 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import viteCompression from 'vite-plugin-compression';
 import circleDeps from 'vite-plugin-circular-dependency';
+import cssInjected from 'vite-plugin-css-injected-by-js';
 import { viteStaticCopy } from 'vite-plugin-static-copy'
 import dotenv from 'dotenv';
 
@@ -36,6 +37,7 @@ export default defineConfig(_ => {
     },
     plugins: [
       react(),
+      cssInjected(),
       circleDeps({
         ignoreDynamicImport: true
       }),
@@ -52,10 +54,7 @@ export default defineConfig(_ => {
         filter: /\.(js|mjs|json|css|html)$/i,
         threshold: 1024,
       })
-    ],
-    optimizeDeps: {
-      include: ['@emotion/styled'],
-    },
+    ]
   };
 });
 
