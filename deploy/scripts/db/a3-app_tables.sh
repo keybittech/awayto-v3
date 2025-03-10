@@ -249,7 +249,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE POLICY table_select ON dbtable_schema.group_user_schedules FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.group_user_schedules FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR AND $HAS_GROUP);
   CREATE POLICY table_update ON dbtable_schema.group_user_schedules FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
-  CREATE POLICY table_delete ON dbtable_schema.group_user_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP)
+  CREATE POLICY table_delete ON dbtable_schema.group_user_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
   -- putting the schedule rules here, after group_schedules and group_user_schedules
   -- allows for is_creator (regular users and group db users) to edit their own schedules
