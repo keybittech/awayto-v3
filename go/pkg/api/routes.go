@@ -1,9 +1,6 @@
 package api
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"errors"
 	"fmt"
 	"io"
@@ -12,6 +9,10 @@ import (
 	"reflect"
 	"slices"
 	"strings"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/google/uuid"

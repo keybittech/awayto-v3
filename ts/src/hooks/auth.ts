@@ -36,7 +36,7 @@ const getHeaders = () => {
 }
 
 export const login = async () => {
-  const authenticated = await keycloak.init({ onLoad: 'login-required' });
+  const authenticated = await keycloak.init({ checkLoginIframe: false, onLoad: 'login-required' });
   if (authenticated) {
     await fetch('/login', getHeaders());
   }

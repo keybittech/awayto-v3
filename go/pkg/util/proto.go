@@ -1,7 +1,6 @@
 package util
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"fmt"
 	"io"
 	"net/http"
@@ -9,6 +8,8 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 
 	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"google.golang.org/genproto/googleapis/api/annotations"
@@ -22,12 +23,14 @@ type IdStruct struct {
 }
 
 type HandlerOptions struct {
-	ServiceMethodURL string
-	SiteRole         string
-	Pattern          string
-	CacheType        types.CacheType
-	CacheDuration    int32
-	NoLogFields      []string
+	ServiceMethodURL  string
+	SiteRole          string
+	Pattern           string
+	CacheType         types.CacheType
+	CacheDuration     int32
+	NoLogFields       []string
+	MultipartRequest  bool
+	MultipartResponse bool
 }
 
 func UnmarshalProto(req *http.Request, pb protoreflect.ProtoMessage) error {
@@ -122,6 +125,13 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		parsedOptions.CacheDuration = proto.GetExtension(inputOpts, types.E_CacheDuration).(int32)
 	}
 
+	if proto.HasExtension(inputOpts, types.E_MultipartRequest) {
+		parsedOptions.MultipartRequest = proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool)
+	}
+	if proto.HasExtension(inputOpts, types.E_MultipartResponse) {
+		parsedOptions.MultipartResponse = proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool)
+	}
+
 	return parsedOptions
 }
 
@@ -170,4 +180,8 @@ func ParseProtoPathParams(pbVal reflect.Value, methodParameters, requestParamete
 			}
 		}
 	}
+}
+
+func HandleProtoRequest() {
+
 }

@@ -1,9 +1,6 @@
 package api
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"bytes"
 	"encoding/json"
 	"errors"
@@ -16,21 +13,28 @@ import (
 	"sync"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
+
 	"golang.org/x/time/rate"
 )
 
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *clients.UserSession)
 
 // From https://blog.logrocket.com/rate-limiting-go-application
-func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
-	type limitedClient struct {
-		limiter  *rate.Limiter
-		lastSeen time.Time
-	}
-	var (
-		mu             sync.Mutex
-		limitedClients = make(map[string]*limitedClient)
-	)
+
+type limitedClient struct {
+	limiter  *rate.Limiter
+	lastSeen time.Time
+}
+
+var (
+	mu             sync.Mutex
+	limitedClients = make(map[string]*limitedClient)
+)
+
+func init() {
 	go func() {
 		for {
 			time.Sleep(time.Minute)
@@ -44,6 +48,9 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHand
 			mu.Unlock()
 		}
 	}()
+}
+
+func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
 	return func(next SessionHandler) http.HandlerFunc {
 		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			// Extract the IP address from the request.
@@ -74,6 +81,7 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHand
 			w.Header().Set("Access-Control-Allow-Origin", os.Getenv("APP_HOST_URL"))
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-TZ")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH")
+			w.Header().Set("Content-Security-Policy", "default-src 'self';")
 
 			if req.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)

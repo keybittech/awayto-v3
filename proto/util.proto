@@ -10,8 +10,10 @@ extend google.protobuf.MethodOptions {
   int32 cache_duration = 50001;
   bool load = 50002;
   int32 throttle = 50003;
-  string contentType = 50004;
+  string content_type = 50004;
   SiteRoles siteRole = 50005;
+  bool multipart_request = 50006;
+  bool multipart_response = 50007;
 }
 
 extend google.protobuf.MessageOptions {

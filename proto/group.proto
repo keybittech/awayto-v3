@@ -81,8 +81,7 @@ message IGroupRoleAuthAction {
 
 message IGroupRoleAuthActions {
   string id = 1;
-  bool fetch = 2;
-  repeated IGroupRoleAuthAction actions = 3;
+  repeated IGroupRoleAuthAction actions = 2;
 }
 
 message IGroupRoleActionState {
@@ -127,6 +126,7 @@ message PatchGroupResponse {
 
 message PatchGroupAssignmentsRequest {
   map<string, IAssignmentActions> assignments = 1 [(google.api.field_behavior) = REQUIRED];
+  string id = 2;
 }
 
 message PatchGroupAssignmentsResponse {

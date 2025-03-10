@@ -55,6 +55,7 @@ message IGroupUserProfile {
   bool locked = 10;
   bool active = 11;
   bool enabled = 12;
+  int32 row = 13;
 }
 
 message IGroupUser {
@@ -68,6 +69,7 @@ message IGroupUser {
   string roleName = 8;
   string createdOn = 9;
   IGroupUserProfile userProfile = 10;
+  int32 row = 11;
 }
 
 message IGroupUsers {

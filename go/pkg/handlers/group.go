@@ -1,14 +1,15 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"slices"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/google/uuid"
 )
@@ -208,33 +209,33 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 
 	json.Unmarshal(assignmentsBytes, &groupRoleActions)
 
-	for sgPath, assignmentSet := range data.GetAssignments() {
+	for sgPath, assignmentSet := range data.Assignments {
 
 		assignmentNames := []string{}
 		for _, assignSet := range assignmentSet.Actions {
-			assignmentNames = append(assignmentNames, assignSet.GetName())
+			assignmentNames = append(assignmentNames, assignSet.Name)
 		}
 
 		if sgRoleActions, ok := groupRoleActions[sgPath]; ok {
 
 			groupRoleActionNames := []string{}
 			for _, groupRoleActionSet := range sgRoleActions.Actions {
-				groupRoleActionNames = append(groupRoleActionNames, groupRoleActionSet.GetName())
+				groupRoleActionNames = append(groupRoleActionNames, groupRoleActionSet.Name)
 			}
 
 			deletions := []clients.KeycloakRole{}
 
 			for _, sgRoleActionSet := range sgRoleActions.Actions {
-				if !slices.Contains(assignmentNames, sgRoleActionSet.GetName()) {
+				if !slices.Contains(assignmentNames, sgRoleActionSet.Name) {
 					deletions = append(deletions, clients.KeycloakRole{
-						Id:   sgRoleActionSet.GetId(),
-						Name: sgRoleActionSet.GetName(),
+						Id:   sgRoleActionSet.Id,
+						Name: sgRoleActionSet.Name,
 					})
 				}
 			}
 
 			if len(deletions) > 0 {
-				err = h.Keycloak.DeleteRolesFromGroup(sgRoleActions.GetId(), deletions)
+				err = h.Keycloak.DeleteRolesFromGroup(sgRoleActions.Id, deletions)
 				if err != nil {
 					return nil, util.ErrCheck(err)
 				}
@@ -243,10 +244,10 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 			additions := []clients.KeycloakRole{}
 
 			for _, assignSet := range assignmentSet.Actions {
-				if !slices.Contains(groupRoleActionNames, assignSet.GetName()) {
+				if !slices.Contains(groupRoleActionNames, assignSet.Name) {
 					var roleId string
 					for _, appRole := range h.Keycloak.GetGroupAdminRoles() {
-						if appRole.Name == assignSet.GetName() {
+						if appRole.Name == assignSet.Name {
 							roleId = appRole.Id
 							break
 						}
@@ -254,14 +255,14 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 					if roleId != "" {
 						additions = append(additions, clients.KeycloakRole{
 							Id:   roleId,
-							Name: assignSet.GetName(),
+							Name: assignSet.Name,
 						})
 					}
 				}
 			}
 
 			if len(additions) > 0 {
-				h.Keycloak.AddRolesToGroup(sgRoleActions.GetId(), additions)
+				h.Keycloak.AddRolesToGroup(sgRoleActions.Id, additions)
 			}
 		}
 	}
@@ -280,6 +281,7 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 	}
 
 	assignments := make(map[string]*types.IGroupRoleAuthActions)
+	assignmentsWithoutId := make(map[string]*types.IGroupRoleAuthActions)
 
 	subgroups, err := h.Keycloak.GetGroupSubgroups(kcGroup.Id)
 	if err != nil {
@@ -287,22 +289,27 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 	}
 
 	for _, sg := range *subgroups {
+		graaWI := &types.IGroupRoleAuthActions{
+			Actions: []*types.IGroupRoleAuthAction{},
+		}
 		graa := &types.IGroupRoleAuthActions{
 			Id:      sg.Id,
-			Fetch:   false,
 			Actions: []*types.IGroupRoleAuthAction{},
 		}
 
 		sgRoles := h.Keycloak.GetGroupSiteRoles(sg.Id)
 
 		for _, sgRole := range sgRoles {
-			roleAction := &types.IGroupRoleAuthAction{
+			graaWI.Actions = append(graaWI.Actions, &types.IGroupRoleAuthAction{
+				Name: sgRole.Name,
+			})
+			graa.Actions = append(graa.Actions, &types.IGroupRoleAuthAction{
 				Id:   sgRole.Id,
 				Name: sgRole.Name,
-			}
-			graa.Actions = append(graa.Actions, roleAction)
+			})
 		}
 
+		assignmentsWithoutId[sg.Path] = graaWI
 		assignments[sg.Path] = graa
 	}
 
@@ -315,7 +322,7 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 
 	h.Redis.Client().Set(req.Context(), "group_role_assignments:"+session.GroupId, assignmentsBytes, defaultDuration)
 
-	return &types.GetGroupAssignmentsResponse{Assignments: assignments}, nil
+	return &types.GetGroupAssignmentsResponse{Assignments: assignmentsWithoutId}, nil
 }
 
 func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupResponse, error) {

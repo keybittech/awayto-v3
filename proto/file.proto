@@ -15,6 +15,7 @@ service FileService {
       body: "*"
     };
     option (throttle) = 1;
+    option (multipart_request) = true;
   }
   
   rpc PatchFileContents(PatchFileContentsRequest) returns (PatchFileContentsResponse) {
@@ -29,7 +30,8 @@ service FileService {
     option (google.api.http) = {
       get: "/v1/files/content/{fileId}"
     };
-    option (cache) = SKIP; 
+    option (cache) = SKIP;
+    option (multipart_response) = true;
   }
   
   rpc PostFile(PostFileRequest) returns (PostFileResponse) {
