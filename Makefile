@@ -504,7 +504,7 @@ docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
 .PHONY: host_db_backup
 host_db_backup:
 	@mkdir -p "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
-	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_backup"
+	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo make docker_db_backup"
 	rsync ${RSYNC_FLAGS} "$(H_SIGN):$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
 
 .PHONY: host_db_backup_restore
@@ -513,7 +513,7 @@ host_db_backup_restore:
 
 .PHONY: host_db_upgrade_op
 host_db_upgrade_op:
-	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo ENVFILE=$(H_ETC_DIR)/.env make docker_db_upgrade"
+	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo make docker_db_upgrade"
 
 .PHONY: host_db_upgrade
 host_db_upgrade: host_service_stop host_db_upgrade_op host_service_start
