@@ -52,7 +52,10 @@ export default defineConfig(_ => {
         filter: /\.(js|mjs|json|css|html)$/i,
         threshold: 1024,
       })
-    ]
+    ],
+    optimizeDeps: {
+      include: ['@emotion/styled'],
+    },
   };
 });
 

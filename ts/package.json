@@ -63,7 +63,7 @@
   },
   "scripts": {
     "start": "vite",
-    "build": "INLINE_RUNTIME_CHUNK=false vite build"
+    "build": "vite build"
   },
   "browserslist": {
     "production": [
