@@ -6,6 +6,7 @@ import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleC
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
 
 export function GroupScheduleSelectionProvider({ children }: IComponent): React.JSX.Element {
+  console.log('group schedule selection provider load');
 
   const { selectGroupSchedule: { item: groupSchedule } } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
@@ -22,11 +23,6 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
   const selectedDateFormat = selectedDate?.format('YYYY-MM-DD');
 
   const dateSlots = dateSlotsRequest?.groupScheduleDateSlots || [];
-
-  if (dateSlots.length && !selectedDate) {
-    setSelectedDate(dayjs(dateSlots[0].startDate));
-    setSelectedTime(dateSlots[0].startTime);
-  }
 
   const selectedSlots = useMemo(() => {
     let ds = [];
@@ -66,13 +62,15 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
   }, [startOfMonth, groupSchedule?.schedule]);
 
   useEffect(() => {
-    if (selectedTime) {
+    if (selectedDateFormat && selectedTime && selectedSlots.length) {
       const slot = selectedSlots.find(s => s.startTime == selectedTime);
       setQuote(!slot ? {} : {
         scheduleBracketSlotId: slot.scheduleBracketSlotId,
         startTime: slot.startTime,
         slotDate: selectedDateFormat,
       });
+    } else if (quote.scheduleBracketSlotId) {
+      setQuote({});
     }
   }, [selectedDateFormat, selectedTime, selectedSlots]);
 

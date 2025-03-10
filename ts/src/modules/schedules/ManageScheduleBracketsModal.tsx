@@ -40,6 +40,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
   } = useContext(GroupContext) as GroupContextType;
 
   const {
+    getGroupUserSchedules,
     selectGroupSchedule: {
       item: groupSchedule,
       comp: GroupScheduleSelect
@@ -57,7 +58,6 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
 
   const [postSchedule] = siteApi.useScheduleServicePostScheduleMutation();
   const [postScheduleBrackets] = siteApi.useScheduleServicePostScheduleBracketsMutation();
-  const [getGroupUserSchedules] = siteApi.useLazyGroupUserScheduleServiceGetGroupUserSchedulesQuery();
 
   const [bracket, setBracket] = useState({ ...bracketSchema, services: {}, slots: {} } as IScheduleBracket);
 
@@ -119,7 +119,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
           }).unwrap().catch(console.error);
         }
 
-        await getGroupUserSchedules({ groupScheduleId: groupSchedule.id }).unwrap();
+        await getGroupUserSchedules.refetch().unwrap();
 
         setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule?.name, snackType: 'info' });
         if (closeModal) {

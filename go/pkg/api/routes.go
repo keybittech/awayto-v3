@@ -54,7 +54,7 @@ func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescript
 		ignoreFields := slices.Concat([]string{"state", "sizeCache", "unknownFields"}, handlerOpts.NoLogFields)
 
 		mux.HandleFunc(handlerOpts.Pattern,
-			a.LimitMiddleware(2, 6)(
+			a.LimitMiddleware(2, 20)(
 				a.ValidateTokenMiddleware(
 					a.GroupInfoMiddleware(
 						a.SiteRoleCheckMiddleware(handlerOpts)(

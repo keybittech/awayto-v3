@@ -233,15 +233,6 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE POLICY table_update ON dbtable_schema.group_schedules FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_delete ON dbtable_schema.group_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
-  ALTER TABLE dbtable_schema.schedules ENABLE ROW LEVEL SECURITY;
-  CREATE POLICY table_select ON dbtable_schema.schedules FOR SELECT TO $PG_WORKER USING (
-    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.group_schedules gs WHERE gs.schedule_id = dbtable_schema.schedules.id AND gs.$HAS_GROUP));
-  CREATE POLICY table_insert ON dbtable_schema.schedules FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
-  CREATE POLICY table_update ON dbtable_schema.schedules FOR UPDATE TO $PG_WORKER USING (
-    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.group_schedules gs WHERE gs.schedule_id = dbtable_schema.schedules.id AND gs.$HAS_GROUP));
-  CREATE POLICY table_delete ON dbtable_schema.schedules FOR DELETE TO $PG_WORKER USING (
-    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.group_schedules gs WHERE gs.schedule_id = dbtable_schema.schedules.id AND gs.$HAS_GROUP));
-
   CREATE TABLE dbtable_schema.group_user_schedules ( -- user schedules based off the masters
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
     group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
@@ -258,7 +249,30 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   CREATE POLICY table_select ON dbtable_schema.group_user_schedules FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
   CREATE POLICY table_insert ON dbtable_schema.group_user_schedules FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR AND $HAS_GROUP);
   CREATE POLICY table_update ON dbtable_schema.group_user_schedules FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
-  CREATE POLICY table_delete ON dbtable_schema.group_user_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
+  CREATE POLICY table_delete ON dbtable_schema.group_user_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP)
+
+  -- putting the schedule rules here, after group_schedules and group_user_schedules
+  -- allows for is_creator (regular users and group db users) to edit their own schedules
+  -- and then group_schedules/group_user_schedules relationships allow group member access
+  ALTER TABLE dbtable_schema.schedules ENABLE ROW LEVEL SECURITY;
+  CREATE POLICY table_select ON dbtable_schema.schedules FOR SELECT TO $PG_WORKER USING (
+    $IS_CREATOR
+    -- group members can act on master schedules
+    OR EXISTS(SELECT 1 FROM dbtable_schema.group_schedules gs WHERE gs.schedule_id = dbtable_schema.schedules.id AND gs.$HAS_GROUP)
+    -- group members can act on other user schedules
+    OR EXISTS(SELECT 1 FROM dbtable_schema.group_user_schedules gus WHERE gus.user_schedule_id = dbtable_schema.schedules.id AND gus.$HAS_GROUP)
+  );
+  CREATE POLICY table_insert ON dbtable_schema.schedules FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+  CREATE POLICY table_update ON dbtable_schema.schedules FOR UPDATE TO $PG_WORKER USING (
+    $IS_CREATOR
+    OR EXISTS(SELECT 1 FROM dbtable_schema.group_schedules gs WHERE gs.schedule_id = dbtable_schema.schedules.id AND gs.$HAS_GROUP)
+    OR EXISTS(SELECT 1 FROM dbtable_schema.group_user_schedules gus WHERE gus.user_schedule_id = dbtable_schema.schedules.id AND gus.$HAS_GROUP)
+  );
+  CREATE POLICY table_delete ON dbtable_schema.schedules FOR DELETE TO $PG_WORKER USING (
+    $IS_CREATOR
+    OR EXISTS(SELECT 1 FROM dbtable_schema.group_schedules gs WHERE gs.schedule_id = dbtable_schema.schedules.id AND gs.$HAS_GROUP)
+    OR EXISTS(SELECT 1 FROM dbtable_schema.group_user_schedules gus WHERE gus.user_schedule_id = dbtable_schema.schedules.id AND gus.$HAS_GROUP)
+  );
 
   CREATE TABLE dbtable_schema.schedule_brackets (
     id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

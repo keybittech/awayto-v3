@@ -5,6 +5,7 @@ import { siteApi, useSelectOne, IGroup } from 'awayto/hooks';
 import GroupContext, { GroupContextType } from './GroupContext';
 
 export function GroupProvider({ children }: IComponent): React.JSX.Element {
+  console.log('group provider load');
 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
@@ -12,10 +13,12 @@ export function GroupProvider({ children }: IComponent): React.JSX.Element {
 
   const { item: group, comp: GroupSelect } = useSelectOne<IGroup>('Groups', { data: groups });
 
-  const { data: groupSchedulesRequest } = siteApi.useGroupScheduleServiceGetGroupSchedulesQuery();
-  const { data: groupServicesRequest } = siteApi.useGroupServiceServiceGetGroupServicesQuery();
-  const { data: groupFormsRequest } = siteApi.useGroupFormServiceGetGroupFormsQuery();
-  const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
+  const { data: groupSchedulesRequest, isLoading: l1 } = siteApi.useGroupScheduleServiceGetGroupSchedulesQuery();
+  const { data: groupServicesRequest, isLoading: l2 } = siteApi.useGroupServiceServiceGetGroupServicesQuery();
+  const { data: groupFormsRequest, isLoading: l3 } = siteApi.useGroupFormServiceGetGroupFormsQuery();
+  const { data: groupRolesRequest, isLoading: l4 } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
+
+  const loading = l1 || l2 || l3 || l4;
 
   const groupContext: GroupContextType = {
     groups,
@@ -27,9 +30,9 @@ export function GroupProvider({ children }: IComponent): React.JSX.Element {
     GroupSelect
   };
 
-  return useMemo(() => <GroupContext.Provider value={groupContext}>
+  return useMemo(() => loading ? <></> : <GroupContext.Provider value={groupContext}>
     {children}
-  </GroupContext.Provider>, [groupContext]);
+  </GroupContext.Provider>, [loading, groupContext]);
 }
 
 export default GroupProvider;

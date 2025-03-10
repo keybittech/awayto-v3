@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
@@ -161,13 +162,61 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		return nil, util.ErrCheck(err)
 	}
 
-	for _, groupScheduleId := range strings.Split(data.GetGroupScheduleIds(), ",") {
-		_, err = tx.Exec(`
+	for _, groupScheduleTableId := range strings.Split(data.GetGroupScheduleIds(), ",") {
+		var groupScheduleId string
+		err = tx.QueryRow(`
 			DELETE FROM dbtable_schema.group_schedules
-			WHERE group_id = $1 AND id = $2
-		`, session.GroupId, groupScheduleId)
+			WHERE id = $1
+			RETURNING schedule_id
+		`, groupScheduleTableId).Scan(&groupScheduleId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
+		}
+
+		var userScheduleIds sql.NullString
+		err = tx.QueryRow(`
+			SELECT STRING_AGG(user_schedule_id::TEXT, ',')
+			FROM dbtable_schema.group_user_schedules
+			WHERE group_schedule_id = $1
+		`, groupScheduleId).Scan(&userScheduleIds)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		if userScheduleIds.Valid {
+			_, err = h.DeleteSchedule(w, req, &types.DeleteScheduleRequest{Ids: userScheduleIds.String}, session, tx)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+		}
+
+		var userScheduleCount int64
+		err = tx.QueryRow(`
+			SELECT COUNT(user_schedule_id)
+			FROM dbtable_schema.group_user_schedules
+			WHERE group_schedule_id = $1
+		`, groupScheduleId).Scan(&userScheduleCount)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		if userScheduleCount > 0 {
+			_, err = tx.Exec(`
+				UPDATE dbtable_schema.schedules
+				SET enabled = false
+				WHERE id = $1
+			`, groupScheduleId)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+		} else {
+			_, err = tx.Exec(`
+			DELETE FROM dbtable_schema.schedules
+			WHERE dbtable_schema.schedules.id = $1
+		`, groupScheduleId)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
 		}
 	}
 
@@ -176,6 +225,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		return nil, util.ErrCheck(err)
 	}
 
+	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules")
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
 
 	return &types.DeleteGroupScheduleResponse{Success: true}, nil

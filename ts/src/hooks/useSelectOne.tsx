@@ -24,6 +24,8 @@ export function useSelectOne<T extends Partial<ILookup>>(label: string, { data: 
           setItemId(firstItem.id);
         }
       }
+    } else {
+      setItemId('');
     }
   }, [items, itemId]);
 

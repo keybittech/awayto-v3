@@ -6,6 +6,7 @@ import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleC
 import GroupScheduleSelectionProvider from './GroupScheduleSelectionProvider';
 
 export function GroupScheduleProvider({ children }: IComponent): React.JSX.Element {
+  console.log('group schedule provider load');
 
   const getGroupSchedules = siteApi.useGroupScheduleServiceGetGroupSchedulesQuery();
   const getGroupUserScheduleStubs = siteApi.useGroupUserScheduleServiceGetGroupUserScheduleStubsQuery();
@@ -18,6 +19,8 @@ export function GroupScheduleProvider({ children }: IComponent): React.JSX.Eleme
     { groupScheduleId: selectGroupSchedule.item?.schedule?.id || '' },
     { skip: !selectGroupSchedule.item?.schedule?.id }
   );
+
+  const loading = getGroupSchedules.isLoading || getGroupUserScheduleStubs.isLoading || getGroupUserSchedules.isLoading;
 
   const selectGroupScheduleService = useSelectOne('Service', {
     data: getGroupUserSchedules.data?.groupUserSchedules?.flatMap(gus => Object.values(gus.brackets || {}).flatMap(b => Object.values(b.services || {})))
@@ -36,13 +39,11 @@ export function GroupScheduleProvider({ children }: IComponent): React.JSX.Eleme
     selectGroupScheduleServiceTier
   };
 
-  return useMemo(() => <GroupScheduleContext.Provider value={groupScheduleContext}>
+  return useMemo(() => loading ? <></> : <GroupScheduleContext.Provider value={groupScheduleContext}>
     <GroupScheduleSelectionProvider>
       {children}
     </GroupScheduleSelectionProvider>
-  </GroupScheduleContext.Provider>,
-    [GroupScheduleSelectionProvider, groupScheduleContext]
-  );
+  </GroupScheduleContext.Provider>, [loading, groupScheduleContext]);
 }
 
 export default GroupScheduleProvider;

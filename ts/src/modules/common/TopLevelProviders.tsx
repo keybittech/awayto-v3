@@ -15,7 +15,7 @@ export function TopLevelProviders({ children }: IComponent): React.JSX.Element {
         </GroupProvider>
       </BookingProvider>
     </WebSocketProvider>
-  </Suspense>
+  </Suspense>;
 }
 
 export default TopLevelProviders;

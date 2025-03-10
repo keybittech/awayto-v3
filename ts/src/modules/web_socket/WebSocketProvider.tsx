@@ -77,6 +77,7 @@ function parseMessage(eventData: string) {
 }
 
 function WebSocketProvider({ children }: IComponent): React.JSX.Element {
+  console.log('websocket provider load');
 
   const [getTicket] = siteApi.useLazySockServiceGetSocketTicketQuery();
   const [getUserProfileDetails] = siteApi.useLazyUserProfileServiceGetUserProfileDetailsQuery();

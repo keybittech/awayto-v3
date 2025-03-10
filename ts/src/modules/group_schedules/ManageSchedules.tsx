@@ -1,4 +1,4 @@
-import React, { useState, useMemo, Suspense } from 'react';
+import React, { useState, useMemo, Suspense, useContext } from 'react';
 
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
@@ -16,6 +16,7 @@ import { useGrid, siteApi, useUtil, useStyles, dayjs, IGroupSchedule, targets } 
 
 import ManageSchedulesModal from './ManageSchedulesModal';
 import ManageScheduleStubs from './ManageScheduleStubs';
+import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 
 // This is how group owners interact with the schedule
 export function ManageSchedules(props: IComponent): React.JSX.Element {
@@ -25,7 +26,14 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
 
   const [deleteGroupSchedule] = siteApi.useGroupScheduleServiceDeleteGroupScheduleMutation();
 
-  const { data: groupSchedulesRequest, refetch: getGroupSchedules } = siteApi.useGroupScheduleServiceGetGroupSchedulesQuery();
+  const { refetch: getSchedules } = siteApi.useScheduleServiceGetSchedulesQuery();
+
+  const {
+    getGroupSchedules: {
+      data: groupSchedulesRequest,
+      refetch: getGroupSchedules
+    },
+  } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
   const [groupSchedule, setGroupSchedule] = useState<IGroupSchedule>();
   const [selected, setSelected] = useState<string[]>([]);
@@ -57,10 +65,11 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
           onClick={() => {
             openConfirm({
               isConfirming: true,
-              confirmEffect: 'Are you sure you want to delete these schedules? This cannot be undone.',
+              confirmEffect: 'WARNING! Are you sure you want to delete these master schedules? All related user schedules will also be deleted. This cannot be undone.',
               confirmAction: async () => {
                 await deleteGroupSchedule({ groupScheduleIds: selected.join(',') }).unwrap();
-                void getGroupSchedules();
+                await getGroupSchedules().unwrap();
+                await getSchedules().unwrap();
                 setSelected([]);
               }
             });

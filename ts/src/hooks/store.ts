@@ -10,6 +10,14 @@ import { validSlice, initialState as initialValidState } from './valid';
 import { authSlice } from './auth';
 import { customUtilMiddleware, listenerMiddleware } from './middleware';
 
+// Here we can undo any tags done by the rtk openapi generation to prevent unnecessary refetching
+siteApi.enhanceEndpoints({
+  endpoints: {
+    groupScheduleServiceGetGroupScheduleByDate: {
+      providesTags: []
+    }
+  }
+});
 
 export const store = configureStore({
   preloadedState: {

@@ -1,12 +1,13 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupUserScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupUserScheduleResponse, error) {
@@ -23,7 +24,6 @@ func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Reques
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/user_schedules")
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/user_schedules/"+data.GetGroupScheduleId())
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/user_schedules_stubs")
 
@@ -150,7 +150,6 @@ func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(w http.ResponseWriter
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/user_schedules")
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/user_schedules_stubs")
 
 	return &types.DeleteGroupUserScheduleByUserScheduleIdResponse{Success: true}, nil

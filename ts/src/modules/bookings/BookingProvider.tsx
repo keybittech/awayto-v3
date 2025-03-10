@@ -5,6 +5,7 @@ import { siteApi, IBooking } from 'awayto/hooks';
 import BookingContext, { BookingContextType } from "./BookingContext";
 
 export function BookingProvider({ children }: IComponent): React.JSX.Element {
+  console.log('booking provider load');
 
   const [bookingValuesChanged, setBookingValuesChanged] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState<IBooking[]>([]);
