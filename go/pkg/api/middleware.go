@@ -82,7 +82,7 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next SessionHand
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-TZ")
 			w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH")
 			// hashes in order: index script tag, step1, step2, login-status-iframe
-			w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'sha256-y3T0aZcl0paCwkBS7eixK9c9aAb8RnLvrOw1UL86KwU=' 'sha256-/hguw44jn3mbRUnnDZRZKsKvlt3Z/0oE4CfEd1Ab10A=' 'sha256-Lq61U4jJNEGu4nXf3jYlJDSHho7XYSQQWaAQG1MyUko=' 'sha256-ghsdywc9xYxt3bFwNU4smqbJZ8ABQREKstVygrjrPVo='; style-src 'self' 'sha256-R0HXUylstQsXZ10jhvkunho/1G2Vyt8PJ58JlgKVIgc=';")
+			w.Header().Set("Content-Security-Policy", "default-src 'self'; script-src 'self' 'sha256-y3T0aZcl0paCwkBS7eixK9c9aAb8RnLvrOw1UL86KwU=' 'sha256-/hguw44jn3mbRUnnDZRZKsKvlt3Z/0oE4CfEd1Ab10A=' 'sha256-Lq61U4jJNEGu4nXf3jYlJDSHho7XYSQQWaAQG1MyUko=' 'sha256-ghsdywc9xYxt3bFwNU4smqbJZ8ABQREKstVygrjrPVo='")
 
 			if req.Method == "OPTIONS" {
 				w.WriteHeader(http.StatusOK)
