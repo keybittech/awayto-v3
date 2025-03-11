@@ -37,6 +37,7 @@ export function ManageServices(_: IComponent): React.JSX.Element {
       <Tooltip key={'manage_service'} title="Edit">
         <Button
           {...targets(`manage services edit`, `edit the currently selected service`)}
+          color="info"
           onClick={() => {
             const gs = groupServicesRequest?.groupServices.find(gs => gs.serviceId === selected[0]);
             if (gs) {
@@ -57,6 +58,7 @@ export function ManageServices(_: IComponent): React.JSX.Element {
       <Tooltip key={'delete_service'} title="Delete">
         <Button
           {...targets(`manage services delete`, `delete the currently selected service or services`)}
+          color="error"
           onClick={() => {
             openConfirm({
               isConfirming: true,
@@ -91,6 +93,7 @@ export function ManageServices(_: IComponent): React.JSX.Element {
       <Tooltip key={'create_service'} title="Create">
         <Button
           {...targets(`manage services create`, `create a new service`)}
+          color="info"
           onClick={() => {
             setGroupService({});
             setDialog('manage_service');

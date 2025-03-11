@@ -9,10 +9,11 @@ import Grid from '@mui/material/Grid';
 
 import CreateIcon from '@mui/icons-material/Create';
 import DeleteIcon from '@mui/icons-material/Delete';
+import MoreTimeIcon from '@mui/icons-material/MoreTime';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useGrid, useUtil, siteApi, dayjs, plural, ISchedule, targets } from 'awayto/hooks';
+import { useGrid, useUtil, siteApi, dayjs, plural, ISchedule, targets, useStyles } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from '../groups/GroupContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -22,6 +23,7 @@ import ManageScheduleBracketsModal from './ManageScheduleBracketsModal';
 
 export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
 
+  const classes = useStyles();
   const { setSnack, openConfirm } = useUtil();
 
   const {
@@ -41,7 +43,6 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
     },
   } = useContext(GroupScheduleContext) as GroupScheduleContextType;
 
-
   const [deleteGroupUserScheduleByUserScheduleId] = siteApi.useGroupUserScheduleServiceDeleteGroupUserScheduleByUserScheduleIdMutation();
   const [deleteSchedule] = siteApi.useScheduleServiceDeleteScheduleMutation();
 
@@ -53,13 +54,17 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
 
   const [getScheduleById, { isFetching }] = siteApi.useLazyScheduleServiceGetScheduleByIdQuery();
 
+  const userScheduleNames = useMemo(() => schedulesRequest?.schedules?.map(s => s.name), [schedulesRequest?.schedules]);
+  const unusedGroupSchedules = useMemo(() => groupSchedules.filter(x => !userScheduleNames?.includes(x.name)), [groupSchedules, userScheduleNames]);
+
   const actions = useMemo(() => {
     const { length } = selected;
     const acts = length == 1 ? [
       <Tooltip key={'manage_schedule'} title="Edit">
-        <IconButton
+        <Button
           {...targets(`manage schedule brackets edit`, `edit the currently selected schedule`)}
           key={'manage_schedule'}
+          color="info"
           onClick={() => {
             const sched = schedulesRequest?.schedules.find(sc => sc.id == selected[0])
             if (sched?.id && !isFetching) {
@@ -71,16 +76,18 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
             }
           }}
         >
-          <CreateIcon />
-        </IconButton>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
+          <CreateIcon sx={classes.variableButtonIcon} />
+        </Button>
       </Tooltip>
     ] : [];
 
     return [
       ...acts,
       <Tooltip key={'delete_schedule'} title="Delete">
-        <IconButton
+        <Button
           {...targets(`manage schedule brackets delete`, `delete the currently selected schedule or schedules`)}
+          color="error"
           onClick={() => {
             openConfirm({
               isConfirming: true,
@@ -101,8 +108,9 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
             });
           }}
         >
-          <DeleteIcon />
-        </IconButton>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
+          <DeleteIcon sx={classes.variableButtonIcon} />
+        </Button>
       </Tooltip>
     ]
   }, [selected, schedulesRequest?.schedules, isFetching]);
@@ -120,18 +128,23 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
       <Grid container size="grow" alignItems="center">
         <Typography sx={{ textTransform: 'uppercase' }}>Schedules:</Typography>
         <Grid size="grow">
-          <Button
-            {...targets(`manage schedule brackets create`, `create a new personal schedule`)}
-            color="info"
-            onClick={() => {
-              if (groupSchedules?.length) {
-                setSchedule(undefined);
-                setDialog('manage_schedule');
-              } else {
-                setSnack({ snackType: 'warning', snackOn: 'There are no available master schedules.' })
-              }
-            }}
-          >Create</Button>
+          <Tooltip key={'create_schedule'} title="Create">
+            <Button
+              {...targets(`manage schedule brackets create`, `create a new personal schedule`)}
+              color="info"
+              onClick={() => {
+                if (unusedGroupSchedules?.length) {
+                  setSchedule(undefined);
+                  setDialog('manage_schedule');
+                } else {
+                  setSnack({ snackType: 'info', snackOn: 'There are no available group schedules to create a new personal schedule. To edit an existing personal schedule, click the checkbox below, then click the pencil icon.' })
+                }
+              }}
+            >
+              <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
+              <MoreTimeIcon sx={classes.variableButtonIcon} />
+            </Button>
+          </Tooltip>
         </Grid>
         {!!selected.length && <Grid sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Grid>}
       </Grid>
@@ -141,6 +154,7 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
   return <>
     <Dialog fullScreen open={dialog === 'manage_schedule'}>
       <ManageScheduleBracketsModal
+        groupSchedules={unusedGroupSchedules}
         editSchedule={schedule}
         closeModal={(shouldReload: boolean) => {
           setDialog('');

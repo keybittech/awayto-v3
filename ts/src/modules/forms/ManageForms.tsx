@@ -32,6 +32,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
       <Tooltip key={'manage_form'} title="Edit">
         <Button
           {...targets(`manage forms edit`, `edit the selected form`)}
+          color="info"
           onClick={() => {
             setGroupForm(groupFormsRequest?.groupForms?.find(gf => gf.formId === selected[0]));
             setDialog('manage_form');
@@ -49,6 +50,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
       <Tooltip key={'delete_group'} title="Delete">
         <Button
           {...targets(`manage forms delete`, `delete the selected form or forms`)}
+          color="error"
           onClick={() => {
             if (selected.length) {
               deleteGroupForm({ ids: selected.join(',') }).unwrap().then(() => {
@@ -78,6 +80,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
       <Tooltip key={'manage_form'} title="Create">
         <Button
           {...targets(`manage forms create`, `create a new form`)}
+          color="info"
           onClick={() => {
             setGroupForm(undefined);
             setDialog('manage_form')

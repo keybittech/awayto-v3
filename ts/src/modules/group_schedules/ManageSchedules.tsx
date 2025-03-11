@@ -45,13 +45,14 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
       <Tooltip key={'manage_schedule'} title="Edit">
         <Button
           {...targets(`manage schedules edit`, `edit the currently selected schedule`)}
+          color="info"
           onClick={() => {
             setGroupSchedule(groupSchedulesRequest?.groupSchedules?.find(gs => gs.id === selected[0]));
             setDialog('manage_schedule');
             setSelected([]);
           }}
         >
-          <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
         </Button>
       </Tooltip>
@@ -62,6 +63,7 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
       <Tooltip key={'delete_schedule'} title="Delete">
         <Button
           {...targets(`manage schedules delete`, `delete the currently selected schedule or schedules`)}
+          color="error"
           onClick={() => {
             openConfirm({
               isConfirming: true,
@@ -75,7 +77,7 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
             });
           }}
         >
-          <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
           <DeleteIcon sx={classes.variableButtonIcon} />
         </Button>
       </Tooltip>
@@ -95,12 +97,13 @@ export function ManageSchedules(props: IComponent): React.JSX.Element {
       <Tooltip key={'manage_role'} title="Create">
         <Button
           {...targets(`manage schedules create`, `create a new master group schedule`)}
+          color="info"
           onClick={() => {
             setGroupSchedule(undefined);
             setDialog('manage_schedule')
           }}
         >
-          <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
           <MoreTimeIcon sx={classes.variableButtonIcon} />
         </Button>
       </Tooltip>

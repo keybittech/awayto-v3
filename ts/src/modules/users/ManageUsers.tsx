@@ -2,18 +2,21 @@ import React, { useState, useMemo, Suspense } from 'react';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
-import IconButton from '@mui/material/IconButton';
+import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
+import Tooltip from '@mui/material/Tooltip';
 
 import CreateIcon from '@mui/icons-material/Create';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { siteApi, useGrid, dayjs, IGroupUser } from 'awayto/hooks';
+import { siteApi, useGrid, dayjs, IGroupUser, useStyles, targets } from 'awayto/hooks';
 
 import ManageUserModal from './ManageUserModal';
 
 export function ManageUsers(props: IComponent): React.JSX.Element {
+
+  const classes = useStyles();
 
   const { data: groupUsersRequest, refetch: getGroupUsers } = siteApi.useGroupUsersServiceGetGroupUsersQuery();
 
@@ -24,16 +27,25 @@ export function ManageUsers(props: IComponent): React.JSX.Element {
   const actions = useMemo(() => {
     const { length } = selected;
     const actions = length == 1 ? [
-      <IconButton key={'manage_user'} onClick={() => {
-        const sel = groupUsersRequest?.groupUsers?.find(gu => gu.id === selected[0]);
-        if (sel) {
-          setUser(sel);
-          setDialog('manage_user');
-          setSelected([]);
-        }
-      }}>
-        <CreateIcon />
-      </IconButton>
+      <Tooltip key={'manage_user'} title="Edit">
+        <Button
+          {...targets(`manage users edit`, `edit a user's group information`)}
+          color="info"
+          key={'manage_user'}
+          onClick={() => {
+            const sel = groupUsersRequest?.groupUsers?.find(gu => gu.id === selected[0]);
+            if (sel) {
+              setUser(sel);
+              setDialog('manage_user');
+              setSelected([]);
+            }
+          }}
+        >
+
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
+          <CreateIcon sx={classes.variableButtonIcon} />
+        </Button>
+      </Tooltip>
     ] : [];
 
     return [

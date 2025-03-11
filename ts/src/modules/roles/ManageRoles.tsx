@@ -40,6 +40,7 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
       <Tooltip key={'manage_role'} title="Edit">
         <Button
           {...targets(`manage roles edit`, `edit the currently selected role`)}
+          color="info"
           onClick={() => {
             const groupRole = roleSet.find(r => r.id === selected[0]);
             setEditRole(groupRole);
@@ -47,7 +48,7 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
             setSelected([]);
           }}
         >
-          <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
         </Button>
       </Tooltip>
@@ -58,6 +59,7 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
       <Tooltip key={'delete_role'} title="Delete">
         <Button
           {...targets(`manage roles delete`, `delete the currently selected role or roles`)}
+          color="error"
           onClick={() => {
             async function go() {
               const selectedGroupRoleNames = groupRolesRequest?.groupRoles.
@@ -85,7 +87,7 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
             void go();
           }}
         >
-          <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Delete</Typography>
           <DeleteIcon sx={classes.variableButtonIcon} />
         </Button>
       </Tooltip>
@@ -106,12 +108,13 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
       <Tooltip key={'manage_role'} title="Create">
         <Button
           {...targets(`manage roles create`, `create a new group role`)}
+          color="info"
           onClick={() => {
             setEditRole(undefined);
             setDialog('manage_role')
           }}
         >
-          <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
+          <Typography sx={{ display: { xs: 'none', md: 'flex' } }}>Create</Typography>
           <GroupAddIcon sx={classes.variableButtonIcon} />
         </Button>
       </Tooltip>

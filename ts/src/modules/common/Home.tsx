@@ -38,7 +38,7 @@ export function Home(props: IComponent): React.JSX.Element {
         }}
         onClick={() => navigate(rd.resource)}
       >
-        {rd.description}
+        {rd.name}
       </Button>;
     });
   }, [profileRequest?.userProfile.availableUserGroupRoles]);

@@ -1,4 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
+import { redirect, useNavigate } from 'react-router';
 
 import Alert from '@mui/material/Alert';
 import Grid from '@mui/material/Grid';
@@ -13,7 +14,7 @@ import CardActionArea from '@mui/material/CardActionArea';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
 
-import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -32,6 +33,8 @@ const Transition = React.forwardRef(function Transition(
 });
 
 export function RequestQuote(_: IComponent): React.JSX.Element {
+
+  const navigate = useNavigate();
 
   const { setSnack, openConfirm } = useUtil();
   const [postQuote] = siteApi.useQuoteServicePostQuoteMutation();
@@ -80,7 +83,19 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   }, []);
 
   if (!groupSchedule?.id) {
-    return <Alert severity="info">
+    return <Alert
+      severity="info"
+      action={
+        <Button
+          {...targets(`request quote create group schedule`, `go to the group schedule page to create a group master schedule`)}
+          variant="text"
+          color="info"
+          onClick={() => navigate('/group/manage/schedules')}
+        >
+          Create a master schedule
+        </Button>
+      }
+    >
       There are no group schedules, or they are currently paused.
     </Alert>
   }
@@ -91,7 +106,19 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         title="Service Request"
         subheader="Request services from a group. Some fields may be required depending on the service."
       />
-      {!groupUserSchedulesRequest?.groupUserSchedules ? <Alert sx={{ marginTop: '16px' }} severity="info">
+      {!groupUserSchedulesRequest?.groupUserSchedules ? <Alert
+        severity="info"
+        action={
+          <Button
+            {...targets(`request quote create personal schedule`, `go to the personal schedule page to create a personal schedule`)}
+            variant="text"
+            color="info"
+            onClick={() => navigate('/schedule')}
+          >
+            Create your schedule
+          </Button>
+        }
+      >
         There are no active user schedules, or they are currently paused.
       </Alert> : <>
         <CardContent>
@@ -131,41 +158,44 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
             </Grid>}
           </Grid>
         </CardContent>
-        <CardActionArea onClick={() => {
-          if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
-            setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
-            return;
-          }
-
-          openConfirm({
-            isConfirming: true,
-            confirmEffect: 'Request service on ' + bookingFormat(quote.slotDate, quote.startTime) +
-              ' for ' + groupScheduleService?.name + ': ' + groupScheduleServiceTier.name,
-            confirmAction: () => {
-              postQuote({
-                postQuoteRequest: {
-                  slotDate: quote.slotDate!,
-                  scheduleBracketSlotId: quote.scheduleBracketSlotId!,
-                  serviceTierId: groupScheduleServiceTier.id!,
-                  serviceFormVersionSubmission: (serviceForm ? {
-                    formVersionId: serviceForm.version.id,
-                    submission: serviceForm.version.submission
-                  } : {}) as IFormVersionSubmission,
-                  tierFormVersionSubmission: (tierForm ? {
-                    formVersionId: tierForm.version.id,
-                    submission: tierForm.version.submission
-                  } : {}) as IFormVersionSubmission,
-                  files
-                }
-              }).unwrap().then(() => {
-                setSnack({ snackType: 'success', snackOn: 'You\'re all set!' });
-                setSelectedDate(undefined);
-                setSelectedTime(undefined);
-              }).catch(console.error);
+        <CardActionArea
+          {...targets(`request quote submit request`, `submit your completed request for service`)}
+          onClick={() => {
+            if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
+              setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
+              return;
             }
-          });
 
-        }}>
+            openConfirm({
+              isConfirming: true,
+              confirmEffect: 'Request service on ' + bookingFormat(quote.slotDate, quote.startTime) +
+                ' for ' + groupScheduleService?.name + ': ' + groupScheduleServiceTier.name,
+              confirmAction: () => {
+                postQuote({
+                  postQuoteRequest: {
+                    slotDate: quote.slotDate!,
+                    scheduleBracketSlotId: quote.scheduleBracketSlotId!,
+                    serviceTierId: groupScheduleServiceTier.id!,
+                    serviceFormVersionSubmission: (serviceForm ? {
+                      formVersionId: serviceForm.version.id,
+                      submission: serviceForm.version.submission
+                    } : {}) as IFormVersionSubmission,
+                    tierFormVersionSubmission: (tierForm ? {
+                      formVersionId: tierForm.version.id,
+                      submission: tierForm.version.submission
+                    } : {}) as IFormVersionSubmission,
+                    files
+                  }
+                }).unwrap().then(() => {
+                  setSnack({ snackType: 'success', snackOn: 'You\'re all set!' });
+                  setSelectedDate(undefined);
+                  setSelectedTime(undefined);
+                }).catch(console.error);
+              }
+            });
+
+          }}
+        >
           <Box m={2} sx={{ display: 'flex' }}>
             <Typography color="secondary" variant="button">Submit Request</Typography>
           </Box>

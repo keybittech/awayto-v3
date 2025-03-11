@@ -9,7 +9,7 @@ import Checkbox from '@mui/material/Checkbox';
 
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 
-import { useGrid, siteApi, useUtil, SiteRoles, SiteRoleDetails } from 'awayto/hooks';
+import { useGrid, siteApi, useUtil, SiteRoles, SiteRoleDetails, targets } from 'awayto/hooks';
 import { Tooltip } from '@mui/material';
 
 export function ManageRoleActions(_: IComponent): React.JSX.Element {
@@ -104,11 +104,14 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
     <Grid container>
       <Grid mb={2} size={12}>
         <Card>
-          <CardActionArea onClick={handleSubmit}>
+          <CardActionArea
+            {...targets(`manage role actions update assignments`, `update the group's role permissions mappings`)}
+            onClick={handleSubmit}
+          >
             <Grid container direction="row" justifyContent="space-between">
               <Grid>
                 <Box m={2}>
-                  <Typography color="secondary" variant="button">Update Assignments </Typography>
+                  <Typography color="secondary" variant="button">Update Assignments</Typography>
                 </Box>
               </Grid>
               <Grid>

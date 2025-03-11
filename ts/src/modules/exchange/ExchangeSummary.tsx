@@ -9,7 +9,7 @@ import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 
-import { siteApi, useUtil, useAccordion, useGroupForm } from 'awayto/hooks';
+import { siteApi, useUtil, useAccordion, useGroupForm, targets } from 'awayto/hooks';
 
 import ExchangeRating from './ExchangeRating';
 import AccordionWrap from '../common/AccordionWrap';
@@ -61,17 +61,19 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
         <TierSurvey />
       </AccordionWrap>}
 
-
       <Card>
-        <CardActionArea onClick={() => {
-          if (!serviceSurveyValid || !tierSurveyValid) {
-            setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out.' });
-            setDidSubmit(true);
-            return;
-          }
+        <CardActionArea
+          {...targets(`exchange summary submit`, `submit the post-session ratings or forms`)}
+          onClick={() => {
+            if (!serviceSurveyValid || !tierSurveyValid) {
+              setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out.' });
+              setDidSubmit(true);
+              return;
+            }
 
-          setDidSubmit(false);
-        }}>
+            setDidSubmit(false);
+          }}
+        >
           <Box m={2} sx={{ display: 'flex' }}>
             <Typography color="secondary" variant="button">Submit Request</Typography>
           </Box>

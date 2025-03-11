@@ -14,7 +14,7 @@ import DialogActions from '@mui/material/DialogActions';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
-import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName, targets, plural, generateLightBgColor } from 'awayto/hooks';
+import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName, targets, plural, generateLightBgColor, IGroupSchedule } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from '../groups/GroupContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -27,16 +27,16 @@ const bracketSchema = {
 };
 
 interface ManageScheduleBracketsModalProps extends IComponent {
+  groupSchedules: IGroupSchedule[];
   editSchedule?: ISchedule;
 }
 
-export function ManageScheduleBracketsModal({ editSchedule, closeModal }: ManageScheduleBracketsModalProps): React.JSX.Element {
+export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, closeModal }: ManageScheduleBracketsModalProps): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
   const {
     groupServices,
-    groupSchedules
   } = useContext(GroupContext) as GroupContextType;
 
   const {
@@ -95,6 +95,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
           }), {}
         );
 
+        let success = false;
         if (!editSchedule?.id && groupSchedule.schedule?.id) {
           await postSchedule({
             postScheduleRequest: {
@@ -108,7 +109,7 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
               slotTimeUnitId: schedule.slotTimeUnitId,
               slotDuration: schedule.slotDuration
             }
-          }).unwrap().catch(console.error);
+          }).unwrap().then(() => success = true).catch(console.error);
         } else if (editSchedule?.id) {
           await postScheduleBrackets({
             postScheduleBracketsRequest: {
@@ -116,12 +117,13 @@ export function ManageScheduleBracketsModal({ editSchedule, closeModal }: Manage
               userScheduleId: editSchedule.id,
               brackets: newBrackets
             }
-          }).unwrap().catch(console.error);
+          }).unwrap().then(() => success = true).catch(console.error);
         }
 
-        await getGroupUserSchedules.refetch().unwrap();
-
-        setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule?.name, snackType: 'info' });
+        if (success) {
+          await getGroupUserSchedules.refetch().unwrap();
+          setSnack({ snackOn: 'Successfully added your schedule to group schedule: ' + schedule?.name, snackType: 'info' });
+        }
         if (closeModal) {
           firstLoad.current = true;
           closeModal(true);

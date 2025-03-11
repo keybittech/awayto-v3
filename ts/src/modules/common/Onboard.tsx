@@ -179,30 +179,33 @@ export function Onboard(_: IComponent): React.JSX.Element {
                 <Typography variant="caption">Service Name</Typography> <Typography mb={2} variant="h5">{groupService.service?.name}</Typography>
                 <Typography variant="caption">Schedule Name</Typography> <Typography mb={2} variant="h5">{groupSchedule.schedule?.name}</Typography>
               </CardContent>
-              <CardActionArea onClick={() => {
-                if (!pages[0].complete || !pages[1].complete || !pages[2].complete || !pages[3].complete) {
-                  setSnack({ snackType: 'error', snackOn: 'All pages must be completed' });
-                  return;
-                }
-                openConfirm({
-                  isConfirming: true,
-                  confirmEffect: `Create the group ${group.displayName}.`,
-                  confirmAction: submit => {
-                    if (submit) {
-                      completeOnboarding({
-                        completeOnboardingRequest: {
-                          service: groupService.service!,
-                          schedule: groupSchedule.schedule!
-                        }
-                      }).unwrap().then(() => {
-                        localStorage.removeItem('onboarding_service');
-                        localStorage.removeItem('onboarding_schedule');
-                        void reloadProfile();
-                      }).catch(console.error);
-                    }
+              <CardActionArea
+                {...targets(`onboard submit group request`, `complete onboarding and submit group creation`)}
+                onClick={() => {
+                  if (!pages[0].complete || !pages[1].complete || !pages[2].complete || !pages[3].complete) {
+                    setSnack({ snackType: 'error', snackOn: 'All pages must be completed' });
+                    return;
                   }
-                });
-              }}>
+                  openConfirm({
+                    isConfirming: true,
+                    confirmEffect: `Create the group ${group.displayName}.`,
+                    confirmAction: submit => {
+                      if (submit) {
+                        completeOnboarding({
+                          completeOnboardingRequest: {
+                            service: groupService.service!,
+                            schedule: groupSchedule.schedule!
+                          }
+                        }).unwrap().then(() => {
+                          localStorage.removeItem('onboarding_service');
+                          localStorage.removeItem('onboarding_schedule');
+                          void reloadProfile();
+                        }).catch(console.error);
+                      }
+                    }
+                  });
+                }}
+              >
                 <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
                   <Typography color="secondary" variant="button">Create Group</Typography>
                 </Box>
