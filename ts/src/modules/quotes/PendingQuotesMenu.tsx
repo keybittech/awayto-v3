@@ -101,7 +101,7 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
             key={`pending_quotes_pqs_${i}`}
             disablePadding
           >
-            <ListItemButton role={undefined} onClick={() => handleSelectPendingQuote(pq.id)} dense>
+            <ListItemButton onClick={() => handleSelectPendingQuote(pq.id)} dense>
               <ListItemIcon>
                 <Checkbox
                   {...targets(`pending requests menu select ${i}`, `select a single pending request from the list`)}

@@ -107,8 +107,8 @@ export const theme = createTheme(paletteTheme, {
               borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
               '&:hover': {
                 background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 100%)'
-              }
-            }
+              },
+            },
           }],
           // marginBottom: '4px',
           padding: '6px 8px 4px',
@@ -131,6 +131,42 @@ export const theme = createTheme(paletteTheme, {
           color: 'red',
           fontSize: '32px',
           float: 'right'
+        }
+      }
+    },
+    MuiDataGrid: {
+      styleOverrides: {
+        root: {
+          borderImageSlice: 1,
+          borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
+          '--DataGrid-rowBorderColor': 'none',
+          '& .MuiDataGrid-row': {
+            borderBottom: '1px solid rgba(255, 255, 255, .12)',
+            borderImageSlice: 1,
+            borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
+          }
+        },
+        withBorderColor: {
+          borderImageSlice: 1,
+          borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
+        }
+      }
+    },
+    MuiPaper: {
+      styleOverrides: {
+        root: {
+          variants: [{
+            props: { variant: "outlined" },
+            style: {
+              borderImageSlice: 1,
+              borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
+            }
+            // style: {
+            //   '&:hover': {
+            //     background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 100%)'
+            //   }
+            // }
+          }],
         }
       }
     }
@@ -239,12 +275,20 @@ export const useStyles = (): { [key: string]: SxProps } => {
       // },
     },
 
+    variableText: {
+      [theme.breakpoints.down('md')]: {
+        fontSize: '24px',
+      },
+      [theme.breakpoints.up('md')]: {
+        fontSize: '20px',
+      },
+    },
+
     variableButtonIcon: {
       [theme.breakpoints.down('sm')]: {
         fontSize: '24px',
       },
       [theme.breakpoints.up('md')]: {
-        // marginTop: '-4px',
         fontSize: '12px !important',
       },
     },

@@ -14,7 +14,7 @@ import CardActionArea from '@mui/material/CardActionArea';
 import Slide from '@mui/material/Slide';
 import { TransitionProps } from '@mui/material/transitions';
 
-import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -34,6 +34,7 @@ const Transition = React.forwardRef(function Transition(
 
 export function RequestQuote(_: IComponent): React.JSX.Element {
 
+  const classes = useStyles();
   const navigate = useNavigate();
 
   const { setSnack, openConfirm } = useUtil();
@@ -134,6 +135,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
             </Grid>
             <Grid size={{ xs: 12, md: 2 }}>
               {groupScheduleServiceTier && <Button
+                sx={classes.variableText}
                 fullWidth
                 onClick={() => { setDialog('features') }}
                 variant="underline"
@@ -141,6 +143,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
                 View Features
               </Button>}
               <Button
+                sx={classes.variableText}
                 fullWidth
                 onClick={() => { setDialog('files') }}
                 variant="underline"
@@ -190,7 +193,11 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
                   setSnack({ snackType: 'success', snackOn: 'You\'re all set!' });
                   setSelectedDate(undefined);
                   setSelectedTime(undefined);
-                }).catch(console.error);
+                }).catch((e: { data: string }) => {
+                  if (e.data.includes('select a new time')) {
+                    getDateSlots();
+                  }
+                });
               }
             });
 

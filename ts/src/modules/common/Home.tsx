@@ -6,13 +6,14 @@ import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import Button from '@mui/material/Button';
 
-import { siteApi, SiteRoleDetails, SiteRoles, targets, useSecure } from 'awayto/hooks';
+import { siteApi, SiteRoleDetails, SiteRoles, targets, useSecure, useStyles } from 'awayto/hooks';
 
 import BookingHome from '../bookings/BookingHome';
 import RequestQuote from '../quotes/RequestQuote';
 
 export function Home(props: IComponent): React.JSX.Element {
 
+  const classes = useStyles();
   const navigate = useNavigate();
   const hasRole = useSecure();
 
@@ -30,6 +31,7 @@ export function Home(props: IComponent): React.JSX.Element {
         key={`role_listing_${i + 1}`}
         variant="underline"
         sx={{
+          ...classes.variableText,
           my: .5,
           background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 33%)',
           '&:hover': {

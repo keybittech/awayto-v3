@@ -1,17 +1,35 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostQuoteResponse, error) {
+
+	var slotTaken bool
+	err := tx.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1 FROM dbtable_schema.bookings
+			WHERE schedule_bracket_slot_id = $1
+			AND DATE_TRUNC('week', slot_date::DATE) = DATE_TRUNC('week', $2::DATE)
+		)
+	`, data.ScheduleBracketSlotId, data.SlotDate).Scan(&slotTaken)
+	if err != nil {
+		return nil, err
+	}
+
+	if slotTaken {
+		return nil, util.ErrCheck(util.UserError("The selected time has already been taken. Please select a new time."))
+	}
+
 	serviceForm, tierForm := data.GetServiceFormVersionSubmission(), data.GetTierFormVersionSubmission()
 
 	for _, form := range []*types.IProtoFormVersionSubmission{serviceForm, tierForm} {
@@ -44,7 +62,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 
 	var quoteId string
 
-	err := tx.QueryRow(`
+	err = tx.QueryRow(`
 		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub, group_id)
 		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7::uuid)
 		RETURNING id

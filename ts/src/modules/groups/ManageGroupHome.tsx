@@ -11,7 +11,7 @@ import CreateIcon from '@mui/icons-material/Create';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import AddIcon from '@mui/icons-material/Add';
 
-import { useUtil, SiteRoles, siteApi, targets } from 'awayto/hooks';
+import { useUtil, SiteRoles, siteApi, targets, useStyles } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from './GroupContext';
 import GroupSecure from './GroupSecure';
@@ -29,6 +29,7 @@ const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULE_KEYS, APP_GROUP_SER
 
 export function ManageGroupHome(props: IComponent): React.JSX.Element {
 
+  const classes = useStyles();
   const { component } = useParams();
 
   const [dialog, setDialog] = useState('');
@@ -54,7 +55,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
   }
 
   useEffect(() => {
-    if (!component || !Object.keys(menuRoles).includes(component)) {
+    if (component && !Object.keys(menuRoles).includes(component)) {
       navigate('/');
     }
   }, [component]);
@@ -68,6 +69,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
           variant="underline"
           color={selected ? "primary" : "secondary"}
           sx={{
+            ...classes.variableText,
             cursor: 'pointer',
             borderBottom: selected ? '2px solid white' : undefined
           }}
