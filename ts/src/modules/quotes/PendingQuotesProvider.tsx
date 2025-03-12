@@ -79,11 +79,17 @@ export function PendingQuotesProvider({ children }: IComponent): React.JSX.Eleme
       });
     },
     denyPendingQuotes() {
-      disableQuote({ ids: selectedPendingQuotes.join(',') }).unwrap().then(() => {
-        setSelectedPendingQuotes([]);
-        setPendingQuotesChanged(!pendingQuotesChanged);
-        void getUserProfileDetails();
-      }).catch(console.error);
+      openConfirm({
+        isConfirming: true,
+        confirmEffect: `Deny ${plural(selectedPendingQuotes.length, 'service request', 'service requests')}.`,
+        confirmAction: () => {
+          disableQuote({ ids: selectedPendingQuotes.join(',') }).unwrap().then(() => {
+            setSelectedPendingQuotes([]);
+            setPendingQuotesChanged(!pendingQuotesChanged);
+            void getUserProfileDetails();
+          }).catch(console.error);
+        }
+      });
     }
   } as PendingQuotesContextType | null;
 

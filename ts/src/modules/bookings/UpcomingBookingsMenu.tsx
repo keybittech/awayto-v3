@@ -1,18 +1,16 @@
 import React, { useContext } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 
-import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
+import MenuItem from '@mui/material/MenuItem';
+import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
 
 import JoinFullIcon from '@mui/icons-material/JoinFull';
-import DoneIcon from '@mui/icons-material/Done';
 
-import { useUtil, bookingDT, dayjs, bookingFormat, targets } from 'awayto/hooks';
+import { useUtil, bookingFormat, targets } from 'awayto/hooks';
 
 import BookingContext, { BookingContextType } from './BookingContext';
 
@@ -24,102 +22,55 @@ interface UpcomingBookingsMenuProps extends IComponent {
 }
 
 export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl, upcomingBookingsMenuId, isUpcomingBookingsOpen }: UpcomingBookingsMenuProps): React.JSX.Element {
-  const { exchangeId } = useParams();
+
   const nav = useNavigate();
   const navigate = (loc: string) => {
     nav(loc);
   }
-  const { openConfirm } = useUtil();
-
-  const minsAgo15 = dayjs.duration(-15, 'years');
-  // const startOfDay = dayjs().startOf('day');
 
   const { bookingValues: upcomingBookings } = useContext(BookingContext) as BookingContextType;
 
-  return exchangeId ?
-    <Tooltip title="Go to Exchange Summary">
-      <Button
-        {...targets(`exchange summary navigate`, `go to exchange summary`)}
-        color="success"
-        onClick={() => {
-          openConfirm({
-            isConfirming: true,
-            confirmEffect: `Continue to the Exchange summary.`,
-            confirmSideEffect: {
-              approvalAction: 'All Done',
-              approvalEffect: 'Continue to the Exchange summary.',
-              rejectionAction: 'Keep Chatting',
-              rejectionEffect: 'Return to the chat.',
-            },
-            confirmAction: approval => {
-              if (approval) {
-                navigate(`/exchange/${exchangeId}/summary`);
-              }
-            }
-          });
-        }}
-        variant="outlined"
-        startIcon={<DoneIcon />}
-      >
-        Go to Summary
-      </Button>
-    </Tooltip> :
-    <Menu
-      anchorEl={upcomingBookingsAnchorEl}
-      anchorOrigin={{
-        vertical: 'bottom',
-        horizontal: 'right',
-      }}
-      id={upcomingBookingsMenuId}
-      keepMounted
-      transformOrigin={{
-        vertical: 'top',
-        horizontal: 'right',
-      }}
-      open={!!isUpcomingBookingsOpen}
-      onClose={handleMenuClose}
-    >
-      <List>
-        {upcomingBookings.length ? <Box sx={{ width: 300 }}>
-          {upcomingBookings.map((booking, i) => {
+  return <Menu
+    anchorEl={upcomingBookingsAnchorEl}
+    anchorOrigin={{
+      vertical: 'bottom',
+      horizontal: 'right',
+    }}
+    id={upcomingBookingsMenuId}
+    transformOrigin={{
+      vertical: 'top',
+      horizontal: 'right',
+    }}
+    open={!!upcomingBookings.length && isUpcomingBookingsOpen}
+    onClose={handleMenuClose}
+    MenuListProps={{
+      'aria-labelledby': 'topbar-exchange-toggle'
+    }}
+  >
+    {upcomingBookings.map((booking, i) => {
 
-            if (booking.slotDate && booking.scheduleBracketSlot?.startTime && booking.scheduleBracketSlot?.id && booking.service?.name && booking.serviceTier?.name) {
+      if (booking.slotDate && booking.scheduleBracketSlot?.startTime && booking.scheduleBracketSlot?.id && booking.service?.name && booking.serviceTier?.name) {
 
-              const dt = bookingDT(booking.slotDate, booking.scheduleBracketSlot.startTime);
+        // const dt = bookingDT(booking.slotDate, booking.scheduleBracketSlot.startTime);
 
-              return <ListItem
-                key={`upcoming_appt_ub_${i}`}
-                secondaryAction={dayjs().isAfter(dt.add(minsAgo15)) && <>
-                  <Tooltip title="Join Exchange">
-                    <Button
-                      {...targets(`join exchange ${booking.slotDate} ${booking.scheduleBracketSlot?.startTime}`, `go to exchange for ${bookingFormat(booking.slotDate, booking.scheduleBracketSlot?.startTime)}`)}
-                      onClick={() => {
-                        navigate(`/exchange/${booking.id}`);
-                      }}
-                      variant="text"
-                      startIcon={<JoinFullIcon />}
-                    >
-                      Join
-                    </Button>
-                  </Tooltip>
-                </>}
-              >
-                <ListItemText
-                  primary={`${bookingFormat(booking.slotDate, booking.scheduleBracketSlot.startTime)}`}
-                  secondary={`${booking.service.name} ${booking.serviceTier.name}`}
-                />
-              </ListItem>
-            } else {
-              return <span key={`appt_placeholder${i}`} />;
-            }
-          })}
-        </Box> : <Box sx={{ width: 250 }}>
-          <ListItem>
-            <ListItemText>No upcoming appointments.</ListItemText>
-          </ListItem>
-        </Box>}
-      </List>
-    </Menu>
+        return <MenuItem
+          key={`upcoming_appt_ub_${i}`}
+          {...targets(`join exchange ${booking.slotDate} ${booking.scheduleBracketSlot?.startTime}`, `go to exchange for ${bookingFormat(booking.slotDate, booking.scheduleBracketSlot?.startTime)}`)}
+          onClick={() => {
+            navigate(`/exchange/${booking.id}`);
+          }}
+        >
+          <ListItemIcon><JoinFullIcon /></ListItemIcon>
+          <ListItemText
+            primary={`Join ${booking.service.name} ${booking.serviceTier.name}`}
+            secondary={`${bookingFormat(booking.slotDate, booking.scheduleBracketSlot.startTime)}`}
+          />
+        </MenuItem>
+      } else {
+        return <span key={`appt_placeholder${i}`} />;
+      }
+    })}
+  </Menu>
 }
 
 export default UpcomingBookingsMenu;

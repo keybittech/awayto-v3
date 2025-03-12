@@ -1,26 +1,28 @@
 import React, { useCallback, useState } from 'react';
 
-import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
+import IconButton from '@mui/material/IconButton';
 import Grid from '@mui/material/Grid';
-import Menu from '@mui/material/Menu';
+import Dialog from '@mui/material/Dialog';
+import Tooltip from '@mui/material/Tooltip';
 import MenuItem from '@mui/material/MenuItem';
 import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 
-import { siteApi, targets } from 'awayto/hooks';
+import CampaignIcon from '@mui/icons-material/Campaign';
 
-interface FeedbackMenuProps extends IComponent {
-  feedbackAnchorEl: null | HTMLElement;
-  feedbackMenuId: string;
-  isFeedbackOpen: boolean;
-  handleMenuClose: () => void;
-}
+import { siteApi, targets, useStyles, useUtil } from 'awayto/hooks';
 
-export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId, isFeedbackOpen }: FeedbackMenuProps): React.JSX.Element {
+export function FeedbackMenu(_: IComponent): React.JSX.Element {
+
+  const classes = useStyles();
+
+  const { setSnack } = useUtil();
 
   const [postGroupFeedback] = siteApi.useGroupFeedbackServicePostGroupFeedbackMutation();
   const [postSiteFeedback] = siteApi.useFeedbackServicePostSiteFeedbackMutation();
 
+  const [dialog, setDialog] = useState('');
   const [feedbackTarget, setFeedbackTarget] = useState('site');
   const [message, setMessage] = useState('');
 
@@ -33,27 +35,30 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
         void postGroupFeedback({ postGroupFeedbackRequest: newFeedback })
       }
       setMessage('');
-      handleMenuClose && handleMenuClose();
+      setDialog('');
+      setSnack({ snackType: 'success', snackOn: 'Thanks for your feedback!' });
     }
   }, [message])
 
-  return <Menu
-    anchorEl={feedbackAnchorEl}
-    anchorOrigin={{
-      vertical: 'bottom',
-      horizontal: 'right',
-    }}
-    id={feedbackMenuId}
-    keepMounted
-    transformOrigin={{
-      vertical: 'top',
-      horizontal: 'right',
-    }}
-    open={!!isFeedbackOpen}
-    onClose={handleMenuClose}
-  >
-    <Box p={1} sx={{ width: 300 }}>
-      <Grid spacing={2} container direction="row">
+  return <>
+
+    <Tooltip title="Feedback">
+      <IconButton
+        {...targets(`topbar feedback toggle`, `submit group or site feedback`)}
+        disableRipple
+        color="primary"
+        onClick={() => setDialog('feedback')}
+      >
+        <CampaignIcon sx={classes.mdHide} />
+        <Typography sx={classes.mdShow}>Feedback</Typography>
+      </IconButton>
+    </Tooltip>
+
+    <Dialog
+      open={dialog == 'feedback'}
+      onClose={() => setDialog('')}
+    >
+      <Grid p={2} spacing={2} container direction="row">
         <Grid size={12}>
           <TextField
             {...targets(`feedback menu target selection`, `Group or Site`, `select if feedback should go to the group or website admins`)}
@@ -72,7 +77,6 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
           <TextField
             fullWidth
             multiline
-            autoFocus
             rows={4}
             slotProps={{
               input: {
@@ -95,8 +99,9 @@ export function FeedbackMenu({ handleMenuClose, feedbackAnchorEl, feedbackMenuId
           >Submit Comment</Button>
         </Grid>
       </Grid>
-    </Box>
-  </Menu>
+
+    </Dialog>
+  </>;
 }
 
 export default FeedbackMenu;

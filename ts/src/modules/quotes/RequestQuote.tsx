@@ -107,21 +107,26 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         title="Service Request"
         subheader="Request services from a group. Some fields may be required depending on the service."
       />
-      {!groupUserSchedulesRequest?.groupUserSchedules ? <Alert
-        severity="info"
-        action={
-          <Button
-            {...targets(`request quote create personal schedule`, `go to the personal schedule page to create a personal schedule`)}
-            variant="text"
-            color="info"
-            onClick={() => navigate('/schedule')}
-          >
-            Create your schedule
-          </Button>
-        }
-      >
-        There are no active user schedules, or they are currently paused.
-      </Alert> : <>
+      {!groupUserSchedulesRequest?.groupUserSchedules ? <>
+        <Grid container p={2}>
+          <GroupScheduleSelect />
+        </Grid>
+        <Alert
+          severity="info"
+          action={
+            <Button
+              {...targets(`request quote create personal schedule`, `go to the personal schedule page to create a personal schedule`)}
+              variant="text"
+              color="info"
+              onClick={() => navigate('/schedule')}
+            >
+              Create your schedule
+            </Button>
+          }
+        >
+          There are no active user schedules, or they are currently paused.
+        </Alert>
+      </> : <>
         <CardContent>
           <Grid container spacing={2}>
             <Grid container size={{ xs: 12, md: 5 }}>

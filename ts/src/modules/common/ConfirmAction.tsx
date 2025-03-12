@@ -16,7 +16,7 @@ export function ConfirmAction(): React.JSX.Element {
   const { closeConfirm } = useUtil();
   const util = useAppSelector(state => state.util);
 
-  return useMemo(() => <Dialog open={!!util.isConfirming} fullWidth={true} maxWidth="sm">
+  return useMemo(() => <Dialog onClose={() => closeConfirm({})} open={!!util.isConfirming} fullWidth={true} maxWidth="sm">
     <Card>
       <CardHeader title="Confirm Action" subheader={`Action: ${util.confirmEffect}`} />
       <Grid container sx={{ minHeight: '25vh' }}>

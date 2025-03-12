@@ -1,4 +1,4 @@
-import React, { useContext, useCallback } from 'react';
+import React, { useContext, useCallback, useState } from 'react';
 
 import { DesktopDatePicker } from '@mui/x-date-pickers/DesktopDatePicker';
 
@@ -52,7 +52,11 @@ export function ScheduleDatePicker(_: IComponent): React.JSX.Element {
     onYearChange={date => date && setStartOfMonth(date.startOf('month'))}
     disableHighlightToday={true}
     shouldDisableDate={comparator}
+    reduceAnimations
     slotProps={{
+      nextIconButton: {
+        autoFocus: true // when no slots are available, focus the next button to preserve accessibility
+      },
       openPickerButton: {
         color: 'secondary'
       },

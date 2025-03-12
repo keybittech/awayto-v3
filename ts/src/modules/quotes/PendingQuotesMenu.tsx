@@ -1,19 +1,15 @@
 import React, { useContext } from 'react';
 
-import Box from '@mui/material/Box';
 import Divider from '@mui/material/Divider';
 import Menu from '@mui/material/Menu';
-import Checkbox from '@mui/material/Checkbox';
-import List from '@mui/material/List';
-import ListItem from '@mui/material/ListItem';
+import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import ListItemButton from '@mui/material/ListItemButton';
-import Tooltip from '@mui/material/Tooltip';
-import IconButton from '@mui/material/IconButton';
 
 import ApprovalIcon from '@mui/icons-material/Approval';
 import DoNotDisturbIcon from '@mui/icons-material/DoNotDisturb';
+import CheckBoxOutlineBlank from '@mui/icons-material/CheckBoxOutlineBlank';
+import CheckBox from '@mui/icons-material/CheckBox';
 
 import { bookingFormat, targets } from 'awayto/hooks';
 
@@ -37,6 +33,8 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
     denyPendingQuotes
   } = useContext(PendingQuotesContext) as PendingQuotesContextType;
 
+  const hasSelections = Boolean(selectedPendingQuotes.length);
+
   return <Menu
     anchorEl={pendingQuotesAnchorEl}
     anchorOrigin={{
@@ -44,85 +42,65 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
       horizontal: 'right',
     }}
     id={pendingQuotesMenuId}
-    keepMounted
     transformOrigin={{
       vertical: 'top',
       horizontal: 'right',
     }}
-    open={!!isPendingQuotesOpen}
+    open={!!pendingQuotes.length && isPendingQuotesOpen}
     onClose={handleMenuClose}
+    MenuListProps={{
+      'aria-labelledby': 'topbar-pending-toggle'
+    }}
   >
-    <List>
-      {pendingQuotes.length ? <Box sx={{ width: 300 }}>
-        <ListItem
-          disablePadding
-          secondaryAction={!!selectedPendingQuotes.length && <>
-            <Tooltip title="Approve">
-              <IconButton
-                {...targets(`pending requests menu approve`, `approve selected pending requests`)}
-                edge="end"
-                onClick={approvePendingQuotes}
-              >
-                <ApprovalIcon />
-              </IconButton>
-            </Tooltip>
-            &nbsp;&nbsp;&nbsp;
-            <Tooltip title="Deny">
-              <IconButton
-                {...targets(`pending requests menu deny`, `deny selected pending requests`)}
-                edge="end"
-                onClick={denyPendingQuotes}
-              >
-                <DoNotDisturbIcon />
-              </IconButton>
-            </Tooltip>
-          </>}
-        >
-          <ListItemButton role={undefined} dense>
-            <ListItemIcon>
-              <Checkbox
-                {...targets(`pending requests menu select all`, `select all pending requests in the list`)}
-                disableRipple
-                tabIndex={-1}
-                onClick={handleSelectPendingQuoteAll}
-                checked={selectedPendingQuotes.length === pendingQuotes.length && pendingQuotes.length !== 0}
-                indeterminate={selectedPendingQuotes.length !== pendingQuotes.length && selectedPendingQuotes.length !== 0}
-                disabled={pendingQuotes.length === 0}
-              />
-            </ListItemIcon>
-            <ListItemText primary="Pending Requests" />
-          </ListItemButton>
-        </ListItem>
+    <MenuItem
+      {...targets(`pending requests menu select all`, `select all pending requests in the list`)}
+      onClick={handleSelectPendingQuoteAll}
+    >
+      <ListItemIcon>
+        {selectedPendingQuotes.length === pendingQuotes.length && pendingQuotes.length !== 0 ?
+          <CheckBox color="success" /> :
+          <CheckBoxOutlineBlank />
+        }
+      </ListItemIcon>
+      <ListItemText primary="Select All" />
+    </MenuItem>
 
-        <Divider />
+    {hasSelections && <MenuItem
+      {...targets(`pending requests menu approve`, `approve selected pending requests`)}
+      onClick={approvePendingQuotes}
+    >
+      <ListItemIcon><ApprovalIcon /></ListItemIcon>
+      <ListItemText primary="Approve" />
+    </MenuItem>}
 
-        {pendingQuotes.map((pq, i) => {
-          return <ListItem
-            key={`pending_quotes_pqs_${i}`}
-            disablePadding
-          >
-            <ListItemButton onClick={() => handleSelectPendingQuote(pq.id)} dense>
-              <ListItemIcon>
-                <Checkbox
-                  {...targets(`pending requests menu select ${i}`, `select a single pending request from the list`)}
-                  checked={selectedPendingQuotes.indexOf(pq.id) !== -1}
-                  tabIndex={-1}
-                  disableRipple
-                />
-              </ListItemIcon>
-              <ListItemText
-                primary={`${bookingFormat(pq.slotDate, pq.startTime)}`}
-                secondary={`${pq.serviceName} ${pq.serviceTierName}`}
-              />
-            </ListItemButton>
-          </ListItem>
-        })}
-      </Box> : <Box sx={{ width: 250 }}>
-        <ListItem>
-          <ListItemText>No pending requests.</ListItemText>
-        </ListItem>
-      </Box>}
-    </List>
+    {hasSelections && <MenuItem
+      {...targets(`pending requests menu deny`, `deny selected pending requests`)}
+      onClick={denyPendingQuotes}
+    >
+      <ListItemIcon><DoNotDisturbIcon /></ListItemIcon>
+      <ListItemText primary="Deny" />
+    </MenuItem>}
+
+    <Divider />
+
+    {pendingQuotes.map((pq, i) => {
+      return <MenuItem
+        key={`pending_quotes_pqs_${i}`}
+        {...targets(`pending requests menu select ${i}`, `select a single pending request from the list`)}
+        onClick={() => handleSelectPendingQuote(pq.id)}
+      >
+        <ListItemIcon>
+          {selectedPendingQuotes.indexOf(pq.id) !== -1 ?
+            <CheckBox color="success" /> :
+            <CheckBoxOutlineBlank />
+          }
+        </ListItemIcon>
+        <ListItemText
+          primary={`${bookingFormat(pq.slotDate, pq.startTime)}`}
+          secondary={`${pq.serviceName} ${pq.serviceTierName}`}
+        />
+      </MenuItem>
+    })}
   </Menu>
 }
 

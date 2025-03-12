@@ -1,16 +1,14 @@
-import React, { useMemo, useState, Suspense } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { useColorScheme } from '@mui/material';
 
-import Box from '@mui/material/Box';
 import Switch from '@mui/material/Switch';
 import Divider from '@mui/material/Divider';
 import Grid from '@mui/material/Grid';
 import Badge from '@mui/material/Badge';
 import Menu from '@mui/material/Menu';
 import Typography from '@mui/material/Typography';
-import MenuList from '@mui/material/MenuList';
 import MenuItem from '@mui/material/MenuItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
@@ -18,15 +16,14 @@ import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
 
-import CampaignIcon from '@mui/icons-material/Campaign';
 import ThreePIcon from '@mui/icons-material/ThreeP';
 import LogoutIcon from '@mui/icons-material/Logout';
-import EventNoteIcon from '@mui/icons-material/EventNote';
 import GroupIcon from '@mui/icons-material/Group';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import DoneIcon from '@mui/icons-material/Done';
 
-import { useSecure, siteApi, useStyles, SiteRoles, targets, logout, SiteRoleDetails } from 'awayto/hooks';
+import { useSecure, siteApi, useStyles, SiteRoles, targets, logout, SiteRoleDetails, useUtil } from 'awayto/hooks';
 
 import UpcomingBookingsMenu from '../bookings/UpcomingBookingsMenu';
 import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
@@ -40,6 +37,7 @@ interface TopbarProps extends IComponent {
 export function Topbar(props: TopbarProps): React.JSX.Element {
 
   const { exchangeId } = useParams();
+  const { openConfirm } = useUtil();
   const classes = useStyles();
   const navigate = useNavigate();
   const hasRole = useSecure();
@@ -55,23 +53,19 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
 
   const mobileMenuId = 'mobile-app-bar-menu';
   const pendingQuotesMenuId = 'pending-requests-menu';
-  const feedbackMenuId = 'feedback-menu';
   const upcomingBookingsMenuId = 'upcoming-bookings-menu';
 
   const [mobileMoreAnchorEl, setMobileMoreAnchorEl] = useState<null | HTMLElement>(null);
   const [pendingQuotesAnchorEl, setPendingQuotesAnchorEl] = useState<null | HTMLElement>(null);
-  const [feedbackAnchorEl, setFeedbackAnchorEl] = useState<null | HTMLElement>(null);
   const [upcomingBookingsAnchorEl, setUpcomingBookingsAnchorEl] = useState<null | HTMLElement>(null);
 
   const isMobileMenuOpen = Boolean(mobileMoreAnchorEl);
   const isPendingQuotesOpen = Boolean(pendingQuotesAnchorEl);
-  const isFeedbackOpen = Boolean(feedbackAnchorEl);
   const isUpcomingBookingsOpen = Boolean(upcomingBookingsAnchorEl);
 
   const handleMenuClose = () => {
     setUpcomingBookingsAnchorEl(null);
     setPendingQuotesAnchorEl(null);
-    setFeedbackAnchorEl(null);
     setMobileMoreAnchorEl(null);
   };
 
@@ -104,166 +98,171 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
       <Tooltip title="Menu">
         <Button
           {...targets(`topbar open menu`, `show main menu`)}
-          role="navigation"
-          aria-controls={mobileMenuId}
+          aria-controls={isMobileMenuOpen ? mobileMenuId : undefined}
           aria-haspopup="true"
+          aria-expanded={isMobileMenuOpen ? 'true' : undefined}
           onClick={e => setMobileMoreAnchorEl(e.currentTarget)}
         >
           {/* <img src={Icon} alt="kbt-icon" width={28} /> */}
           <Typography alignSelf="center" fontWeight="bold">MENU</Typography>
         </Button>
       </Tooltip>
+      {/** MOBILE MENU */}
+      <Menu
+        anchorEl={mobileMoreAnchorEl}
+        anchorOrigin={{
+          vertical: 'bottom',
+          horizontal: 'left',
+        }}
+        id={mobileMenuId}
+        transformOrigin={{
+          vertical: 'top',
+          horizontal: 'right',
+        }}
+        open={isMobileMenuOpen}
+        onClose={() => setMobileMoreAnchorEl(null)}
+        MenuListProps={{
+          'aria-labelledby': 'topbar-open-menu'
+        }}
+      >
+        <MenuItem
+          {...targets(`main menu go home`, `go to the home page`)}
+          onClick={e => handleNavAndClose(e, '/')}
+        >
+          <ListItemIcon><GroupIcon color={location.pathname === '/' ? "secondary" : "primary"} /></ListItemIcon>
+          <ListItemText>Home</ListItemText>
+        </MenuItem>
+
+        <MenuItem
+          {...targets(`main menu profile`, `go to your profile page`)}
+          onClick={e => handleNavAndClose(e, '/profile')}
+        >
+          <ListItemIcon><AccountCircleIcon color={location.pathname === '/profile' ? "secondary" : "primary"} /></ListItemIcon>
+          <ListItemText>Profile</ListItemText>
+        </MenuItem>
+
+        <MenuItem
+          {...targets(`main menu toggle color mode`, `toggle to switch between dark and light mode`)}
+          onClick={e => {
+            e.preventDefault();
+            setMode('light' == mode ? 'dark' : 'light');
+          }}
+        >
+          Dark
+          <Switch
+            checked={mode == 'light'}
+          />
+          Light
+        </MenuItem>
+
+        <Divider />
+
+        {roleActions}
+
+        <Divider />
+
+        <MenuItem
+          {...targets(`main menu logout`, `logout of the website`)}
+          onClick={logout}
+        >
+          <ListItemIcon><LogoutIcon color="error" /></ListItemIcon>
+          <ListItemText>Logout</ListItemText>
+        </MenuItem>
+
+      </Menu>
     </Grid>
     <Grid container sx={{ flexGrow: 1, justifyContent: 'right', alignItems: 'center' }}>
-      <Suspense>
+
+      {exchangeId ? <Tooltip title="Go to Exchange Summary">
+        <Button
+          {...targets(`exchange summary navigate`, `go to exchange summary`)}
+          color="success"
+          onClick={() => {
+            openConfirm({
+              isConfirming: true,
+              confirmEffect: `Continue to the Exchange summary.`,
+              confirmSideEffect: {
+                approvalAction: 'All Done',
+                approvalEffect: 'Continue to the Exchange summary.',
+                rejectionAction: 'Keep Chatting',
+                rejectionEffect: 'Return to the chat.',
+              },
+              confirmAction: approval => {
+                if (approval) {
+                  navigate(`/exchange/${exchangeId}/summary`);
+                }
+              }
+            });
+          }}
+          variant="outlined"
+          startIcon={<DoneIcon />}
+        >
+          Go to Summary
+        </Button>
+      </Tooltip> : <>
+        {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <Grid>
+          {/** PENDING REQUESTS MENU */}
+          <Tooltip title="Approve Appointments">
+            <span>
+              <IconButton
+                {...targets(`topbar pending toggle`, `show ${pendingQuotes.length} pending exchange requests`)}
+                disabled={!pendingQuotes.length}
+                disableRipple
+                color="primary"
+                aria-controls={isPendingQuotesOpen ? pendingQuotesMenuId : undefined}
+                aria-haspopup="true"
+                aria-expanded={isPendingQuotesOpen ? 'true' : undefined}
+                onClick={e => setPendingQuotesAnchorEl(e.currentTarget)}
+              >
+                <Badge badgeContent={pendingQuotes.length} color="error">
+                  <ApprovalIcon sx={classes.mdHide} />
+                  <Typography sx={classes.mdShow}>Approve</Typography>
+                </Badge>
+              </IconButton>
+            </span>
+          </Tooltip>
+          <PendingQuotesProvider>
+            <PendingQuotesMenu
+              pendingQuotesAnchorEl={pendingQuotesAnchorEl}
+              pendingQuotesMenuId={pendingQuotesMenuId}
+              isPendingQuotesOpen={isPendingQuotesOpen}
+              handleMenuClose={handleMenuClose}
+            />
+          </PendingQuotesProvider>
+        </Grid>}
+
         <Grid>
+          <Tooltip sx={{ display: !!exchangeId ? 'none' : 'flex' }} title="View Appointments">
+            <span>
+              <IconButton
+                {...targets(`topbar exchange toggle`, `view ${upcomingBookings.length} exchanges`)}
+                disabled={!upcomingBookings.length}
+                disableRipple
+                color="primary"
+                aria-controls={isUpcomingBookingsOpen ? upcomingBookingsMenuId : undefined}
+                aria-haspopup="true"
+                aria-expanded={isUpcomingBookingsOpen ? 'true' : undefined}
+                onClick={e => setUpcomingBookingsAnchorEl(e.currentTarget)}
+              >
+                <Badge badgeContent={upcomingBookings.length} color="error">
+                  <ThreePIcon sx={classes.mdHide} />
+                  <Typography sx={classes.mdShow}>Upcoming</Typography>
+                </Badge>
+              </IconButton>
+            </span>
+          </Tooltip>
           <UpcomingBookingsMenu
-            {...props}
             upcomingBookingsAnchorEl={upcomingBookingsAnchorEl}
             upcomingBookingsMenuId={upcomingBookingsMenuId}
             isUpcomingBookingsOpen={isUpcomingBookingsOpen}
             handleMenuClose={handleMenuClose}
           />
-
-          <Tooltip sx={{ display: !!exchangeId ? 'none' : 'flex' }} title="View Appointments">
-            <IconButton
-              disableRipple
-              color="primary"
-              {...targets(`topbar exchange toggle`, `view ${upcomingBookings.length} exchanges`)}
-              aria-controls={upcomingBookingsMenuId}
-              aria-haspopup="true"
-              onClick={e => setUpcomingBookingsAnchorEl(e.currentTarget)}
-            >
-              <Badge badgeContent={upcomingBookings.length} color="error">
-                <ThreePIcon sx={classes.mdHide} />
-                <Typography sx={classes.mdShow}>Upcoming</Typography>
-              </Badge>
-            </IconButton>
-          </Tooltip>
         </Grid>
-
-
         <Grid>
-          {/** PENDING REQUESTS MENU */}
-          <Suspense>
-            <PendingQuotesProvider>
-              <PendingQuotesMenu
-                {...props}
-                pendingQuotesAnchorEl={pendingQuotesAnchorEl}
-                pendingQuotesMenuId={pendingQuotesMenuId}
-                isPendingQuotesOpen={isPendingQuotesOpen}
-                handleMenuClose={handleMenuClose}
-              />
-            </PendingQuotesProvider>
-          </Suspense>
-          {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <Tooltip title="Approve Appointments">
-            <IconButton
-              disableRipple
-              color="primary"
-              {...targets(`topbar pending toggle`, `show ${pendingQuotes.length} pending exchange requests`)}
-              aria-controls={pendingQuotesMenuId}
-              aria-haspopup="true"
-              onClick={e => setPendingQuotesAnchorEl(e.currentTarget)}
-            >
-              <Badge badgeContent={pendingQuotes.length} color="error">
-                <ApprovalIcon sx={classes.mdHide} />
-                <Typography sx={classes.mdShow}>Approve</Typography>
-              </Badge>
-            </IconButton>
-          </Tooltip>}
+          <FeedbackMenu />
         </Grid>
-
-        <FeedbackMenu
-          feedbackAnchorEl={feedbackAnchorEl}
-          feedbackMenuId={feedbackMenuId}
-          isFeedbackOpen={isFeedbackOpen}
-          handleMenuClose={handleMenuClose}
-        />
-        <Grid>
-          <Tooltip title="Feedback">
-            <IconButton
-              disableRipple
-              color="primary"
-              {...targets(`topbar feedback toggle`, `submit group or site feedback`)}
-              aria-controls={feedbackMenuId}
-              aria-haspopup="true"
-              onClick={e => setFeedbackAnchorEl(e.currentTarget)}
-            >
-              <CampaignIcon sx={classes.mdHide} />
-              <Typography sx={classes.mdShow}>Feedback</Typography>
-            </IconButton>
-          </Tooltip>
-        </Grid>
-      </Suspense>
+      </>}
     </Grid>
-
-    {/** MOBILE MENU */}
-    <Menu
-      role="menubar"
-      anchorEl={mobileMoreAnchorEl}
-      anchorOrigin={{
-        vertical: 'bottom',
-        horizontal: 'left',
-      }}
-      id={mobileMenuId}
-      keepMounted
-      transformOrigin={{
-        vertical: 'top',
-        horizontal: 'right',
-      }}
-      open={isMobileMenuOpen}
-      onClose={() => setMobileMoreAnchorEl(null)}
-    >
-      <Box sx={{ width: 250 }}>
-        <MenuList>
-
-          <MenuItem
-            {...targets(`main menu go home`, `go to the home page`)}
-            onClick={e => handleNavAndClose(e, '/')}
-          >
-            <ListItemIcon><GroupIcon color={location.pathname === '/' ? "secondary" : "primary"} /></ListItemIcon>
-            <ListItemText>Home</ListItemText>
-          </MenuItem>
-
-          <MenuItem
-            {...targets(`main menu profile`, `go to your profile page`)}
-            onClick={e => handleNavAndClose(e, '/profile')}
-          >
-            <ListItemIcon><AccountCircleIcon color={location.pathname === '/profile' ? "secondary" : "primary"} /></ListItemIcon>
-            <ListItemText>Profile</ListItemText>
-          </MenuItem>
-
-          <MenuItem>
-            <ListItemText>
-              Dark
-              <Switch
-                {...targets(`main menu toggle color mode`, `toggle to switch between dark and light mode`)}
-                checked={mode == 'light'}
-                onChange={e => {
-                  setMode(e.target.checked ? 'light' : 'dark');
-                }}
-              />
-              Light
-            </ListItemText>
-          </MenuItem>
-
-          <Divider />
-
-          {roleActions}
-
-          <Divider />
-
-          <MenuItem
-            {...targets(`main menu logout`, `logout of the website`)}
-            onClick={logout}
-          >
-            <ListItemIcon><LogoutIcon color="error" /></ListItemIcon>
-            <ListItemText>Logout</ListItemText>
-          </MenuItem>
-
-        </MenuList>
-      </Box>
-    </Menu>
   </Grid>;
 }
 
