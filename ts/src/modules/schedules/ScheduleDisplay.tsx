@@ -5,6 +5,7 @@ import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
+import Alert from '@mui/material/Alert';
 import Tooltip from '@mui/material/Tooltip';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
@@ -22,6 +23,8 @@ export interface ScheduleDisplayProps extends IComponent {
 };
 
 export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: ScheduleDisplayProps): React.JSX.Element {
+
+  const { setSnack } = useUtil();
 
   const scheduleDisplay = useMemo(() => deepClone(schedule), [schedule]);
 
@@ -54,6 +57,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
 
   const setValue = (startTime: string) => {
     if (!scheduleDisplay.brackets || !scheduleDisplay.slotDuration || !selectedBracket?.id || !selectedBracket.duration) {
+      setSnack({ snackType: 'warning', snackOn: 'Select a bracket before entering times.' });
       return
     }
 
@@ -79,7 +83,6 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
         bracket.slots[slot.id] = slot;
         selected[target] = slot;
       } else {
-        // alert('you went over your allottment');
         setButtonDown(false);
         return;
       }
@@ -119,6 +122,8 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
 
     return <Tooltip disableInteractive key={`grid_cell_tooltip_${gridCell.columnIndex}_${gridCell.rowIndex}`} title={completeContextFormat}>
       <Box
+        {...targets(`grid cell box ${gridCell.columnIndex} ${gridCell.rowIndex}`, `select time ${completeContextFormat}`)}
+        tabIndex={0}
         style={gridCell.style}
         sx={{
           userSelect: 'none',
@@ -131,9 +136,10 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
             color: '#222',
             opacity: '1',
             boxShadow: '2',
-            // borderColor: '#bbb'
           },
-          // border: exists ? `1px solid ${bracketColor}` : undefined,
+          '&:focus': {
+            zIndex: 100
+          },
           color: !exists ? '#666' : '#000',
           boxShadow: exists ? '2' : undefined,
           whiteSpace: 'nowrap',
@@ -148,11 +154,37 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
             setValue(startTime);
           }
         }}
+        onKeyUp={e => {
+          let focuser = '';
+          if (['Enter', ' '].includes(e.key)) {
+            setValue(startTime);
+            focuser = `grid_cell_box_${gridCell.columnIndex}_${gridCell.rowIndex}`;
+          } else if ('ArrowUp' == e.key && gridCell.rowIndex > 1) {
+            focuser = `grid_cell_box_${gridCell.columnIndex}_${gridCell.rowIndex - 1}`;
+          } else if ('ArrowDown' == e.key) {
+            focuser = `grid_cell_box_${gridCell.columnIndex}_${gridCell.rowIndex + 1}`;
+          } else if ('ArrowRight' == e.key) {
+            focuser = `grid_cell_box_${gridCell.columnIndex + 1}_${gridCell.rowIndex}`;
+          } else if ('ArrowLeft' == e.key && gridCell.columnIndex > 1) {
+            focuser = `grid_cell_box_${gridCell.columnIndex - 1}_${gridCell.rowIndex}`;
+          } else if (['PageUp', 'PageDown'].includes(e.key)) {
+            setTimeout(() => { (parentRef.current?.firstChild as HTMLDivElement).focus(); }, 0);
+          }
+
+          if (focuser.length) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            setTimeout(() => {
+              document.getElementById(focuser)?.focus();
+            }, 0);
+          }
+        }}
       >
         <>{'day' !== slotTimeUnitName && currentWidth >= 120 ? completeContextFormat : contextFormat}</>
       </Box>
     </Tooltip>
-  }, [durations, selected, scheduleBracketsValues, displayOnly, buttonDown, slotTimeUnitName, currentWidth]);
+  }, [durations, selected, selectedBracket, scheduleBracketsValues, displayOnly, buttonDown, slotTimeUnitName, currentWidth]);
 
   const RenderedGrid = useCallback(({ children }: { children: ComponentType<GridChildComponentProps<any>> }) => !rows || !columns ? <></> : <FixedSizeGrid
     style={{ position: 'absolute', top: 0, left: 0, backgroundColor: '#666' }}
@@ -165,8 +197,6 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
   >
     {children}
   </FixedSizeGrid>, [rows, columns, cellHeight, currentWidth, parentBox]);
-
-  const RepresentedTime = () => <Typography pb={1} variant="body2">This schedule represents 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s where every {plural(scheduleDisplay.slotDuration, slotTimeUnitName, slotTimeUnitName + 's')} is schedulable.</Typography>;
 
   useEffect(() => {
     const resizeObserver = new ResizeObserver(([event]) => {
@@ -192,6 +222,8 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
       setSelected(newSelected);
     }
   }, [scheduleBracketsValues]);
+
+  const RepresentedTime = () => <Typography pb={1} variant="body2">This schedule represents 1 {scheduleTimeUnitName} of {bracketTimeUnitName}s where every {plural(scheduleDisplay.slotDuration, slotTimeUnitName, slotTimeUnitName + 's')} is schedulable.</Typography>;
 
   const parentRefStyle = { position: 'relative', overflow: 'scroll', width: '100%', height: `${cellHeight * Math.min(8, (rows || 0) + 1)}px` };
 
@@ -290,7 +322,6 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
       </Box>
     </Box>}
 
-
     {displayOnly ? <>
       <RepresentedTime />
       <Box
@@ -305,12 +336,19 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
       <Box component="fieldset" p={2} sx={classes.legendBox}>
         <legend>Step 2. Design your Schedule</legend>
         <Box mb={2}>
-          <Typography variant="body1">Select times to apply to the selected bracket. Press and hold to select multiple times.</Typography>
+          <Alert severity="info" color="info">
+            Select times to apply to the selected bracket. Press and hold the mouse to select multiple times. Keyboard users can use the arrow keys and page up/down to traverse the grid.
+          </Alert>
         </Box>
         <Box
           ref={parentRef}
           sx={parentRefStyle}
           onMouseLeave={() => setButtonDown(false)}
+          onKeyDown={e => { // Disable native scrolling
+            if (['ArrowDown', 'ArrowUp'].includes(e.key)) {
+              e.preventDefault();
+            }
+          }}
         >
           <RenderedGrid>
             {Cell}

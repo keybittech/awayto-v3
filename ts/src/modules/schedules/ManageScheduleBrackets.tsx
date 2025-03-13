@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useContext } from 'react';
+import React, { useState, useMemo, useContext, useEffect } from 'react';
 
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -49,9 +49,7 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState('');
 
-  const { data: schedulesRequest, refetch: getSchedules } = siteApi.useScheduleServiceGetSchedulesQuery();
-
-  console.log({ schedulesRequest })
+  const { data: schedulesRequest, refetch: getSchedules } = siteApi.useScheduleServiceGetSchedulesQuery(undefined, { refetchOnMountOrArgChange: 30 });
 
   const [getScheduleById, { isFetching }] = siteApi.useLazyScheduleServiceGetScheduleByIdQuery();
 
