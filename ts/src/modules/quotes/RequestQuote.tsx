@@ -1,5 +1,5 @@
 import React, { useContext, useEffect, useState } from 'react';
-import { redirect, useNavigate } from 'react-router';
+import { useNavigate } from 'react-router';
 
 import Alert from '@mui/material/Alert';
 import Grid from '@mui/material/Grid';
@@ -217,10 +217,14 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
 
     <Dialog
       fullWidth
-      keepMounted
       maxWidth="md"
       open={!!dialog.length}
       onClose={() => { setDialog('') }}
+      slotProps={{
+        paper: {
+          sx: { bgcolor: 'secondary.contrastText' }
+        }
+      }}
       slots={{
         transition: Transition
       }}

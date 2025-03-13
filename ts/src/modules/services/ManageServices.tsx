@@ -115,9 +115,9 @@ export function ManageServices(_: IComponent): React.JSX.Element {
   }, [group, profileRequest]);
 
   return <>
-    <Dialog open={dialog === 'manage_service'} fullWidth maxWidth="lg">
+    <Dialog onClose={setDialog} open={dialog === 'manage_service'} fullWidth maxWidth="lg">
       <Grid container>
-        <Grid size={12} sx={{ maxHeight: '80vh', overflowY: 'scroll' }}>
+        <Grid size={12} sx={{ maxHeight: '90vh', overflowY: 'scroll' }}>
           <ManageServiceModal
             groupDisplayName={group.displayName}
             groupPurpose={group.purpose}

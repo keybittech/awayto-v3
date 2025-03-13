@@ -1,4 +1,4 @@
-import { SxProps, createTheme } from '@mui/material';
+import { SxProps, Theme as MuiTheme, createTheme } from '@mui/material';
 import { red, green } from '@mui/material/colors';
 
 declare module '@mui/material/Button' {
@@ -7,31 +7,46 @@ declare module '@mui/material/Button' {
   }
 }
 
+type Theme = { theme: MuiTheme };
+
 const drawerWidth = 175;
 const paletteTheme = createTheme({
   colorSchemes: {
     light: {
       palette: {
+        background: {
+          default: '#ddeeff'
+        },
         primary: {
           main: '#121f31',
-          dark: '#ddeeff',
-          light: 'rgba(255, 255, 255, .12)',
-          contrastText: '#333'
+          dark: 'rgba(0, 0, 0, .2)',
+          light: '#009cc822',
+          contrastText: '#333',
         },
-        secondary: { main: 'rgb(100 150 200)' }
+        secondary: {
+          main: '#000',
+          dark: '#009cc8',
+          light: '#009cc822',
+          contrastText: 'rgb(190, 222, 255)'
+        }
       }
     },
     dark: {
       palette: {
+        background: {
+          default: '#17222a'
+        },
         primary: {
           main: '#ddd',
+          dark: '#203040',
+          light: 'rgba(125, 225, 255, 0.05)',
           contrastText: '#333',
-          light: 'rgba(255, 255, 255, .12)',
-          dark: '#203040'
         },
         secondary: {
           main: '#009cc8',
-          dark: '#1c1d1e'
+          dark: '#203040',
+          light: 'rgba(125, 225, 255, 0.05)',
+          contrastText: '#002f4a'
         }
       }
     }
@@ -95,7 +110,7 @@ export const theme = createTheme(paletteTheme, {
     },
     MuiButton: {
       styleOverrides: {
-        root: {
+        root: (_: Theme) => ({
           variants: [{
             props: { variant: "underline" },
             style: {
@@ -104,16 +119,17 @@ export const theme = createTheme(paletteTheme, {
               justifyContent: 'left',
               borderRadius: 0,
               textDecoration: 'underlined',
-              borderBottom: '1px solid rgba(255, 255, 255, 0.1)',
+              background: `linear-gradient(to top, ${_.theme.palette.secondary.light} 0%, transparent 33%)`,
+              borderBottom: `1px solid ${_.theme.palette.secondary.light}`,
               '&:hover': {
-                background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 100%)'
+                background: `linear-gradient(to top, ${_.theme.palette.secondary.light} 0%, transparent 100%)`
               },
             },
           }],
           // marginBottom: '4px',
           padding: '6px 8px 4px',
           alignItems: 'baseline',
-        }
+        })
       }
     },
     MuiDialog: {
@@ -136,43 +152,37 @@ export const theme = createTheme(paletteTheme, {
     },
     MuiDataGrid: {
       styleOverrides: {
-        root: {
+        root: (_: Theme) => ({
           borderImageSlice: 1,
-          borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
+          borderImageSource: `linear-gradient(to right, ${_.theme.palette.primary.dark} 50%, transparent 100%)`,
           '--DataGrid-rowBorderColor': 'none',
           '& .MuiDataGrid-row': {
-            borderBottom: '1px solid rgba(255, 255, 255, .12)',
+            borderBottom: `1px solid ${_.theme.palette.primary.dark}`,
             borderImageSlice: 1,
-            borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
+            borderImageSource: `linear-gradient(to right, ${_.theme.palette.primary.dark} 50%, transparent 100%)`,
           }
-        },
-        withBorderColor: {
-          borderImageSlice: 1,
-          borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
+        }),
+        footerContainer: {
+          borderTop: 'none'
         }
       }
     },
     MuiPaper: {
       styleOverrides: {
-        root: {
+        root: (_: Theme) => ({
           variants: [{
             props: { variant: "outlined" },
             style: {
+              backgroundColor: 'transparent',
               borderImageSlice: 1,
-              borderImageSource: 'linear-gradient(to right, rgba(255, 255, 255, .1) 0%, transparent 100%)',
-            }
-            // style: {
-            //   '&:hover': {
-            //     background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 100%)'
-            //   }
-            // }
+              borderImageSource: `linear-gradient(to right, ${_.theme.palette.primary.dark} 50%, transparent 100%)`,
+            },
           }],
-        }
+        }),
       }
     }
   }
 });
-
 
 export const useStyles = (): { [key: string]: SxProps } => {
 
@@ -214,7 +224,7 @@ export const useStyles = (): { [key: string]: SxProps } => {
 
     datatable: { borderRadius: '4px' },
 
-    legendBox: { borderRadius: '12px', borderColor: '#333' },
+    legendBox: { borderRadius: '12px', borderColor: 'rgba(255, 255, 255, .255)' },
 
     infoHeader: { fontWeight: 500, fontSize: '1rem', textTransform: 'uppercase', color: '#aaa !important' },
     infoLabel: { fontWeight: 500, fontSize: '1rem' },

@@ -123,7 +123,7 @@ export function ManageRoles(_: IComponent): React.JSX.Element {
   })
 
   return <>
-    <Dialog open={dialog === 'manage_role'} fullWidth maxWidth="sm">
+    <Dialog onClose={setDialog} open={dialog === 'manage_role'} fullWidth maxWidth="sm">
       <Suspense>
         <ManageRoleModal editRole={editRole?.role} isDefault={group?.defaultRoleId == editRole?.role?.id} closeModal={() => {
           setDialog('');

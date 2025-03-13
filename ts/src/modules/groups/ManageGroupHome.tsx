@@ -24,11 +24,13 @@ import ManageForms from '../forms/ManageForms';
 import ManageServices from '../services/ManageServices';
 import ManageGroupModal from './ManageGroupModal';
 import GroupSeatModal from './GroupSeatModal';
+import { useTheme } from '@mui/material';
 
 const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULE_KEYS, APP_GROUP_SERVICES, APP_GROUP_USERS } = SiteRoles;
 
 export function ManageGroupHome(props: IComponent): React.JSX.Element {
 
+  const theme = useTheme();
   const classes = useStyles();
   const { component } = useParams();
 
@@ -71,7 +73,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
           sx={{
             ...classes.variableText,
             cursor: 'pointer',
-            borderBottom: selected ? '2px solid white' : undefined
+            borderBottom: selected ? `2px solid ${theme.palette.primary.main}` : undefined
           }}
           onClick={() => {
             navigate(`/group/manage/${comp}`);
@@ -130,6 +132,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
               shrink: true
             },
             input: {
+              readOnly: true,
               endAdornment: <IconButton
                 {...targets(`manage group edit`, `edit the group details`)}
                 color="info"
@@ -154,6 +157,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
               shrink: true
             },
             input: {
+              readOnly: true,
               endAdornment: <IconButton
                 {...targets(`manage group home copy code`, `copy the group code to your system clipboard`)}
                 color="info"
@@ -176,6 +180,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
               shrink: true
             },
             input: {
+              readOnly: true,
               endAdornment: <IconButton
                 {...targets(`manage group home copy join url`, `copy a group join url to your system clipboard`)}
                 color="info"
@@ -198,6 +203,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
               shrink: true
             },
             input: {
+              readOnly: true,
               endAdornment: <IconButton
                 {...targets(`manage group home add seats`, `open the group seats modal to add more seats to your group`)}
                 sx={{ cursor: 'pointer' }}
@@ -219,14 +225,14 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
     {viewPage}
 
     <Suspense>
-      <Dialog open={dialog === 'manage_group'} fullWidth maxWidth="sm">
+      <Dialog onClose={setDialog} open={dialog === 'manage_group'} fullWidth maxWidth="sm">
         <ManageGroupModal {...props} editGroup={group} closeModal={() => {
           setDialog('');
           void getUserProfileDetails();
         }} />
       </Dialog>
 
-      <Dialog open={dialog === 'add_seats'} fullWidth maxWidth="sm">
+      <Dialog onClose={setDialog} open={dialog === 'add_seats'} fullWidth maxWidth="sm">
         <GroupSeatModal {...props} closeModal={() => {
           setDialog('');
           console.log("did finish")

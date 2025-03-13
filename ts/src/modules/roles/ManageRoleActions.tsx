@@ -125,7 +125,10 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
       </Grid>
     </Grid>
 
-    <DataGrid {...roleActionGridProps} />
+    <DataGrid
+      hideFooter
+      {...roleActionGridProps}
+    />
 
   </>
 }

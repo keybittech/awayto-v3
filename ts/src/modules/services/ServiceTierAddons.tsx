@@ -93,6 +93,7 @@ export function ServiceTierAddons({ service, showFormChips, onClickHeader }: Ser
       <Typography variant="caption">Tiers may be edited by clicking their corresponding header cell.</Typography>
     </Box>}
     <DataGrid
+      hideFooter
       onColumnHeaderClick={e => onClickHeader && onClickHeader(serviceTiers.find(x => x.name == e.colDef.headerName) || {})}
       {...tierGridProps}
       {...{

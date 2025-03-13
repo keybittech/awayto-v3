@@ -12,8 +12,8 @@ import TextField from '@mui/material/TextField';
 import { IUserProfile, siteApi, targets } from 'awayto/hooks';
 
 interface ManageUserModalProps extends IComponent {
-  editRoleId: string;
-  editUser: IUserProfile;
+  editRoleId?: string;
+  editUser?: IUserProfile;
 }
 
 export function ManageUserModal({ editRoleId, editUser, closeModal }: ManageUserModalProps): React.JSX.Element {

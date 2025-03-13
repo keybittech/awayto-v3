@@ -27,7 +27,7 @@ const Layout = (props: IComponent): React.JSX.Element => {
               <Sidebar />
             </Grid> */}
             <Grid size={12} container direction="column" sx={{ marginLeft: { xs: 0, md: true ? 0 : '175px' } }}>
-              <Grid px={1} sx={{ bgcolor: 'primary.dark' }}>
+              <Grid px={1} sx={{ bgcolor: 'secondary.dark' }}>
                 <Topbar {...props} />
               </Grid>
               <Grid p={2} sx={{ width: '100%', minHeight: 'calc(100vh - 75px)' }}>

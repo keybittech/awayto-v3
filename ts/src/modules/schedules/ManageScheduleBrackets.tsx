@@ -1,6 +1,5 @@
 import React, { useState, useMemo, useContext } from 'react';
 
-import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
 import Tooltip from '@mui/material/Tooltip';
@@ -152,7 +151,7 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
   })
 
   return <>
-    <Dialog fullScreen open={dialog === 'manage_schedule'}>
+    <Dialog fullScreen onClose={setDialog} open={dialog === 'manage_schedule'}>
       <ManageScheduleBracketsModal
         groupSchedules={unusedGroupSchedules}
         editSchedule={schedule}

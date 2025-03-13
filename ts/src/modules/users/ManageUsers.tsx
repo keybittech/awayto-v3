@@ -79,7 +79,7 @@ export function ManageUsers(props: IComponent): React.JSX.Element {
   });
 
   return <>
-    <Dialog open={dialog === 'manage_user'} fullWidth maxWidth="xs">
+    <Dialog onClose={setDialog} open={dialog === 'manage_user'} fullWidth maxWidth="xs">
       <Suspense>
         <ManageUserModal {...props} editRoleId={user.roleId} editUser={user.userProfile} closeModal={() => {
           getGroupUsers()

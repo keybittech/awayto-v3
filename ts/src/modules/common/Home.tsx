@@ -33,10 +33,6 @@ export function Home(props: IComponent): React.JSX.Element {
         sx={{
           ...classes.variableText,
           my: .5,
-          background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 33%)',
-          '&:hover': {
-            background: 'linear-gradient(to top, rgba(255, 255, 255, .05) 0%, transparent 100%)'
-          },
         }}
         onClick={() => navigate(rd.resource)}
       >

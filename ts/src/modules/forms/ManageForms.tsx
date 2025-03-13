@@ -95,7 +95,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
   });
 
   return <>
-    <Dialog fullScreen open={dialog === 'manage_form'} fullWidth maxWidth="sm">
+    <Dialog fullScreen onClose={setDialog} open={dialog === 'manage_form'} fullWidth maxWidth="sm">
       <Suspense>
         <ManageFormModal {...props} editForm={groupForm?.form as IForm} closeModal={() => {
           setDialog('')
