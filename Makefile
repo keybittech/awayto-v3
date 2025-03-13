@@ -189,16 +189,18 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 	pnpm --dir $(TS_SRC) i
 	pnpm run --dir $(TS_SRC) build
 
-$(PROTO_MOD_TARGET): $(shell find proto/ -type f)
-	@mkdir -p $(@D)
+$(PROTO_MOD_TARGET): working/proto-stamp
+working/proto-stamp: $(wildcard proto/*.proto)
+	@mkdir -p $(@D) $(GO_GEN_DIR)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
 		--go_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
-	if [ ! -f "$(GO_GEN_DIR)/go.mod" ]; then \
-		cd $(@D) && go mod init ${PROJECT_REPO}/$(GO_GEN_DIR) && go mod tidy && cd -; \
+	if [ ! -f "$(PROTO_MOD_TARGET)" ]; then \
+		cd $(GO_GEN_DIR) && go mod init ${PROJECT_REPO}/$(GO_GEN_DIR) && go mod tidy && cd -; \
 	fi
+	touch $@
 
 $(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
