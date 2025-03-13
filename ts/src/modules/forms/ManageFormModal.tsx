@@ -1,4 +1,4 @@
-import React, { Suspense, useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
@@ -76,7 +76,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
       return {
         ...m,
         [i]: fields.map(f => {
-          delete f.v;
+          if ('' === f.v) delete f.v;
           if ('' === f.t) delete f.t;
           if ('' === f.h) delete f.h;
           if ('' === f.x) delete f.x;
@@ -107,8 +107,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
               name,
               formId: id,
               version: {
-                form: newForm,
-                submission: {}
+                form: newForm
               }
             }
           } as IGroupForm
@@ -140,19 +139,19 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
         />
       </Box>
 
-      <Suspense>
-        <FormBuilder {...props} editable={editable} version={version} setVersion={setVersion} />
-      </Suspense>
+      <FormBuilder {...props} editable={editable} version={version} setVersion={setVersion} />
 
     </CardContent>
     <CardActions>
       <Grid size="grow" container justifyContent="space-between">
         <Button
           {...targets(`manage form modal close`, `close the form management modal`)}
+          color="error"
           onClick={closeModal}
         >Cancel</Button>
         <Button
           {...targets(`manage form modal submit`, `submit the current form to be saved or edited`)}
+          color="info"
           onClick={handleSubmit}
         >Submit</Button>
       </Grid>

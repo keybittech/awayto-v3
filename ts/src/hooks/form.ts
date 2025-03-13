@@ -39,7 +39,7 @@ export type IFormVersion = {
   id: string;
   formId: string;
   form: IFormTemplate;
-  submission: IFormSubmission;
+  submission?: IFormSubmission;
   createdOn: string;
 };
 

@@ -41,6 +41,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   const [postQuote] = siteApi.useQuoteServicePostQuoteMutation();
   const [files, setFiles] = useState<IFile[]>([]);
   const [dialog, setDialog] = useState('');
+  const [didSubmit, setDidSubmit] = useState(false);
 
   const {
     getGroupUserSchedules: {
@@ -71,13 +72,13 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     form: serviceForm,
     comp: ServiceForm,
     valid: serviceFormValid
-  } = useGroupForm(groupScheduleService?.formId);
+  } = useGroupForm(groupScheduleService?.formId, didSubmit);
 
   const {
     form: tierForm,
     comp: TierForm,
     valid: tierFormValid
-  } = useGroupForm(groupScheduleServiceTier?.formId);
+  } = useGroupForm(groupScheduleServiceTier?.formId, didSubmit);
 
   useEffect(() => {
     getDateSlots();
@@ -100,6 +101,8 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
       There are no group schedules, or they are currently paused.
     </Alert>
   }
+
+  const hasForms = Boolean(serviceForm?.id || tierForm?.id);
 
   return <>
     <Card variant="outlined">
@@ -157,18 +160,20 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
               </Button>
             </Grid>
           </Grid>
-          <Grid container spacing={2} direction="column">
+          {hasForms && <Grid container mt={2} spacing={2} direction="column">
+            <Typography variant="h6">Request Details</Typography>
             {serviceForm && <Grid size="grow">
-              <ServiceForm />
+              {ServiceForm}
             </Grid>}
             {tierForm && <Grid size="grow">
-              <TierForm />
+              {TierForm}
             </Grid>}
-          </Grid>
+          </Grid>}
         </CardContent>
         <CardActionArea
           {...targets(`request quote submit request`, `submit your completed request for service`)}
           onClick={() => {
+            setDidSubmit(true);
             if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
               setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
               return;

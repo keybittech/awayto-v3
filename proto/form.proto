@@ -64,7 +64,7 @@ message IProtoFormVersion {
   string id = 1;
   string formId = 2;
   google.protobuf.Value form = 3 [(google.api.field_behavior) = REQUIRED];
-  google.protobuf.Value submission = 4 [(google.api.field_behavior) = REQUIRED];
+  google.protobuf.Value submission = 4;
   string createdOn = 5;
   int32 row = 6;
 }

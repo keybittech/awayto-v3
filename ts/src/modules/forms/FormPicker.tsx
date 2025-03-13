@@ -56,7 +56,7 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
       {!groupFormsRequest.groupForms && <MenuItem key={`no-forms`} value="">No forms created</MenuItem>}
     </TextField>}
 
-    <Dialog open={dialog === 'create_form'} fullWidth maxWidth="lg">
+    <Dialog onClose={setDialog} open={dialog === 'create_form'} fullWidth maxWidth="lg">
       <Suspense>
         <ManageFormModal {...props} closeModal={() => {
           setDialog('')

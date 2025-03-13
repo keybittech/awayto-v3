@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React from 'react';
 
 import TextField, { TextFieldProps } from '@mui/material/TextField';
 import Card from '@mui/material/Card';
@@ -9,39 +9,31 @@ import type { IField } from 'awayto/hooks';
 
 interface FieldProps extends IComponent {
   field: IField;
-  editable: boolean;
-  defaultDisplay?: boolean;
   settingsBtn?: React.JSX.Element;
 }
 
-export function Field({ settingsBtn, defaultDisplay, field = { l: 'Label', x: 'Text' }, editable = false, ...props }: FieldProps & TextFieldProps): React.JSX.Element {
+export function Field({ settingsBtn, field = { l: 'Label', x: 'Text' }, error, disabled, onChange }: FieldProps & TextFieldProps): React.JSX.Element {
   if (!field) return <></>;
 
-  const FieldElement: (props: TextFieldProps) => React.JSX.Element = useMemo(() => {
-    switch (field.t) {
-      case 'date':
-      case 'time':
-      case 'text':
-        return TextField;
-      case 'labelntext':
-        return () => <Card sx={{ flex: 1, p: '6px' }}>
-          <CardHeader title={field.l} variant="h6" action={settingsBtn} />
-          <CardContent>{field.x}</CardContent>
-        </Card>
-      default:
-        return () => <></>;
-    }
-  }, [field, settingsBtn]);
+  if ('labelntext' == field.t) {
+    return <Card sx={{ flex: 1, p: '6px' }}>
+      <CardHeader title={field.l} variant="h6" action={settingsBtn} />
+      <CardContent>{field.x}</CardContent>
+    </Card>
+  }
 
-  return <FieldElement
+  return <TextField
     fullWidth
-    disabled={!editable}
+    error={error}
+    disabled={disabled}
     id={`form field ${field.l}`}
     label={field.l}
     aria-label={`modify the form field ${field.l} which is of type ${field.t}`}
     type={field.t}
     helperText={`${field.r ? 'Required. ' : ''}${field.h || ''}`}
     value={field.v ?? ''}
+    required={field.r}
+    onChange={onChange}
     slotProps={{
       input: {
         endAdornment: settingsBtn
@@ -50,7 +42,6 @@ export function Field({ settingsBtn, defaultDisplay, field = { l: 'Label', x: 'T
         shrink: true
       }
     }}
-    {...props}
   />;
 }
 

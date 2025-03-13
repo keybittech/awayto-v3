@@ -1,11 +1,13 @@
 package handlers
 
 import (
+	"net/http"
+	"strings"
+
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"net/http"
-	"strings"
+	"github.com/lib/pq"
 )
 
 func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupServiceResponse, error) {
@@ -42,15 +44,19 @@ func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, da
 }
 
 func (h *Handlers) DeleteGroupService(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupServiceResponse, error) {
-	for _, serviceId := range strings.Split(data.GetIds(), ",") {
-		_, err := tx.Exec(`
-			DELETE FROM dbtable_schema.group_services
-			WHERE group_id = $1 AND service_id = $2
-		`, session.GroupId, serviceId)
 
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
+	serviceIds := strings.Split(data.Ids, ",")
+	_, err := tx.Exec(`
+		DELETE FROM dbtable_schema.group_services
+		WHERE group_id = $1 AND service_id = ANY($2)
+	`, session.GroupId, pq.Array(serviceIds))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = h.DisableService(w, req, &types.DisableServiceRequest{Ids: data.Ids}, session, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/services")

@@ -1,14 +1,14 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"encoding/json"
-	"errors"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/lib/pq"
 )
@@ -19,14 +19,11 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.services (name, cost, form_id, survey_id, created_sub)
 		VALUES ($1, $2::integer, $3, $4, $5::uuid)
+		ON CONFLICT (name, created_sub) DO UPDATE
+		SET enabled = true, cost = $2::integer, form_id = $3, survey_id = $4
 		RETURNING id
 	`, service.GetName(), service.Cost, service.FormId, service.SurveyId, session.UserSub).Scan(&service.Id)
-
 	if err != nil {
-		var dbErr *pq.Error
-		if errors.As(err, &dbErr) && dbErr.Constraint == "services_name_created_sub_key" {
-			return nil, util.ErrCheck(util.UserError("A service with the same name already exists."))
-		}
 		return nil, util.ErrCheck(err)
 	}
 
@@ -46,62 +43,17 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchServiceResponse, error) {
 	service := data.GetService()
 
-	rows, err := tx.Query(`
-		SELECT st.id
-		FROM dbtable_schema.service_tiers st
-		WHERE st.service_id = $1
-	`, service.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	defer rows.Close()
-
-	for rows.Next() {
-		var tierId string
-		err = rows.Scan(&tierId)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
-		// delete any existing addons using tier ids dbtable_schema.service_tier_addons
-		_, err = tx.Exec(`
-			DELETE FROM dbtable_schema.service_tier_addons
-			WHERE service_tier_id = $1
-		`, tierId)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-	}
-
-	// delete any tiers with serviceId dbtable_schema.service_tiers
-	_, err = tx.Exec(`
-		DELETE FROM dbtable_schema.service_tiers
-		WHERE service_id = $1
-	`, service.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	// update PatchService
-	_, err = tx.Exec(`
-		UPDATE dbtable_schema.services
-		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
-		WHERE id = $1
-	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	// build tiers
+	// insert new tiers, re-enabling if conflicting
+	insertedTierIds := make([]string, 0)
 	for _, tier := range service.GetTiers() {
 		var tierId string
 
-		err = tx.QueryRow(`
+		err := tx.QueryRow(`
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
 				SELECT * FROM input_rows
-				ON CONFLICT (name, service_id) DO NOTHING
+				ON CONFLICT (name, service_id) DO UPDATE
+			SET enabled = true, multiplier = $3::decimal, form_id = $4::uuid, survey_id = $5::uuid, updated_sub = $6::uuid, updated_on = $7
 				RETURNING id
 			)
 			SELECT id
@@ -110,23 +62,70 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 			SELECT st.id
 			FROM input_rows
 			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), service.GetId(), tier.GetMultiplier(), tier.FormId, tier.SurveyId, session.UserSub).Scan(&tierId)
-
+		`, tier.GetName(), service.Id, tier.GetMultiplier(), tier.FormId, tier.SurveyId, session.UserSub, time.Now()).Scan(&tierId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
+		insertedTierIds = append(insertedTierIds, tierId)
+
+		// insert new tier addons, enabling on conflict
+		insertedTierAddonIds := make([]string, 0)
 		for _, addon := range tier.GetAddons() {
 			_, err = tx.Exec(`
 				INSERT INTO dbtable_schema.service_tier_addons (service_addon_id, service_tier_id, created_sub)
 				VALUES ($1, $2, $3::uuid)
-				ON CONFLICT (service_addon_id, service_tier_id) DO NOTHING
+				ON CONFLICT (service_addon_id, service_tier_id) DO UPDATE
+				SET enabled = true
 			`, addon.GetId(), tierId, session.UserSub)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
+			insertedTierAddonIds = append(insertedTierAddonIds, addon.GetId())
+		}
+
+		// delete old addons, never referenced beyond the tier
+		_, err = tx.Exec(`
+			DELETE FROM dbtable_schema.service_tier_addons
+			WHERE service_addon_id IN (
+				SELECT service_addon_id
+				FROM dbtable_schema.service_tier_addons
+				WHERE service_tier_id = $1
+				AND service_addon_id NOT IN (SELECT unnest($2::uuid[]))
+			)
+		`, tierId, pq.Array(insertedTierAddonIds))
+		if err != nil {
+			return nil, util.ErrCheck(err)
 		}
 	}
+
+	// disable tiers that were not inserted or re-enabled
+	// may be referenced by a quote, which must show accurate info at the time of the request
+	_, err := tx.Exec(`
+		UPDATE dbtable_schema.service_tiers
+		SET enabled = false
+		WHERE id IN (
+			SELECT id
+			FROM dbtable_schema.service_tiers
+			WHERE service_id = $1
+			AND id NOT IN (SELECT unnest($2::uuid[]))
+		)
+	`, service.Id, pq.Array(insertedTierIds))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	// update service
+	_, err = tx.Exec(`
+		UPDATE dbtable_schema.services
+		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
+		WHERE id = $1
+	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, session.UserSub, time.Now())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	h.Redis.Client().Del(req.Context(), session.UserSub+"service/"+service.Id)
 
 	return &types.PatchServiceResponse{Success: true}, nil
 }
@@ -170,42 +169,42 @@ func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data
 }
 
 func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteServiceResponse, error) {
-	ids := strings.Split(data.GetIds(), ",")
+	serviceIds := strings.Split(data.GetIds(), ",")
 
-	for _, id := range ids {
-		_, err := tx.Exec(`
-			DELETE FROM dbtable_schema.services
-			WHERE id = $1
-		`, id)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
-		h.Redis.Client().Del(req.Context(), session.UserSub+"services/"+id)
+	_, err := tx.Exec(`
+		DELETE FROM dbtable_schema.services
+		WHERE id = ANY($1)
+	`, pq.Array(serviceIds))
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"services")
+	for _, serviceId := range serviceIds {
+		h.Redis.Client().Del(req.Context(), session.UserSub+"service/"+serviceId)
+	}
+
+	h.Redis.Client().Del(req.Context(), session.UserSub+"service")
 
 	return &types.DeleteServiceResponse{Success: true}, nil
 }
 
 func (h *Handlers) DisableService(w http.ResponseWriter, req *http.Request, data *types.DisableServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableServiceResponse, error) {
-	ids := strings.Split(data.GetIds(), ",")
+	serviceIds := strings.Split(data.GetIds(), ",")
 
-	for _, id := range ids {
-		_, err := tx.Exec(`
-			UPDATE dbtable_schema.services
-			SET enabled = false, updated_on = $2, updated_sub = $3
-			WHERE id = $1
-		`, id, time.Now().Local().UTC(), session.UserSub)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
-		h.Redis.Client().Del(req.Context(), session.UserSub+"services/"+id)
+	_, err := tx.Exec(`
+		UPDATE dbtable_schema.services
+		SET enabled = false, updated_on = $2, updated_sub = $3
+		WHERE id = ANY($1)
+	`, pq.Array(serviceIds), time.Now(), session.UserSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"services")
+	for _, serviceId := range serviceIds {
+		h.Redis.Client().Del(req.Context(), session.UserSub+"service/"+serviceId)
+	}
+
+	h.Redis.Client().Del(req.Context(), session.UserSub+"service")
 
 	return &types.DisableServiceResponse{Success: true}, nil
 }

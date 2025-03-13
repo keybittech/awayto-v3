@@ -424,11 +424,13 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button
           {...targets(`manage schedule modal close`, `close the schedule management modal`)}
+          color="error"
           onClick={closeModal}
         >Cancel</Button>}
         <Button
           {...targets(`manage schedule modal submit`, `submit the current schedule for editing or creation`)}
           disabled={!schedule.name}
+          color="info"
           onClick={handleSubmit}
         >Save Schedule</Button>
       </Grid>

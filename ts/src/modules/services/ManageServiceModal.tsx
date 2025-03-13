@@ -1,4 +1,4 @@
-import React, { Suspense, useMemo, useEffect, useState, useCallback } from 'react';
+import React, { Suspense, useMemo, useEffect, useState, useCallback, useContext } from 'react';
 
 import TextField from '@mui/material/TextField';
 import Box from '@mui/material/Box';
@@ -17,6 +17,7 @@ import { useStyles, siteApi, useUtil, useSuggestions, IService, IServiceTier, IP
 import FormPicker from '../forms/FormPicker';
 import SelectLookup from '../common/SelectLookup';
 import ServiceTierAddons from './ServiceTierAddons';
+import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
 
 const serviceSchema = {
   name: '',
@@ -63,6 +64,10 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery();
 
   const {
+    getGroupUserSchedules
+  } = useContext(GroupScheduleContext) as GroupScheduleContextType
+
+  const {
     comp: ServiceSuggestions,
     suggest: suggestServices
   } = useSuggestions('services');
@@ -86,8 +91,13 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   const serviceTiers = useMemo(() => Object.values(newService.tiers || {}), [newService.tiers]);
 
   const handleSubmit = useCallback(async () => {
+    if (newServiceTier.id?.length) {
+      setSnack({ snackType: 'warning', snackOn: 'Please save or delete the ' + newServiceTier.name + ' tier before saving the service.' });
+      return;
+    }
+
     if (!newService.name || !Object.keys(newService?.tiers || {}).length) {
-      setSnack({ snackOn: 'Provide the service name and at least 1 tier with at least 1 feature.', snackType: 'info' });
+      setSnack({ snackType: 'info', snackOn: 'Provide the service name and at least 1 tier with at least 1 feature.' });
       return;
     }
 
@@ -102,10 +112,12 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
         }).unwrap();
         setNewService({ ...newService, id });
       }
+
+      await getGroupUserSchedules.refetch().unwrap();
     }
 
     closeModal && closeModal(newService);
-  }, [newService]);
+  }, [newService, newServiceTier.id]);
 
   const useSuggestTiers = useCallback(() => {
     if (debouncedService.name && groupDisplayName) {
@@ -373,7 +385,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                       formId={newServiceTier.formId}
                       label="Tier Intake Form"
                       helperText="Optional. Shown during appointment creation."
-                      onSelectForm={(formId: string) => {
+                      onSelectForm={(formId?: string) => {
                         setNewServiceTier({ ...newServiceTier, formId });
                       }}
                     />
@@ -383,7 +395,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                       formId={newServiceTier.surveyId}
                       label="Tier Survey Form"
                       helperText="Optional. Shown during post-appointment summary."
-                      onSelectForm={(surveyId: string) => {
+                      onSelectForm={(surveyId?: string) => {
                         setNewServiceTier({ ...newServiceTier, surveyId });
                       }}
                     />
@@ -482,10 +494,12 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
       <Grid size="grow" container justifyContent={showCancel ? "space-between" : "flex-end"}>
         {showCancel && <Button
           {...targets(`manage service modal close`, `close the service management modal`)}
+          color="error"
           onClick={closeModal}
         >Cancel</Button>}
         <Button
           {...targets(`manage service modal submit`, `submit this service for editing or creation`)}
+          color="info"
           disabled={!newService.name || newService.tiers && !Object.keys(newService.tiers).length}
           onClick={handleSubmit}
         >Save Service</Button>

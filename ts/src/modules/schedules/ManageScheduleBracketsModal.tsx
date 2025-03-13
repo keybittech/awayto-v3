@@ -172,7 +172,7 @@ export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, clos
       {1 === viewStep ? <>
         <Box mt={2} />
 
-        <Box mb={4}>
+        {!Boolean(editSchedule?.id) && <Box mb={4}>
           <GroupScheduleSelect
             disabled={Boolean(editSchedule?.id)}
             helperText={
@@ -190,7 +190,7 @@ export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, clos
               </MenuItem>
             })}
           </GroupScheduleSelect>
-        </Box>
+        </Box>}
 
         <Box mb={4}>
           <TextField
@@ -235,7 +235,7 @@ export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, clos
           <Switch color="primary" value={bracket.automatic} onChange={e => setBracket({ ...bracket, automatic: e.target.checked })} />
         </Box>
 
-        {groupServices.length && <Box mb={4}>
+        {!!groupServices.length && <Box mb={4}>
           <Box mb={2}>
             <Typography>Services</Typography>
             <Typography variant="caption">Users will be able to select from these when making their appointment. At least 1 service is required.</Typography>
@@ -298,7 +298,6 @@ export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, clos
           <Button
             {...targets(`manage personal schedule modal next`, `continue to the next page of personal schedule management`)}
             disabled={!bracket.duration || !bracketServicesValues.length}
-            variant="outlined"
             color="info"
             onClick={() => {
               if (schedule?.id && bracket.duration && Object.keys(bracket.services || {}).length) {
@@ -329,7 +328,6 @@ export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, clos
           <Button
             {...targets(`manage personal schedule modal submit`, `submit the current personal schedule for editing or creation`)}
             color="info"
-            variant="outlined"
             onClick={handleSubmit}
           >Submit</Button>
         </>}

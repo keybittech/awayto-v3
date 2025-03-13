@@ -120,7 +120,7 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
 
   const addRow = useCallback(() => updateData({ ...rows, [(new Date()).getTime().toString()]: [makeField()] }), [rows]);
 
-  const addCol = useCallback((row: string) => updateData({ ...rows, [row]: Array.prototype.concat(rows[row], [makeField()]) }), [rows]);
+  const addCol = useCallback((row: string) => updateData({ ...rows, [row]: [...rows[row], makeField()] }), [rows]);
 
   const delCol = useCallback((row: string, col: number) => {
     rows[row].splice(col, 1);
@@ -183,8 +183,7 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
               {rows[rowId].map((field, j) => {
                 return <Grid role="gridcell" size={12 / rows[rowId].length} key={`form_fields_cell_${i + 1}_${j}`}>
                   <Field
-                    defaultDisplay
-                    editable={false}
+                    disabled={true}
                     field={field}
                     settingsBtn={
                       <IconButton
@@ -252,9 +251,9 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
 
           <Grid>
             <TextField
+              {...targets(`form build field label input ${position.row} ${position.col}`, `Label`, `change the label that will appear above the form field`)}
               fullWidth
               autoFocus
-              {...targets(`form build field label input ${position.row} ${position.col}`, `Label`, `change the label that will appear above the form field`)}
               type="text"
               helperText="Required."
               value={cell.l}

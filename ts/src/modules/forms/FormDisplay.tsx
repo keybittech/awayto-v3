@@ -7,11 +7,12 @@ import type { IForm, IFormSubmission } from 'awayto/hooks';
 import Field from './Field';
 
 interface FormDisplayProps extends IComponent {
-  form: Required<IForm>;
+  form?: Required<IForm>;
   setForm(value: IForm): void;
+  didSubmit?: boolean;
 }
 
-export function FormDisplay({ form, setForm }: FormDisplayProps): React.JSX.Element {
+export function FormDisplay({ form, setForm, didSubmit }: FormDisplayProps): React.JSX.Element {
 
   useEffect(() => {
     if (setForm && form && !form?.version?.submission) {
@@ -37,24 +38,26 @@ export function FormDisplay({ form, setForm }: FormDisplayProps): React.JSX.Elem
     if (form && setForm) {
       const updatedForm = { ...form };
       updatedForm.version.form[row][col][attr] = value;
+      if (!updatedForm.version.submission) {
+        updatedForm.version.submission = {};
+      }
+      if (!updatedForm.version.submission[row]) {
+        updatedForm.version.submission[row] = [];
+      }
       updatedForm.version.submission[row][col] = value;
       setForm(updatedForm);
     }
   }, [form, setForm]);
 
   return <Grid container spacing={2}>
-
     {rowKeys.map((rowId, i) => <Grid key={`form_fields_row_${i}`} size={12}>
       <Grid container spacing={2}>
         {form?.version.form[rowId].map((cell, j) => {
           return <Grid key={`form_fields_cell_${i + 1}_${j}`} size={12 / form.version.form[rowId].length}>
             <Field
               field={cell}
-              fullWidth
-              editable={true}
-              helperText={`${cell.r ? 'Required. aaa' : ''}${cell.h || ''}`}
-              onBlur={(e: React.FocusEvent<HTMLInputElement>) => { setCellAttr(rowId, j, e.target.value, 'v') }}
-              defaultValue={cell.v || ''}
+              error={didSubmit && cell.r && [undefined, ''].includes(cell.v)}
+              onChange={e => { setCellAttr(rowId, j, e.target.value, 'v') }}
             />
           </Grid>
         })}
@@ -62,3 +65,5 @@ export function FormDisplay({ form, setForm }: FormDisplayProps): React.JSX.Elem
     </Grid>)}
   </Grid>
 }
+
+export default FormDisplay;
