@@ -382,7 +382,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
               <TextField
                 {...targets(`manage schedule modal slot context name`, `Booking Slot Length`, `an uneditable field showing the currently selected slot context name`)}
                 disabled={true}
-                value={slotTimeUnitName}
+                value={slotTimeUnitName || ''}
                 helperText={slotDurationMarks.length > 1 ? `The # of ${slotTimeUnitName}s to deduct from the bracket upon accepting a booking. Alternatively, if you meet with clients, this is the length of time per session.` : 'The booking slot will be for an entire day.'}
                 slotProps={{
                   inputLabel: {

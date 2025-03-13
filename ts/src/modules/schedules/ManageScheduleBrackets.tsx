@@ -51,6 +51,8 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
 
   const { data: schedulesRequest, refetch: getSchedules } = siteApi.useScheduleServiceGetSchedulesQuery();
 
+  console.log({ schedulesRequest })
+
   const [getScheduleById, { isFetching }] = siteApi.useLazyScheduleServiceGetScheduleByIdQuery();
 
   const userScheduleNames = useMemo(() => schedulesRequest?.schedules?.map(s => s.name), [schedulesRequest?.schedules]);
