@@ -19,6 +19,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
         (
           SELECT
             eq.id,
+            schedule.name as "scheduleName",
             schedule.timezone,
             eq."slotDate",
             eq."startTime",
@@ -43,6 +44,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
         (
           SELECT
             eb.id,
+            schedule.name as "scheduleName",
             schedule.timezone,
             eb."slotDate",
             eb."scheduleBracketSlot",

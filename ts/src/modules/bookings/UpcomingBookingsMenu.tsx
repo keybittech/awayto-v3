@@ -1,16 +1,16 @@
 import React, { useContext } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useNavigate } from 'react-router-dom';
 
 import Button from '@mui/material/Button';
 import Menu from '@mui/material/Menu';
 import MenuItem from '@mui/material/MenuItem';
+import ListItem from '@mui/material/ListItem';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
-import Tooltip from '@mui/material/Tooltip';
 
 import JoinFullIcon from '@mui/icons-material/JoinFull';
 
-import { useUtil, bookingFormat, targets } from 'awayto/hooks';
+import { bookingFormat, targets } from 'awayto/hooks';
 
 import BookingContext, { BookingContextType } from './BookingContext';
 
@@ -47,6 +47,7 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
       'aria-labelledby': 'topbar-exchange-toggle'
     }}
   >
+    <ListItem>Join an Exchange</ListItem>
     {upcomingBookings.map((booking, i) => {
 
       if (booking.slotDate && booking.scheduleBracketSlot?.startTime && booking.scheduleBracketSlot?.id && booking.service?.name && booking.serviceTier?.name) {
@@ -54,15 +55,19 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
         // const dt = bookingDT(booking.slotDate, booking.scheduleBracketSlot.startTime);
 
         return <MenuItem
+          autoFocus={i == 0}
           key={`upcoming_appt_ub_${i}`}
-          {...targets(`join exchange ${booking.slotDate} ${booking.scheduleBracketSlot?.startTime}`, `go to exchange for ${bookingFormat(booking.slotDate, booking.scheduleBracketSlot?.startTime)}`)}
+          {...targets(
+            `join exchange ${booking.slotDate} ${booking.scheduleBracketSlot.startTime}`,
+            `go to exchange for ${bookingFormat(booking.slotDate, booking.scheduleBracketSlot.startTime)}`
+          )}
           onClick={() => {
             navigate(`/exchange/${booking.id}`);
           }}
         >
           <ListItemIcon><JoinFullIcon /></ListItemIcon>
           <ListItemText
-            primary={`Join ${booking.service.name} ${booking.serviceTier.name}`}
+            primary={`${booking.scheduleName} ${booking.service.name} ${booking.serviceTier.name}`}
             secondary={`${bookingFormat(booking.slotDate, booking.scheduleBracketSlot.startTime)}`}
           />
         </MenuItem>

@@ -119,7 +119,6 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
 
   const { startTime, endTime } = groupSchedule.schedule || {};
   const hasForms = Boolean(serviceForm?.id || tierForm?.id);
-  console.log({ a: serviceForm?.id, b: tierForm?.id })
   const scheduleInactive = !startTime || dayjs().isBefore(dayjs(startTime));
 
   return <>

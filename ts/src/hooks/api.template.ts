@@ -70,8 +70,10 @@ const createApi = buildCreateApi(
   reactHooksModule({ unstable__sideEffectsInRender: false })
 );
 
+// Keep data for longer than the server 3 min cache
 export const siteApiTemplate = createApi({
-  refetchOnMountOrArgChange: 180,
+  keepUnusedDataFor: 200,
+  refetchOnMountOrArgChange: 200,
   baseQuery: customBaseQuery,
   endpoints: () => ({}),
 });

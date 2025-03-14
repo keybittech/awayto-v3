@@ -49,7 +49,7 @@ export function ManageScheduleBrackets(_: IComponent): React.JSX.Element {
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState('');
 
-  const { data: schedulesRequest, refetch: getSchedules } = siteApi.useScheduleServiceGetSchedulesQuery(undefined, { refetchOnMountOrArgChange: 30 });
+  const { data: schedulesRequest, refetch: getSchedules } = siteApi.useScheduleServiceGetSchedulesQuery();
 
   const [getScheduleById, { isFetching }] = siteApi.useLazyScheduleServiceGetScheduleByIdQuery();
 

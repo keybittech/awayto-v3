@@ -82,6 +82,7 @@ message IBooking {
   IServiceTier serviceTier = 12;
   int32 row = 13;
   string timezone = 14;
+  string scheduleName = 15;
 }
 
 message PostBookingRequest {
