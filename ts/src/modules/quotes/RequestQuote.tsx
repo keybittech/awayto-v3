@@ -129,7 +129,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
       />
 
       <Grid container p={2}>
-        <GroupScheduleSelect variant="standard" helperText={!scheduleInactive && `${dateFormat(startTime)} - ${endTime ? dateFormat(endTime) : 'Ongoing'}`} />
+        <GroupScheduleSelect variant="standard" helperText={!scheduleInactive && `Start: ${dateFormat(startTime)} End: ${endTime ? dateFormat(endTime) : 'Ongoing'}`} />
       </Grid>
 
       {!groupUserSchedulesRequest?.groupUserSchedules || scheduleInactive ? <>
