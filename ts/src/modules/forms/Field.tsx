@@ -16,7 +16,7 @@ export function Field({ settingsBtn, field = { l: 'Label', x: 'Text' }, error, d
   if (!field) return <></>;
 
   if ('labelntext' == field.t) {
-    return <Card sx={{ flex: 1, p: '6px' }}>
+    return <Card variant="outlined" sx={{ flex: 1, p: '6px' }}>
       <CardHeader title={field.l} variant="h6" action={settingsBtn} />
       <CardContent>{field.x}</CardContent>
     </Card>
