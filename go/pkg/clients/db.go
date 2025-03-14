@@ -496,7 +496,7 @@ func mapTypeToNullType(t string) reflect.Type {
 		return colTypes.reflectTimestamp
 	case "VARCHAR", "CHAR", "TIMESTAMP", "DATE", "INTERVAL", "TEXT", "UUID":
 		return colTypes.reflectString
-	case "INT8", "INT4":
+	case "INT8", "INT4", "INT2":
 		return colTypes.reflectInt32
 	case "INTEGER", "SMALLINT":
 		return colTypes.reflectInt64
@@ -509,6 +509,9 @@ func mapTypeToNullType(t string) reflect.Type {
 	}
 }
 
+// If reflect.Value errors are seen here it could mean that the protobuf value doesn't
+// match something that can be serialized from its db column type. For example, if the
+// db has a column of an INT type, but the protobuf is a string, we would see errors here
 func extractValue(dst, src reflect.Value) error {
 	if dst.IsValid() && dst.CanSet() {
 		if src.Kind() == reflect.Ptr || src.Kind() == reflect.Interface {
@@ -584,6 +587,7 @@ func extractValue(dst, src reflect.Value) error {
 				}
 
 				if err := protojson.Unmarshal(src.Bytes(), msg); err != nil {
+					println("Failed to marshal", string(src.Bytes()))
 					return util.ErrCheck(err)
 				}
 

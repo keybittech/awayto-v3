@@ -3,6 +3,7 @@ package util
 import (
 	"crypto/hmac"
 	"crypto/sha256"
+	"database/sql"
 	"encoding/base64"
 	"errors"
 	"flag"
@@ -126,6 +127,16 @@ func ErrCheck(err error) error {
 	_, file, line, _ := runtime.Caller(1)
 
 	return errors.New(fmt.Sprintf("%s %s:%d", err.Error(), file, line))
+}
+
+func NewNullString(s string) sql.NullString {
+	if len(s) == 0 {
+		return sql.NullString{}
+	}
+	return sql.NullString{
+		String: s,
+		Valid:  true,
+	}
 }
 
 func IsUUID(id string) bool {

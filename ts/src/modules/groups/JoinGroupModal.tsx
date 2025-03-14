@@ -58,18 +58,20 @@ function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
         </Grid>
       </CardContent>
       <CardActions>
-        <Grid container justifyContent="flex-end">
+        <Grid container size="grow" justifyContent="space-between">
           <Button
             {...targets(`join group modal close`, `close the join group modal`)}
+            color="error"
             onClick={closeModal}
           >Cancel</Button>
           <Button
             {...targets(`join group modal submit`, `submit the form to join a group using its group code`)}
+            color="info"
             onClick={handleSubmit}
-          >Submit</Button>
+          >Join Group</Button>
         </Grid>
       </CardActions>
-    </Card>
+    </Card >
   </>
 }
 

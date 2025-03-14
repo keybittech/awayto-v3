@@ -69,7 +69,7 @@ service BookingService {
 
 message IBooking {
   string id = 1;
-  string rating = 2;
+  int32 rating = 2;
   string slotDate = 3;
   string quoteId = 4;
   string scheduleBracketSlotId = 5;

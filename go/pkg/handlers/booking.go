@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"net/http"
+	"time"
+
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"net/http"
-	"time"
 )
 
 func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *types.PostBookingRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostBookingResponse, error) {
@@ -35,7 +36,6 @@ func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *
 		UPDATE dbtable_schema.bookings
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-		RETURNING id, service_tier_id, payment_id, agreement, description
 	`, data.Booking.GetId(), data.Booking.GetQuote().GetServiceTierId(), session.UserSub, time.Now().Local().UTC())
 
 	if err != nil || len(updatedBookings) == 0 {
@@ -65,6 +65,10 @@ func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data
 	`, data.GetId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
+	}
+
+	if len(bookings) == 0 {
+		return nil, util.ErrCheck(util.UserError("No booking found."))
 	}
 
 	return &types.GetBookingByIdResponse{Booking: bookings[0]}, err

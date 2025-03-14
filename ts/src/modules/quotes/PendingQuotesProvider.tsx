@@ -66,14 +66,14 @@ export function PendingQuotesProvider({ children }: IComponent): React.JSX.Eleme
             quote: s
           }) as IBooking);
 
-          postBooking({ postBookingRequest: { bookings: newBookings } }).unwrap().then(() => {
-            const disableQuoteIds = selectedValues.concat(approval ? copies : []).filter(c => !newBookings.some(b => b.id === c.id)).map(s => s.id).join(',');
-
-            disableQuote({ ids: disableQuoteIds }).unwrap().then(() => {
-              setSelectedPendingQuotes([]);
-              setPendingQuotesChanged(!pendingQuotesChanged);
-              void getUserProfileDetails();
-            }).catch(console.error);
+          postBooking({ postBookingRequest: { bookings: newBookings } }).unwrap().then(async () => {
+            if (approval && copies.length) {
+              const disableQuoteIds = selectedValues.concat(copies).filter(c => !newBookings.some(b => b.quote?.id === c.id)).map(s => s.id).join(',');
+              await disableQuote({ ids: disableQuoteIds }).unwrap();
+            }
+            setSelectedPendingQuotes([]);
+            setPendingQuotesChanged(!pendingQuotesChanged);
+            void getUserProfileDetails();
           }).catch(console.error);
         }
       });

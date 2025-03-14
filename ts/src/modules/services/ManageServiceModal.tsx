@@ -17,7 +17,7 @@ import { useStyles, siteApi, useUtil, useSuggestions, IService, IServiceTier, IP
 import FormPicker from '../forms/FormPicker';
 import SelectLookup from '../common/SelectLookup';
 import ServiceTierAddons from './ServiceTierAddons';
-import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
+import GroupScheduleContext from '../group_schedules/GroupScheduleContext';
 
 const serviceSchema = {
   name: '',
@@ -65,7 +65,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
 
   const {
     getGroupUserSchedules
-  } = useContext(GroupScheduleContext) as GroupScheduleContextType
+  } = useContext(GroupScheduleContext) || {};
 
   const {
     comp: ServiceSuggestions,
@@ -113,7 +113,9 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
         setNewService({ ...newService, id });
       }
 
-      await getGroupUserSchedules.refetch().unwrap();
+      if (getGroupUserSchedules) {
+        await getGroupUserSchedules.refetch().unwrap();
+      }
     }
 
     closeModal && closeModal(newService);
@@ -191,7 +193,6 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   return <Card>
     <CardHeader title={`${editGroupService ? 'Edit' : 'Create'} Service`} />
     <CardContent>
-
       <Grid container spacing={2}>
         <Grid size={{ xs: 12, md: 6 }}>
           <Box p={2} component="fieldset" sx={classes.legendBox}>

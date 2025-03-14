@@ -262,7 +262,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
     </Grid >
 
 
-    <Dialog open={assist == 'join_group'} fullWidth maxWidth="sm">
+    <Dialog onClose={setAssist} open={assist == 'join_group'} fullWidth maxWidth="sm">
       <JoinGroupModal closeModal={(joined: boolean) => {
         setAssist('');
         if (joined) {
@@ -271,7 +271,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
       }} />
     </Dialog>
 
-    <Dialog slotProps={{ paper: { elevation: 8 } }} open={assist == 'demo'} onClose={() => { setAssist(''); }} fullWidth maxWidth="md">
+    <Dialog onClose={setAssist} slotProps={{ paper: { elevation: 8 } }} open={assist == 'demo'} fullWidth maxWidth="md">
       <Grid size="grow" p={4}>
         <Typography ml={3} variant="body1">Onboarding Help</Typography>
         <IconButton

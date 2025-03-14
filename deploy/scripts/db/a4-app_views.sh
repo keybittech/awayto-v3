@@ -272,9 +272,9 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
     row_number() OVER () as row
   FROM
     dbtable_schema.bookings b
-  JOIN dbtable_schema.quotes q ON q.id = b.quote_id
-  JOIN dbview_schema.enabled_schedule_bracket_slots esbs ON esbs.id = q.schedule_bracket_slot_id
-  JOIN dbview_schema.enabled_service_tiers est ON est.id = q.service_tier_id
+  JOIN dbview_schema.enabled_quotes q ON q.id = b.quote_id
+  JOIN dbview_schema.enabled_schedule_bracket_slots esbs ON esbs.id = q."scheduleBracketSlotId"
+  JOIN dbview_schema.enabled_service_tiers est ON est.id = q."serviceTierId"
   JOIN dbview_schema.enabled_services es ON es.id = est."serviceId"
   WHERE
     b.enabled = true;
