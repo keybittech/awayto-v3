@@ -43,14 +43,16 @@ export function Home(props: IComponent): React.JSX.Element {
 
   return <Grid container size="grow">
     <Grid container spacing={2}>
-      <Grid size={{ xs: 12, md: 3, lg: 2 }}>
-        <Card sx={{ p: 2 }} variant="outlined">
+      <Grid size={{ md: 3, xl: 2 }}>
+        <Card variant="outlined">
           <CardHeader
             title={`${profileRequest?.userProfile.firstName} ${profileRequest?.userProfile.lastName}`}
             subheader={`${group?.name} ${profileRequest?.userProfile.roleName}`}
           />
         </Card>
-        {roleActions}
+        <Grid sx={{ display: { xs: 'none', md: 'block' } }}>
+          {roleActions}
+        </Grid>
       </Grid>
 
       <Grid container size={{ xs: 12, md: 9, lg: 8, xl: 6 }} direction="column" spacing={2}>

@@ -12,9 +12,10 @@ import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 import CardActionArea from '@mui/material/CardActionArea';
 import Slide from '@mui/material/Slide';
+import Divider from '@mui/material/Divider';
 import { TransitionProps } from '@mui/material/transitions';
 
-import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -71,14 +72,28 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   const {
     form: serviceForm,
     comp: ServiceForm,
-    valid: serviceFormValid
+    valid: serviceFormValid,
+    reset: resetServiceForm,
   } = useGroupForm(groupScheduleService?.formId, didSubmit);
 
   const {
     form: tierForm,
     comp: TierForm,
-    valid: tierFormValid
+    valid: tierFormValid,
+    reset: resetTierForm,
   } = useGroupForm(groupScheduleServiceTier?.formId, didSubmit);
+
+  const reset = () => {
+    setDidSubmit(false);
+    setSelectedDate(undefined);
+    setSelectedTime(undefined);
+    resetServiceForm();
+    resetTierForm();
+  }
+
+  useEffect(() => {
+    reset();
+  }, [groupSchedule]);
 
   useEffect(() => {
     getDateSlots();
@@ -98,11 +113,14 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         </Button>
       }
     >
-      There are no group schedules, or they are currently paused.
+      There are no group schedules.
     </Alert>
   }
 
+  const { startTime, endTime } = groupSchedule.schedule || {};
   const hasForms = Boolean(serviceForm?.id || tierForm?.id);
+  console.log({ a: serviceForm?.id, b: tierForm?.id })
+  const scheduleInactive = !startTime || dayjs().isBefore(dayjs(startTime));
 
   return <>
     <Card variant="outlined">
@@ -110,14 +128,16 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         title="Service Request"
         subheader="Request services from a group. Some fields may be required depending on the service."
       />
-      {!groupUserSchedulesRequest?.groupUserSchedules ? <>
-        <Grid container p={2}>
-          <GroupScheduleSelect />
-        </Grid>
+
+      <Grid container p={2}>
+        <GroupScheduleSelect variant="standard" helperText={!scheduleInactive && `${dateFormat(startTime)} - ${endTime ? dateFormat(endTime) : 'Ongoing'}`} />
+      </Grid>
+
+      {!groupUserSchedulesRequest?.groupUserSchedules || scheduleInactive ? <>
         <Alert
           severity="info"
           action={
-            <Button
+            !groupUserSchedulesRequest?.groupUserSchedules && <Button
               {...targets(`request quote create personal schedule`, `go to the personal schedule page to create a personal schedule`)}
               variant="text"
               color="info"
@@ -127,28 +147,34 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
             </Button>
           }
         >
-          There are no active user schedules, or they are currently paused.
+          {!groupUserSchedulesRequest?.groupUserSchedules && 'There are no active user schedules. '}
+          {scheduleInactive && 'The schedule has not started.'}
         </Alert>
       </> : <>
         <CardContent>
           <Grid container spacing={2}>
-            <Grid container size={{ xs: 12, md: 5 }}>
-              <GroupScheduleSelect />
-              <GroupScheduleServiceSelect />
-              <GroupScheduleServiceTierSelect />
+            <Grid container size={{ xs: 12, md: 10 }}>
+              <Grid size={6}>
+                <GroupScheduleServiceSelect />
+              </Grid>
+              <Grid size={6}>
+                <GroupScheduleServiceTierSelect />
+              </Grid>
+              <Grid size={6}>
+                <ScheduleDatePicker key={`${groupSchedule?.schedule?.id}_date_picker`} />
+              </Grid>
+              <Grid size={6}>
+                <ScheduleTimePicker key={`${groupSchedule?.schedule?.id}_time_picker`} />
+              </Grid>
             </Grid>
-            <Grid container size={{ xs: 12, md: 5 }} alignContent="flex-start">
-              <ScheduleDatePicker key={`${groupSchedule?.schedule?.id}_date_picker`} />
-              <ScheduleTimePicker key={`${groupSchedule?.schedule?.id}_time_picker`} />
-            </Grid>
-            <Grid size={{ xs: 12, md: 2 }}>
+            <Grid container size={{ xs: 12, md: 2 }} alignItems="flex-start">
               {groupScheduleServiceTier && <Button
                 sx={classes.variableText}
                 fullWidth
                 onClick={() => { setDialog('features') }}
                 variant="underline"
               >
-                View Features
+                Features
               </Button>}
               <Button
                 sx={classes.variableText}
@@ -156,19 +182,22 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
                 onClick={() => { setDialog('files') }}
                 variant="underline"
               >
-                Add Files
+                Files
               </Button>
             </Grid>
           </Grid>
-          {hasForms && <Grid container mt={2} spacing={2} direction="column">
-            <Typography variant="h6">Request Details</Typography>
-            {serviceForm && <Grid size="grow">
-              {ServiceForm}
-            </Grid>}
-            {tierForm && <Grid size="grow">
-              {TierForm}
-            </Grid>}
-          </Grid>}
+          {hasForms && <>
+            <Divider sx={{ my: 2 }} />
+            <Grid container spacing={4} direction="column">
+              <Typography variant="h6">Request Details</Typography>
+              {serviceForm && <Grid size="grow">
+                {ServiceForm}
+              </Grid>}
+              {tierForm && <Grid size="grow">
+                {TierForm}
+              </Grid>}
+            </Grid>
+          </>}
         </CardContent>
         <CardActionArea
           {...targets(`request quote submit request`, `submit your completed request for service`)}
@@ -201,8 +230,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
                   }
                 }).unwrap().then(() => {
                   setSnack({ snackType: 'success', snackOn: 'You\'re all set!' });
-                  setSelectedDate(undefined);
-                  setSelectedTime(undefined);
+                  reset();
                 }).catch((e: { data: string }) => {
                   if (e.data.includes('select a new time')) {
                     getDateSlots();

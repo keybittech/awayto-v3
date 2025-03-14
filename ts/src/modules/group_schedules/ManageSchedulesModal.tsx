@@ -248,7 +248,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                       },
                       textField: {
                         fullWidth: true,
-                        helperText: 'Schedule is active after this date. Clear this date to disable service requests for this schedule.'
+                        helperText: 'Services can be scheduled starting this date. Clear to disable the schedule. With monthly schedules, the 28 days start on this date. '
                       }
                     }}
                   />

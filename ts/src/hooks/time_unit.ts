@@ -1,4 +1,5 @@
 import dayjs from 'dayjs';
+import { isString } from './util';
 
 /**
  * @category Time Unit
@@ -75,8 +76,6 @@ export function quotedDT(startDate: string, startTime: string): dayjs.Dayjs {
   return dayjs(startDate).startOf('day').hour(d.hours()).minute(d.minutes());
 }
 
-
-
 /**
  * @category Time Unit
  */
@@ -117,5 +116,17 @@ export function utcNow(): dayjs.Dayjs {
  */
 export function utcNowString(): string {
   return dayjs.utc(new Date()).toISOString();
+}
+
+/**
+ * @category Time Unit
+ */
+export function dateFormat(date?: dayjs.Dayjs | string): string {
+  if (!date) return '';
+  if (isString(date)) {
+    date = dayjs(date);
+  }
+
+  return date.format('YYYY-MM-DD');
 }
 

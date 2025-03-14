@@ -1,6 +1,6 @@
 import React, { useCallback, useContext, useEffect, useMemo, useState } from 'react';
 
-import { dayjs, IQuote, TimeUnit, siteApi, useTimeName } from 'awayto/hooks';
+import { dayjs, IQuote, TimeUnit, siteApi, dateFormat } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
@@ -18,38 +18,25 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
 
   const [getScheduleDateSlots, { data: dateSlotsRequest, isFetching }] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleByDateQuery();
 
-  const scheduleTimeUnitName = useTimeName(groupSchedule?.schedule?.scheduleTimeUnitId);
-  const scheduleStartTime = dayjs(groupSchedule?.schedule?.startTime).startOf('week');
-  const selectedDateFormat = selectedDate?.format('YYYY-MM-DD');
-
   const dateSlots = dateSlotsRequest?.groupScheduleDateSlots || [];
 
   const selectedSlots = useMemo(() => {
-    let ds = [];
-    let firstAvailable = '';
-    if (selectedDate && 'month' == scheduleTimeUnitName) { // There should only be a single available time for monthly schedules, the full day
-      const positionInCycle = selectedDate.tz(groupSchedule?.schedule?.timezone).diff(scheduleStartTime, 'day') % 28;
-      firstAvailable = positionInCycle ? `P${positionInCycle}D` : 'PT0S';
-      ds = dateSlots.filter(ds => ds.startTime == firstAvailable);
-    } else { // Weekly schedules will have an array of time slots on whatever date is selected
-      ds = dateSlots.map(x =>
-        x.startTime && selectedDateFormat == x.startDate && dayjs(x.weekStart).add(dayjs.duration(x.startTime)).isAfter(dayjs()) && x
-      ).filter(x => !!x);
-      if (ds.length && ds[0].startTime) {
-        firstAvailable = ds[0].startTime;
-      }
-    }
-    if (firstAvailable.length) {
-      setSelectedTime(firstAvailable);
+    if (!selectedDate) return [];
+    const sdf = dateFormat(selectedDate);
+    const ds = dateSlots.map(x =>
+      x.startTime && sdf == x.startDate && dayjs(x.weekStart).add(dayjs.duration(x.startTime)).isAfter(dayjs()) && x
+    ).filter(x => !!x);
+    if (ds.length && ds[0].startTime) {
+      setSelectedTime(ds[0].startTime);
     }
     return ds;
-  }, [dateSlots, selectedDate, selectedDateFormat]);
+  }, [dateSlots, selectedDate]);
 
   const getDateSlots = useCallback(() => {
     if (groupSchedule?.schedule?.id?.length && startOfMonth && !isFetching) {
       getScheduleDateSlots({
         groupScheduleId: groupSchedule?.schedule?.id,
-        date: startOfMonth.format("YYYY-MM-DD"),
+        date: dateFormat(startOfMonth),
       });
     }
   }, [groupSchedule?.schedule, startOfMonth, isFetching]);
@@ -62,17 +49,17 @@ export function GroupScheduleSelectionProvider({ children }: IComponent): React.
   }, [startOfMonth, groupSchedule?.schedule]);
 
   useEffect(() => {
-    if (selectedDateFormat && selectedTime && selectedSlots.length) {
+    if (selectedDate && selectedTime && selectedSlots.length) {
       const slot = selectedSlots.find(s => s.startTime == selectedTime);
       setQuote(!slot ? {} : {
         scheduleBracketSlotId: slot.scheduleBracketSlotId,
         startTime: slot.startTime,
-        slotDate: selectedDateFormat,
+        slotDate: dateFormat(selectedDate),
       });
     } else if (quote.scheduleBracketSlotId) {
       setQuote({});
     }
-  }, [selectedDateFormat, selectedTime, selectedSlots]);
+  }, [selectedDate, selectedTime, selectedSlots]);
 
   const groupScheduleSelectionContext: GroupScheduleSelectionContextType = {
     quote,

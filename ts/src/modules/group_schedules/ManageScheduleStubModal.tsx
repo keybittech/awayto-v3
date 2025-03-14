@@ -11,7 +11,7 @@ import CardContent from '@mui/material/CardContent';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 
-import { IGroupUserScheduleStub, bookingFormat, siteApi, targets, useUtil } from 'awayto/hooks';
+import { IGroupUserScheduleStub, bookingFormat, dateFormat, siteApi, targets, useUtil } from 'awayto/hooks';
 
 import GroupScheduleContext, { GroupScheduleContextType } from './GroupScheduleContext';
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from './GroupScheduleSelectionContext';
@@ -71,7 +71,7 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
       patchGroupUserScheduleStubReplacementRequest: {
         userScheduleId: editGroupUserScheduleStub.userScheduleId!,
         quoteId: editGroupUserScheduleStub.quoteId!,
-        slotDate: selectedDate.format("YYYY-MM-DD"),
+        slotDate: dateFormat(selectedDate),
         startTime: replacement?.startTime!,
         serviceTierId: replacement?.serviceTierId!,
         scheduleBracketSlotId: replacement?.scheduleBracketSlotId!
@@ -134,9 +134,9 @@ export function ManageScheduleStubModal({ editGroupUserScheduleStub, closeModal 
                 />
               </Grid>
               <Grid size={6}>
-                <ScheduleTimePicker
-                  key={selectedDate?.format("YYYY-MM-DD")}
-                />
+                {selectedDate && <ScheduleTimePicker
+                  key={dateFormat(selectedDate)}
+                />}
               </Grid>
             </Grid>
           </Box>

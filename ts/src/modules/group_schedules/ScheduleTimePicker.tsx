@@ -32,12 +32,18 @@ export function ScheduleTimePicker(_: IComponent): React.JSX.Element {
     </MenuItem>
   }).filter(x => !!x), [selectedSlots, scheduleTimeUnitName]);
 
+  const alertStyle = {
+    width: '100%',
+    height: '100%',
+    alignItems: 'center',
+  };
+
   if (!selectedDate || !selectedTime) {
-    return <Alert sx={{ width: '100%' }} variant="outlined" color="info" severity="info">Select a date. Times will appear here.</Alert>;
+    return <Alert sx={alertStyle} variant="outlined" color="info" severity="info">Select a date.</Alert>;
   }
 
   if (!selectedSlots?.length) {
-    return <Alert sx={{ width: '100%' }} variant="outlined" color="warning" severity="warning">No available times remain.</Alert>;
+    return <Alert sx={alertStyle} variant="outlined" color="warning" severity="warning">No available times.</Alert>;
   }
 
   return <TextField

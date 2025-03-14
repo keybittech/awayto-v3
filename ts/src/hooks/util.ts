@@ -114,6 +114,10 @@ export function nid(uuid?: string) {
   return arbitraryCounter;
 }
 
+export function isString(str?: string | unknown): str is string {
+  return 'string' == typeof str as string;
+}
+
 export function isStringArray(str?: string | string[]): str is string[] {
   return (str as string[]).forEach !== undefined;
 }

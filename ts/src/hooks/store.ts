@@ -15,6 +15,9 @@ siteApi.enhanceEndpoints({
   endpoints: {
     groupScheduleServiceGetGroupScheduleByDate: {
       providesTags: []
+    },
+    bookingServicePatchBookingRating: {
+      invalidatesTags: []
     }
   }
 });

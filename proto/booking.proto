@@ -140,7 +140,7 @@ message GetBookingFilesResponse {
 
 message PatchBookingRatingRequest {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
-  string rating = 2 [(google.api.field_behavior) = REQUIRED];
+  int32 rating = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchBookingRatingResponse {
