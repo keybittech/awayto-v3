@@ -32,9 +32,9 @@ func ProtoResponseHandler(w http.ResponseWriter, results []reflect.Value) (int, 
 
 func MultipartResponseHandler(w http.ResponseWriter, results []reflect.Value) (int, error) {
 	var resLen int
-	if resData, ok := results[0].Interface().([]byte); ok {
-		resLen = len(resData)
-		_, err := w.Write(resData)
+	if resData, ok := results[0].Interface().(*[]byte); ok {
+		resLen = len(*resData)
+		_, err := w.Write(*resData)
 		if err != nil {
 			return 0, util.ErrCheck(err)
 		}

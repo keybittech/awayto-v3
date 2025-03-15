@@ -63,7 +63,7 @@ export function Exchange(_: IComponent): React.JSX.Element {
 
   return <>
 
-    <Dialog fullScreen fullWidth open={dialog === 'file_selection'}>
+    <Dialog onClose={setDialog} open={dialog === 'file_selection'} maxWidth="sm" fullWidth>
       <Suspense>
         <FileSelectionModal fileGroups={fileGroups} closeModal={(selectedFile?: IFile) => {
           if (selectedFile) {

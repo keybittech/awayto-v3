@@ -1,10 +1,11 @@
-import React, { useState, useCallback, useRef, useMemo } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import { DataGrid } from '@mui/x-data-grid';
+import { styled } from '@mui/material/styles';
 
 import { IFile, nid, targets, useFileContents, useGrid, useUtil } from 'awayto/hooks';
 
@@ -14,6 +15,18 @@ const {
 
 const allowedFileExt = "." + VITE_REACT_APP_ALLOWED_FILE_EXT.split(" ").join(", .");
 
+const VisuallyHiddenInput = styled('input')({
+  clip: 'rect(0 0 0 0)',
+  clipPath: 'inset(50%)',
+  height: 1,
+  overflow: 'hidden',
+  position: 'absolute',
+  bottom: 0,
+  left: 0,
+  whiteSpace: 'nowrap',
+  width: 1,
+});
+
 export interface FileManagerProps extends IComponent {
   files: IFile[];
   setFiles: React.Dispatch<React.SetStateAction<IFile[]>>;
@@ -21,8 +34,7 @@ export interface FileManagerProps extends IComponent {
 
 function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
 
-  const fileSelectRef = useRef<HTMLInputElement>(null);
-
+  const [posting, setPosting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
 
   const { openConfirm } = useUtil();
@@ -33,11 +45,54 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
     return [
       <Button
         {...targets(`use files delete`, `delete currently selected file or files`)}
-        key={'delete_selected_files'}
+        color="error"
         onClick={deleteFiles}
       >Delete</Button>,
     ];
   }, [selected]);
+
+  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    if (files && event.target.files && event.target.files.length > 0) {
+
+      const newFiles = Array.from(event.target.files);
+      const existingFiles = files.map(f => f.name);
+      const fileOverwrites = newFiles.filter(f => existingFiles.includes(f.name))
+
+      openConfirm({
+        isConfirming: true,
+        confirmEffect: `Upload ${newFiles.length} files` + (fileOverwrites.length ? `, overwriting ${fileOverwrites.length}` : '') + '.',
+        confirmAction: () => {
+          setPosting(true);
+          postFileContents(newFiles).then(newFileIds => {
+            setFiles && setFiles(oldFiles => {
+              for (const f of fileOverwrites) {
+
+                const newIdx = newFiles.findIndex(ff => f.name == ff.name)
+                const updatedId = newFileIds[newIdx];
+
+                const existingIdx = oldFiles.findIndex(ff => f.name == ff.name);
+
+                oldFiles[existingIdx].uuid = updatedId;
+              }
+
+              const uploadedFiles: IFile[] = newFiles.filter(f => !existingFiles.includes(f.name)).map(f => {
+                const idx = newFiles.findIndex(ff => f.name == ff.name);
+                return {
+                  id: nid('random') as string,
+                  uuid: newFileIds[idx],
+                  name: f.name,
+                  mimeType: f.type
+                }
+              });
+
+              return [...oldFiles, ...uploadedFiles];
+            });
+            setPosting(false);
+          });
+        }
+      });
+    }
+  }, [files]);
 
   const fileGridProps = useGrid({
     rows: files || [],
@@ -52,11 +107,22 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
     selected,
     onSelected: selection => setSelected(selection as string[]),
     toolbar: () => <>
-      <Grid container alignItems="baseline">
+      <Grid container size="grow" alignItems="baseline">
         <Button
           {...targets(`use files add`, `add files to the current list`)}
-          onClick={addFiles}
-        >Add File</Button>
+          color="info"
+          component="label"
+          role={undefined}
+          tabIndex={-1}
+          loading={posting}
+        >
+          Add File
+          <VisuallyHiddenInput
+            type="file"
+            multiple
+            onChange={handleFileChange}
+          />
+        </Button>
         <Box ml={1}>
           <Typography variant="caption">{allowedFileExt}</Typography>
         </Box>
@@ -65,56 +131,6 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
     </>
   });
 
-  const handleFileChange = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (files && event.target.files && event.target.files.length > 0) {
-
-      const newFiles = Array.from(event.target.files);
-      const existingFiles = files.map(f => f.name);
-      const fileOverwrites = newFiles.filter(f => existingFiles.includes(f.name))
-
-      openConfirm({
-        isConfirming: true,
-        confirmEffect: `Upload ${newFiles.length} files` + (fileOverwrites.length ? `, overwriting ${fileOverwrites.length}` : '') + '.',
-        confirmAction: async () => {
-          const newFileIds = await postFileContents(newFiles);
-
-          setFiles && setFiles(oldFiles => {
-            for (const f of fileOverwrites) {
-
-              const newIdx = newFiles.findIndex(ff => f.name == ff.name)
-              const updatedId = newFileIds[newIdx];
-
-              const existingIdx = oldFiles.findIndex(ff => f.name == ff.name);
-
-              oldFiles[existingIdx].uuid = updatedId;
-            }
-
-            const uploadedFiles: IFile[] = newFiles.filter(f => !existingFiles.includes(f.name)).map(f => {
-              const idx = newFiles.findIndex(ff => f.name == ff.name);
-              return {
-                id: nid('random') as string,
-                uuid: newFileIds[idx],
-                name: f.name,
-                mimeType: f.type
-              }
-            });
-
-            return [...oldFiles, ...uploadedFiles];
-          })
-
-        }
-
-      });
-    }
-  }, [files]);
-
-  function addFiles() {
-    if (fileSelectRef.current) {
-      fileSelectRef.current.value = '';
-      fileSelectRef.current.click();
-    }
-  }
-
   function deleteFiles() {
     if (files && selected.length) {
       setFiles && setFiles([...files.filter(f => f.id && !selected.includes(f.id))]);
@@ -122,15 +138,6 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
   }
 
   return <>
-    <input
-      type="file"
-      accept={allowedFileExt}
-      multiple
-      onChange={e => { handleFileChange(e).catch(console.error) }}
-      ref={fileSelectRef}
-      style={{ display: 'none' }}
-    />
-
     <DataGrid {...fileGridProps} />
   </>
 }

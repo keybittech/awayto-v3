@@ -21,45 +21,47 @@ interface FileSelectionModalProps extends IComponent {
 }
 
 export function FileSelectionModal({ closeModal, fileGroups }: FileSelectionModalProps): React.JSX.Element {
-  return <Card sx={{ display: 'flex', flex: 1, flexDirection: 'column' }}>
-    <CardHeader title="Select File" />
-    <CardContent sx={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'auto' }}>
-      <Grid container>
-        {!fileGroups.length ? <Alert variant="outlined" severity="info">
-          No files could be found.
-        </Alert> : <Grid container>
-          {fileGroups.map((group, i) => {
-            return <Grid size={{ xs: 12, md: 4 }} key={`file_group_${i}`}>
-              <List
-                subheader={
-                  <ListSubheader>{group.name} files</ListSubheader>
-                }
-              >
-                {group.files.map((f, j) => {
-                  return !f.mimeType ? <></> : <ListItemButton
-                    {...targets(`file modal select`, `select this file from the list`)}
-                    key={`file_${i}_${j}`}
-                    onClick={() => {
-                      closeModal && closeModal(f);
-                    }}>
-                    <ListItemIcon>
-                      <FileTypeIcon fileType={f.mimeType} />
-                    </ListItemIcon>
-                    <ListItemText>{f.name}</ListItemText>
-                  </ListItemButton>;
-                })}
-              </List>
-            </Grid>;
 
-          })}
-        </Grid>
-        }
+  if (!fileGroups.length) {
+    return <Alert variant="outlined" severity="info">
+      No files could be found.
+    </Alert>
+  }
+
+  return <Card>
+    <CardHeader title="Select File" />
+    <CardContent>
+      <Grid container size="grow">
+        {fileGroups.map((group, i) => {
+          return <Grid size="grow" key={`file_group_${i}`}>
+            <List
+              subheader={
+                <ListSubheader>{group.name} files</ListSubheader>
+              }
+            >
+              {group.files.map((f, j) => {
+                return !f.mimeType ? <></> : <ListItemButton
+                  {...targets(`file modal select`, `select this file from the list`)}
+                  key={`file_${i}_${j}`}
+                  onClick={() => {
+                    closeModal && closeModal(f);
+                  }}>
+                  <ListItemIcon>
+                    <FileTypeIcon fileType={f.mimeType} />
+                  </ListItemIcon>
+                  <ListItemText>{f.name}</ListItemText>
+                </ListItemButton>;
+              })}
+            </List>
+          </Grid>;
+        })}
       </Grid>
     </CardContent>
     <CardActions>
       <Grid container justifyContent="space-between">
         <Button
           {...targets(`file modal cancel`, `cancel file selection`)}
+          color="error"
           onClick={() => closeModal && closeModal()}
         >Cancel</Button>
       </Grid>

@@ -1,15 +1,16 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"bytes"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"strings"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/google/uuid"
 )
@@ -71,7 +72,7 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 		_, err := tx.Exec(`
 			INSERT INTO dbtable_schema.file_contents (uuid, name, content, created_on, created_sub)
 			VALUES ($1::uuid, $2, $3::bytea, $4, $5)
-		`, fileUuid.String(), file.GetName(), pdfDoc, time.Now().Local().UTC(), session.UserSub)
+		`, fileUuid.String(), file.GetName(), pdfDoc, time.Now(), session.UserSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -92,23 +93,16 @@ func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, d
 }
 
 func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*[]byte, error) {
-
 	var fileContent []byte
 
 	err := tx.QueryRow(`
 		SELECT content FROM dbtable_schema.file_contents
 		WHERE uuid = $1
-	`, data.GetFileId()).Scan(&fileContent)
+	`, data.FileId).Scan(&fileContent)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	// fmt.Printf("\n got file contents %X", fileContent)
-
-	// file, err := h.FS.GetFile(data.GetFileId())
-	// if err != nil {
-	// 	return nil, util.ErrCheck(err)
-	// }
 	return &fileContent, nil
 }
 
