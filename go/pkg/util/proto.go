@@ -87,10 +87,12 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 
 	// get the URL of the handler
 	httpRule := &annotations.HttpRule{}
+
 	if proto.HasExtension(inputOpts, annotations.E_Http) {
 		ext := proto.GetExtension(inputOpts, annotations.E_Http)
 		httpRule, _ = ext.(*annotations.HttpRule)
 	}
+
 	switch {
 	case httpRule.GetPost() != "":
 		serviceMethodMethod = "POST"
@@ -108,10 +110,12 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		serviceMethodMethod = "PATCH"
 		serviceMethodUrl = httpRule.GetPatch()
 	default:
-
 	}
+
 	parsedOptions.ServiceMethodURL = serviceMethodUrl
-	parsedOptions.Pattern = fmt.Sprintf("%s /api%s", serviceMethodMethod, serviceMethodUrl) // attach /api to /v1 /v2, etc -- resulting in /api/v1/ which is the standard API_PATH
+
+	// attach /api to /v1 /v2, etc -- resulting in /api/v1/ which is the standard API_PATH
+	parsedOptions.Pattern = fmt.Sprintf("%s /api%s", serviceMethodMethod, serviceMethodUrl)
 
 	if proto.HasExtension(inputOpts, types.E_SiteRole) {
 		parsedOptions.SiteRole = fmt.Sprint(proto.GetExtension(inputOpts, types.E_SiteRole))
@@ -126,8 +130,9 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	}
 
 	if proto.HasExtension(inputOpts, types.E_MultipartRequest) {
-		parsedOptions.MultipartRequest = proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool)
+		parsedOptions.MultipartRequest = proto.GetExtension(inputOpts, types.E_MultipartRequest).(bool)
 	}
+
 	if proto.HasExtension(inputOpts, types.E_MultipartResponse) {
 		parsedOptions.MultipartResponse = proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool)
 	}
@@ -180,8 +185,4 @@ func ParseProtoPathParams(pbVal reflect.Value, methodParameters, requestParamete
 			}
 		}
 	}
-}
-
-func HandleProtoRequest() {
-
 }

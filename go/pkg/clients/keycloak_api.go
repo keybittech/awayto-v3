@@ -4,7 +4,6 @@ package clients
 
 import (
 	// Error Handling
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"bytes"
 	"crypto/rsa"
 	"crypto/x509"
@@ -16,6 +15,8 @@ import (
 	"net/url"
 	"os"
 	"strings"
+
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	// Encoding
 

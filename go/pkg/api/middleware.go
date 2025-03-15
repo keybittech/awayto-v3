@@ -101,13 +101,13 @@ func (a *API) ValidateTokenMiddleware(next SessionHandler) http.HandlerFunc {
 
 		token, ok := req.Header["Authorization"]
 		if !ok {
-			deferredErr = errors.New("no auth token")
+			deferredErr = util.ErrCheck(errors.New("no auth token"))
 			return
 		}
 
 		kcUser, err := a.Handlers.Keycloak.GetUserTokenValid(token[0])
 		if err != nil {
-			deferredErr = err
+			deferredErr = util.ErrCheck(err)
 			return
 		}
 
