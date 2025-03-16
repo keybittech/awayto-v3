@@ -27,6 +27,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 		log.Fatal("invalid keycloak url")
 	}
 
+	authMux := http.NewServeMux()
 	authProxy := httputil.NewSingleHostReverseProxy(kcInternal)
 
 	userRoutes := []string{
@@ -45,14 +46,16 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
 	for _, ur := range userRoutes {
 		authRoute := fmt.Sprintf("/auth/realms/%s/%s", kcRealm, ur)
-		mux.Handle(authRoute, http.StripPrefix("/auth",
-			a.LimitMiddleware(10, 10)(
-				func(w http.ResponseWriter, req *http.Request) {
-					SetForwardingHeadersAndServe(authProxy, w, req)
-				},
-			),
+		authMux.Handle(authRoute, http.StripPrefix("/auth",
+			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+				SetForwardingHeadersAndServe(authProxy, w, req)
+			}),
 		))
 	}
+
+	mux.Handle("/auth/", a.LimitMiddleware(10, 10)(func(w http.ResponseWriter, r *http.Request) {
+		authMux.ServeHTTP(w, r)
+	}))
 
 	mux.Handle("/auth/resources/", http.StripPrefix("/auth",
 		a.LimitMiddleware(10, 20)(
@@ -88,7 +91,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 						Name:     "valid_signature",
 						Value:    "",
 						Path:     "/",
-						Expires:  time.Now(),
+						Expires:  time.Now().Add(-24 * time.Hour),
 						SameSite: http.SameSiteStrictMode,
 						Secure:   true,
 						HttpOnly: true,
