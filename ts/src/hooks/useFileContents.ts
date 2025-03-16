@@ -2,15 +2,22 @@ import { useCallback, useMemo, useState } from 'react';
 import { IFile } from './api';
 import { keycloak, refreshToken } from './auth';
 import { UseFileContents } from './util';
+import { useUtil } from './useUtil';
 
 export const useFileContents: UseFileContents = () => {
+
+  const { setSnack } = useUtil();
 
   const [fileContents, setFileContents] = useState<IFile | undefined>();
 
   // postFileContents and getFileContents are implemented manually instead of using RTK Query generated methods, in order to support binary transfer
 
-  const postFileContents = useCallback<ReturnType<UseFileContents>['postFileContents']>(async (fileRef) => {
+  const postFileContents = useCallback<ReturnType<UseFileContents>['postFileContents']>(async (uploadId, fileRef, existingIds, overwriteIds) => {
     const fd = new FormData();
+
+    fd.append('uploadId', uploadId);
+    fd.append('overwriteIds', overwriteIds.join(","));
+    fd.append('existingIds', existingIds.join(","));
 
     for (const f of fileRef) {
       fd.append('contents', f);
@@ -28,10 +35,16 @@ export const useFileContents: UseFileContents = () => {
       headers
     });
 
+    if (200 !== res.status) {
+      const errText = await res.text();
+      setSnack({ snackType: 'warning', snackOn: errText });
+      return [];
+    }
+
     const { ids } = await res.json() as { ids: string[] };
 
     return ids;
-  }, [])
+  }, []);
 
   const getFileContents = useCallback<ReturnType<UseFileContents>['getFileContents']>(async (fileRef, download) => {
     if (!fileRef.uuid || !fileRef.mimeType) return undefined;

@@ -15,7 +15,7 @@ import Slide from '@mui/material/Slide';
 import Divider from '@mui/material/Divider';
 import { TransitionProps } from '@mui/material/transitions';
 
-import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat, nid } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -43,6 +43,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   const [files, setFiles] = useState<IFile[]>([]);
   const [dialog, setDialog] = useState('');
   const [didSubmit, setDidSubmit] = useState(false);
+  const [uploadId, setUploadId] = useState(nid('random') as string);
 
   const {
     getGroupUserSchedules: {
@@ -85,6 +86,8 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
 
   const reset = () => {
     setDidSubmit(false);
+    setUploadId(nid('random') as string);
+    setFiles([]);
     setSelectedDate(undefined);
     setSelectedTime(undefined);
     resetServiceForm();
@@ -200,6 +203,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         </CardContent>
         <CardActionArea
           {...targets(`request quote submit request`, `submit your completed request for service`)}
+          className="actionBtnFade"
           onClick={() => {
             setDidSubmit(true);
             if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
@@ -263,7 +267,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     >
       {dialog == 'features' ?
         <ServiceTierAddons service={groupScheduleService} /> :
-        dialog == 'files' ? <FileManager files={files} setFiles={setFiles} /> :
+        dialog == 'files' ? <FileManager uploadId={uploadId} files={files} setFiles={setFiles} /> :
           <></>
       }
     </Dialog>

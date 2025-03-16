@@ -88,10 +88,18 @@ message FileContent {
   string name = 1;
   string mimeType = 2;
   bytes content = 3;
+  int32 contentLength = 4;
 }
 
 message PostFileContentsRequest {
-  repeated FileContent contents = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated FileContent contents = 1 [
+    (types.nolog) = true,
+    (google.api.field_behavior) = REQUIRED
+  ];
+  repeated string existingIds = 2 [(google.api.field_behavior) = REQUIRED];
+  repeated string overwriteIds = 3 [(google.api.field_behavior) = REQUIRED];
+  int32 totalLength = 4;
+  string uploadId = 5;
 }
 
 message PostFileContentsResponse {
@@ -113,7 +121,10 @@ message GetFileContentsRequest {
 }
 
 message GetFileContentsResponse {
-  bytes content = 1 [(google.api.field_behavior) = REQUIRED];
+  bytes content = 1 [
+    (types.nolog) = true,
+    (google.api.field_behavior) = REQUIRED
+  ];
 }
 
 // IFile metadata stored in application

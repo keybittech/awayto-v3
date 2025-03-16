@@ -519,7 +519,7 @@ export enum MimeTypes {
  */
 export type UseFileContents = () => {
   fileContents: IFile | undefined;
-  postFileContents: (fileRef: File[]) => Promise<string[]>;
+  postFileContents: (uploadId: string, fileRef: File[], existingIds: string[], overwriteIds: string[]) => Promise<string[]>;
   getFileContents: (fileRef: Partial<IFile>, download?: boolean) => Promise<BufferResponse | undefined>;
 }
 

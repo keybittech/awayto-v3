@@ -28,16 +28,17 @@ const VisuallyHiddenInput = styled('input')({
 });
 
 export interface FileManagerProps extends IComponent {
+  uploadId: string;
   files: IFile[];
   setFiles: React.Dispatch<React.SetStateAction<IFile[]>>;
 }
 
-function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
+function FileManager({ uploadId, files, setFiles }: FileManagerProps): React.JSX.Element {
 
   const [posting, setPosting] = useState(false);
   const [selected, setSelected] = useState<string[]>([]);
 
-  const { openConfirm } = useUtil();
+  const { openConfirm, setSnack } = useUtil();
 
   const { postFileContents } = useFileContents();
 
@@ -45,6 +46,7 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
     return [
       <Button
         {...targets(`use files delete`, `delete currently selected file or files`)}
+        key={`delete_files_action`}
         color="error"
         onClick={deleteFiles}
       >Delete</Button>,
@@ -55,27 +57,39 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
     if (files && event.target.files && event.target.files.length > 0) {
 
       const newFiles = Array.from(event.target.files);
-      const existingFiles = files.map(f => f.name);
-      const fileOverwrites = newFiles.filter(f => existingFiles.includes(f.name))
+      const newFilesNames = newFiles.map(nf => nf.name);
+      const fileOverwrites = files.filter(ef => ef.name && newFilesNames.includes(ef.name)) as Required<IFile>[];
+
+      const existingFileIds: string[] = [];
+      const existingFileNames: string[] = [];
+      files.forEach(f => {
+        if (!f.uuid || !f.name) return;
+        existingFileIds.push(f.uuid);
+        existingFileNames.push(f.name);
+      });
+
+      if (newFiles.length + (existingFileIds.length - fileOverwrites.length) > 5) {
+        setSnack({ snackType: 'warning', snackOn: 'No more than 5 files may be uploaded in total.' });
+        return
+      }
 
       openConfirm({
         isConfirming: true,
         confirmEffect: `Upload ${newFiles.length} files` + (fileOverwrites.length ? `, overwriting ${fileOverwrites.length}` : '') + '.',
         confirmAction: () => {
           setPosting(true);
-          postFileContents(newFiles).then(newFileIds => {
-            setFiles && setFiles(oldFiles => {
+          postFileContents(uploadId, newFiles, existingFileIds, fileOverwrites.map(fo => fo.uuid)).then(newFileIds => {
+            if (!newFileIds.length) return;
+            setFiles(oldFiles => {
               for (const f of fileOverwrites) {
-
                 const newIdx = newFiles.findIndex(ff => f.name == ff.name)
                 const updatedId = newFileIds[newIdx];
-
                 const existingIdx = oldFiles.findIndex(ff => f.name == ff.name);
 
                 oldFiles[existingIdx].uuid = updatedId;
               }
 
-              const uploadedFiles: IFile[] = newFiles.filter(f => !existingFiles.includes(f.name)).map(f => {
+              const uploadedFiles: IFile[] = newFiles.filter(f => !existingFileNames.includes(f.name)).map(f => {
                 const idx = newFiles.findIndex(ff => f.name == ff.name);
                 return {
                   id: nid('random') as string,
@@ -87,6 +101,7 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
 
               return [...oldFiles, ...uploadedFiles];
             });
+          }).finally(() => {
             setPosting(false);
           });
         }
@@ -107,7 +122,8 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
     selected,
     onSelected: selection => setSelected(selection as string[]),
     toolbar: () => <>
-      <Grid container size="grow" alignItems="baseline">
+
+      <Grid container size={12}>
         <Button
           {...targets(`use files add`, `add files to the current list`)}
           color="info"
@@ -123,10 +139,13 @@ function FileManager({ files, setFiles }: FileManagerProps): React.JSX.Element {
             onChange={handleFileChange}
           />
         </Button>
-        <Box ml={1}>
-          <Typography variant="caption">{allowedFileExt}</Typography>
-        </Box>
         {!!selected.length && <Box sx={{ flexGrow: 1, textAlign: 'right' }}>{actions}</Box>}
+      </Grid>
+      <Grid container size={12}>
+        <Typography variant="caption">
+          <p>Submit up to 5 files. 20MB total size limit.</p>
+          <p>Allowed Extensions: {allowedFileExt}</p>
+        </Typography>
       </Grid>
     </>
   });

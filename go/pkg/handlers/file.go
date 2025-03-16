@@ -11,11 +11,24 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/lib/pq"
 
 	"github.com/google/uuid"
 )
 
 func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, data *types.PostFileContentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostFileContentsResponse, error) {
+
+	// If a file was deleted from the FileManager ui, its uuid won't be sent
+	// so delete all unrepresented files
+	_, err := tx.Exec(`
+		DELETE FROM dbtable_schema.file_contents
+		WHERE upload_id = $1
+		AND uuid NOT IN (SELECT unnest($2::text[]))
+	`, data.UploadId, pq.Array(data.ExistingIds))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	newUuids := make([]string, len(data.Contents))
 
 	for idx, file := range data.GetContents() {
@@ -70,14 +83,39 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 		fileUuid, _ := uuid.NewV7()
 
 		_, err := tx.Exec(`
-			INSERT INTO dbtable_schema.file_contents (uuid, name, content, created_on, created_sub)
-			VALUES ($1::uuid, $2, $3::bytea, $4, $5)
-		`, fileUuid.String(), file.GetName(), pdfDoc, time.Now(), session.UserSub)
+			INSERT INTO dbtable_schema.file_contents (uuid, name, content, content_length, created_on, created_sub, upload_id)
+			VALUES ($1::uuid, $2, $3::bytea, $4, $5, $6, $7)
+		`, fileUuid.String(), file.GetName(), pdfDoc, len(pdfDoc), time.Now(), session.UserSub, data.UploadId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
 		newUuids[idx] = string(fileUuid.String())
+	}
+
+	// Remove overwritten files
+	_, err = tx.Exec(`
+		DELETE FROM dbtable_schema.file_contents
+		WHERE uuid = ANY($1)
+	`, pq.Array(data.OverwriteIds))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	// Check file size of current file set
+	var totalSize int32
+
+	err = tx.QueryRow(`
+		SELECT SUM(COALESCE(content_length, 0))
+		FROM dbtable_schema.file_contents
+		WHERE upload_id = $1
+	`, data.UploadId).Scan(&totalSize)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	if totalSize > 20480000 {
+		return nil, util.ErrCheck(util.UserError("Total file size must not exceed 20MB."))
 	}
 
 	return &types.PostFileContentsResponse{Ids: newUuids}, nil
@@ -113,7 +151,7 @@ func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *type
 		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		RETURNING id
-	`, file.GetUuid(), file.GetName(), file.GetMimeType(), time.Now().Local().UTC(), session.UserSub).Scan(&fileID)
+	`, file.GetUuid(), file.GetName(), file.GetMimeType(), time.Now(), session.UserSub).Scan(&fileID)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -125,7 +163,7 @@ func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *typ
 		UPDATE dbtable_schema.files
 		SET name = $2, updated_on = $3, updated_sub = $4
 		WHERE id = $1
-	`, data.GetId(), data.GetName(), time.Now().Local().UTC(), session.UserSub)
+	`, data.GetId(), data.GetName(), time.Now(), session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -163,7 +201,7 @@ func (h *Handlers) DisableFile(w http.ResponseWriter, req *http.Request, data *t
 		UPDATE dbtable_schema.files
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), session.UserSub)
+	`, data.GetId(), time.Now(), session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

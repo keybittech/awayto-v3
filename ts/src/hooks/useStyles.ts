@@ -183,8 +183,10 @@ export const theme = createTheme(paletteTheme, {
     },
     MuiCardActionArea: {
       styleOverrides: {
-        focusHighlight: (_: Theme) => ({
-          background: `linear-gradient(to right, ${_.theme.palette.secondary.main} 50%, transparent 100%)`
+        root: (_: Theme) => ({
+          '&.actionBtnFade .MuiCardActionArea-focusHighlight': {
+            background: `linear-gradient(to right, ${_.theme.palette.secondary.main} 50%, transparent 100%)`
+          }
         })
       }
     }

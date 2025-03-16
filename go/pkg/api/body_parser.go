@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"strings"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -43,42 +44,50 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 
 	req.Body = http.MaxBytesReader(w, req.Body, 20480000)
 
-	// reader, err := req.MultipartReader()
-	// if err != nil {
-	// 	deferredError = util.ErrCheck(err)
-	// 	return
-	// }
-	//
-	// part, err := reader.NextPart()
-	// if err != nil && err != io.EOF {
-	// 	deferredError = util.ErrCheck(err)
-	// 	return
-	// }
-	//
-	// if part.FormName() != "contents" {
-	// 	println("GOT NAME", part.FormName())
-	// 	deferredError = util.ErrCheck(err)
-	// 	return
-	// }
-	//
-	// buf := bufio.NewReader(part)
-	// contentTypeBytes, _ := buf.Peek(512)
-	// contentType := http.DetectContentType(contentTypeBytes)
-	// println("CONTENT TYPE", contentType)
-	//
-	// deferredError = util.ErrCheck(util.UserError("test"))
-	//
-	// return
+	err := req.ParseMultipartForm(204800000)
+	if err != nil {
+		return nil, util.ErrCheck(util.UserError("Attached files may not exceed 20MB."))
+	}
 
-	req.ParseMultipartForm(20480000)
+	pbFiles := &types.PostFileContentsRequest{}
 
-	files, ok := req.MultipartForm.File["contents"]
-
+	uploadIdValue, ok := req.MultipartForm.Value["uploadId"]
 	if !ok {
 		return nil, util.ErrCheck(errors.New("invalid multipart request"))
 	}
 
-	pbFiles := &types.PostFileContentsRequest{}
+	if uploadIdValue[0] != "" {
+		pbFiles.UploadId = uploadIdValue[0]
+	} else {
+		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+	}
+
+	existingIdsValue, ok := req.MultipartForm.Value["existingIds"]
+	if !ok {
+		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+	}
+
+	if existingIdsValue[0] != "" {
+		pbFiles.ExistingIds = strings.Split(existingIdsValue[0], ",")
+	}
+
+	overwriteIdsValue, ok := req.MultipartForm.Value["overwriteIds"]
+	if !ok {
+		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+	}
+
+	if overwriteIdsValue[0] != "" {
+		pbFiles.OverwriteIds = strings.Split(overwriteIdsValue[0], ",")
+	}
+
+	files, ok := req.MultipartForm.File["contents"]
+	if !ok {
+		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+	}
+
+	if len(pbFiles.ExistingIds)+len(files)-len(pbFiles.OverwriteIds) > 5 {
+		return nil, util.ErrCheck(util.UserError("No more than 5 files may be uploaded in total."))
+	}
 
 	for _, f := range files {
 		fileBuf := make([]byte, f.Size)
@@ -87,10 +96,14 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 		fileData.Read(fileBuf)
 		fileData.Close()
 
+		fileLen := int32(len(fileBuf))
+
 		pbFiles.Contents = append(pbFiles.Contents, &types.FileContent{
-			Name:    f.Filename,
-			Content: fileBuf,
+			Name:          f.Filename,
+			Content:       fileBuf,
+			ContentLength: fileLen,
 		})
+		pbFiles.TotalLength += fileLen
 	}
 
 	return pbFiles, nil
