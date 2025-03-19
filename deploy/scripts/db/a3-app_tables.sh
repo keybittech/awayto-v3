@@ -365,7 +365,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   );
   ALTER TABLE dbtable_schema.quotes ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.quotes FOR SELECT TO $PG_WORKER USING (
-    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.schedule_bracket_slots sbs WHERE sbs.$IS_CREATOR));
+    $IS_CREATOR OR EXISTS(
+      SELECT 1 FROM dbtable_schema.schedule_bracket_slots sbs WHERE sbs.id = dbtable_schema.quotes.schedule_bracket_slot_id AND sbs.$IS_CREATOR
+    )
+  );
   CREATE POLICY table_insert ON dbtable_schema.quotes FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
   CREATE POLICY table_update ON dbtable_schema.quotes FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
 
@@ -399,7 +402,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   );
   ALTER TABLE dbtable_schema.quote_files ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.quote_files FOR SELECT TO $PG_WORKER USING (
-    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.schedule_bracket_slots sbs WHERE sbs.$IS_CREATOR));
+    $IS_CREATOR OR EXISTS(
+      SELECT 1 FROM dbtable_schema.quotes q WHERE q.id = dbtable_schema.bookings.quote_id AND q.$IS_CREATOR
+    )
+  );
   CREATE POLICY table_insert ON dbtable_schema.quote_files FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
 
   CREATE TABLE dbtable_schema.bookings (
@@ -418,7 +424,10 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   );
   ALTER TABLE dbtable_schema.bookings ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.bookings FOR SELECT TO $PG_WORKER USING (
-    $IS_CREATOR OR EXISTS(SELECT 1 FROM dbtable_schema.schedule_bracket_slots sbs WHERE sbs.$IS_CREATOR));
+    $IS_CREATOR OR EXISTS(
+      SELECT 1 FROM dbtable_schema.quotes q WHERE q.id = dbtable_schema.bookings.quote_id AND q.$IS_CREATOR
+    )
+  );
   CREATE POLICY table_insert ON dbtable_schema.bookings FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
   CREATE POLICY table_update ON dbtable_schema.bookings FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
 

@@ -6,6 +6,7 @@ import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
 import Box from '@mui/material/Box';
 import List from '@mui/material/List';
+import Divider from '@mui/material/Divider';
 import ListSubheader from '@mui/material/ListSubheader';
 import ListItem from '@mui/material/ListItem';
 import Grid from '@mui/material/Grid';
@@ -63,6 +64,96 @@ export function Exchange(_: IComponent): React.JSX.Element {
 
   return <>
 
+    <Whiteboard
+      topicId={`exchange/${ExchangeActions.EXCHANGE_WHITEBOARD}:${exchangeId}`}
+      sharedFile={sharedFile}
+      chatBox={
+        <Grid
+          p={1}
+          sx={{
+            flex: '1 0 25%',
+            display: chatOpen ? 'flex' : 'none',
+            flexDirection: 'column',
+            maxWidth: '390px',
+            height: '100%'
+          }}
+        >
+          <Grid sx={{ flex: 1, overflow: 'auto' }}>
+            {chatLog}
+            {messagesEnd}
+          </Grid>
+
+          <Grid pt={1}>
+            {submitMessageForm}
+          </Grid>
+        </Grid>
+      }
+      callBox={
+        <Grid sx={{ maxHeight: '150px', backgroundColor: '#333' }}>
+          {localStreamElement && localStreamElement}
+          {senderStreamsElements && senderStreamsElements}
+        </Grid>
+      }
+      optionsMenu={
+        <>
+          {connected && <Tooltip title="Stop Voice or Video" children={
+            <Button
+              {...targets(`exchange leave call`, `leave the voice or video call`)}
+              onClick={() => leaveCall()}
+            >
+              Leave Call
+            </Button>
+          } />}
+          {(!connected || audioOnly) && <Tooltip title="Start Video" children={
+            <IconButton
+              {...targets(`exchange start video call`, `start a video call`)}
+              disabled={'start' !== canStartStop}
+              onClick={() => setLocalStreamAndBroadcast(true)}
+            >
+              <VideocamIcon fontSize="small" />
+            </IconButton>
+          } />}
+          {!connected && <Tooltip title="Start Audio" children={
+            <IconButton
+              {...targets(`exchange start voice call`, `start a voice call`)}
+              disabled={'start' !== canStartStop}
+              onClick={() => setLocalStreamAndBroadcast(false)}
+            >
+              <CallIcon fontSize="small" />
+            </IconButton>
+          } />}
+          <Tooltip title="Hide/Show Messages" children={
+            <IconButton
+              {...targets(`exchange toggle chat`, `toggle the chat visbility`)}
+              color="primary"
+              onClick={() => setChatOpen(!chatOpen)}
+            >
+              <ChatBubbleIcon fontSize="small" />
+            </IconButton>
+          } />
+          <Tooltip title="Open File" children={
+            <IconButton
+              {...targets(`exchange select file`, `select a file to view and share`)}
+              color="primary"
+              onClick={() => setDialog('file_selection')}
+            >
+              <FileCopyIcon fontSize="small" />
+            </IconButton>
+          } />
+          {sharedFile && <Tooltip title="Close File">
+            <IconButton
+              {...targets(`exchange close file`, `close the currently shared file`)}
+              color="error"
+              onClick={() => setSharedFile(undefined)}
+              children={<InsertPageBreak />}
+            />
+          </Tooltip>}
+
+          <Divider orientation="vertical" variant="middle" flexItem />
+        </>
+      }
+    />
+
     <Dialog onClose={setDialog} open={dialog === 'file_selection'} maxWidth="sm" fullWidth>
       <Suspense>
         <FileSelectionModal fileGroups={fileGroups} closeModal={(selectedFile?: IFile) => {
@@ -74,100 +165,6 @@ export function Exchange(_: IComponent): React.JSX.Element {
       </Suspense>
     </Dialog>
 
-    <Grid p={1} sx={{ flex: '1 0 25%', display: chatOpen ? 'flex' : 'none', flexDirection: 'column', maxWidth: '390px' }}>
-      <Grid sx={{ flex: 1, overflow: 'auto' }}>
-        {chatLog}
-        {messagesEnd}
-      </Grid>
-
-      <Grid pt={1}>
-        {submitMessageForm}
-      </Grid>
-    </Grid>
-
-    <Grid sx={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-
-      <Grid sx={{ maxHeight: '150px', backgroundColor: '#333' }}>
-        {localStreamElement && localStreamElement}
-        {senderStreamsElements && senderStreamsElements}
-      </Grid>
-
-      <Grid sx={{ height: localStreamElement || senderStreamsElements ? 'calc(100% - 150px)' : '100%', display: 'flex' }}>
-        <Whiteboard
-          topicId={`exchange/${ExchangeActions.EXCHANGE_WHITEBOARD}:${exchangeId}`}
-          sharedFile={sharedFile}
-          openFileSelect={() => {
-            setDialog('file_selection');
-          }}
-          optionsMenu={
-            <List disablePadding
-              subheader={
-                <ListSubheader>Call</ListSubheader>
-              }
-            >
-              <ListItem secondaryAction={
-                sharedFile && <Tooltip title="Close File">
-                  <IconButton
-                    {...targets(`exchange close file`, `close the currently shared file`)}
-                    color="error"
-                    onClick={() => setSharedFile(undefined)}
-                    children={<InsertPageBreak />}
-                  />
-                </Tooltip>
-              }>
-                <Box sx={classes.darkRounded} mr={1}>
-                  {connected && <Tooltip title="Stop Voice or Video" children={
-                    <Button
-                      {...targets(`exchange leave call`, `leave the voice or video call`)}
-                      onClick={() => leaveCall()}
-                    >
-                      Leave Call
-                    </Button>
-                  } />}
-                  {(!connected || audioOnly) && <Tooltip title="Start Video" children={
-                    <IconButton
-                      {...targets(`exchange start video call`, `start a video call`)}
-                      disabled={'start' !== canStartStop}
-                      onClick={() => setLocalStreamAndBroadcast(true)}
-                    >
-                      <VideocamIcon fontSize="small" />
-                    </IconButton>
-                  } />}
-                  {!connected && <Tooltip title="Start Audio" children={
-                    <IconButton
-                      {...targets(`exchange start voice call`, `start a voice call`)}
-                      disabled={'start' !== canStartStop}
-                      onClick={() => setLocalStreamAndBroadcast(false)}
-                    >
-                      <CallIcon fontSize="small" />
-                    </IconButton>
-                  } />}
-                </Box>
-                <Tooltip title="Hide/Show Messages" children={
-                  <IconButton
-                    {...targets(`exchange toggle chat`, `toggle the chat visbility`)}
-                    color="primary"
-                    onClick={() => setChatOpen(!chatOpen)}
-                  >
-                    <ChatBubbleIcon fontSize="small" />
-                  </IconButton>
-                } />
-                <Tooltip title="Open File" children={
-                  <IconButton
-                    {...targets(`exchange select file`, `select a file to view and share`)}
-                    color="primary"
-                    onClick={() => setDialog('file_selection')}
-                  >
-                    <FileCopyIcon fontSize="small" />
-                  </IconButton>
-                } />
-              </ListItem>
-            </List>
-          }
-        />
-
-      </Grid>
-    </Grid>
   </>;
 }
 

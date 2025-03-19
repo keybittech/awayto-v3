@@ -1,7 +1,4 @@
 
-/**
- * need to capture the idea where runons, etc. can be highlighted throughout a page after post processing
- */
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -14,6 +11,7 @@ pdfjs.GlobalWorkerOptions.workerSrc = '/app/pdf.worker.min.mjs';
 import { Document, Page } from 'react-pdf';
 
 import Box from '@mui/material/Box';
+import Grid from '@mui/material/Grid';
 
 import { IFile, IWhiteboard, useWebSocketSubscribe, useFileContents, useUtil, SocketActions } from 'awayto/hooks';
 import WhiteboardOptionsMenu from './WhiteboardOptionsMenu';
@@ -28,13 +26,15 @@ function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasE
 // onwhiteboard load use effect check fileDetails from modal close then do a confirm action to getFileContents ?
 
 interface WhiteboardProps extends IComponent {
+  // exchangeWrap: (props: IComponent) => React.JSX.Element;
+  chatBox: React.JSX.Element;
+  callBox: React.JSX.Element;
   optionsMenu: React.JSX.Element;
   sharedFile?: IFile;
   topicId: string;
-  openFileSelect: () => void;
 }
 
-export default function Whiteboard({ optionsMenu, sharedFile, topicId }: WhiteboardProps): React.JSX.Element {
+export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, topicId }: WhiteboardProps): React.JSX.Element {
   if (!topicId) return <></>;
 
   const whiteboardRef = useRef<HTMLCanvasElement>(null);
@@ -42,6 +42,7 @@ export default function Whiteboard({ optionsMenu, sharedFile, topicId }: Whitebo
   const fileDisplayRef = useRef<HTMLCanvasElement>(null);
   const fileScroller = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const whiteboard = useRef<IWhiteboard>({ lines: [], settings: { highlight: false, position: [0, 0] } });
 
@@ -244,76 +245,9 @@ export default function Whiteboard({ optionsMenu, sharedFile, topicId }: Whitebo
     return newText;
   }, [selectedText, userList]);
 
-  return <Box
-    onClick={() => !active && setActive(true)}
-    sx={{
-      flex: 1,
-      position: 'relative',
-      display: 'flex',
-      width: '100%'
-    }}
-  >
+  console.log({ videoContainerRef })
 
-    {/* General Canvas Background  */}
-    <Box
-      ref={fileScroller}
-      sx={{
-        backgroundColor: fileContents ? '#ccc' : 'white',
-        flex: 1,
-        overflow: 'scroll',
-        position: 'relative',
-        padding: '16px'
-      }}
-    >
-      <Box
-        sx={{
-          position: 'absolute',
-          zIndex: 100,
-          pointerEvents: canvasPointerEvents
-        }}
-        ref={whiteboardRef}
-        component='canvas'
-        onMouseDown={handleMouseDown}
-      />
-
-      {!fileContents || !sharedFile ? <></> : <Document // File Viewer
-        file={fileContents.url}
-        onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-      >
-        <Page
-          scale={zoom}
-          canvasRef={fileDisplayRef}
-          renderAnnotationLayer={false}
-          pageNumber={pageNumber}
-          customTextRenderer={textRenderer}
-          onRenderSuccess={() => {
-            if (fileDisplayRef.current && whiteboardRef.current) {
-              const tempCanvas = document.createElement('canvas');
-              const tempCtx = tempCanvas.getContext('2d');
-              tempCanvas.width = whiteboardRef.current.width;
-              tempCanvas.height = whiteboardRef.current.height;
-              tempCtx?.drawImage(whiteboardRef.current, 0, 0);
-
-              const { width, height } = fileDisplayRef.current.getBoundingClientRect();
-              whiteboardRef.current.width = width;
-              whiteboardRef.current.height = height;
-
-              whiteboardRef.current.getContext('2d')?.drawImage(tempCanvas, 0, 0);
-
-              // fileDisplayRef.current.getContext('2d')?.translate(0, 0);
-              setFileToggle(!fileToggle);
-            }
-          }}
-          onMouseUp={() => {
-            const selection = document.getSelection();
-            if (selection && selection.toString() != "") {
-              setSelectedText({ [connectionId]: selection.toString() });
-            }
-          }}
-        />
-      </Document>}
-    </Box>
-
+  return <Grid size="grow">
     <WhiteboardOptionsMenu
       {...{
         whiteboard: whiteboard.current,
@@ -332,5 +266,86 @@ export default function Whiteboard({ optionsMenu, sharedFile, topicId }: Whitebo
     >
       {optionsMenu}
     </WhiteboardOptionsMenu>
-  </Box >
+
+    <Grid container sx={{ height: 'calc(100% - 64px)' }}>
+      {chatBox}
+
+      <Grid container size="grow">
+
+        {/* use ref to set w/h of canvas */}
+
+        <Grid ref={videoContainerRef} size={12}>
+          {callBox}
+        </Grid>
+
+        <Grid
+          size={12}
+          onClick={() => !active && setActive(true)}
+          sx={{ position: 'relative' }}
+        >
+
+          {/* General Canvas Background  */}
+          <Box
+            ref={fileScroller}
+            sx={{
+              backgroundColor: fileContents ? '#ccc' : 'white',
+              flex: 1,
+              overflow: 'scroll',
+              position: 'relative',
+              padding: '16px',
+              height: '100%',
+            }}
+          >
+            <Box
+              sx={{
+                position: 'absolute',
+                zIndex: 100,
+                pointerEvents: canvasPointerEvents
+              }}
+              ref={whiteboardRef}
+              component='canvas'
+              onMouseDown={handleMouseDown}
+            />
+
+            {!fileContents && !sharedFile ? <></> : <Document // File Viewer
+              file={fileContents?.url}
+              onLoadSuccess={({ numPages }) => setNumPages(numPages)}
+            >
+              <Page
+                scale={zoom}
+                canvasRef={fileDisplayRef}
+                renderAnnotationLayer={false}
+                pageNumber={pageNumber}
+                customTextRenderer={textRenderer}
+                onRenderSuccess={() => {
+                  if (fileDisplayRef.current && whiteboardRef.current) {
+                    const tempCanvas = document.createElement('canvas');
+                    const tempCtx = tempCanvas.getContext('2d');
+                    tempCanvas.width = whiteboardRef.current.width;
+                    tempCanvas.height = whiteboardRef.current.height;
+                    tempCtx?.drawImage(whiteboardRef.current, 0, 0);
+
+                    // const { width, height } = fileDisplayRef.current.getBoundingClientRect();
+                    // whiteboardRef.current.width = width;
+                    // whiteboardRef.current.height = height;
+
+                    whiteboardRef.current.getContext('2d')?.drawImage(tempCanvas, 0, 0);
+
+                    // fileDisplayRef.current.getContext('2d')?.translate(0, 0);
+                    setFileToggle(!fileToggle);
+                  }
+                }}
+                onMouseUp={() => {
+                  const selection = document.getSelection();
+                  if (selection && selection.toString() != "") {
+                    setSelectedText({ [connectionId]: selection.toString() });
+                  }
+                }}
+              />
+            </Document>}
+          </Box>
+        </Grid>
+      </Grid>
+    </Grid>
+  </Grid>
 }

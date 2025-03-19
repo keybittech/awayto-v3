@@ -145,8 +145,12 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
           if (listeners) {
             for (const listener of listeners) {
-              socketResponse.payload = JSON.parse(socketResponse.payload || '{}')
-              await listener(socketResponse);
+              try {
+                socketResponse.payload = JSON.parse(socketResponse.payload || '{}')
+                await listener(socketResponse);
+              } catch (e) {
+                console.log({ socketResponse })
+              }
             }
           }
         }

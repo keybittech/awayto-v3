@@ -45,7 +45,7 @@ const Layout = (props: IComponent): React.JSX.Element => {
           <Route path="/exchange/:summaryId/summary" element={<ExchangeSummary {...props} />} />
         </Route>
         <Route element={
-          <Grid size={12} container direction="column">
+          <Grid size={12} container>
             <Grid size={12} px={1} sx={{ bgcolor: 'primary.dark' }}>
               <Topbar forceSiteMenu={true} {...props} />
             </Grid>
