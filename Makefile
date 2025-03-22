@@ -257,12 +257,12 @@ landing_dev: build
 #################################
 
 .PHONY: go_test
-go_test: docker_up go_test_main go_test_pkg
+go_test: docker_up go_test_pkg go_test_main 
 
 .PHONY: go_test_main
 go_test_main: build $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
-	go test -C $(GO_SRC) -v -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
+	go test -C $(GO_SRC) -v -tags=integration -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
 .PHONY: go_test_pkg
 go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
