@@ -267,7 +267,7 @@ go_test_main: build $(GO_TARGET)
 .PHONY: go_test_pkg
 go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
-	go test -C $(GO_SRC) -v ./...
+	go test -C $(GO_SRC) -bench=. -benchtime=10s -v ./...
 
 .PHONY: go_coverage
 go_coverage: $(GO_MOCK_TARGET)
