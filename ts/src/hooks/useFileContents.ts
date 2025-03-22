@@ -47,7 +47,10 @@ export const useFileContents: UseFileContents = () => {
   }, []);
 
   const getFileContents = useCallback<ReturnType<UseFileContents>['getFileContents']>(async (fileRef, download) => {
-    if (!fileRef.uuid || !fileRef.mimeType) return undefined;
+    if (!fileRef.uuid || !fileRef.mimeType) {
+      setFileContents(undefined);
+      return undefined;
+    }
 
     await refreshToken();
 
@@ -59,9 +62,9 @@ export const useFileContents: UseFileContents = () => {
       headers
     });
 
-    const buffer = await response.arrayBuffer();
+    const fileBlob = await response.blob();
 
-    fileRef.url = window.URL.createObjectURL(new Blob([buffer], { type: fileRef.mimeType }));
+    fileRef.url = window.URL.createObjectURL(fileBlob);
 
     setFileContents(fileRef as IFile);
 

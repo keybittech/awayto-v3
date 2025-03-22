@@ -4,20 +4,14 @@ import IconButton from '@mui/material/IconButton';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 import Dialog from '@mui/material/Dialog';
-import Box from '@mui/material/Box';
-import List from '@mui/material/List';
-import Divider from '@mui/material/Divider';
-import ListSubheader from '@mui/material/ListSubheader';
-import ListItem from '@mui/material/ListItem';
 import Grid from '@mui/material/Grid';
 
 import ChatBubbleIcon from '@mui/icons-material/ChatBubble';
 import VideocamIcon from '@mui/icons-material/Videocam';
 import CallIcon from '@mui/icons-material/Call';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
-import InsertPageBreak from '@mui/icons-material/InsertPageBreak';
 
-import { ExchangeActions, useStyles, IFile, OrderedFiles, targets } from 'awayto/hooks';
+import { ExchangeActions, IFile, OrderedFiles, targets } from 'awayto/hooks';
 
 import ExchangeContext, { ExchangeContextType } from './ExchangeContext';
 import WSTextContext, { WSTextContextType } from '../web_socket/WSTextContext';
@@ -26,7 +20,6 @@ import FileSelectionModal from '../files/FileSelectionModal';
 import Whiteboard from './Whiteboard';
 
 export function Exchange(_: IComponent): React.JSX.Element {
-  const classes = useStyles();
 
   const [dialog, setDialog] = useState('');
   const [chatOpen, setChatOpen] = useState(true);
@@ -67,6 +60,7 @@ export function Exchange(_: IComponent): React.JSX.Element {
     <Whiteboard
       topicId={`exchange/${ExchangeActions.EXCHANGE_WHITEBOARD}:${exchangeId}`}
       sharedFile={sharedFile}
+      chatOpen={chatOpen}
       chatBox={
         <Grid
           p={1}
@@ -89,10 +83,11 @@ export function Exchange(_: IComponent): React.JSX.Element {
         </Grid>
       }
       callBox={
-        <Grid sx={{ maxHeight: '150px', backgroundColor: '#333' }}>
-          {localStreamElement && localStreamElement}
-          {senderStreamsElements && senderStreamsElements}
-        </Grid>
+        !localStreamElement && !senderStreamsElements ? <></> :
+          <Grid sx={{ height: '150px', backgroundColor: '#333' }}>
+            {localStreamElement && localStreamElement}
+            {senderStreamsElements && senderStreamsElements}
+          </Grid>
       }
       optionsMenu={
         <>
@@ -140,16 +135,6 @@ export function Exchange(_: IComponent): React.JSX.Element {
               <FileCopyIcon fontSize="small" />
             </IconButton>
           } />
-          {sharedFile && <Tooltip title="Close File">
-            <IconButton
-              {...targets(`exchange close file`, `close the currently shared file`)}
-              color="error"
-              onClick={() => setSharedFile(undefined)}
-              children={<InsertPageBreak />}
-            />
-          </Tooltip>}
-
-          <Divider orientation="vertical" variant="middle" flexItem />
         </>
       }
     />

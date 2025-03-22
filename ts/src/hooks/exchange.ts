@@ -13,7 +13,7 @@ export enum ExchangeActions {
  */
 export interface IWhiteboard {
   selectedText?: string;
-  sharedFile?: IFile;
+  sharedFile?: IFile | null;
   lines: {
     startPoint: {
       x: number;

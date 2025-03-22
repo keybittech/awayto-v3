@@ -164,3 +164,7 @@ pre {
 .vertical-parent {
   align-content: center;
 }
+
+.react-pdf__Page {
+  background-color: unset !important;
+}

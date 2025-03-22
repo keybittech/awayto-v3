@@ -12,6 +12,7 @@ import { Document, Page } from 'react-pdf';
 
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
+import Stack from '@mui/material/Stack';
 
 import { IFile, IWhiteboard, useWebSocketSubscribe, useFileContents, useUtil, SocketActions } from 'awayto/hooks';
 import WhiteboardOptionsMenu from './WhiteboardOptionsMenu';
@@ -26,23 +27,21 @@ function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasE
 // onwhiteboard load use effect check fileDetails from modal close then do a confirm action to getFileContents ?
 
 interface WhiteboardProps extends IComponent {
-  // exchangeWrap: (props: IComponent) => React.JSX.Element;
+  topicId: string;
+  optionsMenu: React.JSX.Element;
+  chatOpen: boolean;
   chatBox: React.JSX.Element;
   callBox: React.JSX.Element;
-  optionsMenu: React.JSX.Element;
   sharedFile?: IFile;
-  topicId: string;
 }
 
-export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, topicId }: WhiteboardProps): React.JSX.Element {
+export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sharedFile, topicId }: WhiteboardProps): React.JSX.Element {
   if (!topicId) return <></>;
 
   const whiteboardRef = useRef<HTMLCanvasElement>(null);
-  // const contextRef = useRef<CanvasRenderingContext2D | null>(null);
   const fileDisplayRef = useRef<HTMLCanvasElement>(null);
   const fileScroller = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
-  const videoContainerRef = useRef<HTMLDivElement>(null);
 
   const whiteboard = useRef<IWhiteboard>({ lines: [], settings: { highlight: false, position: [0, 0] } });
 
@@ -82,21 +81,28 @@ export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, 
           handleLines(payload.lines, board.settings);
         }
       } else if (SocketActions.SHARE_FILE === action) {
-        const fileDetails = { name: board.sharedFile?.name, mimeType: board.sharedFile?.mimeType, uuid: board.sharedFile?.uuid };
-        if (connectionId !== sender) {
-          for (const user of Object.values(userList)) {
-            if (user?.cids.includes(sender)) {
-              openConfirm({
-                isConfirming: true,
-                confirmEffect: `${user.name} wants to share a file`,
-                confirmAction: () => {
-                  getFileContents(fileDetails).catch(console.error);
-                }
-              });
-            }
-          }
+        console.log({ board });
+        setNumPages(0);
+        setPageNumber(1);
+        if (!board.sharedFile) {
+          getFileContents({});
         } else {
-          getFileContents(fileDetails).catch(console.error);
+          const fileDetails = { name: board.sharedFile?.name, mimeType: board.sharedFile?.mimeType, uuid: board.sharedFile?.uuid };
+          if (connectionId !== sender) {
+            for (const user of Object.values(userList)) {
+              if (user?.cids.includes(sender)) {
+                openConfirm({
+                  isConfirming: true,
+                  confirmEffect: `${user.name} wants to share a file`,
+                  confirmAction: () => {
+                    getFileContents(fileDetails).catch(console.error);
+                  }
+                });
+              }
+            }
+          } else {
+            getFileContents(fileDetails).catch(console.error);
+          }
         }
       } else if (SocketActions.SET_SELECTED_TEXT === action) {
         if (payload.selectedText?.length) {
@@ -110,8 +116,6 @@ export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, 
 
   const handleLines = (lines?: IWhiteboard['lines'], settings?: IWhiteboard['settings']) => {
     const draw = () => {
-      // const canvas = whiteboardRef.current;
-      // if (!canvas) return;
       const ctx = whiteboardRef.current?.getContext('2d');
       if (!ctx) return;
 
@@ -188,10 +192,8 @@ export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, 
   }, []);
 
   useEffect(() => {
-    if (sharedFile && sharedFile.uuid !== fileContents?.uuid) {
-      sendWhiteboardMessage(SocketActions.SHARE_FILE, { sharedFile });
-    }
-  }, [fileContents, sharedFile]);
+    sendWhiteboardMessage(SocketActions.SHARE_FILE, { sharedFile });
+  }, [sharedFile]);
 
   useEffect(() => {
     const scrollDiv = fileScroller.current;
@@ -223,7 +225,6 @@ export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, 
     if (null !== whiteboardRef.current && !sharedFile) {
       whiteboardRef.current.width = window.screen.width;
       whiteboardRef.current.height = window.screen.height;
-      // contextRef.current = whiteboardRef.current.getContext('2d');
     }
   }, [whiteboardRef, sharedFile]);
 
@@ -245,8 +246,6 @@ export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, 
     return newText;
   }, [selectedText, userList]);
 
-  console.log({ videoContainerRef })
-
   return <Grid size="grow">
     <WhiteboardOptionsMenu
       {...{
@@ -259,7 +258,6 @@ export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, 
         scale: zoom,
         canvasPointerEvents,
         setCanvasPointerEvents,
-        // contextRef: contextRef.current,
         whiteboardRef: whiteboardRef.current,
         sendWhiteboardMessage
       }}
@@ -267,85 +265,78 @@ export default function Whiteboard({ chatBox, callBox, optionsMenu, sharedFile, 
       {optionsMenu}
     </WhiteboardOptionsMenu>
 
-    <Grid container sx={{ height: 'calc(100% - 64px)' }}>
+    <Grid
+      container
+      sx={{
+        height: {
+          xs: 'calc(100% - 150px)',
+          sm: 'calc(100% - 80px)',
+        }
+      }}
+    >
       {chatBox}
 
-      <Grid container size="grow">
+      <Stack sx={{ width: chatOpen ? 'calc(100% - 390px)' : '100%', height: '100%' }}>
 
-        {/* use ref to set w/h of canvas */}
+        {callBox}
 
-        <Grid ref={videoContainerRef} size={12}>
-          {callBox}
-        </Grid>
-
-        <Grid
-          size={12}
+        {/* General Canvas Background  */}
+        <Box
           onClick={() => !active && setActive(true)}
-          sx={{ position: 'relative' }}
+          ref={fileScroller}
+          sx={{
+            backgroundColor: fileContents ? '#ccc' : 'white',
+            flex: 1,
+            overflow: 'scroll',
+            position: 'relative',
+            padding: '16px',
+            height: '100%',
+          }}
         >
-
-          {/* General Canvas Background  */}
           <Box
-            ref={fileScroller}
             sx={{
-              backgroundColor: fileContents ? '#ccc' : 'white',
-              flex: 1,
-              overflow: 'scroll',
-              position: 'relative',
-              padding: '16px',
-              height: '100%',
+              position: 'absolute',
+              zIndex: 100,
+              pointerEvents: canvasPointerEvents
             }}
+            ref={whiteboardRef}
+            component='canvas'
+            onMouseDown={handleMouseDown}
+          />
+
+          {!fileContents ? <></> : <Document // File Viewer
+            file={fileContents?.url}
+            onLoadSuccess={({ numPages }) => setNumPages(numPages)}
           >
-            <Box
-              sx={{
-                position: 'absolute',
-                zIndex: 100,
-                pointerEvents: canvasPointerEvents
+            <Page
+              scale={zoom}
+              canvasRef={fileDisplayRef}
+              renderAnnotationLayer={false}
+              pageNumber={pageNumber}
+              customTextRenderer={textRenderer}
+              onRenderSuccess={() => {
+                if (fileDisplayRef.current && whiteboardRef.current) {
+                  const tempCanvas = document.createElement('canvas');
+                  const tempCtx = tempCanvas.getContext('2d');
+                  tempCanvas.width = whiteboardRef.current.width;
+                  tempCanvas.height = whiteboardRef.current.height;
+                  tempCtx?.drawImage(whiteboardRef.current, 0, 0);
+
+                  whiteboardRef.current.getContext('2d')?.drawImage(tempCanvas, 0, 0);
+
+                  setFileToggle(!fileToggle);
+                }
               }}
-              ref={whiteboardRef}
-              component='canvas'
-              onMouseDown={handleMouseDown}
+              onMouseUp={() => {
+                const selection = document.getSelection();
+                if (selection && selection.toString() != "") {
+                  setSelectedText({ [connectionId]: selection.toString() });
+                }
+              }}
             />
-
-            {!fileContents && !sharedFile ? <></> : <Document // File Viewer
-              file={fileContents?.url}
-              onLoadSuccess={({ numPages }) => setNumPages(numPages)}
-            >
-              <Page
-                scale={zoom}
-                canvasRef={fileDisplayRef}
-                renderAnnotationLayer={false}
-                pageNumber={pageNumber}
-                customTextRenderer={textRenderer}
-                onRenderSuccess={() => {
-                  if (fileDisplayRef.current && whiteboardRef.current) {
-                    const tempCanvas = document.createElement('canvas');
-                    const tempCtx = tempCanvas.getContext('2d');
-                    tempCanvas.width = whiteboardRef.current.width;
-                    tempCanvas.height = whiteboardRef.current.height;
-                    tempCtx?.drawImage(whiteboardRef.current, 0, 0);
-
-                    // const { width, height } = fileDisplayRef.current.getBoundingClientRect();
-                    // whiteboardRef.current.width = width;
-                    // whiteboardRef.current.height = height;
-
-                    whiteboardRef.current.getContext('2d')?.drawImage(tempCanvas, 0, 0);
-
-                    // fileDisplayRef.current.getContext('2d')?.translate(0, 0);
-                    setFileToggle(!fileToggle);
-                  }
-                }}
-                onMouseUp={() => {
-                  const selection = document.getSelection();
-                  if (selection && selection.toString() != "") {
-                    setSelectedText({ [connectionId]: selection.toString() });
-                  }
-                }}
-              />
-            </Document>}
-          </Box>
-        </Grid>
-      </Grid>
+          </Document>}
+        </Box>
+      </Stack>
     </Grid>
-  </Grid>
+  </Grid >
 }
