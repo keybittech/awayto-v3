@@ -184,7 +184,7 @@ export function WhiteboardOptionsMenu({
               {...targets(`whiteboard zoom out`, `zoom the whiteboard out`)}
               onClick={() => setScale(false)}
             >
-              <RemoveIcon fontSize="small" />
+              <RemoveIcon />
             </IconButton>
           } />
           <TextField
@@ -206,7 +206,7 @@ export function WhiteboardOptionsMenu({
               {...targets(`whiteboard zoom in`, `zoom the whiteboard in`)}
               onClick={() => setScale(true)}
             >
-              <AddIcon fontSize="small" />
+              <AddIcon />
             </IconButton>
           } />
 
@@ -219,7 +219,7 @@ export function WhiteboardOptionsMenu({
               {...targets(`whiteboard first page`, `go to the first page of shared document`)}
               onClick={() => setPage(1)}
             >
-              <KeyboardDoubleArrowLeftIcon fontSize="small" />
+              <KeyboardDoubleArrowLeftIcon />
             </IconButton>
           } />
           <Tooltip title="Previous Page" children={
@@ -227,7 +227,7 @@ export function WhiteboardOptionsMenu({
               {...targets(`whiteboard previous page`, `go to the previous page of shared document`)}
               onClick={() => setPage(false)}
             >
-              <KeyboardArrowLeftIcon fontSize="small" />
+              <KeyboardArrowLeftIcon />
             </IconButton>
           } />
           <TextField
@@ -254,7 +254,7 @@ export function WhiteboardOptionsMenu({
               {...targets(`whiteboard next page`, `go to the next page of shared document`)}
               onClick={() => setPage(true)}
             >
-              <KeyboardArrowRightIcon fontSize="small" />
+              <KeyboardArrowRightIcon />
             </IconButton>
           } />
           <Tooltip title="Last Page" children={
@@ -262,7 +262,7 @@ export function WhiteboardOptionsMenu({
               {...targets(`whiteboard last page`, `go to the last page of shared document`)}
               onClick={() => setPage(numPages)}
             >
-              <KeyboardDoubleArrowRightIcon fontSize="small" />
+              <KeyboardDoubleArrowRightIcon />
             </IconButton>
           } />
         </Grid>}

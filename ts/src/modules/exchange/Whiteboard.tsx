@@ -32,10 +32,11 @@ interface WhiteboardProps extends IComponent {
   chatOpen: boolean;
   chatBox: React.JSX.Element;
   callBox: React.JSX.Element;
-  sharedFile?: IFile;
+  setSharedFile: React.Dispatch<React.SetStateAction<IFile | undefined>>;
+  sharedFile: IFile | undefined;
 }
 
-export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sharedFile, topicId }: WhiteboardProps): React.JSX.Element {
+export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sharedFile, setSharedFile, topicId }: WhiteboardProps): React.JSX.Element {
   if (!topicId) return <></>;
 
   const whiteboardRef = useRef<HTMLCanvasElement>(null);
@@ -85,6 +86,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         setNumPages(0);
         setPageNumber(1);
         if (!board.sharedFile) {
+          setSharedFile(undefined);
           getFileContents({});
         } else {
           const fileDetails = { name: board.sharedFile?.name, mimeType: board.sharedFile?.mimeType, uuid: board.sharedFile?.uuid };

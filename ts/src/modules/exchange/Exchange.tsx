@@ -60,6 +60,7 @@ export function Exchange(_: IComponent): React.JSX.Element {
     <Whiteboard
       topicId={`exchange/${ExchangeActions.EXCHANGE_WHITEBOARD}:${exchangeId}`}
       sharedFile={sharedFile}
+      setSharedFile={setSharedFile}
       chatOpen={chatOpen}
       chatBox={
         <Grid
