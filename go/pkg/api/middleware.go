@@ -10,7 +10,6 @@ import (
 	"os"
 	"slices"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -20,57 +19,14 @@ import (
 	"golang.org/x/time/rate"
 )
 
-type SessionHandler func(w http.ResponseWriter, r *http.Request, session *clients.UserSession)
-
-// From https://blog.logrocket.com/rate-limiting-go-application
-
-type limitedClient struct {
-	limiter  *rate.Limiter
-	lastSeen time.Time
-}
-
-func limitCleanup(mu *sync.Mutex, limitedClients map[string]*limitedClient) {
-	for {
-		time.Sleep(time.Minute)
-		mu.Lock()
-		for ip, lc := range limitedClients {
-			if time.Since(lc.lastSeen) > 3*time.Minute {
-				delete(limitedClients, ip)
-			}
-		}
-		mu.Unlock()
-	}
-}
-
-func limiter(w http.ResponseWriter, mu *sync.Mutex, limitedClients map[string]*limitedClient, limit rate.Limit, burst int, identifier string) bool {
-	mu.Lock()
-	if _, found := limitedClients[identifier]; !found {
-		limitedClients[identifier] = &limitedClient{limiter: rate.NewLimiter(limit, burst)}
-	}
-	limitedClients[identifier].lastSeen = time.Now()
-	if !limitedClients[identifier].limiter.Allow() {
-		mu.Unlock()
-
-		w.WriteHeader(http.StatusTooManyRequests)
-		w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
-		return true
-	}
-	mu.Unlock()
-
-	return false
-}
-
 func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.HandlerFunc) http.HandlerFunc {
-	var (
-		mu             sync.Mutex
-		limitedClients = make(map[string]*limitedClient)
-	)
 
-	go limitCleanup(&mu, limitedClients)
+	mu, limitedClients := NewRateLimit()
+
+	go LimitCleanup(mu, limitedClients)
 
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
-			// Extract the IP address from the request.
 			ip, _, err := net.SplitHostPort(req.RemoteAddr)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
@@ -78,7 +34,7 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 				return
 			}
 
-			limited := limiter(w, &mu, limitedClients, limit, burst, ip)
+			limited := Limiter(w, mu, limitedClients, limit, burst, ip)
 			if limited {
 				return
 			}
@@ -98,12 +54,9 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 }
 
 func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
-	var (
-		mu             sync.Mutex
-		limitedClients = make(map[string]*limitedClient)
-	)
+	mu, limitedClients := NewRateLimit()
 
-	go limitCleanup(&mu, limitedClients)
+	go LimitCleanup(mu, limitedClients)
 
 	return func(next SessionHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -117,7 +70,7 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 						util.ErrorLog.Println(util.ErrCheck(err))
 					}
 
-					limited := limiter(w, &mu, limitedClients, limit, burst, ip)
+					limited := Limiter(w, mu, limitedClients, limit, burst, ip)
 					if limited {
 						return
 					}
@@ -139,7 +92,7 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 				return
 			}
 
-			limited := limiter(w, &mu, limitedClients, limit, burst, kcUser.Sub)
+			limited := Limiter(w, mu, limitedClients, limit, burst, kcUser.Sub)
 			if limited {
 				return
 			}

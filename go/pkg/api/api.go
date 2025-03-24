@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -17,10 +16,12 @@ type API struct {
 	Handlers *handlers.Handlers
 }
 
-func (a *API) InitMux() *http.ServeMux {
-	// apiMux := http.NewServeMux()
+var (
+	apiLimitMu, apiLimited = NewRateLimit()
+)
 
-	mapa := make(map[string]SessionHandler)
+func (a *API) InitMux() *http.ServeMux {
+	muxWithSession := NewSessionMux()
 
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
 		if fd.Services().Len() == 0 {
@@ -34,27 +35,24 @@ func (a *API) InitMux() *http.ServeMux {
 			serviceMethod := services.Methods().Get(i)
 			handlerOpts := util.ParseHandlerOptions(serviceMethod)
 
-			mapa[handlerOpts.Pattern] = a.SiteRoleCheckMiddleware(handlerOpts)(
-				a.CacheMiddleware(handlerOpts)(
-					a.HandleRequest(serviceMethod),
+			muxWithSession.Handle(handlerOpts.Pattern,
+				a.GroupInfoMiddleware(
+					a.SiteRoleCheckMiddleware(handlerOpts)(
+						a.CacheMiddleware(handlerOpts)(
+							a.HandleRequest(serviceMethod),
+						),
+					),
 				),
 			)
 		}
 
-		// a.BuildProtoService(apiMux, fd)
 		return true
 	})
 
 	mux := http.NewServeMux()
-	mux.Handle("/api/",
-		a.ValidateTokenMiddleware(2, 20)(
-			a.GroupInfoMiddleware(
-				func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
-					mapa[r.Method+" "+r.URL.Path](w, r, session)
-				},
-			),
-		),
-	)
+	mux.Handle("/api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		muxWithSession.ServeHTTP(w, r)
+	}))
 
 	a.Server.Handler = mux
 	return mux

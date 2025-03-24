@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -99,6 +100,10 @@ type AuthEvent struct {
 	Details     AuthEventDetails `json:"details"`
 	Timezone    string           `json:"timezone"`
 }
+
+var (
+	KeycloakPublicKey *rsa.PublicKey
+)
 
 func InitKeycloak() IKeycloak {
 	cmds := make(chan KeycloakCommand)
@@ -234,6 +239,7 @@ func InitKeycloak() IKeycloak {
 		log.Fatal(err)
 	}
 	kc.PublicKey = pk
+	KeycloakPublicKey = pk
 
 	kcc := &Keycloak{}
 	kcc.C = kc
