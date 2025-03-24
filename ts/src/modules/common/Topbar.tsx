@@ -10,11 +10,14 @@ import Badge from '@mui/material/Badge';
 import Menu from '@mui/material/Menu';
 import Typography from '@mui/material/Typography';
 import MenuItem from '@mui/material/MenuItem';
+import ListSubheader from '@mui/material/ListSubheader';
 import ListItemIcon from '@mui/material/ListItemIcon';
 import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
+import Chip from '@mui/material/Chip';
+import Avatar from '@mui/material/Avatar';
 
 import ThreePIcon from '@mui/icons-material/ThreeP';
 import LogoutIcon from '@mui/icons-material/Logout';
@@ -29,6 +32,12 @@ import UpcomingBookingsMenu from '../bookings/UpcomingBookingsMenu';
 import PendingQuotesProvider from '../quotes/PendingQuotesProvider';
 import PendingQuotesMenu from '../quotes/PendingQuotesMenu';
 import FeedbackMenu from '../feedback/FeedbackMenu';
+
+import Icon from '../../img/kbt-icon.png';
+
+const {
+  VITE_REACT_APP_PROJECT_TITLE,
+} = import.meta.env;
 
 interface TopbarProps extends IComponent {
   forceSiteMenu?: boolean;
@@ -103,7 +112,6 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           aria-expanded={isMobileMenuOpen ? 'true' : undefined}
           onClick={e => setMobileMoreAnchorEl(e.currentTarget)}
         >
-          {/* <img src={Icon} alt="kbt-icon" width={28} /> */}
           <Typography alignSelf="center" fontWeight="bold">MENU</Typography>
         </Button>
       </Tooltip>
@@ -125,6 +133,13 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           'aria-labelledby': 'topbar-open-menu'
         }}
       >
+        <ListSubheader sx={{ mb: -1, bgcolor: 'inherit' }}>
+          <Grid container spacing={1} alignItems="center" sx={{ mb: -2 }}>
+            <Avatar src={Icon} sx={{ width: 24, height: 24 }} />
+            <Typography variant="h6">{VITE_REACT_APP_PROJECT_TITLE}</Typography>
+          </Grid>
+          <Typography variant="button" color="secondary" fontSize="12px" letterSpacing={2}><strong>Preview</strong></Typography>
+        </ListSubheader>
         <MenuItem
           {...targets(`main menu go home`, `go to the home page`)}
           onClick={e => handleNavAndClose(e, '/')}

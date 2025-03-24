@@ -66,38 +66,34 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 	))
 
 	mux.Handle("/login",
-		a.LimitMiddleware(1, 1)(
-			a.ValidateTokenMiddleware(
-				func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
-					http.SetCookie(w, &http.Cookie{
-						Name:     "valid_signature",
-						Value:    util.WriteSigned(util.LOGIN_SIGNATURE_NAME, fmt.Sprint(session.ExpiresAt)),
-						Path:     "/",
-						Expires:  time.Now().Add(24 * time.Hour),
-						SameSite: http.SameSiteStrictMode,
-						Secure:   true,
-						HttpOnly: true,
-					})
-				},
-			),
+		a.ValidateTokenMiddleware(1, 1)(
+			func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+				http.SetCookie(w, &http.Cookie{
+					Name:     "valid_signature",
+					Value:    util.WriteSigned(util.LOGIN_SIGNATURE_NAME, fmt.Sprint(session.ExpiresAt)),
+					Path:     "/",
+					Expires:  time.Now().Add(24 * time.Hour),
+					SameSite: http.SameSiteStrictMode,
+					Secure:   true,
+					HttpOnly: true,
+				})
+			},
 		),
 	)
 
 	mux.Handle("/logout",
-		a.LimitMiddleware(1, 1)(
-			a.ValidateTokenMiddleware(
-				func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
-					http.SetCookie(w, &http.Cookie{
-						Name:     "valid_signature",
-						Value:    "",
-						Path:     "/",
-						Expires:  time.Now().Add(-24 * time.Hour),
-						SameSite: http.SameSiteStrictMode,
-						Secure:   true,
-						HttpOnly: true,
-					})
-				},
-			),
+		a.ValidateTokenMiddleware(1, 1)(
+			func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+				http.SetCookie(w, &http.Cookie{
+					Name:     "valid_signature",
+					Value:    "",
+					Path:     "/",
+					Expires:  time.Now().Add(-24 * time.Hour),
+					SameSite: http.SameSiteStrictMode,
+					Secure:   true,
+					HttpOnly: true,
+				})
+			},
 		),
 	)
 }

@@ -12,7 +12,6 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
-	"github.com/google/uuid"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
@@ -59,15 +58,13 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		var deferredError error
 		var pbVal reflect.Value
 
-		requestId := uuid.NewString()
-
 		exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
 
 		defer func() {
 			if p := recover(); p != nil {
 				panic(p)
 			} else if deferredError != nil {
-				util.RequestError(w, requestId, deferredError.Error(), ignoreFields, pbVal)
+				util.RequestError(w, deferredError.Error(), ignoreFields, pbVal)
 			}
 		}()
 
@@ -124,23 +121,14 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 	}
 }
 
-func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescriptor) {
-	services := fd.Services().Get(0)
-
-	for i := 0; i <= services.Methods().Len()-1; i++ {
-		serviceMethod := services.Methods().Get(i)
-		handlerOpts := util.ParseHandlerOptions(serviceMethod)
-
-		mux.HandleFunc(handlerOpts.Pattern,
-			a.ValidateTokenMiddleware(
-				a.GroupInfoMiddleware(
-					a.SiteRoleCheckMiddleware(handlerOpts)(
-						a.CacheMiddleware(handlerOpts)(
-							a.HandleRequest(serviceMethod),
-						),
-					),
-				),
-			),
-		)
-	}
-}
+// func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescriptor) map[string]SessionHandler {
+//
+// 		mux.HandleFunc(handlerOpts.Pattern,
+// 			a.ValidateTokenMiddleware(
+// 				a.GroupInfoMiddleware(
+// 					,
+// 				),
+// 			),
+// 		)
+// 	}
+// }

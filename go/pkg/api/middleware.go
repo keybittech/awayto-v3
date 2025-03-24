@@ -29,28 +29,47 @@ type limitedClient struct {
 	lastSeen time.Time
 }
 
+func limitCleanup(mu *sync.Mutex, limitedClients map[string]*limitedClient) {
+	for {
+		time.Sleep(time.Minute)
+		mu.Lock()
+		for ip, lc := range limitedClients {
+			if time.Since(lc.lastSeen) > 3*time.Minute {
+				delete(limitedClients, ip)
+			}
+		}
+		mu.Unlock()
+	}
+}
+
+func limiter(w http.ResponseWriter, mu *sync.Mutex, limitedClients map[string]*limitedClient, limit rate.Limit, burst int, identifier string) bool {
+	mu.Lock()
+	if _, found := limitedClients[identifier]; !found {
+		limitedClients[identifier] = &limitedClient{limiter: rate.NewLimiter(limit, burst)}
+	}
+	limitedClients[identifier].lastSeen = time.Now()
+	if !limitedClients[identifier].limiter.Allow() {
+		mu.Unlock()
+
+		w.WriteHeader(http.StatusTooManyRequests)
+		w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
+		return true
+	}
+	mu.Unlock()
+
+	return false
+}
+
 func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.HandlerFunc) http.HandlerFunc {
 	var (
 		mu             sync.Mutex
 		limitedClients = make(map[string]*limitedClient)
 	)
 
-	go func() {
-		for {
-			time.Sleep(time.Minute)
-			// Lock the mutex to protect this section from race conditions.
-			mu.Lock()
-			for ip, lc := range limitedClients {
-				if time.Since(lc.lastSeen) > 3*time.Minute {
-					delete(limitedClients, ip)
-				}
-			}
-			mu.Unlock()
-		}
-	}()
+	go limitCleanup(&mu, limitedClients)
 
 	return func(next http.HandlerFunc) http.HandlerFunc {
-		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		return func(w http.ResponseWriter, req *http.Request) {
 			// Extract the IP address from the request.
 			ip, _, err := net.SplitHostPort(req.RemoteAddr)
 			if err != nil {
@@ -59,20 +78,10 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 				return
 			}
 
-			// Lock the mutex to protect this section from race conditions.
-			mu.Lock()
-			if _, found := limitedClients[ip]; !found {
-				limitedClients[ip] = &limitedClient{limiter: rate.NewLimiter(limit, burst)}
-			}
-			limitedClients[ip].lastSeen = time.Now()
-			if !limitedClients[ip].limiter.Allow() {
-				mu.Unlock()
-
-				w.WriteHeader(http.StatusTooManyRequests)
-				w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
+			limited := limiter(w, &mu, limitedClients, limit, burst, ip)
+			if limited {
 				return
 			}
-			mu.Unlock()
 
 			w.Header().Set("Access-Control-Allow-Origin", os.Getenv("APP_HOST_URL"))
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-TZ")
@@ -84,44 +93,69 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 			}
 
 			next(w, req)
-		})
+		}
 	}
 }
 
-func (a *API) ValidateTokenMiddleware(next SessionHandler) http.HandlerFunc {
-	return func(w http.ResponseWriter, req *http.Request) {
-		var deferredErr error
+func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
+	var (
+		mu             sync.Mutex
+		limitedClients = make(map[string]*limitedClient)
+	)
 
-		defer func() {
-			if deferredErr != nil {
-				util.ErrorLog.Println(deferredErr)
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+	go limitCleanup(&mu, limitedClients)
+
+	return func(next SessionHandler) http.HandlerFunc {
+		return func(w http.ResponseWriter, req *http.Request) {
+			var deferredErr error
+
+			defer func() {
+				if deferredErr != nil {
+					ip, _, err := net.SplitHostPort(req.RemoteAddr)
+					if err != nil {
+						w.WriteHeader(http.StatusInternalServerError)
+						util.ErrorLog.Println(util.ErrCheck(err))
+					}
+
+					limited := limiter(w, &mu, limitedClients, limit, burst, ip)
+					if limited {
+						return
+					}
+
+					util.ErrorLog.Println(deferredErr)
+					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				}
+			}()
+
+			token, ok := req.Header["Authorization"]
+			if !ok {
+				deferredErr = util.ErrCheck(errors.New("no auth token"))
+				return
 			}
-		}()
 
-		token, ok := req.Header["Authorization"]
-		if !ok {
-			deferredErr = util.ErrCheck(errors.New("no auth token"))
-			return
+			kcUser, err := a.Handlers.Keycloak.GetUserTokenValid(token[0])
+			if err != nil {
+				deferredErr = util.ErrCheck(err)
+				return
+			}
+
+			limited := limiter(w, &mu, limitedClients, limit, burst, kcUser.Sub)
+			if limited {
+				return
+			}
+
+			session := &clients.UserSession{
+				UserSub:                 kcUser.Sub,
+				UserEmail:               kcUser.Email,
+				SubGroups:               kcUser.Groups,
+				AvailableUserGroupRoles: kcUser.ResourceAccess[kcUser.Azp].Roles,
+				Timezone:                req.Header.Get("X-TZ"),
+				ExpiresAt:               kcUser.ExpiresAt,
+				AnonIp:                  util.AnonIp(req.RemoteAddr),
+			}
+
+			next(w, req, session)
 		}
-
-		kcUser, err := a.Handlers.Keycloak.GetUserTokenValid(token[0])
-		if err != nil {
-			deferredErr = util.ErrCheck(err)
-			return
-		}
-
-		session := &clients.UserSession{
-			UserSub:                 kcUser.Sub,
-			UserEmail:               kcUser.Email,
-			SubGroups:               kcUser.Groups,
-			AvailableUserGroupRoles: kcUser.ResourceAccess[kcUser.Azp].Roles,
-			Timezone:                req.Header.Get("X-TZ"),
-			ExpiresAt:               kcUser.ExpiresAt,
-			AnonIp:                  util.AnonIp(req.RemoteAddr),
-		}
-
-		next(w, req, session)
 	}
 }
 

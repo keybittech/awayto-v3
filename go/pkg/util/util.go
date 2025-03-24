@@ -19,6 +19,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 )
@@ -83,7 +84,8 @@ func SnipUserError(err string) string {
 	return strings.TrimSpace(strings.Split(err, ErrorForUser)[1])
 }
 
-func RequestError(w http.ResponseWriter, requestId, givenErr string, ignoreFields []string, pbVal reflect.Value) error {
+func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []string, pbVal reflect.Value) error {
+	requestId := uuid.NewString()
 	defaultErr := fmt.Sprintf("%s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
 
 	var reqParams string
