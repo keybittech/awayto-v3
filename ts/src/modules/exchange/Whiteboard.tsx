@@ -16,6 +16,7 @@ import Stack from '@mui/material/Stack';
 
 import { IFile, IWhiteboard, useWebSocketSubscribe, useFileContents, useUtil, SocketActions } from 'awayto/hooks';
 import WhiteboardOptionsMenu from './WhiteboardOptionsMenu';
+import WhiteboardBoxes from './WhiteboardBoxes';
 
 function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasElement>, canvas: HTMLCanvasElement) {
   const rect = canvas.getBoundingClientRect();
@@ -55,8 +56,8 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   const [active, setActive] = useState(false);
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
-  const [strokeColor, setStrokeColor] = useState('#aaaaaa');
   const [fileToggle, setFileToggle] = useState(false);
+  const [addingText, setAddingText] = useState(false);
   const [selectedText, setSelectedText] = useState<Record<string, string>>({});
   const [_, setBoards] = useState<Record<string, Partial<IWhiteboard>>>({});
 
@@ -144,6 +145,18 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
     requestAnimationFrame(draw);
   };
 
+  const handleAddingText = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    if (!whiteboardRef.current?.parentElement) return;
+    const ctx = whiteboardRef.current?.getContext('2d');
+    if (!ctx) return;
+
+    const loc = getRelativeCoordinates(event, whiteboardRef.current);
+    // const width = event.clientX + whiteboardRef.current.parentElement.offsetLeft - (chatOpen ? 390 : 0);
+    // const height = event.clientY + whiteboardRef.current.parentElement.offsetTop + 120;
+    ctx.fillText('The quick brown fox jumps over the lazy dog.', loc.x, loc.y);
+  }, []);
+
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
     const canvas = whiteboardRef.current;
@@ -187,6 +200,18 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
       whiteboard.current = { ...whiteboard.current, lines: [] };
     }
   };
+
+  const textRenderer = useCallback((textItem: { str: string }) => {
+    let newText = textItem.str;
+    for (const connId of Object.keys(selectedText)) {
+      for (const user of Object.values(userList)) {
+        if (user.cids.includes(connId)) {
+          newText = newText.replace(selectedText[connId], txt => `<span style="background-color:${user.color};opacity:.3;">${txt}</span>`);
+        }
+      }
+    }
+    return newText;
+  }, [selectedText, userList]);
 
   useEffect(() => {
     const interval = setInterval(sendBatchedData, 150);
@@ -236,32 +261,34 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
     }
   }, [selectedText[connectionId], userList]);
 
-  const textRenderer = useCallback((textItem: { str: string }) => {
-    let newText = textItem.str;
-    for (const connId of Object.keys(selectedText)) {
-      for (const user of Object.values(userList)) {
-        if (user.cids.includes(connId)) {
-          newText = newText.replace(selectedText[connId], txt => `<span style="background-color:${user.color};opacity:.3;">${txt}</span>`);
-        }
-      }
-    }
-    return newText;
-  }, [selectedText, userList]);
-
   return <Grid size="grow">
     <WhiteboardOptionsMenu
       {...{
         whiteboard: whiteboard.current,
-        strokeColor,
-        setStrokeColor,
+        whiteboardRef: whiteboardRef.current,
+        sendWhiteboardMessage,
+        onCanvasInputChanged(inputMethod) {
+          setCanvasPointerEvents('auto');
+          setAddingText(false);
+          switch (inputMethod) {
+            case 'panning':
+              setCanvasPointerEvents('none');
+              break;
+            case 'penning':
+            case 'brushing':
+              const highlight = 'brushing' == inputMethod;
+              whiteboard.current.settings.highlight = highlight;
+              sendWhiteboardMessage(SocketActions.CHANGE_SETTING, { settings: { highlight } });
+              break;
+            case 'addingText':
+              setAddingText(true);
+              break;
+            default:
+              break;
+          }
+        },
         pageNumber,
         numPages,
-        setNumPages,
-        scale: zoom,
-        canvasPointerEvents,
-        setCanvasPointerEvents,
-        whiteboardRef: whiteboardRef.current,
-        sendWhiteboardMessage
       }}
     >
       {optionsMenu}
@@ -271,8 +298,8 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
       container
       sx={{
         height: {
-          xs: 'calc(100% - 150px)',
-          sm: 'calc(100% - 80px)',
+          xs: `calc(100% - ${140 + (!!sharedFile ? 12 : -68)}px)`,
+          sm: `calc(100% - ${80 - (!!sharedFile ? 0 : 15)}px)`,
         }
       }}
     >
@@ -295,7 +322,24 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
             height: '100%',
           }}
         >
-          <Box
+
+          {/* <WhiteboardBoxes whiteboardRef={whiteboardRef.current} /> */}
+
+          {/* {[1, 2, 3, 4, 5].map(n => { */}
+          {/*   return <Box */}
+          {/*     sx={{ */}
+          {/*       color: '#222', */}
+          {/*       zIndex: 200, */}
+          {/*       position: 'absolute', */}
+          {/*       top: n * 100, */}
+          {/*       left: n * 100, */}
+          {/*     }} */}
+          {/*   > */}
+          {/*     {n} */}
+          {/*   </Box> */}
+          {/* })} */}
+
+          <Box // The canvas
             sx={{
               position: 'absolute',
               zIndex: 100,
@@ -303,7 +347,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
             }}
             ref={whiteboardRef}
             component='canvas'
-            onMouseDown={handleMouseDown}
+            onMouseDown={addingText ? handleAddingText : handleMouseDown}
           />
 
           {!fileContents ? <></> : <Document // File Viewer

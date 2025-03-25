@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Box from '@mui/material/Box';
@@ -24,6 +24,7 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardDoubleArrowLeftIcon from '@mui/icons-material/KeyboardDoubleArrowLeft';
 import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArrowRight';
 import InsertPageBreak from '@mui/icons-material/InsertPageBreak';
+import TextFieldsIcon from '@mui/icons-material/TextFields';
 
 import { SocketActions, useDebounce, IWhiteboard, targets } from 'awayto/hooks';
 
@@ -32,42 +33,28 @@ const scales = [.1, .25, .5, .8, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 interface WhiteboardOptionsMenuProps extends IComponent {
   whiteboard: IWhiteboard;
   whiteboardRef: HTMLCanvasElement | null;
-  canvasPointerEvents: string;
-  strokeColor: string;
-  setStrokeColor: React.Dispatch<React.SetStateAction<string>>;
-  numPages: number;
-  pageNumber: number;
-  scale: number;
-  setCanvasPointerEvents: React.Dispatch<React.SetStateAction<string>>;
   sendWhiteboardMessage: (action: SocketActions, payload?: Partial<IWhiteboard> | undefined) => void;
+  onCanvasInputChanged: (inputMethod: string) => void;
+  pageNumber: number;
+  numPages: number;
 }
 
 export function WhiteboardOptionsMenu({
   children,
-  whiteboardRef,
   whiteboard,
-  strokeColor,
-  setStrokeColor,
+  whiteboardRef,
+  sendWhiteboardMessage,
+  onCanvasInputChanged,
   pageNumber,
   numPages,
-  scale,
-  canvasPointerEvents,
-  setCanvasPointerEvents,
-  sendWhiteboardMessage,
 }: WhiteboardOptionsMenuProps): React.JSX.Element {
 
-  const panning = 'none' === canvasPointerEvents;
-  const penning = !whiteboard.settings.highlight;
+  const [canvasInput, setCanvasInput] = useState('panning');
+  const [strokeColor, setStrokeColor] = useState('#aaaaaa');
 
-  const setDrawStyle = (hl: boolean) => {
-    whiteboard.settings.highlight = hl;
-    sendWhiteboardMessage(SocketActions.CHANGE_SETTING, { settings: { highlight: hl } });
-    setPointerEvents('auto');
-  };
-
-  const setPointerEvents = (style: string) => {
-    setCanvasPointerEvents(style);
-    // handleMenuClose();
+  const inputChanged = (style: string) => {
+    setCanvasInput(style);
+    onCanvasInputChanged(style);
   }
 
   const setScale = (inc: boolean | number) => {
@@ -89,11 +76,14 @@ export function WhiteboardOptionsMenu({
     sendWhiteboardMessage(SocketActions.SET_PAGE, { settings: { page: Math.max(1, nextPage) } });
   };
 
-  const debouncedStroke = useDebounce(strokeColor, 1000);
+  const debouncedStroke = useDebounce(strokeColor, 150);
+
+  useEffect(() => {
+    whiteboard.settings.stroke = strokeColor;
+  }, [strokeColor]);
 
   useEffect(() => {
     sendWhiteboardMessage(SocketActions.SET_STROKE, { settings: { stroke: debouncedStroke } });
-    whiteboard.settings.stroke = debouncedStroke;
   }, [debouncedStroke]);
 
   return <AppBar position="static">
@@ -108,27 +98,36 @@ export function WhiteboardOptionsMenu({
           <Tooltip title="Pan">
             <IconButton
               {...targets(`whiteboard pan`, `set the mouse to pan mode in order to drag the whiteboard around`)}
-              onClick={() => setPointerEvents('none')}
+              onClick={() => inputChanged('panning')}
             >
-              <PanToolIcon color={panning ? 'info' : 'primary'} />
+              <PanToolIcon color={canvasInput == 'panning' ? 'info' : 'primary'} />
+            </IconButton>
+          </Tooltip>
+
+          <Tooltip title="Add Text">
+            <IconButton
+              {...targets(`whiteboard add text`, `set the mouse to text entry, click on the canvas to add text`)}
+              onClick={() => inputChanged('addingText')}
+            >
+              <TextFieldsIcon color={canvasInput == 'addingText' ? 'info' : 'primary'} />
             </IconButton>
           </Tooltip>
 
           <Tooltip title="Pen">
             <IconButton
               {...targets(`whiteboard pen`, `set the mouse to pen drawing mode`)}
-              onClick={() => setDrawStyle(false)}
+              onClick={() => inputChanged('penning')}
             >
-              <EditIcon color={!panning && penning ? 'info' : 'primary'} />
+              <EditIcon color={canvasInput == 'penning' ? 'info' : 'primary'} />
             </IconButton>
           </Tooltip>
 
           <Tooltip title="Brush">
             <IconButton
               {...targets(`whiteboard brush`, `set the mouse to brush drawing mode`)}
-              onClick={() => setDrawStyle(true)}
+              onClick={() => inputChanged('brushing')}
             >
-              <BrushIcon color={!panning && !penning ? 'info' : 'primary'} />
+              <BrushIcon color={canvasInput == 'brushing' ? 'info' : 'primary'} />
             </IconButton>
           </Tooltip>
 
@@ -191,7 +190,7 @@ export function WhiteboardOptionsMenu({
             {...targets(`whiteboard zoom select`, ``, `change the whiteboard zoom setting`)}
             select
             variant="standard"
-            value={scale}
+            value={whiteboard.settings.scale}
             onChange={e => setScale(parseFloat(e.target.value))}
             slotProps={{
               input: {
