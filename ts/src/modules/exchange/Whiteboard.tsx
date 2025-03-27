@@ -323,7 +323,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
           }}
         >
 
-          {/* <WhiteboardBoxes whiteboardRef={whiteboardRef.current} /> */}
+          <WhiteboardBoxes whiteboardRef={whiteboardRef.current} />
 
           {/* {[1, 2, 3, 4, 5].map(n => { */}
           {/*   return <Box */}

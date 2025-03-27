@@ -1,4 +1,5 @@
 import React, { useCallback, useState, useEffect } from 'react';
+import { MathJax } from 'better-react-mathjax';
 
 import Box from '@mui/material/Box';
 
@@ -7,7 +8,7 @@ interface DraggableBoxData {
   x: number;
   y: number;
   color: string;
-  label: string;
+  component: React.JSX.Element;
 }
 
 interface WhiteboardBoxesProps extends IComponent {
@@ -17,12 +18,11 @@ interface WhiteboardBoxesProps extends IComponent {
 export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps): React.JSX.Element {
 
   const [boxes, setBoxes] = useState<DraggableBoxData[]>([
-    { id: '1', x: 50, y: 50, color: '#3f51b5', label: 'Box 1' },
-    { id: '2', x: 200, y: 100, color: '#f50057', label: 'Box 2' }
+    { id: '1', x: 50, y: 50, color: '#3f51b5', component: <MathJax>Box 1 \[ E=mc^2 \]</MathJax> },
+    { id: '2', x: 200, y: 100, color: '#f50057', component: <MathJax>Box 2 \[ x^n + y^n = z^n \]</MathJax> }
   ]);
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [mouseOffset, setMouseOffset] = useState({ x: 0, y: 0 });
 
   // const addBox = () => {
   //   const newId = `${boxes.length + 1}`;
@@ -44,23 +44,15 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
   const handleMouseDown = useCallback((e: React.MouseEvent, boxId: string) => {
     e.preventDefault();
     setDraggingId(boxId);
-
-    const box = boxes.find(b => b.id === boxId);
-    if (!box) return;
-
-    setMouseOffset({
-      x: e.clientX - box.x,
-      y: e.clientY - box.y
-    });
-  }, [boxes]);
+  }, []);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
     if (!draggingId || !whiteboardRef) return;
 
     const rect = whiteboardRef.getBoundingClientRect();
 
-    const newX = e.clientX - rect.left - mouseOffset.x;
-    const newY = e.clientY - rect.top - mouseOffset.y;
+    const newX = e.clientX - rect.left;
+    const newY = e.clientY - rect.top;
 
     setBoxes(prevBoxes =>
       prevBoxes.map(box =>
@@ -69,7 +61,7 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
           : box
       )
     );
-  }, [draggingId, mouseOffset]);
+  }, [draggingId]);
 
   const handleMouseUp = useCallback(() => {
     setDraggingId(null);
@@ -82,8 +74,8 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
 
         const rect = whiteboardRef.getBoundingClientRect();
 
-        const newX = e.clientX - rect.left - mouseOffset.x;
-        const newY = e.clientY - rect.top - mouseOffset.y;
+        const newX = e.clientX - rect.left;
+        const newY = e.clientY - rect.top;
 
         setBoxes(prevBoxes =>
           prevBoxes.map(box =>
@@ -106,7 +98,7 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
         window.removeEventListener('mouseup', handleGlobalMouseUp);
       };
     }
-  }, [draggingId, mouseOffset]);
+  }, [draggingId]);
 
   return <>
     {boxes.map(box => (
@@ -116,8 +108,7 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
           position: "absolute",
           left: box.x,
           top: box.y,
-          width: "100px",
-          height: "100px",
+          padding: '10px',
           bgcolor: box.color,
           display: "flex",
           justifyContent: "center",
@@ -133,7 +124,7 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
-        {box.label}
+        {box.component}
       </Box>
     ))}
   </>

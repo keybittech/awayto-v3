@@ -36,6 +36,9 @@ importers:
       '@reduxjs/toolkit':
         specifier: ^2.5.1
         version: 2.5.1(react-redux@9.2.0(@types/react@19.0.9)(react@19.0.0)(redux@5.0.1))(react@19.0.0)
+      better-react-mathjax:
+        specifier: ^2.1.0
+        version: 2.1.0(react@19.0.0)
       dayjs:
         specifier: ^1.11.7
         version: 1.11.13
@@ -943,6 +946,11 @@ packages:
   balanced-match@1.0.2:
     resolution: {integrity: sha512-3oSeUO0TMV67hN1AmbXsK4yaqU7tjiHlbxRDZOpH0KW9+CeX4bRAaX0Anxt0tx2MrpRpWwQaPwIlISEJhYU5Pw==}
 
+  better-react-mathjax@2.1.0:
+    resolution: {integrity: sha512-RrHudli76sgoVu+YtjHTKhCkjO2eH1B7Xje1sa0YPjhKzq2y/GIwOt9+tuel3s2L+mCPmFbYBFLDFfo3pEa8rQ==}
+    peerDependencies:
+      react: '>=16.8'
+
   binary-extensions@2.3.0:
     resolution: {integrity: sha512-Ceh+7ox5qe7LJuLHoY0feh3pHuUDHAcRUeyL2VYghZwfpkNIy/+8Ocg0a3UuSoYzavmylwuLWQOf3hl0jjMMIw==}
     engines: {node: '>=8'}
@@ -1009,6 +1017,10 @@ packages:
 
   commander@2.20.3:
     resolution: {integrity: sha512-GpVkmM8vF2vQUkj2LvZmD35JxeJOLCwJ9cUkugyk2nuhbv3+mJvpLYYt+0+USMxE+oj+ey/lJEnhZw75x/OMcQ==}
+
+  commander@9.2.0:
+    resolution: {integrity: sha512-e2i4wANQiSXgnrBlIatyHtP1odfUp0BbV5Y5nEGbxtIrStkEOAAzCUirvLBNXHLr7kwLvJl6V+4V3XV9x7Wd9w==}
+    engines: {node: ^12.20.0 || >=14}
 
   concat-map@0.0.1:
     resolution: {integrity: sha512-/Srv4dswyQNBfohGpz9o6Yb3Gz3SrUDqBH5rTuhGR7ahtlbYKnVxw2bCFMRljaA7EXHaXZ8wsHdodFvbkhKmqg==}
@@ -1109,6 +1121,10 @@ packages:
   eslint-scope@5.1.1:
     resolution: {integrity: sha512-2NxwbF/hZ0KpepYN0cNbo+FN6XoK7GaHlQhgx/hIZl6Va0bF45RQOOwhLIy8lQDbuCiadSLCBnH2CFYquit5bw==}
     engines: {node: '>=8.0.0'}
+
+  esm@3.2.25:
+    resolution: {integrity: sha512-U1suiZ2oDVWv4zPO56S0NcR5QriEahGtdN2OR6FiOG4WJvcjBVFB0qI4+eKoWFH483PKGuLuu6V8Z4T5g63UVA==}
+    engines: {node: '>=6'}
 
   esrecurse@4.3.0:
     resolution: {integrity: sha512-KmfKL3b6G+RXvP8N1vr3Tq1kL/oCFgn2NYXEtqP8/L3pKapUA4G8cFVaoF3SU323CD4XypR/ffioHmkti6/Tag==}
@@ -1345,6 +1361,9 @@ packages:
   make-event-props@1.6.2:
     resolution: {integrity: sha512-iDwf7mA03WPiR8QxvcVHmVWEPfMY1RZXerDVNCRYW7dUr2ppH3J58Rwb39/WG39yTZdRSxr3x+2v22tvI0VEvA==}
 
+  mathjax-full@3.2.2:
+    resolution: {integrity: sha512-+LfG9Fik+OuI8SLwsiR02IVdjcnRCy5MufYLi0C3TdMT56L/pjB0alMVGgoWJF8pN9Rc7FESycZB9BMNWIid5w==}
+
   memoize-one@5.2.1:
     resolution: {integrity: sha512-zYiwtZUcYyXKo/np96AGZAckk+FWWsUdJ3cHGGmld7+AhvcWmQyGCYUh1hc4Q/pkOhb65dQR/pqCyK0cOaHz4Q==}
 
@@ -1362,6 +1381,9 @@ packages:
   merge2@1.4.1:
     resolution: {integrity: sha512-8q7VEgMJW4J8tcfVPy8g09NcQwZdbwFEqhe/WZkoIzjn/3TGDwtOCYtXGxA3O8tPzpczCCDgv+P2P5y00ZJOOg==}
     engines: {node: '>= 8'}
+
+  mhchemparser@4.2.1:
+    resolution: {integrity: sha512-kYmyrCirqJf3zZ9t/0wGgRZ4/ZJw//VwaRVGA75C4nhE60vtnIzhl9J9ndkX/h6hxSN7pjg/cE0VxbnNM+bnDQ==}
 
   micromatch@4.0.8:
     resolution: {integrity: sha512-PXwfBhYu0hBCPw8Dn0E+WDYb7af3dSLVWKi3HGv84IdF4TyFoC0ysxFd0Goxw7nSv4T/PzEJQxsYsEiFCKo2BA==}
@@ -1401,6 +1423,9 @@ packages:
   minizlib@2.1.2:
     resolution: {integrity: sha512-bAxsR8BVfj60DWXHE3u30oHzfl4G7khkSuPW+qvpd7jFRHm7dLxOjUk1EHACJ/hxLY8phGJ0YhYHZo7jil7Qdg==}
     engines: {node: '>= 8'}
+
+  mj-context-menu@0.6.1:
+    resolution: {integrity: sha512-7NO5s6n10TIV96d4g2uDpG7ZDpIhMh0QNfGdJw/W47JswFcosz457wqz/b5sAKvl12sxINGFCn80NZHKwxQEXA==}
 
   mkdirp@1.0.4:
     resolution: {integrity: sha512-vVqVZQyf3WLx2Shd0qJ9xuvqgAyKPLAiqITEtqW0oIUjzo3PePDd6fW9iFz30ef7Ysp/oiWqbhszeGWW2T6Gzw==}
@@ -1719,6 +1744,10 @@ packages:
     resolution: {integrity: sha512-UjgapumWlbMhkBgzT7Ykc5YXUT46F0iKu8SGXq0bcwP5dz/h0Plj6enJqjz1Zbq2l5WaqYnrVbwWOWMyF3F47g==}
     engines: {node: '>=0.10.0'}
 
+  speech-rule-engine@4.0.7:
+    resolution: {integrity: sha512-sJrL3/wHzNwJRLBdf6CjJWIlxC04iYKkyXvYSVsWVOiC2DSkHmxsqOhEeMsBA9XK+CHuNcsdkbFDnoUfAsmp9g==}
+    hasBin: true
+
   string-width@4.2.3:
     resolution: {integrity: sha512-wKyQRQpjJ0sIp62ErSZdGsjMJWsap5oRNihHhu6G7JVO/9jIB6UyevL+tXuOqrng8j/cxKTWyWUwvSTriiZz/g==}
     engines: {node: '>=8'}
@@ -1916,6 +1945,9 @@ packages:
     engines: {node: '>= 8'}
     hasBin: true
 
+  wicked-good-xpath@1.3.0:
+    resolution: {integrity: sha512-Gd9+TUn5nXdwj/hFsPVx5cuHHiF5Bwuc30jZ4+ronF1qHK5O7HD0sgmXWSEgwKquT3ClLoKPVbO6qGwVwLzvAw==}
+
   wide-align@1.1.5:
     resolution: {integrity: sha512-eDMORYaPNZ4sQIuuYPDHdQvf4gyCF9rEEV/yPxGfwPkRodwEgiMUUXTx/dex+Me0wxx53S+NgUHaP7y3MGlDmg==}
 
@@ -1929,6 +1961,10 @@ packages:
 
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
+
+  xmldom-sre@0.1.31:
+    resolution: {integrity: sha512-f9s+fUkX04BxQf+7mMWAp5zk61pciie+fFLC9hX9UVvCeJQfNHRHXpeo5MPcR0EUf57PYLdt+ZO4f3Ipk2oZUw==}
+    engines: {node: '>=0.1'}
 
   yallist@3.1.1:
     resolution: {integrity: sha512-a4UGQaWPH59mOXUYnAG2ewncQS4i4F43Tv3JoAM+s2VDAmS9NsK8GpDMLrCHPksFT7h3K6TOoUNn2pb7RoXx4g==}
@@ -2772,6 +2808,11 @@ snapshots:
 
   balanced-match@1.0.2: {}
 
+  better-react-mathjax@2.1.0(react@19.0.0):
+    dependencies:
+      mathjax-full: 3.2.2
+      react: 19.0.0
+
   binary-extensions@2.3.0: {}
 
   brace-expansion@1.1.11:
@@ -2846,6 +2887,8 @@ snapshots:
     optional: true
 
   commander@2.20.3: {}
+
+  commander@9.2.0: {}
 
   concat-map@0.0.1:
     optional: true
@@ -2960,6 +3003,8 @@ snapshots:
     dependencies:
       esrecurse: 4.3.0
       estraverse: 4.3.0
+
+  esm@3.2.25: {}
 
   esrecurse@4.3.0:
     dependencies:
@@ -3197,6 +3242,13 @@ snapshots:
 
   make-event-props@1.6.2: {}
 
+  mathjax-full@3.2.2:
+    dependencies:
+      esm: 3.2.25
+      mhchemparser: 4.2.1
+      mj-context-menu: 0.6.1
+      speech-rule-engine: 4.0.7
+
   memoize-one@5.2.1: {}
 
   merge-refs@1.3.0(@types/react@19.0.9):
@@ -3206,6 +3258,8 @@ snapshots:
   merge-stream@2.0.0: {}
 
   merge2@1.4.1: {}
+
+  mhchemparser@4.2.1: {}
 
   micromatch@4.0.8:
     dependencies:
@@ -3245,6 +3299,8 @@ snapshots:
       minipass: 3.3.6
       yallist: 4.0.0
     optional: true
+
+  mj-context-menu@0.6.1: {}
 
   mkdirp@1.0.4:
     optional: true
@@ -3571,6 +3627,12 @@ snapshots:
 
   source-map@0.6.1: {}
 
+  speech-rule-engine@4.0.7:
+    dependencies:
+      commander: 9.2.0
+      wicked-good-xpath: 1.3.0
+      xmldom-sre: 0.1.31
+
   string-width@4.2.3:
     dependencies:
       emoji-regex: 8.0.0
@@ -3765,6 +3827,8 @@ snapshots:
     dependencies:
       isexe: 2.0.0
 
+  wicked-good-xpath@1.3.0: {}
+
   wide-align@1.1.5:
     dependencies:
       string-width: 4.2.3
@@ -3784,6 +3848,8 @@ snapshots:
 
   wrappy@1.0.2:
     optional: true
+
+  xmldom-sre@0.1.31: {}
 
   yallist@3.1.1: {}
 
