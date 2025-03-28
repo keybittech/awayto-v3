@@ -16,7 +16,7 @@ import Stack from '@mui/material/Stack';
 
 import { IFile, IWhiteboard, useWebSocketSubscribe, useFileContents, useUtil, SocketActions } from 'awayto/hooks';
 import WhiteboardOptionsMenu from './WhiteboardOptionsMenu';
-import WhiteboardBoxes from './WhiteboardBoxes';
+import WhiteboardBoxes, { DraggableBoxData } from './WhiteboardBoxes';
 
 function getRelativeCoordinates(event: MouseEvent | React.MouseEvent<HTMLCanvasElement>, canvas: HTMLCanvasElement) {
   const rect = canvas.getBoundingClientRect();
@@ -57,9 +57,9 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   const [numPages, setNumPages] = useState(0);
   const [pageNumber, setPageNumber] = useState(1);
   const [fileToggle, setFileToggle] = useState(false);
-  const [addingText, setAddingText] = useState(false);
   const [selectedText, setSelectedText] = useState<Record<string, string>>({});
   const [_, setBoards] = useState<Record<string, Partial<IWhiteboard>>>({});
+  const [boxes, setBoxes] = useState<DraggableBoxData[]>([]);
 
   const {
     connectionId,
@@ -83,7 +83,6 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
           handleLines(payload.lines, board.settings);
         }
       } else if (SocketActions.SHARE_FILE === action) {
-        console.log({ board });
         setNumPages(0);
         setPageNumber(1);
         if (!board.sharedFile) {
@@ -144,18 +143,6 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
 
     requestAnimationFrame(draw);
   };
-
-  const handleAddingText = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
-    event.preventDefault();
-    if (!whiteboardRef.current?.parentElement) return;
-    const ctx = whiteboardRef.current?.getContext('2d');
-    if (!ctx) return;
-
-    const loc = getRelativeCoordinates(event, whiteboardRef.current);
-    // const width = event.clientX + whiteboardRef.current.parentElement.offsetLeft - (chatOpen ? 390 : 0);
-    // const height = event.clientY + whiteboardRef.current.parentElement.offsetTop + 120;
-    ctx.fillText('The quick brown fox jumps over the lazy dog.', loc.x, loc.y);
-  }, []);
 
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
@@ -269,8 +256,8 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         sendWhiteboardMessage,
         onCanvasInputChanged(inputMethod) {
           setCanvasPointerEvents('auto');
-          setAddingText(false);
           switch (inputMethod) {
+            case 'addedBox':
             case 'panning':
               setCanvasPointerEvents('none');
               break;
@@ -280,15 +267,15 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
               whiteboard.current.settings.highlight = highlight;
               sendWhiteboardMessage(SocketActions.CHANGE_SETTING, { settings: { highlight } });
               break;
-            case 'addingText':
-              setAddingText(true);
-              break;
             default:
               break;
           }
         },
         pageNumber,
         numPages,
+      }}
+      onBoxAdded={box => {
+        setBoxes([...boxes, box]);
       }}
     >
       {optionsMenu}
@@ -322,22 +309,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
             height: '100%',
           }}
         >
-
-          <WhiteboardBoxes whiteboardRef={whiteboardRef.current} />
-
-          {/* {[1, 2, 3, 4, 5].map(n => { */}
-          {/*   return <Box */}
-          {/*     sx={{ */}
-          {/*       color: '#222', */}
-          {/*       zIndex: 200, */}
-          {/*       position: 'absolute', */}
-          {/*       top: n * 100, */}
-          {/*       left: n * 100, */}
-          {/*     }} */}
-          {/*   > */}
-          {/*     {n} */}
-          {/*   </Box> */}
-          {/* })} */}
+          <WhiteboardBoxes boxes={boxes} setBoxes={setBoxes} whiteboardRef={whiteboardRef.current} />
 
           <Box // The canvas
             sx={{
@@ -347,7 +319,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
             }}
             ref={whiteboardRef}
             component='canvas'
-            onMouseDown={addingText ? handleAddingText : handleMouseDown}
+            onMouseDown={handleMouseDown}
           />
 
           {!fileContents ? <></> : <Document // File Viewer

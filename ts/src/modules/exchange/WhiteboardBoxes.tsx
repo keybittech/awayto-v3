@@ -1,9 +1,8 @@
 import React, { useCallback, useState, useEffect } from 'react';
-import { MathJax } from 'better-react-mathjax';
 
 import Box from '@mui/material/Box';
 
-interface DraggableBoxData {
+export interface DraggableBoxData {
   id: string;
   x: number;
   y: number;
@@ -12,34 +11,16 @@ interface DraggableBoxData {
 }
 
 interface WhiteboardBoxesProps extends IComponent {
+  boxes: DraggableBoxData[];
+  setBoxes: React.Dispatch<React.SetStateAction<DraggableBoxData[]>>;
   whiteboardRef: HTMLCanvasElement | null;
 }
 
-export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps): React.JSX.Element {
+export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef }: WhiteboardBoxesProps): React.JSX.Element {
 
-  const [boxes, setBoxes] = useState<DraggableBoxData[]>([
-    { id: '1', x: 50, y: 50, color: '#3f51b5', component: <MathJax>Box 1 \[ E=mc^2 \]</MathJax> },
-    { id: '2', x: 200, y: 100, color: '#f50057', component: <MathJax>Box 2 \[ x^n + y^n = z^n \]</MathJax> }
-  ]);
+  // const thing = "\\lim_{x \\to c} f^*(x) = \\lim_{x \\to c} \\frac{f(x) - f(c)}{x - c} = f'(c)";
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
-
-  // const addBox = () => {
-  //   const newId = `${boxes.length + 1}`;
-  //   const colors = ['#3f51b5', '#f50057', '#009688', '#ff9800', '#9c27b0', '#2196f3'];
-  //   const randomColor = colors[Math.floor(Math.random() * colors.length)];
-  //
-  //   setBoxes([
-  //     ...boxes,
-  //     {
-  //       id: newId,
-  //       x: Math.random() * 300,
-  //       y: Math.random() * 200,
-  //       color: randomColor,
-  //       label: `Box ${newId}`
-  //     }
-  //   ]);
-  // };
 
   const handleMouseDown = useCallback((e: React.MouseEvent, boxId: string) => {
     e.preventDefault();
@@ -100,20 +81,21 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
     }
   }, [draggingId]);
 
-  return <>
+  return <Box sx={{ zIndex: 1001 }}>
     {boxes.map(box => (
       <Box
         key={box.id}
         sx={{
+          pointerEvents: 'auto',
           position: "absolute",
           left: box.x,
           top: box.y,
           padding: '10px',
           bgcolor: box.color,
+          color: '#222',
           display: "flex",
           justifyContent: "center",
           alignItems: "center",
-          color: "white",
           fontWeight: "bold",
           cursor: draggingId === box.id ? "grabbing" : "grab",
           userSelect: "none",
@@ -127,5 +109,5 @@ export default function WhiteboardBoxes({ whiteboardRef }: WhiteboardBoxesProps)
         {box.component}
       </Box>
     ))}
-  </>
+  </Box>
 }
