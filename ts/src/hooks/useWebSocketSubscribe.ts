@@ -1,6 +1,6 @@
 // useWebSocket.js
 import { useContext, useCallback, useEffect, useMemo, useState } from 'react';
-import { generateLightBgColor } from './util';
+import { generateLightBgColor } from './style';
 import { SocketActions, SocketParticipant, SocketResponseHandler } from './web_socket';
 
 import WebSocketContext, { WebSocketContextType } from '../modules/web_socket/WebSocketContext';

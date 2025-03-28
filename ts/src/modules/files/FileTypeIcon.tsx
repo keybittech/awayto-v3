@@ -6,7 +6,10 @@ import TextFieldsIcon from '@mui/icons-material/TextFields';
 import HelpCenterIcon from '@mui/icons-material/HelpCenter';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
-import { MimeTypes } from 'awayto/hooks';
+export enum MimeTypes {
+  PLAIN_TEXT = 'text/plain',
+  PDF = 'application/pdf'
+}
 
 interface FileTypeIconProps extends IComponent {
   fileType: string;

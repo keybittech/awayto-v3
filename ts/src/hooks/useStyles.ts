@@ -1,6 +1,8 @@
 import { SxProps, Theme as MuiTheme, createTheme } from '@mui/material';
 import { red, green } from '@mui/material/colors';
 
+export type PaletteMode = 'light' | 'dark';
+
 declare module '@mui/material/Button' {
   interface ButtonPropsVariantOverrides {
     underline: true;
@@ -194,13 +196,11 @@ export const theme = createTheme(paletteTheme, {
 });
 
 export const useStyles = (): { [key: string]: SxProps } => {
-
   const absoluteFullChild = {
     position: 'absolute',
     width: '100%',
     height: '100%'
   };
-
   const disabledOverrideClear = {
     '&.Mui-disabled': {
       color: '#444',
@@ -209,36 +209,74 @@ export const useStyles = (): { [key: string]: SxProps } => {
   };
 
   return {
-
-    appLogo: { width: '64px' },
-    logo: { width: '64px' },
-
-    root: { display: 'flex' },
-
-    siteTitle: { fontSize: '1.5rem', textAlign: 'center' },
-
-    menuText: { fontSize: '.75rem' },
-
-    colorBox: { width: '30px', height: '30px', display: 'block', margin: '12px', border: '1px solid #333', cursor: 'pointer', '&:hover': { opacity: .5 } },
-
-    appBar: { width: `calc(100% - ${drawerWidth}px)`, marginLeft: drawerWidth, backgroundColor: '#666' },
-
-    menuIcon: { "&:hover svg": { color: 'rgb(39 109 129)' } },
-
-    loginWrap: { height: '75vh' },
-
-    link: { textDecoration: 'none' },
-
-    dropzone: { width: '400px', height: '150px' },
-
-    datatable: { borderRadius: '4px' },
-
-    legendBox: { borderRadius: '12px', borderColor: 'rgba(255, 255, 255, .255)' },
-
-    infoHeader: { fontWeight: 500, fontSize: '1rem', textTransform: 'uppercase', color: '#aaa !important' },
-    infoLabel: { fontWeight: 500, fontSize: '1rem' },
-    infoCard: { height: '200px', overflowY: 'auto' },
-
+    appLogo: {
+      width: '64px'
+    },
+    logo: {
+      width: '64px'
+    },
+    root: {
+      display: 'flex'
+    },
+    siteTitle: {
+      fontSize: '1.5rem',
+      textAlign: 'center'
+    },
+    menuText: {
+      fontSize: '.75rem'
+    },
+    colorBox: {
+      width: '30px',
+      height: '30px',
+      display: 'block',
+      margin: '12px',
+      border: '1px solid #333',
+      cursor: 'pointer',
+      '&:hover': {
+        opacity: .5
+      }
+    },
+    appBar: {
+      width: `calc(100% - ${drawerWidth}px)`,
+      marginLeft: drawerWidth,
+      backgroundColor: '#666'
+    },
+    menuIcon: {
+      "&:hover svg": {
+        color: 'rgb(39 109 129)'
+      }
+    },
+    loginWrap: {
+      height: '75vh'
+    },
+    link: {
+      textDecoration: 'none'
+    },
+    dropzone: {
+      width: '400px',
+      height: '150px'
+    },
+    datatable: {
+      borderRadius: '4px'
+    },
+    legendBox: {
+      borderRadius: '12px',
+      borderColor: 'rgba(255, 255, 255, .255)'
+    },
+    infoHeader: {
+      fontWeight: 500,
+      fontSize: '1rem',
+      textTransform: 'uppercase',
+      color: '#aaa !important'
+    },
+    infoLabel: {
+      fontWeight: 500,
+      fontSize: '1rem'
+    },
+    infoCard: {
+      height: '200px',
+      overflowY: 'auto'
+    },
     darkRounded: {
       borderRadius: '16px',
       backgroundColor: '#203040',
@@ -247,9 +285,12 @@ export const useStyles = (): { [key: string]: SxProps } => {
         backgroundColor: '#606060'
       }
     },
-    green: { color: green[500] },
-    red: { color: red[500] },
-
+    green: {
+      color: green[500]
+    },
+    red: {
+      color: red[500]
+    },
     onboardingProgress: {
       ...disabledOverrideClear,
       backgroundColor: 'transparent',
@@ -260,16 +301,34 @@ export const useStyles = (): { [key: string]: SxProps } => {
       height: '100%',
       alignItems: 'center'
     },
-    audioButton: { cursor: 'pointer' },
-
-    overflowEllipsis: { textOverflow: 'ellipsis', whiteSpace: 'nowrap', overflow: 'hidden' },
-
-    blueChecked: { '& .MuiSvgIcon-root': { color: 'lightblue' } },
-
-    chipRoot: { root: { margin: theme.spacing(1), height: '100%', display: 'flex', flexDirection: 'row' } },
-
-    chipLabel: { label: { overflowWrap: 'break-word', whiteSpace: 'normal', textOverflow: 'clip' } },
-
+    audioButton: {
+      cursor: 'pointer'
+    },
+    overflowEllipsis: {
+      textOverflow: 'ellipsis',
+      whiteSpace: 'nowrap',
+      overflow: 'hidden'
+    },
+    blueChecked: {
+      '& .MuiSvgIcon-root': {
+        color: 'lightblue'
+      }
+    },
+    chipRoot: {
+      root: {
+        margin: theme.spacing(1),
+        height: '100%',
+        display: 'flex',
+        flexDirection: 'row'
+      }
+    },
+    chipLabel: {
+      label: {
+        overflowWrap: 'break-word',
+        whiteSpace: 'normal',
+        textOverflow: 'clip'
+      }
+    },
     pdfViewerComps: {
       ...absoluteFullChild,
       display: 'flex',
@@ -280,20 +339,12 @@ export const useStyles = (): { [key: string]: SxProps } => {
         maxHeight: '100%',
       }
     },
-
     whiteboardActionButton: {
       position: 'absolute',
       zIndex: 11,
       backgroundColor: '#eee',
       right: 35
-      // [theme.breakpoints.down('sm')]: {
-      //   ,
-      // },
-      // [theme.breakpoints.up('md')]: {
-      //   right: -50
-      // },
     },
-
     variableText: {
       [theme.breakpoints.down('md')]: {
         fontSize: '24px',
@@ -302,7 +353,6 @@ export const useStyles = (): { [key: string]: SxProps } => {
         fontSize: '20px',
       },
     },
-
     variableButtonIcon: {
       [theme.breakpoints.down('sm')]: {
         fontSize: '24px',
@@ -311,7 +361,6 @@ export const useStyles = (): { [key: string]: SxProps } => {
         fontSize: '12px !important',
       },
     },
-
     mdHide: {
       [theme.breakpoints.down('md')]: {
         display: 'flex',
@@ -320,7 +369,6 @@ export const useStyles = (): { [key: string]: SxProps } => {
         display: 'none'
       },
     },
-
     mdShow: {
       [theme.breakpoints.down('md')]: {
         display: 'none',
@@ -329,9 +377,5 @@ export const useStyles = (): { [key: string]: SxProps } => {
         display: 'flex'
       },
     }
-
-
   }
 };
-
-

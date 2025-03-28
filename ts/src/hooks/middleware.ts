@@ -2,7 +2,7 @@ import { createListenerMiddleware, Middleware } from '@reduxjs/toolkit';
 
 import { validSlice } from './valid';
 import { RootState } from './store';
-import { ConfirmActionProps, encodeVal, IUtil } from './util';
+import { ConfirmActionProps, IUtil } from './util';
 
 export const listenerMiddleware = createListenerMiddleware();
 listenerMiddleware.startListening({
@@ -31,7 +31,7 @@ export const customUtilMiddleware: Middleware = _ => next => action => {
   if (a.type.includes('openConfirm')) {
     const { confirmEffect, confirmAction } = a.payload;
     if (confirmEffect && confirmAction) {
-      registerAction(encodeVal(confirmEffect), confirmAction)
+      registerAction(btoa(confirmEffect), confirmAction)
       a.payload.confirmAction = undefined;
     }
   }

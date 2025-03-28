@@ -1,8 +1,23 @@
 import { useCallback, useMemo, useState } from 'react';
-import { IFile } from './api';
+import { BufferResponse, IFile } from './api';
 import { keycloak, refreshToken } from './auth';
-import { UseFileContents } from './util';
 import { useUtil } from './useUtil';
+
+export type UseFileContents = () => {
+  fileContents: IFile | undefined;
+  postFileContents: (uploadId: string, fileRef: File[], existingIds: string[], overwriteIds: string[]) => Promise<string[]>;
+  getFileContents: (fileRef: Partial<IFile>, download?: boolean) => Promise<BufferResponse | undefined>;
+}
+
+export interface IPreviewFile extends File {
+  preview?: string;
+}
+
+export interface OrderedFiles {
+  name: string;
+  order: number;
+  files: IFile[];
+}
 
 export const useFileContents: UseFileContents = () => {
 
@@ -11,7 +26,6 @@ export const useFileContents: UseFileContents = () => {
   const [fileContents, setFileContents] = useState<IFile | undefined>();
 
   // postFileContents and getFileContents are implemented manually instead of using RTK Query generated methods, in order to support binary transfer
-
   const postFileContents = useCallback<ReturnType<UseFileContents>['postFileContents']>(async (uploadId, fileRef, existingIds, overwriteIds) => {
     const fd = new FormData();
 

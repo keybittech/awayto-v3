@@ -7,6 +7,7 @@ export * from './form';
 export * from './middleware';
 export * from './kiosk';
 export * from './store';
+export * from './style';
 export * from './time_unit';
 export * from './valid';
 export * from './useAuth';

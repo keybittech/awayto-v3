@@ -102,7 +102,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef }: Whit
           boxShadow: 2,
           borderRadius: 1
         }}
-        onMouseDown={(e) => handleMouseDown(e, box.id)}
+        onMouseDown={e => handleMouseDown(e, box.id)}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >

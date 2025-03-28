@@ -2,7 +2,7 @@ import React, { useState, useCallback, useMemo } from 'react';
 
 import Link from '@mui/material/Link';
 
-import { nid, obfuscate, targets } from './util';
+import { nid, targets } from './util';
 import { siteApi } from './api';
 import { IPrompts } from './assist';
 import { Tooltip } from '@mui/material';
@@ -39,7 +39,7 @@ export function useSuggestions(refName: string): {
         return
       }
 
-      const promptKey = obfuscate(prompt);
+      const promptKey = btoa(prompt);
 
       if (history.hasOwnProperty(promptKey)) {
         setSuggestions(history[promptKey]);
