@@ -1,11 +1,12 @@
 package handlers
 
 import (
+	"net/http"
+	"testing"
+
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/mocks"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"net/http"
-	"testing"
 
 	"github.com/golang/mock/gomock"
 )
@@ -19,7 +20,7 @@ func TestAssist(t *testing.T) {
 				// hts.MockRedis.EXPECT().ReqSession(gomock.Any()).Return(mockSession).Times(1)
 				hts.UserSession.GroupAi = true
 
-				hts.MockAi.EXPECT().GetPromptResponse(gomock.Any(), gomock.Any(), gomock.Any()).Return("one|two|three|four|five")
+				hts.MockAi.EXPECT().GetPromptResponse(gomock.Any(), gomock.Any(), gomock.Any()).Return("one|two|three|four|five", nil)
 			},
 			handlerFunc: func(h *Handlers, w http.ResponseWriter, r *http.Request, session *clients.UserSession, tx *mocks.MockIDatabaseTx) (interface{}, error) {
 				data := &types.GetSuggestionRequest{Id: "3", Prompt: "test-prompt"}

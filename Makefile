@@ -44,6 +44,7 @@ LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_TARGET=${PWD}/go/$(BINARY_NAME)
 GO_MOCK_TARGET=$(GO_MOCKS_GEN_DIR)/clients.go
+GO_MOCK_MOD_TARGET=$(GO_MOCKS_GEN_DIR)/go.mod
 PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
 
 # host locations
@@ -207,11 +208,13 @@ $(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) 
 	cd go && go mod tidy && cd -
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
-$(GO_MOCK_TARGET): 
+$(GO_MOCK_TARGET): go/pkg/clients/interfaces.go
 	@mkdir -p $(@D)
 	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCK_TARGET) -package=mocks
 	cd $(@D) && \
-		go mod init ${PROJECT_REPO}/go/pkg/mocks && \
+		if [ ! -f "$(GO_MOCK_MOD_TARGET)" ]; then \
+			go mod init ${PROJECT_REPO}/go/pkg/mocks; \
+		fi && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/api=../api && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/clients=../clients && \
 		go mod edit -replace ${PROJECT_REPO}/go/pkg/handlers=../handlers && \
@@ -268,6 +271,10 @@ go_test_main: build $(GO_TARGET)
 go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v ./...
+	go test -C $(GO_SRC)/pkg/handlers -v ./...
+
+.PHONY: go_test_bench
+go_test_bench: $(GO_TARGET)
 	go test -C $(GO_SRC) -bench=. -v ./...
 
 .PHONY: go_coverage
