@@ -87,3 +87,5 @@ kcadm add-roles -r $KC_REALM --uusername service-account-$KC_API_CLIENT --cclien
 kcadm update clients/$API_CLIENT_ID -r $KC_REALM -s "secret=$(cat $KC_API_CLIENT_SECRET_FILE)"
 
 echo "# Keycloak configuration finished"
+
+exit 0
