@@ -43,8 +43,8 @@ importers:
         specifier: ^1.11.7
         version: 1.11.13
       keycloak-js:
-        specifier: 26.1.0
-        version: 26.1.0
+        specifier: 26.1.4
+        version: 26.1.4
       mathjax-full:
         specifier: ^3.2.2
         version: 3.2.2
@@ -1333,8 +1333,8 @@ packages:
   jsonfile@6.1.0:
     resolution: {integrity: sha512-5dgndWOriYSm5cnYaJNhalLNDKOqFwyDB/rr1E9ZsGciGvKPs8R2xYGCacuf3z6K1YKDz182fd+fY3cn3pMqXQ==}
 
-  keycloak-js@26.1.0:
-    resolution: {integrity: sha512-3CTelLNADK6sIxGHCQmKlT3ezcIp8O3Iimmg+ybS78RHy+HAUkkoBaW/YuHGdYkfEDMBlrqD3u+CQ4vLsrmyFA==}
+  keycloak-js@26.1.4:
+    resolution: {integrity: sha512-4h2RicCzIAtsjKIG8DIO+8NKlpWX2fiNkbS0jlbtjZFbIGGjbQBzjS/5NkyWlzxamXVow9prHTIgIiwfo3GAmQ==}
 
   lines-and-columns@1.2.4:
     resolution: {integrity: sha512-7ylylesZQ/PV29jhEDl3Ufjo6ZX7gCqJr5F7PKrqc93v7fzSymt1BpwEU8nAUXs8qzzvqhbjhK5QZg6Mt/HkBg==}
@@ -3219,7 +3219,7 @@ snapshots:
     optionalDependencies:
       graceful-fs: 4.2.11
 
-  keycloak-js@26.1.0: {}
+  keycloak-js@26.1.4: {}
 
   lines-and-columns@1.2.4:
     optional: true
