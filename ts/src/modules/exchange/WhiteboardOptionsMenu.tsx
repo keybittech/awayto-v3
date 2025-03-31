@@ -1,4 +1,4 @@
-import React, { KeyboardEventHandler, useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -28,9 +28,7 @@ import KeyboardDoubleArrowRightIcon from '@mui/icons-material/KeyboardDoubleArro
 import InsertPageBreak from '@mui/icons-material/InsertPageBreak';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 
-import { SocketActions, IWhiteboard, useDebounce, targets, nid, generateLightBgColor } from 'awayto/hooks';
-import { DraggableBoxData } from './WhiteboardBoxes';
-import { MathJax } from 'better-react-mathjax';
+import { SocketActions, IWhiteboard, targets, generateLightBgColor, DraggableBoxData } from 'awayto/hooks';
 
 const scales = [.1, .25, .5, .8, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 
@@ -58,7 +56,7 @@ export function WhiteboardOptionsMenu({
   const [dialog, setDialog] = useState('');
   const [boxText, setBoxText] = useState('');
   const [canvasInput, setCanvasInput] = useState('panning');
-  const [strokeColor, setStrokeColor] = useState('#aaaaaa');
+  const [strokeColor, setStrokeColor] = useState(whiteboard.settings.stroke);
 
   const inputChanged = (style: string) => {
     setCanvasInput(style);
@@ -85,26 +83,18 @@ export function WhiteboardOptionsMenu({
   };
 
   const handleAddBox = () => {
+    if (boxText == '') return;
     setDialog('');
+    setBoxText('');
     onCanvasInputChanged('addedBox');
     onBoxAdded({
-      id: nid() as string,
+      id: (new Date()).getTime(),
       color: generateLightBgColor(),
       x: 100,
       y: 100,
-      component: <MathJax>\[ {boxText} \]</MathJax>
+      text: boxText
     });
   };
-
-  const debouncedStroke = useDebounce(strokeColor, 150);
-
-  useEffect(() => {
-    whiteboard.settings.stroke = strokeColor;
-  }, [strokeColor]);
-
-  useEffect(() => {
-    sendWhiteboardMessage(SocketActions.SET_STROKE, { settings: { stroke: debouncedStroke } });
-  }, [debouncedStroke]);
 
   return <>
     <AppBar position="static">
@@ -177,7 +167,11 @@ export function WhiteboardOptionsMenu({
                     component="input"
                     type="color"
                     value={strokeColor}
-                    onChange={e => setStrokeColor(e.target.value)}
+                    onChange={e => {
+                      sendWhiteboardMessage(SocketActions.SET_STROKE, { settings: { stroke: e.target.value } });
+                      whiteboard.settings.stroke = e.target.value;
+                      setStrokeColor(e.target.value);
+                    }}
                   />
                 </Box>
               </IconButton>

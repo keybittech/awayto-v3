@@ -7,6 +7,14 @@ export enum ExchangeActions {
   EXCHANGE_WHITEBOARD = 2,
 }
 
+export interface DraggableBoxData {
+  id: number;
+  x: number;
+  y: number;
+  color: string;
+  text: string;
+}
+
 /**
  * @category Exchange
  * @purpose tracks essential props between participants during whiteboard interactions
@@ -29,8 +37,9 @@ export interface IWhiteboard {
     page: number;
     scale: number;
     highlight: boolean;
-    position: [number, number];
-  }>
+    position: number[];
+  }>;
+  boxes: DraggableBoxData[];
 }
 
 /**

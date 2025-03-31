@@ -24,6 +24,7 @@ export enum SocketActions {
   SET_SELECTED_TEXT = 22,
   ROLE_CALL = 23,
   PING_PONG = 24,
+  SET_BOX = 25,
 }
 
 /**

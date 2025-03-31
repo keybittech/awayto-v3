@@ -1,11 +1,12 @@
 package clients
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"encoding/json"
 	"slices"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (db *Database) InitDBSocketConnection(tx IDatabaseTx, userSub string, connId string) (func(), error) {
@@ -153,7 +154,7 @@ func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message Soc
 
 	message.Store = false
 	message.Historical = true
-	message.Timestamp = time.Now().Local().UTC().String()
+	message.Timestamp = time.Now().Local().String()
 
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.topic_messages (created_sub, topic, message, connection_id)
@@ -193,12 +194,10 @@ func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSiz
 
 	i := 0
 	for rows.Next() {
-		var smBytes string
-		err := rows.Scan(&smBytes)
+		err := rows.Scan(&messages[i])
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-		messages[i] = []byte(smBytes)
 		i++
 	}
 

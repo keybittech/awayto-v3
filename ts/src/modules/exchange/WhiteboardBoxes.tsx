@@ -1,48 +1,27 @@
 import React, { useCallback, useState, useEffect } from 'react';
 
 import Box from '@mui/material/Box';
-
-export interface DraggableBoxData {
-  id: string;
-  x: number;
-  y: number;
-  color: string;
-  component: React.JSX.Element;
-}
+import IconButton from '@mui/material/IconButton';
+import { DraggableBoxData, getRelativeCoordinates, targets } from 'awayto/hooks';
+import { MathJax } from 'better-react-mathjax';
 
 interface WhiteboardBoxesProps extends IComponent {
   boxes: DraggableBoxData[];
   setBoxes: React.Dispatch<React.SetStateAction<DraggableBoxData[]>>;
   whiteboardRef: HTMLCanvasElement | null;
+  didUpdate: () => void;
 }
 
-export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef }: WhiteboardBoxesProps): React.JSX.Element {
+export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpdate }: WhiteboardBoxesProps): React.JSX.Element {
 
-  // const thing = "\\lim_{x \\to c} f^*(x) = \\lim_{x \\to c} \\frac{f(x) - f(c)}{x - c} = f'(c)";
+  // const [updated, setUpdated] = useState(false);
 
-  const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [draggingId, setDraggingId] = useState<number | null>(null);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, boxId: string) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, boxId: number) => {
     e.preventDefault();
     setDraggingId(boxId);
   }, []);
-
-  const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (!draggingId || !whiteboardRef) return;
-
-    const rect = whiteboardRef.getBoundingClientRect();
-
-    const newX = e.clientX - rect.left;
-    const newY = e.clientY - rect.top;
-
-    setBoxes(prevBoxes =>
-      prevBoxes.map(box =>
-        box.id === draggingId
-          ? { ...box, x: newX, y: newY }
-          : box
-      )
-    );
-  }, [draggingId]);
 
   const handleMouseUp = useCallback(() => {
     setDraggingId(null);
@@ -53,10 +32,10 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef }: Whit
       const handleGlobalMouseMove = (e: MouseEvent) => {
         if (!whiteboardRef) return;
 
-        const rect = whiteboardRef.getBoundingClientRect();
+        const { x, y } = getRelativeCoordinates(e, whiteboardRef);
 
-        const newX = e.clientX - rect.left;
-        const newY = e.clientY - rect.top;
+        let newX = Math.max(x, 0);
+        let newY = Math.max(y, 0);
 
         setBoxes(prevBoxes =>
           prevBoxes.map(box =>
@@ -65,6 +44,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef }: Whit
               : box
           )
         );
+        didUpdate();
       };
 
       const handleGlobalMouseUp = () => {
@@ -81,16 +61,17 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef }: Whit
     }
   }, [draggingId]);
 
-  return <Box sx={{ zIndex: 1001 }}>
+  return <>
     {boxes.map(box => (
       <Box
         key={box.id}
         sx={{
+          zIndex: 1001,
           pointerEvents: 'auto',
           position: "absolute",
           left: box.x,
           top: box.y,
-          padding: '10px',
+          padding: '24px 24px 0',
           bgcolor: box.color,
           color: '#222',
           display: "flex",
@@ -103,11 +84,26 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef }: Whit
           borderRadius: 1
         }}
         onMouseDown={e => handleMouseDown(e, box.id)}
-        onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
       >
-        {box.component}
+        <MathJax>\[ {box.text} \]</MathJax>
+        <IconButton
+          {...targets(`whiteboard boxes close box ${box.id}`, `close whiteboard text box`)}
+          size="small"
+          sx={{
+            color: 'black',
+            position: 'absolute',
+            top: 0,
+            right: '8px'
+          }}
+          onClick={e => {
+            e.preventDefault();
+            setBoxes(prevBoxes => prevBoxes.filter(b => b.id !== box.id));
+          }}
+        >
+          X
+        </IconButton>
       </Box>
     ))}
-  </Box>
+  </>
 }
