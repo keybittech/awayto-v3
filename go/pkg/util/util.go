@@ -35,12 +35,13 @@ var (
 )
 
 func init() {
-	var err error
-	SigningToken, err = os.ReadFile(os.Getenv("SIGNING_TOKEN_FILE"))
+	signingToken, err := EnvFile(os.Getenv("SIGNING_TOKEN_FILE"))
 	if err != nil {
 		println("Failed to get signing token")
 		log.Fatal(err)
 	}
+
+	SigningToken = []byte(signingToken)
 
 	file, err := os.OpenFile(os.Getenv("GO_ERROR_LOG"), os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -160,7 +161,7 @@ func PaddedLen(padTo int, length int) string {
 }
 
 func EnvFile(loc string) (string, error) {
-	envFile, err := os.ReadFile(loc)
+	envFile, err := os.ReadFile(os.Getenv("PROJECT_DIR") + "/" + loc)
 	if err != nil {
 		return "", ErrCheck(err)
 	}

@@ -1,8 +1,6 @@
 package clients
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -11,6 +9,9 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/google/uuid"
 )
@@ -336,7 +337,7 @@ func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) error {
 	reply := <-replyChan
 	close(replyChan)
 
-	fmt.Println(fmt.Sprintf("Sent message bytes messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed)))
+	// fmt.Println(fmt.Sprintf("Sent message bytes messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed)))
 
 	if reply.Error != nil {
 		return util.ErrCheck(reply.Error)

@@ -86,7 +86,6 @@ DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 
 
 # flags
-GO_DEV_FLAGS=GO_ENVFILE_LOC=${PWD}/.env GO_ERROR_LOG=${GO_ERROR_LOG} SIGNING_TOKEN_FILE=${SIGNING_TOKEN_FILE} LOG_LEVEL=debug
 SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 
 LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
@@ -114,6 +113,8 @@ $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
 $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 
 AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
+
+GO_DEV_FLAGS=GO_ENVFILE_LOC=$(PROJECT_DIR)/.env GO_ERROR_LOG=$(PROJECT_DIR)/${GO_ERROR_LOG} LOG_LEVEL=debug
 
 #################################
 #           TARGETS             #
@@ -210,16 +211,16 @@ $(GO_MOCK_TARGET): go/pkg/clients/interfaces.go
 	@mkdir -p $(@D)
 	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCK_TARGET) -package=mocks
 	cd $(@D) && \
-		if [ ! -f "$(GO_MOCK_MOD_TARGET)" ]; then \
-			go mod init ${PROJECT_REPO}/go/pkg/mocks; \
-		fi && \
-		go mod edit -replace ${PROJECT_REPO}/go/pkg/api=../api && \
-		go mod edit -replace ${PROJECT_REPO}/go/pkg/clients=../clients && \
-		go mod edit -replace ${PROJECT_REPO}/go/pkg/handlers=../handlers && \
-		go mod edit -replace ${PROJECT_REPO}/go/pkg/types=../types && \
-		go mod edit -replace ${PROJECT_REPO}/go/pkg/util=../util && \
-		go mod tidy && \
-		cd -
+	if [ ! -f "$(GO_MOCK_MOD_TARGET)" ]; then \
+		go mod init ${PROJECT_REPO}/go/pkg/mocks; \
+	fi && \
+	go mod edit -replace ${PROJECT_REPO}/go/pkg/api=../api && \
+	go mod edit -replace ${PROJECT_REPO}/go/pkg/clients=../clients && \
+	go mod edit -replace ${PROJECT_REPO}/go/pkg/handlers=../handlers && \
+	go mod edit -replace ${PROJECT_REPO}/go/pkg/types=../types && \
+	go mod edit -replace ${PROJECT_REPO}/go/pkg/util=../util && \
+	go mod tidy && \
+	cd -
 
 #################################
 #           DEVELOP             #
