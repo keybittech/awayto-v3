@@ -5,7 +5,7 @@
 git pull
 make build
 make host_update
-sudo make docker_up
+SUDO=sudo make docker_up
 make host_deploy_op
 
 
