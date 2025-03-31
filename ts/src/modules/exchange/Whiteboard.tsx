@@ -117,6 +117,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         }
       } else if (SocketActions.SET_BOX === action) {
         if (connectionId !== sender) {
+          whiteboard.current.boxes = payload.boxes || [];
           setBoxes(payload.boxes || []);
         }
       } else if (SocketActions.CHANGE_SETTING === action) {
@@ -214,6 +215,12 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
       });
       whiteboard.current = { ...whiteboard.current, lines: [] };
     }
+    if (boxDidUpdate.current) {
+      boxDidUpdate.current = false;
+      storeWhiteboardMessage(SocketActions.SET_BOX, {
+        boxes: whiteboard.current.boxes
+      });
+    }
   };
 
   useEffect(() => {
@@ -269,13 +276,6 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
     }
   }, [selectedText[connectionId], userList]);
 
-  useEffect(() => {
-    if (boxDidUpdate.current) {
-      boxDidUpdate.current = false;
-      storeWhiteboardMessage(SocketActions.SET_BOX, { boxes });
-    }
-  }, [boxes]);
-
   return <Grid size="grow">
     <WhiteboardOptionsMenu
       {...{
@@ -303,8 +303,10 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         numPages,
       }}
       onBoxAdded={box => {
+        const newBoxes = [...boxes, box];
+        whiteboard.current.boxes = newBoxes;
         boxDidUpdate.current = true;
-        setBoxes([...boxes, box]);
+        setBoxes(newBoxes);
       }}
     >
       {optionsMenu}
@@ -342,7 +344,8 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
             boxes={boxes}
             setBoxes={setBoxes}
             whiteboardRef={whiteboardRef.current}
-            didUpdate={() => {
+            didUpdate={(newBoxes) => {
+              whiteboard.current.boxes = newBoxes;
               boxDidUpdate.current = true;
             }}
           />

@@ -27,7 +27,7 @@ interface WhiteboardBoxesProps extends IComponent {
   boxes: DraggableBoxData[];
   setBoxes: React.Dispatch<React.SetStateAction<DraggableBoxData[]>>;
   whiteboardRef: HTMLCanvasElement | null;
-  didUpdate: () => void;
+  didUpdate: (newBoxes: DraggableBoxData[]) => void;
 }
 
 export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpdate }: WhiteboardBoxesProps): React.JSX.Element {
@@ -69,9 +69,9 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
             pb.x = newX;
             pb.y = newY;
           }
+          didUpdate(prevBoxes);
           return [...prevBoxes];
         });
-        didUpdate();
       };
 
       const handleGlobalMouseUp = () => {
@@ -133,8 +133,11 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
           }}
           onClick={e => {
             e.preventDefault();
-            setBoxes(prevBoxes => prevBoxes.filter(b => b.id !== box.id));
-            didUpdate();
+            setBoxes(prevBoxes => {
+              const newBoxes = prevBoxes.filter(b => b.id !== box.id);
+              didUpdate(newBoxes);
+              return newBoxes;
+            });
           }}
         >
           <CloseIcon fontSize="small" />
