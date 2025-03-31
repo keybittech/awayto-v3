@@ -1,9 +1,27 @@
-import React, { useCallback, useState, useEffect } from 'react';
+import React, { useCallback, useState, useEffect, useMemo } from 'react';
+import { MathJax } from 'better-react-mathjax';
 
 import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
+
+import CloseIcon from '@mui/icons-material/Close';
+import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
+
 import { DraggableBoxData, getRelativeCoordinates, targets } from 'awayto/hooks';
-import { MathJax } from 'better-react-mathjax';
+
+declare global {
+  interface Window {
+    MathJax: {
+      options: Record<string, any>
+    }
+  }
+}
+
+window.MathJax = {
+  options: {
+    enableMenu: false
+  },
+}
 
 interface WhiteboardBoxesProps extends IComponent {
   boxes: DraggableBoxData[];
@@ -13,8 +31,6 @@ interface WhiteboardBoxesProps extends IComponent {
 }
 
 export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpdate }: WhiteboardBoxesProps): React.JSX.Element {
-
-  // const [updated, setUpdated] = useState(false);
 
   const [draggingId, setDraggingId] = useState<number | null>(null);
 
@@ -27,6 +43,16 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
     setDraggingId(null);
   }, []);
 
+  // MathJax is slow to drag around unless memoized
+  const boxComponents = useMemo(() => {
+    return boxes.reduce((m, d) => {
+      return {
+        ...m,
+        [d.id]: <MathJax>\[ {d.text} \]</MathJax>
+      }
+    }, {} as Record<number, React.JSX.Element>)
+  }, [boxes]);
+
   useEffect(() => {
     if (draggingId) {
       const handleGlobalMouseMove = (e: MouseEvent) => {
@@ -37,13 +63,14 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
         let newX = Math.max(x, 0);
         let newY = Math.max(y, 0);
 
-        setBoxes(prevBoxes =>
-          prevBoxes.map(box =>
-            box.id === draggingId
-              ? { ...box, x: newX, y: newY }
-              : box
-          )
-        );
+        setBoxes(prevBoxes => {
+          const pb = prevBoxes.find(pbf => pbf.id == draggingId);
+          if (pb) {
+            pb.x = newX;
+            pb.y = newY;
+          }
+          return [...prevBoxes];
+        });
         didUpdate();
       };
 
@@ -71,22 +98,30 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
           position: "absolute",
           left: box.x,
           top: box.y,
-          padding: '24px 24px 0',
+          padding: '32px 14px 12px',
           bgcolor: box.color,
           color: '#222',
-          display: "flex",
-          justifyContent: "center",
-          alignItems: "center",
-          fontWeight: "bold",
-          cursor: draggingId === box.id ? "grabbing" : "grab",
-          userSelect: "none",
-          boxShadow: 2,
+          width: 'max-content',
+          minWidth: '80px',
+          maxWidth: '400px',
           borderRadius: 1
         }}
-        onMouseDown={e => handleMouseDown(e, box.id)}
-        onMouseUp={handleMouseUp}
       >
-        <MathJax>\[ {box.text} \]</MathJax>
+        <DragIndicatorIcon
+          {...targets(`whiteboard boxes drag box ${box.id}`, `press and hold the mouse to drag this box over the whiteboard`)}
+          sx={{
+            color: 'black',
+            position: 'absolute',
+            top: '6px',
+            left: '8px',
+            cursor: draggingId === box.id ? "grabbing" : "grab",
+          }}
+          fontSize="small"
+
+          onMouseDown={e => handleMouseDown(e, box.id)}
+          onMouseUp={handleMouseUp}
+        />
+        {boxComponents[box.id]}
         <IconButton
           {...targets(`whiteboard boxes close box ${box.id}`, `close whiteboard text box`)}
           size="small"
@@ -99,9 +134,10 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
           onClick={e => {
             e.preventDefault();
             setBoxes(prevBoxes => prevBoxes.filter(b => b.id !== box.id));
+            didUpdate();
           }}
         >
-          X
+          <CloseIcon fontSize="small" />
         </IconButton>
       </Box>
     ))}

@@ -45,6 +45,9 @@ importers:
       keycloak-js:
         specifier: 26.1.0
         version: 26.1.0
+      mathjax-full:
+        specifier: ^3.2.2
+        version: 3.2.2
       pdfjs-dist:
         specifier: 4.4.168
         version: 4.4.168

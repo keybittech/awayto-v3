@@ -256,7 +256,6 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
     }
   }, [fileScroller.current]);
 
-
   useEffect(() => {
     if (null !== whiteboardRef.current && !sharedFile) {
       whiteboardRef.current.width = window.screen.width;
@@ -273,7 +272,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   useEffect(() => {
     if (boxDidUpdate.current) {
       boxDidUpdate.current = false;
-      sendWhiteboardMessage(SocketActions.SET_BOX, { boxes });
+      storeWhiteboardMessage(SocketActions.SET_BOX, { boxes });
     }
   }, [boxes]);
 
