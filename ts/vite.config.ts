@@ -27,7 +27,7 @@ const manualChunks = (a: string) => {
       return chunks[i][1];
     }
   }
-  const mr = Math.ceil(Math.random() * 4);
+  const mr = Math.ceil(Math.random() * 8);
   return 'x' + mr;
 }
 
