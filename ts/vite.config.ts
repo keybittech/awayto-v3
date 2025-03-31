@@ -14,21 +14,22 @@ const { VITE_AWAYTO_WEBAPP } = process.env;
 const appDirectory = fs.realpathSync(process.cwd());
 const resolveApp = (relativePath: string) => path.resolve(appDirectory, relativePath);
 
-const chunks = [
-  ['data-grid', 'dg'],
-  ['date-pickers', 'dp'],
-  ['icons-material', 'im'],
-  ['material', 'm'],
-];
-
-const manualChunks = (a: string) => {
-  for (let i = 0; i < chunks.length; i++) {
-    if (a.includes(chunks[i][0])) {
-      return chunks[i][1];
-    }
-  }
-  const mr = Math.ceil(Math.random() * 8);
-  return 'x' + mr;
+// const chunks = [
+//   ['data-grid', 'dg'],
+//   ['date-pickers', 'dp'],
+//   ['icons-material', 'im'],
+//   ['material', 'm'],
+// ];
+//
+const manualChunks = (_: string) => {
+  return 'pkg';
+  // for (let i = 0; i < chunks.length; i++) {
+  //   if (a.includes(chunks[i][0])) {
+  //     return chunks[i][1];
+  //   }
+  // }
+  // const mr = Math.ceil(Math.random() * 8);
+  // return 'x' + mr;
 }
 
 export default defineConfig(_ => {
