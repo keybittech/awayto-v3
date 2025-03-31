@@ -403,7 +403,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   ALTER TABLE dbtable_schema.quote_files ENABLE ROW LEVEL SECURITY;
   CREATE POLICY table_select ON dbtable_schema.quote_files FOR SELECT TO $PG_WORKER USING (
     $IS_CREATOR OR EXISTS(
-      SELECT 1 FROM dbtable_schema.quotes q WHERE q.id = dbtable_schema.bookings.quote_id AND q.$IS_CREATOR
+      SELECT 1 FROM dbtable_schema.quotes q WHERE q.id = dbtable_schema.quote_files.quote_id AND q.$IS_CREATOR
     )
   );
   CREATE POLICY table_insert ON dbtable_schema.quote_files FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
