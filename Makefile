@@ -367,6 +367,7 @@ host_install:
 	sudo rm -rf /usr/local/go
 	sudo curl -L -o goinstall.tar.gz https://go.dev/dl/$(GO_VERSION).tar.gz
 	sudo tar -C /usr/local -xzf goinstall.tar.gz
+	rm goinstall.tar.gz
 	if ! grep -q "go/bin" "$(H_OP)/.bashrc"; then \
 		echo "export PATH=\$$PATH:/usr/local/go/bin" >> $(H_OP)/.bashrc; \
 		echo "clear && cd $(H_REM_DIR)" >> $(H_OP)/.bashrc; \
