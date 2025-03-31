@@ -4,8 +4,9 @@
 
 SUDO=sudo
 
-make host_update
+git pull
 make build
+make host_update
 make docker_up
 make host_deploy_op
 

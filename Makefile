@@ -443,7 +443,6 @@ host_metric_cpu:
 
 .PHONY: host_update
 host_update:
-	git pull
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: host_deploy_op
