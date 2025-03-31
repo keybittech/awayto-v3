@@ -16,13 +16,22 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"golang.org/x/time/rate"
 )
 
 type SocketServer struct {
 	Connections map[string]net.Conn
 }
 
+var (
+	sockLimitMu, sockLimited = NewRateLimit()
+	sockHandlerLimit         = rate.Limit(8)
+	sockHandlerBurst         = 16
+)
+
 func (a *API) InitSockServer(mux *http.ServeMux) {
+
+	go LimitCleanup(sockLimitMu, sockLimited)
 
 	sockHandler := func(w http.ResponseWriter, req *http.Request) {
 		if strings.Contains(req.Header.Get("Connection"), "Upgrade") && req.Header.Get("Upgrade") == "websocket" {
@@ -184,6 +193,11 @@ func (a *API) HandleSockConnection(conn net.Conn, ticket string) {
 				return
 			} else {
 
+				limited := Limiter(sockLimitMu, sockLimited, sockHandlerLimit, sockHandlerBurst, subscriber.UserSub)
+				if limited {
+					continue
+				}
+
 				var socketMessage clients.SocketMessage
 
 				messageParams := make([]string, 7)
@@ -248,6 +262,10 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, subscriber *clients.
 
 	description, handle, err := util.SplitSocketId(sm.Topic)
 	if err != nil {
+		return
+	}
+
+	if sm.Action != types.SocketActions_SUBSCRIBE && !a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic) {
 		return
 	}
 
@@ -368,41 +386,37 @@ func (a *API) SocketMessageRouter(sm clients.SocketMessage, subscriber *clients.
 
 	case types.SocketActions_LOAD_MESSAGES:
 
-		if a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic) {
-			targets := []string{connId}
-			var pageInfo map[string]int
-			json.Unmarshal([]byte(sm.Payload.(string)), &pageInfo)
-			messages := [][]byte{}
+		targets := []string{connId}
+		var pageInfo map[string]int
+		json.Unmarshal([]byte(sm.Payload.(string)), &pageInfo)
+		messages := [][]byte{}
 
-			err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
-				var txErr error
-				messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, pageInfo["page"], 100) // int(pageInfo["pageSize"])
-				if txErr != nil {
-					return util.ErrCheck(txErr)
-				}
-				return nil
-			}, subscriber.UserSub, subscriber.GroupId, subscriber.Roles)
-			if err != nil {
-				util.ErrorLog.Println(err)
-				return
+		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+			var txErr error
+			messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, pageInfo["page"], 100) // int(pageInfo["pageSize"])
+			if txErr != nil {
+				return util.ErrCheck(txErr)
 			}
+			return nil
+		}, subscriber.UserSub, subscriber.GroupId, subscriber.Roles)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
 
-			for _, messageBytes := range messages {
-				if messageBytes != nil {
-					a.Handlers.Socket.SendMessageBytes(targets, messageBytes)
-				}
+		for _, messageBytes := range messages {
+			if messageBytes != nil {
+				a.Handlers.Socket.SendMessageBytes(targets, messageBytes)
 			}
 		}
 
 	default:
-		if a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic) {
-			cachedParticipants := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
-			targets := a.Handlers.Redis.GetParticipantTargets(cachedParticipants)
-			a.Handlers.Socket.SendMessage(targets, sm)
-		}
+		cachedParticipants := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		targets := a.Handlers.Redis.GetParticipantTargets(cachedParticipants)
+		a.Handlers.Socket.SendMessage(targets, sm)
 	}
 
-	if sm.Store && a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic) {
+	if sm.Store {
 		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
 			var txErr error
 

@@ -34,8 +34,9 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 				return
 			}
 
-			limited := Limiter(w, mu, limitedClients, limit, burst, ip)
+			limited := Limiter(mu, limitedClients, limit, burst, ip)
 			if limited {
+				WriteLimit(w)
 				return
 			}
 
@@ -70,8 +71,9 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 						util.ErrorLog.Println(util.ErrCheck(err))
 					}
 
-					limited := Limiter(w, mu, limitedClients, limit, burst, ip)
+					limited := Limiter(mu, limitedClients, limit, burst, ip)
 					if limited {
+						WriteLimit(w)
 						return
 					}
 
@@ -92,8 +94,9 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 				return
 			}
 
-			limited := Limiter(w, mu, limitedClients, limit, burst, kcUser.Sub)
+			limited := Limiter(mu, limitedClients, limit, burst, kcUser.Sub)
 			if limited {
+				WriteLimit(w)
 				return
 			}
 

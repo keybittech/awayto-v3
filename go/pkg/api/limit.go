@@ -35,7 +35,7 @@ func LimitCleanup(mu *sync.Mutex, limitedClients map[string]*LimitedClient) {
 	}
 }
 
-func Limiter(w http.ResponseWriter, mu *sync.Mutex, limitedClients map[string]*LimitedClient, limit rate.Limit, burst int, identifier string) bool {
+func Limiter(mu *sync.Mutex, limitedClients map[string]*LimitedClient, limit rate.Limit, burst int, identifier string) bool {
 	mu.Lock()
 	if _, found := limitedClients[identifier]; !found {
 		limitedClients[identifier] = &LimitedClient{limiter: rate.NewLimiter(limit, burst)}
@@ -43,12 +43,13 @@ func Limiter(w http.ResponseWriter, mu *sync.Mutex, limitedClients map[string]*L
 	limitedClients[identifier].lastSeen = time.Now()
 	if !limitedClients[identifier].limiter.Allow() {
 		mu.Unlock()
-
-		w.WriteHeader(http.StatusTooManyRequests)
-		w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
 		return true
 	}
 	mu.Unlock()
-
 	return false
+}
+
+func WriteLimit(w http.ResponseWriter) {
+	w.WriteHeader(http.StatusTooManyRequests)
+	w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
 }

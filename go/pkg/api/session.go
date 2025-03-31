@@ -78,8 +78,9 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 				return
 			}
 
-			limited := Limiter(w, apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, ip)
+			limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, ip)
 			if limited {
+				WriteLimit(w)
 				return
 			}
 			deferredErr = util.ErrCheck(errors.New("no auth token"))
@@ -94,8 +95,9 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 		}
 
 		// rate limit authenticated user
-		limited := Limiter(w, apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, kcUser.Sub)
+		limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, kcUser.Sub)
 		if limited {
+			WriteLimit(w)
 			return
 		}
 
