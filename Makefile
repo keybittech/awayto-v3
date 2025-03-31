@@ -168,11 +168,9 @@ $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
 	mvn -f $(JAVA_SRC) install
 
-$(LANDING_SRC)/config.yaml: $(LANDING_SRC)/config.yaml.template
-	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
-
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
-$(LANDING_TARGET): $(LANDING_SRC)/config.yaml $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json} -type f)
+$(LANDING_TARGET): $(LANDING_SRC)/config.yaml.template $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json} -type f)
+	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
 	npm --prefix ${LANDING_SRC} i
 	npm run --prefix ${LANDING_SRC} build
 
@@ -296,8 +294,8 @@ test_gen:
 .PHONY: docker_up
 docker_up:
 	$(call set_local_unix_sock_dir)
-	${SUDO} docker volume create $(PG_DATA)
-	${SUDO} docker volume create $(REDIS_DATA)
+	${SUDO} docker volume create $(PG_DATA) || true
+	${SUDO} docker volume create $(REDIS_DATA) || true
 	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build
 	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 
@@ -362,7 +360,6 @@ host_install:
 	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
-	mkdir -p $(H_REM_DIR)/{backups/db,working,local_tmp,demos/final}
 	@echo "installing nvm"
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 	. ~/.nvm/nvm.sh && nvm install $(NODE_VERSION) && npm i -g pnpm@latest-10
@@ -396,9 +393,9 @@ host_sync_env:
 	mkdir -p $(HOST_LOCAL_DIR)/cron/daily
 	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&project-prefix&${PROJECT_PREFIX}&g;' "$(CRON_DIR)/whitelist-ips" > "$(HOST_LOCAL_DIR)/cron/daily/whitelist-ips"
 	rsync ${RSYNC_FLAGS} --chown root:root --chmod 755 --rsync-path="sudo rsync" "$(HOST_LOCAL_DIR)/cron/daily/" "$(H_SIGN):/etc/cron.daily/"
-	$(SSH) 'run-parts /etc/cron.daily'
 	rsync ${RSYNC_FLAGS} "$(DEMOS_DIR)/" "$(H_SIGN):$(H_REM_DIR)/$(DEMOS_DIR)/"
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(H_SIGN):$(H_REM_DIR)"
+	$(SSH) 'run-parts /etc/cron.daily'
 
 #################################
 #           HOST UTILS          #
