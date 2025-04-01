@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
@@ -326,6 +327,65 @@ func BenchmarkSocketGetSubscribedTopicTargets(b *testing.B) {
 		api.Handlers.Socket.GetSubscribedTopicTargets(subscriber.UserSub, topic)
 	}
 }
+
+// Socket Redis Functions
+func BenchmarkSocketInitRedisSocketConnection(b *testing.B) {
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		api.Handlers.Redis.InitRedisSocketConnection(socketId)
+	}
+}
+
+func BenchmarkSocketTrackTopicParticipant(b *testing.B) {
+	ctx := context.Background()
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		api.Handlers.Redis.TrackTopicParticipant(ctx, topic, socketId)
+	}
+}
+
+func BenchmarkSocketGetCachedParticipants(b *testing.B) {
+	ctx := context.Background()
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		api.Handlers.Redis.GetCachedParticipants(ctx, topic)
+	}
+}
+
+func BenchmarkSocketGetParticipantTargets(b *testing.B) {
+	participants := make(clients.SocketParticipants, 1)
+	participant := &types.SocketParticipant{
+		Name:   "name",
+		Scid:   "scid",
+		Cids:   targets,
+		Role:   "role",
+		Color:  "color",
+		Exists: true,
+		Online: false,
+	}
+
+	participants[connId] = participant
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		api.Handlers.Redis.GetParticipantTargets(participants)
+	}
+}
+
+func BenchmarkSocketRemoveTopicFromConnection(b *testing.B) {
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		api.Handlers.Redis.RemoveTopicFromConnection(socketId, topic)
+	}
+}
+
+func BenchmarkSocketHandleUnsub(b *testing.B) {
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		api.Handlers.Redis.HandleUnsub(socketId)
+	}
+}
+
+// Socket Database Functions
 
 // Utilities
 
