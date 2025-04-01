@@ -25,7 +25,7 @@ type IDatabase interface {
 	GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.IdStruct, error)
 	GetTopicMessageParticipants(tx IDatabaseTx, topic string) (SocketParticipants, error)
 	GetSocketParticipantDetails(tx IDatabaseTx, participants SocketParticipants) (SocketParticipants, error)
-	StoreTopicMessage(tx IDatabaseTx, connId string, message SocketMessage) error
+	StoreTopicMessage(tx IDatabaseTx, connId string, message *SocketMessage) error
 	GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error)
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 	TxExec(doFunc func(IDatabaseTx) error, ids ...string) error
@@ -118,7 +118,7 @@ type ISocket interface {
 	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
 	GetSocketTicket(session *UserSession) (string, error)
 	SendMessageBytes(targets []string, messageBytes []byte) error
-	SendMessage(targets []string, message SocketMessage) error
+	SendMessage(targets []string, message *SocketMessage) error
 	GetSubscriberByTicket(ticket string) (*Subscriber, error)
 	AddSubscribedTopic(userSub, topic string, existingCids []string)
 	GetSubscribedTopicTargets(userSub, topic string) []string

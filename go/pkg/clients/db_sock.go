@@ -150,7 +150,7 @@ func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants Soc
 	return participants, nil
 }
 
-func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message SocketMessage) error {
+func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *SocketMessage) error {
 
 	message.Store = false
 	message.Historical = true
@@ -207,7 +207,7 @@ func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSiz
 	}
 
 	if messages[pageSize-1] != nil {
-		messages = append(messages, GenerateMessage(util.DefaultPadding, SocketMessage{
+		messages = append(messages, GenerateMessage(util.DefaultPadding, &SocketMessage{
 			Topic:  topic,
 			Action: types.SocketActions_HAS_MORE_MESSAGES,
 		}))

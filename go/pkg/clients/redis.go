@@ -36,7 +36,7 @@ func InitRedis() IRedis {
 
 	connLen := 0
 
-	ticker := time.NewTicker(30 * time.Second)
+	ticker := time.NewTicker(5 * time.Minute)
 	go func() {
 		for {
 			select {

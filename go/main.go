@@ -15,28 +15,22 @@ import (
 )
 
 var (
-	httpPort         int
-	httpsPort        int
-	turnListenerPort int
-	turnInternalPort int
-	unixPath         string
+	httpPort         = 7080
+	httpsPort        = 7443
+	turnListenerPort = 7788
+	turnInternalPort = 3478
+	unixPath         = "/tmp/goapp.sock"
 )
 
 var (
-	httpPortDefault         = 7080
-	httpsPortDefault        = 7443
-	turnListenerPortDefault = 7788
-	turnInternalPortDefault = 3478
-	unixPathDefault         = "/tmp/goapp.sock"
+	httpPortFlag         = flag.Int("httpPort", httpPort, "Server HTTP port")
+	httpsPortFlag        = flag.Int("httpsPort", httpsPort, "Server HTTPS port")
+	turnListenerPortFlag = flag.Int("turnListenerPort", turnListenerPort, "Turn listener port")
+	turnInternalPortFlag = flag.Int("turnInternalPort", turnInternalPort, "Turn internal port")
+	unixPathFlag         = flag.String("unixPath", unixPath, "Unix socket path")
 )
 
-var (
-	httpPortFlag         = flag.Int("httpPort", httpPortDefault, "Server HTTP port")
-	httpsPortFlag        = flag.Int("httpsPort", httpsPortDefault, "Server HTTPS port")
-	turnListenerPortFlag = flag.Int("turnListenerPort", turnListenerPortDefault, "Turn listener port")
-	turnInternalPortFlag = flag.Int("turnInternalPort", turnInternalPortDefault, "Turn internal port")
-	unixPathFlag         = flag.String("unixPath", unixPathDefault, "Unix socket path")
-)
+var api *a.API
 
 func init() {
 	httpPort = *httpPortFlag
@@ -47,7 +41,7 @@ func init() {
 
 	godotenv.Load(os.Getenv("GO_ENVFILE_LOC"))
 
-	if httpPortEnv := os.Getenv("GO_HTTP_PORT"); httpPortEnv != "" && *httpPortFlag == httpPortDefault {
+	if httpPortEnv := os.Getenv("GO_HTTP_PORT"); httpPortEnv != "" && *httpPortFlag == httpPort {
 		httpPortEnvI, err := strconv.Atoi(httpPortEnv)
 		if err != nil {
 			fmt.Printf("please set GO_HTTP_PORT as int %s", err.Error())
@@ -57,7 +51,7 @@ func init() {
 		}
 	}
 
-	if httpsPortEnv := os.Getenv("GO_HTTPS_PORT"); httpsPortEnv != "" && *httpsPortFlag == httpsPortDefault {
+	if httpsPortEnv := os.Getenv("GO_HTTPS_PORT"); httpsPortEnv != "" && *httpsPortFlag == httpsPort {
 		httpsPortEnvI, err := strconv.Atoi(httpsPortEnv)
 		if err != nil {
 			fmt.Printf("please set GO_HTTPS_PORT as int %s", err.Error())
@@ -67,18 +61,16 @@ func init() {
 		}
 	}
 
-	if unixSockDir, unixSockFile := os.Getenv("UNIX_SOCK_DIR"), os.Getenv("UNIX_SOCK_FILE"); unixPath == unixPathDefault && unixSockDir != "" && unixSockFile != "" {
-		newUnixPath := fmt.Sprintf("%s/%s", unixSockDir, unixSockFile)
-		unixPath = newUnixPath
+	if unixSockDir, unixSockFile := os.Getenv("UNIX_SOCK_DIR"), os.Getenv("UNIX_SOCK_FILE"); unixPath == unixPath && unixSockDir != "" && unixSockFile != "" {
+		unixPath = fmt.Sprintf("%s/%s", unixSockDir, unixSockFile)
 		fmt.Printf("set custom path %s\n", unixPath)
 	}
 }
 
 func main() {
+	// flag.Parse()
 
-	flag.Parse()
-
-	api := &a.API{
+	api = &a.API{
 		Server: &http.Server{
 			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
 			ReadTimeout:  5 * time.Minute,

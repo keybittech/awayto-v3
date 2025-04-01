@@ -64,7 +64,7 @@ func getKeycloakToken(cid int) (string, error) {
 
 func BenchmarkKeycloakAuthentication(b *testing.B) {
 
-	numConnections := 10
+	numConnections := 1
 	requestsPerClient := b.N / numConnections
 
 	var wg sync.WaitGroup

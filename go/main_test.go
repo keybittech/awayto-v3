@@ -3,11 +3,10 @@ package main
 import (
 	"flag"
 	"log"
-	"testing"
 	"time"
 )
 
-func TestMain(t *testing.T) {
+func init() {
 	err := flag.Set("log", "debug")
 	if err != nil {
 		log.Fatal(err)
@@ -15,7 +14,8 @@ func TestMain(t *testing.T) {
 
 	go main()
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(1 * time.Second)
 	println("did setup main")
 
+	setupSockServer()
 }

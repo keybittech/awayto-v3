@@ -8,6 +8,7 @@ require (
 	github.com/keybittech/awayto-v3/go/pkg/clients v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/handlers v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
+	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000
 	github.com/playwright-community/playwright-go v0.4902.0
 	google.golang.org/protobuf v1.36.5
 )
@@ -27,7 +28,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/cel-go v0.23.2 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000 // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/pmezard/go-difflib v1.0.1-0.20181226105442-5d4384ee4fb2 // indirect
 	github.com/redis/go-redis/v9 v9.7.1 // indirect

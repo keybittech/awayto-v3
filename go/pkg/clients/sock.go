@@ -149,13 +149,8 @@ func InitSocket() ISocket {
 				var foundSub *Subscriber
 
 				for _, subscriber := range subscribers {
-					for ticketAuth := range subscriber.Tickets {
-						if auth == ticketAuth {
-							foundSub = &subscriber
-							break
-						}
-					}
-					if foundSub != nil {
+					if _, ok := subscriber.Tickets[auth]; ok {
+						foundSub = &subscriber
 						break
 					}
 				}
@@ -167,20 +162,16 @@ func InitSocket() ISocket {
 				}
 
 			case SendSocketMessageSocketCommand:
-				sent := []string{}
-				failed := []string{}
 				var sendErr error
 				for _, target := range cmd.Params.Targets {
 					if conn, ok := connections[target]; ok {
 						sendErr = util.WriteSocketConnectionMessage(cmd.Params.MessageBytes, conn)
 						if sendErr != nil {
-							failed = append(failed, target)
-						} else {
-							sent = append(sent, target)
+							break
 						}
 					}
 				}
-				cmd.ReplyChan <- SocketResponse{Total: len(cmd.Params.Targets), Sent: sent, Failed: failed, Error: sendErr}
+				cmd.ReplyChan <- SocketResponse{Error: sendErr}
 
 			case AddSubscribedTopicSocketCommand:
 				// Do not remove the _ here as we want to directly modify the original subscribers object
@@ -238,6 +229,41 @@ func InitSocket() ISocket {
 	return &Socket{cmds}
 }
 
+func GenerateMessage(padTo int, message *SocketMessage) []byte {
+	storeStr := "f"
+	if message.Store {
+		storeStr = "t"
+	}
+
+	historicalStr := "f"
+	if message.Historical {
+		historicalStr = "t"
+	}
+
+	payloadStr := ""
+	switch v := message.Payload.(type) {
+	case string:
+		payloadStr = v
+	case nil:
+		payloadStr = ""
+	default:
+		pl, err := json.Marshal(v)
+		if err == nil {
+			payloadStr = string(pl)
+		}
+	}
+
+	return []byte(fmt.Sprintf("%s%d%s%s%s%s%s%s%s%s%s%s%s%s",
+		util.PaddedLen(padTo, len(strconv.Itoa(int(message.Action.Number())))), message.Action.Number(),
+		util.PaddedLen(padTo, 1), storeStr,
+		util.PaddedLen(padTo, 1), historicalStr,
+		util.PaddedLen(padTo, len(message.Timestamp)), message.Timestamp,
+		util.PaddedLen(padTo, len(message.Topic)), message.Topic,
+		util.PaddedLen(padTo, len(message.Sender)), message.Sender,
+		util.PaddedLen(padTo, len(payloadStr)), payloadStr,
+	))
+}
+
 func (s *Socket) Chan() chan<- SocketCommand {
 	return s.ch
 }
@@ -289,41 +315,6 @@ func (s *Socket) GetSocketTicket(session *UserSession) (string, error) {
 	return reply.Ticket, nil
 }
 
-func GenerateMessage(padTo int, message SocketMessage) []byte {
-	storeStr := "f"
-	if message.Store {
-		storeStr = "t"
-	}
-
-	historicalStr := "f"
-	if message.Historical {
-		historicalStr = "t"
-	}
-
-	payloadStr := ""
-	switch v := message.Payload.(type) {
-	case string:
-		payloadStr = v
-	case nil:
-		payloadStr = ""
-	default:
-		pl, err := json.Marshal(v)
-		if err == nil {
-			payloadStr = string(pl)
-		}
-	}
-
-	return []byte(fmt.Sprintf("%s%d%s%s%s%s%s%s%s%s%s%s%s%s",
-		util.PaddedLen(padTo, len(strconv.Itoa(int(message.Action.Number())))), message.Action.Number(),
-		util.PaddedLen(padTo, 1), storeStr,
-		util.PaddedLen(padTo, 1), historicalStr,
-		util.PaddedLen(padTo, len(message.Timestamp)), message.Timestamp,
-		util.PaddedLen(padTo, len(message.Topic)), message.Topic,
-		util.PaddedLen(padTo, len(message.Sender)), message.Sender,
-		util.PaddedLen(padTo, len(payloadStr)), payloadStr,
-	))
-}
-
 func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) error {
 	replyChan := make(chan SocketResponse)
 	s.Chan() <- SocketCommand{
@@ -337,8 +328,6 @@ func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) error {
 	reply := <-replyChan
 	close(replyChan)
 
-	// fmt.Println(fmt.Sprintf("Sent message bytes messages. Sent %d Failed %d", len(reply.Sent), len(reply.Failed)))
-
 	if reply.Error != nil {
 		return util.ErrCheck(reply.Error)
 	}
@@ -346,7 +335,7 @@ func (s *Socket) SendMessageBytes(targets []string, messageBytes []byte) error {
 	return nil
 }
 
-func (s *Socket) SendMessage(targets []string, message SocketMessage) error {
+func (s *Socket) SendMessage(targets []string, message *SocketMessage) error {
 	if len(targets) == 0 {
 		return util.ErrCheck(errors.New("no targets to send message to"))
 	}
@@ -423,7 +412,7 @@ func (s *Socket) HasTopicSubscription(userSub, topic string) bool {
 }
 
 func (s *Socket) NotifyTopicUnsub(topic, socketId string, targets []string) {
-	s.SendMessage(targets, SocketMessage{
+	s.SendMessage(targets, &SocketMessage{
 		Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 		Topic:   topic,
 		Payload: socketId,
@@ -443,7 +432,7 @@ func (s *Socket) RoleCall(userSub string) error {
 	close(replyChan)
 
 	if len(reply.Targets) > 0 {
-		if err := s.SendMessage(reply.Targets, SocketMessage{Action: types.SocketActions_ROLE_CALL}); err != nil {
+		if err := s.SendMessage(reply.Targets, &SocketMessage{Action: types.SocketActions_ROLE_CALL}); err != nil {
 			return util.ErrCheck(reply.Error)
 		}
 	}
