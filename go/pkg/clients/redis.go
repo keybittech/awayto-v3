@@ -175,7 +175,7 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string) SocketP
 		return nil
 	}
 
-	sps := make(SocketParticipants)
+	sps := make(SocketParticipants, len(topicSocketIds))
 
 	for _, socketId := range topicSocketIds {
 		userSub, connId, err := util.SplitSocketId(socketId)

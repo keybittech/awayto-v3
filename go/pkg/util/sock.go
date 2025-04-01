@@ -15,12 +15,11 @@ func GetSocketId(userSub, connId string) string {
 }
 
 func SplitSocketId(id string) (string, string, error) {
-	idParts := strings.Split(id, ":")
-	if len(idParts) != 2 {
-		errStr := fmt.Sprintf("id not in x:y format, received: %s", id)
-		return "", "", ErrCheck(errors.New(errStr))
+	colonIdx := strings.Index(id, ":")
+	if colonIdx == -1 {
+		return "", "", ErrCheck(errors.New("could not parse socket id " + id))
 	}
-	return idParts[0], idParts[1], nil
+	return id[0:colonIdx], id[colonIdx:], nil
 }
 
 func ComputeWebSocketAcceptKey(clientKey string) string {
