@@ -70,9 +70,9 @@ type IRedis interface {
 	InitRedisSocketConnection(socketId string) error
 	HandleUnsub(socketId string) (map[string][]string, error)
 	RemoveTopicFromConnection(socketId, topic string) error
-	GetCachedParticipants(ctx context.Context, topic string) SocketParticipants
+	GetCachedParticipants(ctx context.Context, topic string) (SocketParticipants, error)
 	GetParticipantTargets(participants SocketParticipants) []string
-	TrackTopicParticipant(ctx context.Context, topic, socketId string)
+	TrackTopicParticipant(ctx context.Context, topic, socketId string) error
 	GetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	GetSession(ctx context.Context, userSub string) (*UserSession, error)

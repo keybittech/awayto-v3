@@ -16,10 +16,11 @@ func GetSocketId(userSub, connId string) string {
 
 func SplitSocketId(id string) (string, string, error) {
 	colonIdx := strings.Index(id, ":")
-	if colonIdx == -1 {
-		return "", "", ErrCheck(errors.New("could not parse socket id " + id))
+	if colonIdx != -1 && len(id) > colonIdx {
+		return id[0:colonIdx], id[colonIdx+1:], nil
+	} else {
+		return "", "", ErrCheck(errors.New("malformed id " + id))
 	}
-	return id[0:colonIdx], id[colonIdx:], nil
 }
 
 func ComputeWebSocketAcceptKey(clientKey string) string {
@@ -111,30 +112,42 @@ func ReadSocketConnectionMessage(conn net.Conn) ([]byte, error) {
 }
 
 func WriteSocketConnectionMessage(msg []byte, conn net.Conn) error {
-	var frame []byte
+	// Pre-allocate a buffer large enough for the worst case
+	// 1 byte for finAndOpcode + 1 byte for length marker + 8 bytes for extended length + len(msg)
+	// Maximum possible header size is 10 bytes (1 + 1 + 8)
+	const maxHeaderSize = 10
+	buffer := make([]byte, maxHeaderSize+len(msg))
 
-	finAndOpcode := byte(0x81)
-	frame = append(frame, finAndOpcode)
+	// Set the finAndOpcode
+	buffer[0] = byte(0x81)
 
+	// Set the length bytes
+	var headerSize int
 	length := len(msg)
+
 	if length <= 125 {
-		frame = append(frame, byte(length))
+		buffer[1] = byte(length)
+		headerSize = 2
 	} else if length <= 65535 {
-		frame = append(frame, byte(126))
-		frame = append(frame, byte(length>>8), byte(length&0xFF))
+		buffer[1] = byte(126)
+		buffer[2] = byte(length >> 8)
+		buffer[3] = byte(length & 0xFF)
+		headerSize = 4
 	} else {
-		frame = append(frame, byte(127))
+		buffer[1] = byte(127)
 		for i := 7; i >= 0; i-- {
-			frame = append(frame, byte((length>>(i*8))&0xFF))
+			buffer[2+7-i] = byte((length >> (i * 8)) & 0xFF)
 		}
+		headerSize = 10
 	}
 
-	frame = append(frame, msg...)
+	// Copy the message into the buffer
+	copy(buffer[headerSize:], msg)
 
-	_, err := conn.Write(frame)
+	// Write the full frame to the connection
+	_, err := conn.Write(buffer[:headerSize+length])
 	if err != nil {
 		return ErrCheck(err)
 	}
-
 	return nil
 }

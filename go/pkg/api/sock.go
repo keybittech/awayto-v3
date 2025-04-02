@@ -333,7 +333,12 @@ func (a *API) SocketMessageRouter(sm *clients.SocketMessage, subscriber *clients
 		a.Handlers.Redis.TrackTopicParticipant(ctx, sm.Topic, socketId)
 
 		// Get Member Info for anyone connected
-		cachedParticipants := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		cachedParticipants, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
+
 		targets := a.Handlers.Redis.GetParticipantTargets(cachedParticipants)
 
 		// Setup server client with new subscription to topic including any existing connections
@@ -346,7 +351,12 @@ func (a *API) SocketMessageRouter(sm *clients.SocketMessage, subscriber *clients
 
 	case types.SocketActions_UNSUBSCRIBE:
 
-		cachedParticipants := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		cachedParticipants, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
+
 		targets := a.Handlers.Redis.GetParticipantTargets(cachedParticipants)
 
 		a.Handlers.Socket.NotifyTopicUnsub(sm.Topic, socketId, targets)
@@ -355,7 +365,11 @@ func (a *API) SocketMessageRouter(sm *clients.SocketMessage, subscriber *clients
 
 	case types.SocketActions_LOAD_SUBSCRIBERS:
 
-		cachedParticipants := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		cachedParticipants, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
 
 		topicMessageParticipants := make(clients.SocketParticipants)
 		mergedParticipants := make(clients.SocketParticipants)
@@ -430,7 +444,12 @@ func (a *API) SocketMessageRouter(sm *clients.SocketMessage, subscriber *clients
 		}
 
 	default:
-		cachedParticipants := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		cachedParticipants, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
+
 		targets := a.Handlers.Redis.GetParticipantTargets(cachedParticipants)
 		a.Handlers.Socket.SendMessage(targets, sm)
 	}
