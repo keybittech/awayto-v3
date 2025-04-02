@@ -182,6 +182,22 @@ func (db *DBWrapper) Begin() (IDatabaseTx, error) {
 	return &TxWrapper{tx}, nil
 }
 
+func (db *DBWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (IDatabaseTx, error) {
+	tx, err := db.DB.BeginTx(ctx, opts)
+	if err != nil {
+		return nil, err
+	}
+	return &TxWrapper{tx}, nil
+}
+
+func (db *DBWrapper) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+	return db.DB.PrepareContext(ctx, query)
+}
+
+func (db *DBWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+	return db.DB.ExecContext(ctx, query, args...)
+}
+
 func (db *DBWrapper) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return db.DB.Exec(query, args...)
 }
@@ -203,6 +219,10 @@ func (tx *TxWrapper) Prepare(stmt string) (*sql.Stmt, error) {
 	return tx.Tx.Prepare(stmt)
 }
 
+func (tx *TxWrapper) PrepareContext(ctx context.Context, query string) (*sql.Stmt, error) {
+	return tx.Tx.PrepareContext(ctx, query)
+}
+
 func (tx *TxWrapper) Commit() error {
 	return tx.Tx.Commit()
 }
@@ -213,6 +233,11 @@ func (tx *TxWrapper) Rollback() error {
 
 func (tx *TxWrapper) Exec(query string, args ...interface{}) (sql.Result, error) {
 	return tx.Tx.Exec(query, args...)
+}
+
+func (tx *TxWrapper) ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
+
+	return tx.Tx.ExecContext(ctx, query, args...)
 }
 
 func (tx *TxWrapper) Query(query string, args ...interface{}) (IRows, error) {
@@ -270,6 +295,9 @@ func (r *IRowsWrapper) ColumnTypes() ([]*sql.ColumnType, error) {
 	return r.Rows.ColumnTypes()
 }
 
+var emptyString string
+var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)`
+
 func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error {
 	if ids == nil || len(ids) != 3 {
 		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
@@ -281,9 +309,7 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(`
-		SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)
-	`, ids[0], ids[1], ids[2])
+	_, err = tx.Exec(setSessionVariablesSQL, ids[0], ids[1], ids[2])
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -293,9 +319,7 @@ func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error 
 		return util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
-		SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)
-	`, "", "", "")
+	_, err = tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString)
 	if err != nil {
 		return util.ErrCheck(err)
 	}

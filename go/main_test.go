@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"log"
+	"testing"
 	"time"
 )
 
@@ -18,4 +19,9 @@ func init() {
 	println("did setup main")
 
 	setupSockServer()
+}
+
+func reset(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
 }

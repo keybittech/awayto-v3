@@ -34,17 +34,22 @@ type IDatabase interface {
 
 type IDatabaseClient interface {
 	Conn(ctx context.Context) (*sql.Conn, error)
+	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
+	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	Exec(query string, args ...any) (sql.Result, error)
 	Query(query string, args ...any) (IRows, error)
 	QueryRow(query string, args ...any) IRow
 	Begin() (IDatabaseTx, error)
+	BeginTx(ctx context.Context, opts *sql.TxOptions) (IDatabaseTx, error)
 }
 
 type IDatabaseTx interface {
 	Prepare(stmt string) (*sql.Stmt, error)
+	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 	Commit() error
 	Rollback() error
 	Exec(query string, args ...any) (sql.Result, error)
+	ExecContext(ctx context.Context, query string, args ...any) (sql.Result, error)
 	SetDbVar(string, string) error
 	Query(query string, args ...any) (IRows, error)
 	QueryRow(query string, args ...any) IRow

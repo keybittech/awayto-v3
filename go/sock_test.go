@@ -158,11 +158,6 @@ func setupSockServer() {
 	println("did setup sock")
 }
 
-func reset(b *testing.B) {
-	b.ReportAllocs()
-	b.ResetTimer()
-}
-
 // Socket Events
 
 func BenchmarkSocketSubscribe(b *testing.B) {

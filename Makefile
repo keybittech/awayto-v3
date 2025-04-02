@@ -274,7 +274,7 @@ go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
-	go test -C $(GO_SRC) -bench=$${BENCH:-.} -cpuprofile=cpu.prof ${PROJECT_REPO}/go
+	go test -C $(GO_SRC) -bench=$${BENCH:-.} -count=$${COUNT:-1} -cpuprofile=cpu.prof ${PROJECT_REPO}/go
 
 .PHONY: go_coverage
 go_coverage: $(GO_MOCK_TARGET)
