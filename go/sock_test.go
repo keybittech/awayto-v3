@@ -90,10 +90,11 @@ type SocketEvents struct {
 }
 
 var subscriptions [][]byte
+var unsubscribe []byte
 var socketEvents *SocketEvents
 
 var ticket, topic, connId, socketId string
-var targets []string
+var targets string
 var subscriber *clients.Subscriber
 var session *clients.UserSession
 
@@ -126,7 +127,7 @@ func setupSockServer() {
 
 	topic = "exchange/0:" + exchangeId
 
-	targets = []string{connId}
+	targets = connId
 	socketId = util.GetSocketId(subscriber.UserSub, connId)
 
 	subscriptions = [][]byte{
@@ -134,6 +135,8 @@ func setupSockServer() {
 		[]byte("00001800001f00001f0000000047exchange/1:" + exchangeId + "00036" + connId),
 		[]byte("00001800001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId),
 	}
+
+	unsubscribe = []byte("00001900001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId)
 
 	loadSubscribersEvent := []byte("000021000001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId)
 	loadMessagesEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
@@ -152,7 +155,7 @@ func setupSockServer() {
 
 	// Subscribe to a topic
 	for i := 0; i < len(subscriptions); i++ {
-		api.SocketRequest(subscriber, connId, subscriptions[i])
+		api.SocketRequest(subscriber, subscriptions[i], connId, socketId)
 	}
 	time.Sleep(time.Second)
 	println("did setup sock")
@@ -163,42 +166,48 @@ func setupSockServer() {
 func BenchmarkSocketSubscribe(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(subscriber, connId, subscriptions[0])
+		api.SocketRequest(subscriber, subscriptions[0], connId, socketId)
+		b.StopTimer()
+		api.SocketRequest(subscriber, unsubscribe, connId, socketId)
+		b.StartTimer()
 	}
 }
 
 func BenchmarkSocketUnsubscribe(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(subscriber, connId, subscriptions[0])
+		api.SocketRequest(subscriber, unsubscribe, connId, socketId)
+		b.StopTimer()
+		api.SocketRequest(subscriber, subscriptions[0], connId, socketId)
+		b.StartTimer()
 	}
 }
 
 func BenchmarkSocketLoadSubscribers(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(subscriber, connId, socketEvents.loadSubscribersEvent)
+		api.SocketRequest(subscriber, socketEvents.loadSubscribersEvent, connId, socketId)
 	}
 }
 
 func BenchmarkSocketLoadMessages(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(subscriber, connId, socketEvents.loadMessagesEvent)
+		api.SocketRequest(subscriber, socketEvents.loadMessagesEvent, connId, socketId)
 	}
 }
 
 func BenchmarkSocketDefault(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(subscriber, connId, socketEvents.changeSettingEvent)
+		api.SocketRequest(subscriber, socketEvents.changeSettingEvent, connId, socketId)
 	}
 }
 
 func BenchmarkSocketDefaultStore(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(subscriber, connId, socketEvents.moveBoxEvent)
+		api.SocketRequest(subscriber, socketEvents.moveBoxEvent, connId, socketId)
 	}
 }
 
@@ -230,7 +239,7 @@ func BenchmarkSocketSendMessage(b *testing.B) {
 	participant := &types.SocketParticipant{
 		Name:   "name",
 		Scid:   "scid",
-		Cids:   targets,
+		Cids:   []string{targets},
 		Role:   "role",
 		Color:  "color",
 		Exists: true,
@@ -241,12 +250,12 @@ func BenchmarkSocketSendMessage(b *testing.B) {
 
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendMessage(targets, &clients.SocketMessage{
+		api.Handlers.Socket.SendMessage(&util.SocketMessage{
 			Action:  6,
 			Sender:  connId,
 			Topic:   topic,
 			Payload: mergedParticipants,
-		})
+		}, targets)
 	}
 }
 
@@ -273,17 +282,10 @@ func BenchmarkSocketGetSubscriberByTicket(b *testing.B) {
 	}
 }
 
-func BenchmarkSocketNotifyTopicUnsub(b *testing.B) {
-	reset(b)
-	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.NotifyTopicUnsub(topic, socketId, targets)
-	}
-}
-
 func BenchmarkSocketSendMessageBytes(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendMessageBytes(targets, socketEvents.changeSettingEvent)
+		api.Handlers.Socket.SendMessageBytes(socketEvents.changeSettingEvent, targets)
 	}
 }
 
@@ -316,13 +318,6 @@ func BenchmarkSocketAddAndDeleteSubscribedTopic(b *testing.B) {
 	}
 }
 
-func BenchmarkSocketGetSubscribedTopicTargets(b *testing.B) {
-	reset(b)
-	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.GetSubscribedTopicTargets(subscriber.UserSub, topic)
-	}
-}
-
 // Socket Redis Functions
 func BenchmarkSocketInitRedisSocketConnection(b *testing.B) {
 	reset(b)
@@ -343,26 +338,15 @@ func BenchmarkSocketGetCachedParticipants(b *testing.B) {
 	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.GetCachedParticipants(ctx, topic)
+		api.Handlers.Redis.GetCachedParticipants(ctx, topic, false)
 	}
 }
 
-func BenchmarkSocketGetParticipantTargets(b *testing.B) {
-	participants := make(clients.SocketParticipants, 1)
-	participant := &types.SocketParticipant{
-		Name:   "name",
-		Scid:   "scid",
-		Cids:   targets,
-		Role:   "role",
-		Color:  "color",
-		Exists: true,
-		Online: false,
-	}
-
-	participants[connId] = participant
+func BenchmarkSocketGetCachedParticipantsTargetsOnly(b *testing.B) {
+	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.GetParticipantTargets(participants)
+		api.Handlers.Redis.GetCachedParticipants(ctx, topic, true)
 	}
 }
 
@@ -380,9 +364,21 @@ func BenchmarkSocketHandleUnsub(b *testing.B) {
 	}
 }
 
-// Socket Database Functions
-
 // Utilities
+
+func BenchmarkSocketGenerateMessage(b *testing.B) {
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		util.GenerateMessage(5, &util.SocketMessage{})
+	}
+}
+
+func BenchmarkSocketGetSocketId(b *testing.B) {
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		util.GetSocketId(session.UserSub, connId)
+	}
+}
 
 func BenchmarkSocketSplitSocketId(b *testing.B) {
 	reset(b)

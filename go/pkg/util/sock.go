@@ -4,14 +4,29 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
+	"encoding/json"
 	"errors"
-	"fmt"
 	"net"
+	"strconv"
 	"strings"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
+var MAX_SOCKET_MESSAGE_LENGTH = 65535
+
+type SocketMessage struct {
+	Action     types.SocketActions
+	Store      bool
+	Historical bool
+	Topic      string
+	Sender     string
+	Payload    interface{}
+	Timestamp  string
+}
+
 func GetSocketId(userSub, connId string) string {
-	return fmt.Sprintf("%s:%s", userSub, connId)
+	return userSub + ":" + connId
 }
 
 func SplitSocketId(id string) (string, string, error) {
@@ -128,7 +143,7 @@ func WriteSocketConnectionMessage(msg []byte, conn net.Conn) error {
 	if length <= 125 {
 		buffer[1] = byte(length)
 		headerSize = 2
-	} else if length <= 65535 {
+	} else if length <= MAX_SOCKET_MESSAGE_LENGTH {
 		buffer[1] = byte(126)
 		buffer[2] = byte(length >> 8)
 		buffer[3] = byte(length & 0xFF)
@@ -150,4 +165,60 @@ func WriteSocketConnectionMessage(msg []byte, conn net.Conn) error {
 		return ErrCheck(err)
 	}
 	return nil
+}
+
+func GenerateMessage(padTo int, message *SocketMessage) []byte {
+	storeStr := "f"
+	if message.Store {
+		storeStr = "t"
+	}
+
+	historicalStr := "f"
+	if message.Historical {
+		historicalStr = "t"
+	}
+
+	payloadStr := ""
+	switch v := message.Payload.(type) {
+	case string:
+		payloadStr = v
+	case nil:
+		payloadStr = ""
+	default:
+		pl, err := json.Marshal(v)
+		if err == nil {
+			payloadStr = string(pl)
+		}
+	}
+
+	actionNumber := strconv.Itoa(int(message.Action.Number()))
+
+	paddedMessage := PaddedLen(padTo, len(actionNumber)) + actionNumber +
+		PaddedLen(padTo, 1) + storeStr +
+		PaddedLen(padTo, 1) + historicalStr +
+		PaddedLen(padTo, len(message.Timestamp)) + message.Timestamp +
+		PaddedLen(padTo, len(message.Topic)) + message.Topic +
+		PaddedLen(padTo, len(message.Sender)) + message.Sender +
+		PaddedLen(padTo, len(payloadStr)) + payloadStr
+
+	return []byte(paddedMessage)
+}
+
+func ParseMessage(padTo, cursor int, data []byte) (int, string, error) {
+	lenEnd := cursor + padTo
+
+	if len(data) < lenEnd {
+		return 0, "", ErrCheck(errors.New("length index out of range"))
+	}
+
+	valLen, _ := strconv.Atoi(string(data[cursor:lenEnd]))
+	valEnd := lenEnd + valLen
+
+	if len(data) < valEnd {
+		return 0, "", ErrCheck(errors.New("value index out of range"))
+	}
+
+	val := string(data[lenEnd:valEnd])
+
+	return valEnd, val, nil
 }

@@ -8,6 +8,7 @@ import (
 )
 
 func setupDb() {
+
 	println("did setup db")
 }
 
@@ -52,5 +53,32 @@ func BenchmarkDbTxExec(b *testing.B) {
 
 			return nil
 		}, "worker", "", "")
+	}
+}
+
+func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
+	err := api.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		reset(b)
+		for c := 0; c < b.N; c++ {
+			api.Handlers.Database.GetTopicMessageParticipants(tx, topic)
+		}
+		return nil
+	}, "", "", "")
+	if err != nil {
+		b.Fatal(err)
+	}
+}
+
+func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
+	err := api.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		description, handle, _ := util.SplitSocketId(topic)
+		reset(b)
+		for c := 0; c < b.N; c++ {
+			api.Handlers.Database.GetSocketAllowances(tx, session.UserSub, description, handle)
+		}
+		return nil
+	}, "", "", "")
+	if err != nil {
+		b.Fatal(err)
 	}
 }

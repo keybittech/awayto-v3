@@ -1,8 +1,9 @@
 package clients
 
 import (
-	"encoding/json"
+	"fmt"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -37,7 +38,13 @@ func (db *Database) InitDBSocketConnection(tx IDatabaseTx, userSub string, connI
 	}, nil
 }
 
-func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.IdStruct, error) {
+var (
+	exchangeTextNumCheck       = "exchange/" + fmt.Sprint(types.ExchangeActions_EXCHANGE_TEXT.Number())
+	exchangeCallNumCheck       = "exchange/" + fmt.Sprint(types.ExchangeActions_EXCHANGE_CALL.Number())
+	exchangeWhiteboardNumCheck = "exchange/" + fmt.Sprint(types.ExchangeActions_EXCHANGE_WHITEBOARD.Number())
+)
+
+func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub, description, handle string) (bool, error) {
 
 	rows, err := tx.Query(`
 		SELECT b.id
@@ -47,25 +54,30 @@ func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.
 		WHERE sbs.created_sub = $1 OR q.created_sub = $1
 	`, userSub)
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return false, util.ErrCheck(err)
 	}
 
 	defer rows.Close()
 
-	ids := []util.IdStruct{}
+	subscribed := false
+	var r util.IdStruct
 
-	for rows.Next() {
-		var r util.IdStruct
-		err := rows.Scan(&r.Id)
+	switch description {
+	case exchangeTextNumCheck,
+		exchangeCallNumCheck,
+		exchangeWhiteboardNumCheck:
 
-		if err != nil {
-			return nil, util.ErrCheck(err)
+		for rows.Next() {
+			rows.Scan(&r.Id)
+			if r.Id == handle {
+				subscribed = true
+			}
 		}
-
-		ids = append(ids, r)
+	default:
+		return false, nil
 	}
 
-	return ids, nil
+	return subscribed, nil
 }
 
 func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (SocketParticipants, error) {
@@ -79,8 +91,8 @@ func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (S
 
 	topicRows, err := tx.Query(`
 		SELECT
-			created_sub as scid,
-			JSONB_AGG(connection_id) as cids
+			created_sub,
+			JSONB_AGG(connection_id)
 		FROM dbtable_schema.topic_messages
 		WHERE topic = $1
 		GROUP BY created_sub
@@ -90,33 +102,26 @@ func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (S
 	}
 
 	defer topicRows.Close()
+	var userSub string
+	var cids []string
+	var cidsBytes []byte
 
 	for topicRows.Next() {
-		var scid string
-		var cids []string
-		var cidsBytes []byte
-
-		err = topicRows.Scan(&scid, &cidsBytes)
+		err = topicRows.Scan(&userSub, &cidsBytes)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		err = json.Unmarshal(cidsBytes, &cids)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
+		cids = strings.Split(string(cidsBytes), " ")
 
-		if participant, ok := participants[scid]; ok {
+		if participant, ok := participants[userSub]; ok {
 			for _, cid := range cids {
 				if !slices.Contains(participant.Cids, cid) {
 					participant.Cids = append(participant.Cids, cid)
 				}
 			}
 		} else {
-			participants[scid] = &types.SocketParticipant{
-				Scid: scid,
-				Cids: cids,
-			}
+			participants[userSub] = &types.SocketParticipant{Scid: userSub, Cids: cids}
 		}
 	}
 
@@ -150,7 +155,7 @@ func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants Soc
 	return participants, nil
 }
 
-func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *SocketMessage) error {
+func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *util.SocketMessage) error {
 
 	message.Store = false
 	message.Historical = true
@@ -161,7 +166,7 @@ func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *So
 		SELECT created_sub, $2, $3, $1
 		FROM dbtable_schema.sock_connections
 		WHERE connection_id = $1
-	`, connId, message.Topic, GenerateMessage(util.DefaultPadding, message))
+	`, connId, message.Topic, util.GenerateMessage(util.DefaultPadding, message))
 
 	if err != nil {
 		return util.ErrCheck(err)
@@ -207,7 +212,7 @@ func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSiz
 	}
 
 	if messages[pageSize-1] != nil {
-		messages = append(messages, GenerateMessage(util.DefaultPadding, &SocketMessage{
+		messages = append(messages, util.GenerateMessage(util.DefaultPadding, &util.SocketMessage{
 			Topic:  topic,
 			Action: types.SocketActions_HAS_MORE_MESSAGES,
 		}))

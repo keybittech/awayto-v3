@@ -22,10 +22,10 @@ type IDatabase interface {
 	AdminSub() string
 	AdminRoleId() string
 	InitDBSocketConnection(tx IDatabaseTx, userSub string, connId string) (func(), error)
-	GetSocketAllowances(tx IDatabaseTx, userSub string) ([]util.IdStruct, error)
+	GetSocketAllowances(tx IDatabaseTx, userSub, description, handle string) (bool, error)
 	GetTopicMessageParticipants(tx IDatabaseTx, topic string) (SocketParticipants, error)
 	GetSocketParticipantDetails(tx IDatabaseTx, participants SocketParticipants) (SocketParticipants, error)
-	StoreTopicMessage(tx IDatabaseTx, connId string, message *SocketMessage) error
+	StoreTopicMessage(tx IDatabaseTx, connId string, message *util.SocketMessage) error
 	GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error)
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 	TxExec(doFunc func(IDatabaseTx) error, ids ...string) error
@@ -73,10 +73,9 @@ type IRedis interface {
 	Client() IRedisClient
 	InitKeys()
 	InitRedisSocketConnection(socketId string) error
-	HandleUnsub(socketId string) (map[string][]string, error)
+	HandleUnsub(socketId string) (map[string]string, error)
 	RemoveTopicFromConnection(socketId, topic string) error
-	GetCachedParticipants(ctx context.Context, topic string) (SocketParticipants, error)
-	GetParticipantTargets(participants SocketParticipants) []string
+	GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (SocketParticipants, string, error)
 	TrackTopicParticipant(ctx context.Context, topic, socketId string) error
 	GetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
@@ -122,13 +121,11 @@ type ISocket interface {
 	Chan() chan<- SocketCommand
 	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
 	GetSocketTicket(session *UserSession) (string, error)
-	SendMessageBytes(targets []string, messageBytes []byte) error
-	SendMessage(targets []string, message *SocketMessage) error
+	SendMessageBytes(messageBytes []byte, targets string) error
+	SendMessage(message *util.SocketMessage, targets string) error
 	GetSubscriberByTicket(ticket string) (*Subscriber, error)
-	AddSubscribedTopic(userSub, topic string, existingCids []string)
-	GetSubscribedTopicTargets(userSub, topic string) []string
+	AddSubscribedTopic(userSub, topic string, targets string)
 	DeleteSubscribedTopic(userSub, topic string)
 	HasTopicSubscription(userSub, topic string) bool
-	NotifyTopicUnsub(topic, socketId string, targets []string)
 	RoleCall(userSub string) error
 }

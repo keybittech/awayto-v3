@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"slices"
 	"strings"
 	"time"
 
@@ -106,10 +105,10 @@ func (r *Redis) InitRedisSocketConnection(socketId string) error {
 	return nil
 }
 
-func (r *Redis) HandleUnsub(socketId string) (map[string][]string, error) {
+func (r *Redis) HandleUnsub(socketId string) (map[string]string, error) {
 	ctx := context.Background()
 	defer ctx.Done()
-	removedTopics := make(map[string][]string)
+	removedTopics := make(map[string]string)
 
 	r.Client().SRem(ctx, socketServerConnectionsKey, socketId)
 
@@ -129,26 +128,29 @@ func (r *Redis) HandleUnsub(socketId string) (map[string][]string, error) {
 
 		socketIds, err := r.Client().SMembers(ctx, participantTopic).Result()
 		if err != nil {
-			return nil, util.ErrCheck(err)
+			continue
 		}
 
-		topic := strings.SplitN(participantTopic, ":", 2)[1]
-
-		targets := []string{}
+		var targets string
 
 		for _, socketId := range socketIds {
-			_, connId, err := util.SplitSocketId(socketId)
-			if err != nil {
-				util.ErrCheck(err)
+			if len(socketId) < 37 {
 				continue
 			}
+			connId := socketId[37:]
 
-			if !slices.Contains(targets, connId) {
-				targets = append(targets, connId)
+			if strings.Index(targets, connId) == -1 {
+				targets += connId + " "
 			}
 		}
 
-		removedTopics[topic] = targets
+		if len(targets) == 0 {
+			continue
+		}
+
+		topic := participantTopic[strings.Index(participantTopic, ":"):strings.LastIndex(participantTopic, ":")]
+
+		removedTopics[topic] = targets[:len(targets)-1]
 	}
 
 	r.Client().Del(ctx, socketIdTopicsKey)
@@ -183,27 +185,33 @@ func (r *Redis) RemoveTopicFromConnection(socketId, topic string) error {
 	return nil
 }
 
-func (r *Redis) GetCachedParticipants(ctx context.Context, topic string) (SocketParticipants, error) {
+func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (SocketParticipants, string, error) {
 	participantTopicsKey, err := ParticipantTopicsKey(topic)
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return nil, "", util.ErrCheck(err)
 	}
 
 	topicSocketIds, err := r.Client().SMembers(ctx, participantTopicsKey).Result()
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return nil, "", util.ErrCheck(err)
 	}
 
 	sps := make(SocketParticipants, len(topicSocketIds))
+
+	var participantTargets strings.Builder
 
 	// socketId should be a userSub uuid of 36 characters, plus a colon, plus another connId uuid, so 37 is ok to check
 	for _, socketId := range topicSocketIds {
 		if len(socketId) < 37 {
 			continue
 		}
+		connId := socketId[37:]
+		participantTargets.Write([]byte(connId + " "))
+		if targetsOnly {
+			continue
+		}
 
 		userSub := socketId[0:36]
-		connId := socketId[37:]
 
 		if participant, ok := sps[userSub]; ok {
 			participant.Cids = append(participant.Cids, connId)
@@ -216,18 +224,11 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string) (Socket
 		}
 	}
 
-	return sps, nil
-}
+	if len(participantTargets.String()) == 0 {
+		return sps, "", nil
+	}
 
-func (r *Redis) GetParticipantTargets(participants SocketParticipants) []string {
-	if len(participants) == 0 {
-		return nil
-	}
-	var topicCids []string
-	for _, participant := range participants {
-		topicCids = append(topicCids, participant.Cids...)
-	}
-	return topicCids
+	return sps, participantTargets.String(), nil
 }
 
 var defaultTrackDuration, _ = time.ParseDuration("86400s")
