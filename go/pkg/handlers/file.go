@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/lib/pq"
@@ -16,7 +16,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, data *types.PostFileContentsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostFileContentsResponse, error) {
+func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, data *types.PostFileContentsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostFileContentsResponse, error) {
 
 	// If a file was deleted from the FileManager ui, its uuid won't be sent
 	// so delete all unrepresented files
@@ -121,7 +121,7 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 	return &types.PostFileContentsResponse{Ids: newUuids}, nil
 }
 
-func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, data *types.PatchFileContentsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchFileContentsResponse, error) {
+func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, data *types.PatchFileContentsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchFileContentsResponse, error) {
 	// expiration := time.Now().Local().UTC().AddDate(0, 1, 0) // Adds 30 days to current time
 	// err := h.FS.PatchFile(data.GetId(), data.GetName(), expiration)
 	// if err != nil {
@@ -130,7 +130,7 @@ func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, d
 	return &types.PatchFileContentsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*[]byte, error) {
+func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*[]byte, error) {
 	var fileContent []byte
 
 	err := tx.QueryRow(`
@@ -144,7 +144,7 @@ func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, dat
 	return &fileContent, nil
 }
 
-func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *types.PostFileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostFileResponse, error) {
+func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *types.PostFileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostFileResponse, error) {
 	file := data.GetFile()
 	var fileID string
 	err := tx.QueryRow(`
@@ -158,7 +158,7 @@ func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *type
 	return &types.PostFileResponse{Id: fileID, Uuid: file.GetUuid()}, nil
 }
 
-func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *types.PatchFileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchFileResponse, error) {
+func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *types.PatchFileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchFileResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.files
 		SET name = $2, updated_on = $3, updated_sub = $4
@@ -170,7 +170,7 @@ func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.PatchFileResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *types.GetFilesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetFilesResponse, error) {
+func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *types.GetFilesRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetFilesResponse, error) {
 	var files []*types.IFile
 	err := tx.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files")
 	if err != nil {
@@ -179,7 +179,7 @@ func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *type
 	return &types.GetFilesResponse{Files: files}, nil
 }
 
-func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *types.GetFileByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetFileByIdResponse, error) {
+func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *types.GetFileByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetFileByIdResponse, error) {
 	var files []*types.IFile
 	err := tx.QueryRows(&files, "SELECT * FROM dbview_schema.enabled_files WHERE id = $1", data.GetId())
 	if err != nil || len(files) == 0 {
@@ -188,7 +188,7 @@ func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetFileByIdResponse{File: files[0]}, nil
 }
 
-func (h *Handlers) DeleteFile(w http.ResponseWriter, req *http.Request, data *types.DeleteFileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteFileResponse, error) {
+func (h *Handlers) DeleteFile(w http.ResponseWriter, req *http.Request, data *types.DeleteFileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteFileResponse, error) {
 	_, err := tx.Exec("DELETE FROM dbtable_schema.files WHERE id = $1", data.GetId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -196,7 +196,7 @@ func (h *Handlers) DeleteFile(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.DeleteFileResponse{Id: data.GetId()}, nil
 }
 
-func (h *Handlers) DisableFile(w http.ResponseWriter, req *http.Request, data *types.DisableFileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DisableFileResponse, error) {
+func (h *Handlers) DisableFile(w http.ResponseWriter, req *http.Request, data *types.DisableFileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DisableFileResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.files
 		SET enabled = false, updated_on = $2, updated_sub = $3

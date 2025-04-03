@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/mocks"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"net/http"
 	"testing"
+
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 
 	"github.com/golang/mock/gomock"
 )
@@ -43,7 +43,7 @@ func TestBooking(t *testing.T) {
 				// Commit TX
 				// hts.MockDatabaseTx.EXPECT().Commit().Return(nil)
 			},
-			handlerFunc: func(h *Handlers, w http.ResponseWriter, r *http.Request, session *types.UserSession, tx *mocks.MockIDatabaseTx) (interface{}, error) {
+			handlerFunc: func(h *Handlers, w http.ResponseWriter, r *http.Request, session *types.UserSession, tx *interfaces.MockIDatabaseTx) (interface{}, error) {
 				data := &types.PostBookingRequest{
 					Bookings: []*types.IBooking{
 						{

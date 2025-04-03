@@ -5,12 +5,12 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *types.PostPromptRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostPromptResponse, error) {
+func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *types.PostPromptRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostPromptResponse, error) {
 
 	// TODO
 	// if rateLimited, err := h.Redis.Client().RateLimitResource(req.Context(), data.UserSub, "prompt", 25, 86400); err != nil || rateLimited {
@@ -40,7 +40,7 @@ func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PostPromptResponse{PromptResult: trimmedResults}, nil
 }
 
-func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data *types.GetSuggestionRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetSuggestionResponse, error) {
+func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data *types.GetSuggestionRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetSuggestionResponse, error) {
 
 	if session.GroupAi {
 		promptParts := strings.Split(data.GetPrompt(), "!$")

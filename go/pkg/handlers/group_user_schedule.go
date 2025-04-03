@@ -5,12 +5,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupUserScheduleRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostGroupUserScheduleResponse, error) {
+func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupUserScheduleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupUserScheduleResponse, error) {
 	var groupUserScheduleId string
 
 	err := tx.QueryRow(`
@@ -30,7 +30,7 @@ func (h *Handlers) PostGroupUserSchedule(w http.ResponseWriter, req *http.Reques
 	return &types.PostGroupUserScheduleResponse{Id: groupUserScheduleId}, nil
 }
 
-func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserSchedulesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserSchedulesResponse, error) {
+func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserSchedulesRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupUserSchedulesResponse, error) {
 	var groupUserSchedules []*types.IGroupUserSchedule
 
 	err := tx.QueryRows(&groupUserSchedules, `
@@ -45,7 +45,7 @@ func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Reques
 	return &types.GetGroupUserSchedulesResponse{GroupUserSchedules: groupUserSchedules}, nil
 }
 
-func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserScheduleStubsResponse, error) {
+func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupUserScheduleStubsResponse, error) {
 	var groupUserScheduleStubs []*types.IGroupUserScheduleStub
 
 	err := tx.SetDbVar("user_sub", session.GroupSub)
@@ -74,7 +74,7 @@ func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Re
 	return &types.GetGroupUserScheduleStubsResponse{GroupUserScheduleStubs: groupUserScheduleStubs}, nil
 }
 
-func (h *Handlers) GetGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubReplacementRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserScheduleStubReplacementResponse, error) {
+func (h *Handlers) GetGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubReplacementRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupUserScheduleStubReplacementResponse, error) {
 	var stubs []*types.IGroupUserScheduleStub
 
 	err := tx.QueryRows(&stubs, `
@@ -87,7 +87,7 @@ func (h *Handlers) GetGroupUserScheduleStubReplacement(w http.ResponseWriter, re
 	return &types.GetGroupUserScheduleStubReplacementResponse{GroupUserScheduleStubs: stubs}, nil
 }
 
-func (h *Handlers) PatchGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserScheduleStubReplacementRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupUserScheduleStubReplacementResponse, error) {
+func (h *Handlers) PatchGroupUserScheduleStubReplacement(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserScheduleStubReplacementRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupUserScheduleStubReplacementResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.quotes
 		SET slot_date = $2, schedule_bracket_slot_id = $3, service_tier_id = $4, updated_sub = $5, updated_on = $6
@@ -100,7 +100,7 @@ func (h *Handlers) PatchGroupUserScheduleStubReplacement(w http.ResponseWriter, 
 	return &types.PatchGroupUserScheduleStubReplacementResponse{Success: true}, nil
 }
 
-func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserScheduleByUserScheduleIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupUserScheduleByUserScheduleIdResponse, error) {
+func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserScheduleByUserScheduleIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteGroupUserScheduleByUserScheduleIdResponse, error) {
 	idsSplit := strings.Split(data.GetIds(), ",")
 
 	for _, userScheduleId := range idsSplit {

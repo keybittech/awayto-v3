@@ -6,12 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data *types.CheckGroupNameRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.CheckGroupNameResponse, error) {
+func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data *types.CheckGroupNameRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.CheckGroupNameResponse, error) {
 	var count int
 
 	time.Sleep(time.Second)
@@ -26,7 +26,7 @@ func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data
 	return &types.CheckGroupNameResponse{IsValid: count == 0}, nil
 }
 
-func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *types.JoinGroupRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.JoinGroupResponse, error) {
+func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *types.JoinGroupRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.JoinGroupResponse, error) {
 	var userId, groupId, allowedDomains, defaultRoleId string
 
 	err := tx.QueryRow(`
@@ -77,7 +77,7 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.JoinGroupResponse{Success: true}, nil
 }
 
-func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *types.LeaveGroupRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.LeaveGroupResponse, error) {
+func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *types.LeaveGroupRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.LeaveGroupResponse, error) {
 	var userId, groupId, allowedDomains, defaultRoleId string
 
 	err := tx.QueryRow(`
@@ -108,7 +108,7 @@ func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *ty
 }
 
 // AttachUser
-func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *types.AttachUserRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.AttachUserResponse, error) {
+func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *types.AttachUserRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.AttachUserResponse, error) {
 	var groupId, kcGroupExternalId, kcRoleSubgroupExternalId, defaultRoleId, createdSub string
 
 	err := tx.QueryRow(`SELECT g.id FROM dbtable_schema.groups g WHERE g.code = $1`, data.GetCode()).Scan(&groupId)
@@ -147,7 +147,7 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.AttachUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, data *types.CompleteOnboardingRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.CompleteOnboardingResponse, error) {
+func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, data *types.CompleteOnboardingRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.CompleteOnboardingResponse, error) {
 	service := data.GetService()
 	schedule := data.GetSchedule()
 

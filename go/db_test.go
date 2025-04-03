@@ -3,7 +3,7 @@ package main
 import (
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
@@ -44,7 +44,7 @@ func BenchmarkDbTxExec(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		var adminRoleId string
-		api.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 			txErr = tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
 			if txErr != nil {
@@ -57,7 +57,7 @@ func BenchmarkDbTxExec(b *testing.B) {
 }
 
 func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
-	err := api.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+	err := api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 		reset(b)
 		for c := 0; c < b.N; c++ {
 			api.Handlers.Database.GetTopicMessageParticipants(tx, topic)
@@ -70,7 +70,7 @@ func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 }
 
 func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
-	err := api.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+	err := api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 		description, handle, _ := util.SplitSocketId(topic)
 		reset(b)
 		for c := 0; c < b.N; c++ {

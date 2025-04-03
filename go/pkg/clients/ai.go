@@ -9,6 +9,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -23,7 +24,7 @@ type Ai struct {
 	Prompts AiPrompts
 }
 
-func InitAi() IAi {
+func InitAi() interfaces.IAi {
 
 	aiPrompts := make(AiPrompts)
 	aiPrompts[types.IPrompts_CONVERT_PURPOSE] = convertPurposeMessages

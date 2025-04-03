@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -199,7 +199,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 					return
 				}
 
-				err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+				err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 					var txErr error
 
 					txErr = tx.QueryRow(`

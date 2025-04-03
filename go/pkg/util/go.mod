@@ -21,4 +21,4 @@ replace github.com/keybittech/awayto-v3/go/pkg/handlers => ../handlers
 
 replace github.com/keybittech/awayto-v3/go/pkg/clients => ../clients
 
-replace github.com/keybittech/awayto-v3/go/pkg/mocks => ../mocks
+replace github.com/keybittech/awayto-v3/go/pkg/interfaces => ../interfaces

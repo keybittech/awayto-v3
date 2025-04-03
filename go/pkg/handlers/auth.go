@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent *types.AuthEvent, session *types.UserSession, tx clients.IDatabaseTx) (string, error) {
+func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent *types.AuthEvent, session *types.UserSession, tx interfaces.IDatabaseTx) (string, error) {
 
 	_, err := h.PostUserProfile(nil, req, &types.PostUserProfileRequest{
 		FirstName: authEvent.FirstName,
@@ -38,7 +38,7 @@ func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent *types.Auth
 	return `{ "success": true }`, nil
 }
 
-func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent *types.AuthEvent, session *types.UserSession, tx clients.IDatabaseTx) (string, error) {
+func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent *types.AuthEvent, session *types.UserSession, tx interfaces.IDatabaseTx) (string, error) {
 
 	group := &types.IGroup{}
 	err := tx.QueryRow(`

@@ -6,11 +6,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (db *Database) InitDBSocketConnection(tx IDatabaseTx, userSub string, connId string) (func(), error) {
+func (db *Database) InitDBSocketConnection(tx interfaces.IDatabaseTx, userSub string, connId string) (func(), error) {
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
 		VALUES ($1::uuid, $2)
@@ -20,7 +21,7 @@ func (db *Database) InitDBSocketConnection(tx IDatabaseTx, userSub string, connI
 	}
 
 	return func() {
-		err := db.TxExec(func(itx IDatabaseTx) error {
+		err := db.TxExec(func(itx interfaces.IDatabaseTx) error {
 			_, txErr := itx.Exec(`
 				DELETE FROM dbtable_schema.sock_connections
 				USING dbtable_schema.sock_connections sc
@@ -44,7 +45,7 @@ var (
 	exchangeWhiteboardNumCheck = "exchange/" + fmt.Sprint(types.ExchangeActions_EXCHANGE_WHITEBOARD.Number())
 )
 
-func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub, description, handle string) (bool, error) {
+func (db *Database) GetSocketAllowances(tx interfaces.IDatabaseTx, userSub, description, handle string) (bool, error) {
 
 	rows, err := tx.Query(`
 		SELECT b.id
@@ -80,7 +81,7 @@ func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub, description, ha
 	return subscribed, nil
 }
 
-func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (map[string]*types.SocketParticipant, error) {
+func (db *Database) GetTopicMessageParticipants(tx interfaces.IDatabaseTx, topic string) (map[string]*types.SocketParticipant, error) {
 
 	err := tx.SetDbVar("sock_topic", topic)
 	if err != nil {
@@ -133,7 +134,7 @@ func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (m
 	return participants, nil
 }
 
-func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants map[string]*types.SocketParticipant) (map[string]*types.SocketParticipant, error) {
+func (db *Database) GetSocketParticipantDetails(tx interfaces.IDatabaseTx, participants map[string]*types.SocketParticipant) (map[string]*types.SocketParticipant, error) {
 
 	for userSub, details := range participants {
 		// Get user anon info
@@ -155,7 +156,7 @@ func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants map
 	return participants, nil
 }
 
-func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *types.SocketMessage) error {
+func (db *Database) StoreTopicMessage(tx interfaces.IDatabaseTx, connId string, message *types.SocketMessage) error {
 
 	message.Store = false
 	message.Historical = true
@@ -175,7 +176,7 @@ func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *ty
 	return nil
 }
 
-func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error) {
+func (db *Database) GetTopicMessages(tx interfaces.IDatabaseTx, topic string, page, pageSize int) ([][]byte, error) {
 
 	messages := make([][]byte, pageSize)
 

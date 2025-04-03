@@ -32,8 +32,12 @@ JAVA_THEMES_DIR=java/themes
 LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
 HOST_LOCAL_DIR=sites/${PROJECT_PREFIX}
-GO_GEN_DIR=go/pkg/types
-GO_MOCKS_GEN_DIR=go/pkg/mocks
+GO_GEN_DIR=$(GO_SRC)/pkg/types
+GO_API_DIR=$(GO_SRC)/pkg/api
+GO_CLIENTS_DIR=$(GO_SRC)/pkg/clients
+GO_HANDLERS_DIR=$(GO_SRC)/pkg/handlers
+GO_INTERFACES_DIR=$(GO_SRC)/pkg/interfaces
+GO_UTIL_DIR=$(GO_SRC)/pkg/util
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
 DEMOS_DIR=demos/final
 
@@ -43,8 +47,8 @@ JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_TARGET=${PWD}/go/$(BINARY_NAME)
-GO_MOCK_TARGET=$(GO_MOCKS_GEN_DIR)/clients.go
-GO_MOCK_MOD_TARGET=$(GO_MOCKS_GEN_DIR)/go.mod
+GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
+GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
 PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
 
 # host locations
@@ -125,9 +129,9 @@ build: ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_P
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
 clean:
-	rm -rf $(TS_BUILD_DIR) $(GO_MOCKS_GEN_DIR) $(GO_GEN_DIR) \
+	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(MOCK_TARGET)
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
 ifeq ($(DEPLOYING),true)
@@ -204,23 +208,11 @@ working/proto-stamp: $(wildcard proto/*.proto)
 
 $(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
-	cd go && go mod tidy && cd -
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
-$(GO_MOCK_TARGET): go/pkg/clients/interfaces.go
+$(GO_MOCK_TARGET): $(GO_INTERFACES_FILE)
 	@mkdir -p $(@D)
-	mockgen -source=go/pkg/clients/interfaces.go -destination=$(GO_MOCK_TARGET) -package=mocks
-	cd $(@D) && \
-	if [ ! -f "$(GO_MOCK_MOD_TARGET)" ]; then \
-		go mod init ${PROJECT_REPO}/go/pkg/mocks; \
-	fi && \
-	go mod edit -replace ${PROJECT_REPO}/go/pkg/api=../api && \
-	go mod edit -replace ${PROJECT_REPO}/go/pkg/clients=../clients && \
-	go mod edit -replace ${PROJECT_REPO}/go/pkg/handlers=../handlers && \
-	go mod edit -replace ${PROJECT_REPO}/go/pkg/types=../types && \
-	go mod edit -replace ${PROJECT_REPO}/go/pkg/util=../util && \
-	go mod tidy && \
-	cd -
+	mockgen -source=$(GO_INTERFACES_FILE) -destination=$(GO_MOCK_TARGET) -package=interfaces
 
 #################################
 #           DEVELOP             #
@@ -230,6 +222,15 @@ $(GO_MOCK_TARGET): go/pkg/clients/interfaces.go
 go_dev:
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) .
+
+.PHONY: go_tidy
+go_tidy:
+	cd $(GO_SRC) && go mod tidy
+	cd $(GO_API_DIR) && go mod tidy
+	cd $(GO_CLIENTS_DIR) && go mod tidy
+	cd $(GO_HANDLERS_DIR) && go mod tidy
+	cd $(GO_INTERFACES_DIR) && go mod tidy
+	cd $(GO_UTIL_DIR) && go mod tidy
 
 .PHONY: go_watch
 go_watch:
@@ -269,8 +270,10 @@ go_test_main: build $(GO_TARGET)
 .PHONY: go_test_pkg
 go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
-	go test -C $(GO_SRC) -v ./...
-	go test -C $(GO_SRC)/pkg/handlers -v ./...
+	go test -C  $(GO_API_DIR) -v ./...
+	go test -C  $(GO_CLIENTS_DIR) -v ./...
+	go test -C  $(GO_HANDLERS_DIR) -v ./...
+	go test -C  $(GO_UTIL_DIR) -v ./...
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -15,7 +16,7 @@ import (
 )
 
 type Socket struct {
-	ch chan<- SocketCommand
+	Ch chan<- SocketCommand
 }
 
 type SocketCommandType int
@@ -64,7 +65,7 @@ type Connections map[string]net.Conn
 
 var CID_LENGTH = 36
 
-func InitSocket() ISocket {
+func InitSocket() interfaces.ISocket {
 
 	cmds := make(chan SocketCommand)
 	subscribers := make(Subscribers)
@@ -224,13 +225,9 @@ func InitSocket() ISocket {
 	return &Socket{cmds}
 }
 
-func (s *Socket) Chan() chan<- SocketCommand {
-	return s.ch
-}
-
 func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (func(), error) {
 	replyChan := make(chan SocketResponse)
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty: CreateSocketConnectionSocketCommand,
 		Params: SocketParams{
 			UserSub: userSub,
@@ -247,7 +244,7 @@ func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (f
 
 	return func() {
 		replyChan := make(chan SocketResponse)
-		s.Chan() <- SocketCommand{
+		s.Ch <- SocketCommand{
 			Ty: DeleteSocketConnectionSocketCommand,
 			Params: SocketParams{
 				UserSub: userSub,
@@ -261,7 +258,7 @@ func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (f
 
 func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 	replyChan := make(chan SocketResponse)
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty:        CreateSocketTicketSocketCommand,
 		Params:    SocketParams{UserSub: session.UserSub, GroupId: session.GroupId, Roles: strings.Join(session.AvailableUserGroupRoles, " ")},
 		ReplyChan: replyChan,
@@ -277,7 +274,7 @@ func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 
 func (s *Socket) SendMessageBytes(messageBytes []byte, targets string) error {
 	replyChan := make(chan SocketResponse)
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty: SendSocketMessageSocketCommand,
 		Params: SocketParams{
 			Targets:      targets,
@@ -305,7 +302,7 @@ func (s *Socket) SendMessage(message *types.SocketMessage, targets string) error
 
 func (s *Socket) GetSubscriberByTicket(ticket string) (*types.Subscriber, error) {
 	sockGetSubReplyChan := make(chan SocketResponse)
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty:        GetSubscriberSocketCommand,
 		Params:    SocketParams{Ticket: ticket},
 		ReplyChan: sockGetSubReplyChan,
@@ -321,7 +318,7 @@ func (s *Socket) GetSubscriberByTicket(ticket string) (*types.Subscriber, error)
 }
 
 func (s *Socket) AddSubscribedTopic(userSub, topic string, targets string) {
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty: AddSubscribedTopicSocketCommand,
 		Params: SocketParams{
 			UserSub: userSub,
@@ -332,7 +329,7 @@ func (s *Socket) AddSubscribedTopic(userSub, topic string, targets string) {
 }
 
 func (s *Socket) DeleteSubscribedTopic(userSub, topic string) {
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty: DeleteSubscribedTopicSocketCommand,
 		Params: SocketParams{
 			UserSub: userSub,
@@ -343,7 +340,7 @@ func (s *Socket) DeleteSubscribedTopic(userSub, topic string) {
 
 func (s *Socket) HasTopicSubscription(userSub, topic string) bool {
 	replyChan := make(chan SocketResponse)
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty: HasSubscribedTopicSocketCommand,
 		Params: SocketParams{
 			UserSub: userSub,
@@ -358,7 +355,7 @@ func (s *Socket) HasTopicSubscription(userSub, topic string) bool {
 
 func (s *Socket) RoleCall(userSub string) error {
 	replyChan := make(chan SocketResponse)
-	s.Chan() <- SocketCommand{
+	s.Ch <- SocketCommand{
 		Ty: GetSubscribedTargetsSocketCommand,
 		Params: SocketParams{
 			UserSub: userSub,

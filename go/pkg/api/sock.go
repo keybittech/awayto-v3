@@ -12,7 +12,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"golang.org/x/time/rate"
@@ -112,7 +112,7 @@ func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, 
 	defer deferSockClose()
 
 	var deferSockDbClose func()
-	err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+	err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 		var txErr error
 		deferSockDbClose, txErr = a.Handlers.Database.InitDBSocketConnection(tx, subscriber.UserSub, connId)
 		if txErr != nil {
@@ -283,7 +283,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			return
 		}
 
-		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 			subscribed, txErr := a.Handlers.Database.GetSocketAllowances(tx, subscriber.UserSub, description, handle)
 			if txErr != nil {
@@ -343,7 +343,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 
 		topicMessageParticipants := make(map[string]*types.SocketParticipant)
 
-		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 
 			topicMessageParticipants, txErr = a.Handlers.Database.GetTopicMessageParticipants(tx, sm.Topic)
@@ -395,7 +395,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 		}
 		messages := [][]byte{}
 
-		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 			messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, pageInfo["page"], 100) // int(pageInfo["pageSize"])
 			if txErr != nil {
@@ -437,7 +437,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 
 	if sm.Store {
 		println("in store")
-		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 
 			txErr = a.Handlers.Database.StoreTopicMessage(tx, connId, sm)

@@ -13,6 +13,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"database/sql"
@@ -24,7 +25,7 @@ import (
 )
 
 type Database struct {
-	DatabaseClient      IDatabaseClient
+	DatabaseClient      interfaces.IDatabaseClient
 	DatabaseAdminSub    string
 	DatabaseAdminRoleId string
 }
@@ -41,7 +42,7 @@ type ColTypes struct {
 
 var colTypes *ColTypes
 
-func InitDatabase() IDatabase {
+func InitDatabase() interfaces.IDatabase {
 	dbDriver := os.Getenv("DB_DRIVER")
 	pgUser := os.Getenv("PG_WORKER")
 	pgHost := os.Getenv("PG_HOST")
@@ -77,7 +78,7 @@ func InitDatabase() IDatabase {
 
 	var adminRoleId, adminSub string
 
-	err = dbc.TxExec(func(tx IDatabaseTx) error {
+	err = dbc.TxExec(func(tx interfaces.IDatabaseTx) error {
 		var txErr error
 		txErr = tx.QueryRow(`
 			SELECT u.sub, r.id FROM dbtable_schema.users u
@@ -118,7 +119,7 @@ func InitDatabase() IDatabase {
 	return dbc
 }
 
-func (db *Database) Client() IDatabaseClient {
+func (db *Database) Client() interfaces.IDatabaseClient {
 	return db.DatabaseClient
 }
 
@@ -174,7 +175,7 @@ func (db *DBWrapper) Conn(ctx context.Context) (*sql.Conn, error) {
 	return db.Conn(ctx)
 }
 
-func (db *DBWrapper) Begin() (IDatabaseTx, error) {
+func (db *DBWrapper) Begin() (interfaces.IDatabaseTx, error) {
 	tx, err := db.DB.Begin()
 	if err != nil {
 		return nil, err
@@ -182,7 +183,7 @@ func (db *DBWrapper) Begin() (IDatabaseTx, error) {
 	return &TxWrapper{tx}, nil
 }
 
-func (db *DBWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (IDatabaseTx, error) {
+func (db *DBWrapper) BeginTx(ctx context.Context, opts *sql.TxOptions) (interfaces.IDatabaseTx, error) {
 	tx, err := db.DB.BeginTx(ctx, opts)
 	if err != nil {
 		return nil, err
@@ -202,11 +203,11 @@ func (db *DBWrapper) Exec(query string, args ...interface{}) (sql.Result, error)
 	return db.DB.Exec(query, args...)
 }
 
-func (db *DBWrapper) Query(query string, args ...interface{}) (IRows, error) {
+func (db *DBWrapper) Query(query string, args ...interface{}) (interfaces.IRows, error) {
 	return db.DB.Query(query, args...)
 }
 
-func (db *DBWrapper) QueryRow(query string, args ...interface{}) IRow {
+func (db *DBWrapper) QueryRow(query string, args ...interface{}) interfaces.IRow {
 	return db.DB.QueryRow(query, args...)
 }
 
@@ -240,11 +241,11 @@ func (tx *TxWrapper) ExecContext(ctx context.Context, query string, args ...inte
 	return tx.Tx.ExecContext(ctx, query, args...)
 }
 
-func (tx *TxWrapper) Query(query string, args ...interface{}) (IRows, error) {
+func (tx *TxWrapper) Query(query string, args ...interface{}) (interfaces.IRows, error) {
 	return tx.Tx.Query(query, args...)
 }
 
-func (tx *TxWrapper) QueryRow(query string, args ...interface{}) IRow {
+func (tx *TxWrapper) QueryRow(query string, args ...interface{}) interfaces.IRow {
 	return tx.Tx.QueryRow(query, args...)
 }
 
@@ -298,7 +299,7 @@ func (r *IRowsWrapper) ColumnTypes() ([]*sql.ColumnType, error) {
 var emptyString string
 var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)`
 
-func (db *Database) TxExec(doFunc func(IDatabaseTx) error, ids ...string) error {
+func (db *Database) TxExec(doFunc func(interfaces.IDatabaseTx) error, ids ...string) error {
 	if ids == nil || len(ids) != 3 {
 		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
 	}

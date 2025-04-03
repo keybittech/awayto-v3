@@ -20,7 +20,7 @@ build/
 ts/src/hooks/api.ts
 ts/openapi.yaml
 go/pkg/types/
-go/pkg/mocks/
+go/pkg/interfaces/mocks.go
 go/buf.build/
 go/cpu.prof
 java/target/

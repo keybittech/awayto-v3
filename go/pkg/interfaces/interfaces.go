@@ -1,4 +1,4 @@
-package clients
+package interfaces
 
 import (
 	"context"
@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	gomock "github.com/golang/mock/gomock"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 
 	redis "github.com/redis/go-redis/v9"
@@ -96,8 +97,6 @@ type IRedisClient interface {
 }
 
 type IKeycloak interface {
-	Chan() chan<- KeycloakCommand
-	Client() *KeycloakClient
 	UpdateUser(id, firstName, lastName string) error
 	GetGroupAdminRoles() []*types.KeycloakRole
 	GetGroupSiteRoles(groupId string) []*types.ClientRoleMappingRole
@@ -115,7 +114,6 @@ type IKeycloak interface {
 }
 
 type ISocket interface {
-	Chan() chan<- SocketCommand
 	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
 	GetSocketTicket(session *types.UserSession) (string, error)
 	SendMessageBytes(messageBytes []byte, targets string) error
@@ -125,4 +123,32 @@ type ISocket interface {
 	DeleteSubscribedTopic(userSub, topic string)
 	HasTopicSubscription(userSub, topic string) bool
 	RoleCall(userSub string) error
+}
+
+type DefaultTestSetup struct {
+	MockCtrl           *gomock.Controller
+	MockAi             *MockIAi
+	MockDatabase       *MockIDatabase
+	MockDatabaseClient *MockIDatabaseClient
+	MockDatabaseTx     *MockIDatabaseTx
+	MockDatabaseRows   *MockIRows
+	MockDatabaseRow    *MockIRow
+	MockRedis          *MockIRedis
+	MockRedisClient    *MockIRedisClient
+	MockKeycloak       *MockIKeycloak
+	MockSocket         *MockISocket
+	UserSession        *types.UserSession
+}
+
+type DefaultTestCase struct {
+	Name        string
+	SetupMocks  func(*DefaultTestSetup)
+	Params      []interface{}
+	Function    func(...interface{}) (interface{}, interface{}, error)
+	ExpectedRes interface{}
+	ExpectedErr error
+}
+
+func (hts *DefaultTestSetup) TearDown() {
+	hts.MockCtrl.Finish()
 }

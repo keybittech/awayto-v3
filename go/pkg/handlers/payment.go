@@ -1,16 +1,17 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"encoding/json"
 	"errors"
 	"net/http"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostPayment(w http.ResponseWriter, req *http.Request, data *types.PostPaymentRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostPaymentResponse, error) {
+func (h *Handlers) PostPayment(w http.ResponseWriter, req *http.Request, data *types.PostPaymentRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostPaymentResponse, error) {
 	var paymentId string
 
 	err := tx.QueryRow(`
@@ -25,7 +26,7 @@ func (h *Handlers) PostPayment(w http.ResponseWriter, req *http.Request, data *t
 	return &types.PostPaymentResponse{Id: paymentId}, nil
 }
 
-func (h *Handlers) PatchPayment(w http.ResponseWriter, req *http.Request, data *types.PatchPaymentRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchPaymentResponse, error) {
+func (h *Handlers) PatchPayment(w http.ResponseWriter, req *http.Request, data *types.PatchPaymentRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchPaymentResponse, error) {
 	paymentDetails, err := json.Marshal(data.GetPayment().GetDetails())
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -44,7 +45,7 @@ func (h *Handlers) PatchPayment(w http.ResponseWriter, req *http.Request, data *
 	return &types.PatchPaymentResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetPayments(w http.ResponseWriter, req *http.Request, data *types.GetPaymentsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetPaymentsResponse, error) {
+func (h *Handlers) GetPayments(w http.ResponseWriter, req *http.Request, data *types.GetPaymentsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetPaymentsResponse, error) {
 	var payments []*types.IPayment
 	err := tx.QueryRows(&payments, `SELECT * FROM dbview_schema.enabled_payments`)
 	if err != nil {
@@ -54,7 +55,7 @@ func (h *Handlers) GetPayments(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetPaymentsResponse{Payments: payments}, nil
 }
 
-func (h *Handlers) GetPaymentById(w http.ResponseWriter, req *http.Request, data *types.GetPaymentByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetPaymentByIdResponse, error) {
+func (h *Handlers) GetPaymentById(w http.ResponseWriter, req *http.Request, data *types.GetPaymentByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetPaymentByIdResponse, error) {
 	var payments []*types.IPayment
 
 	err := tx.QueryRows(&payments, `
@@ -72,7 +73,7 @@ func (h *Handlers) GetPaymentById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetPaymentByIdResponse{Payment: payments[0]}, nil
 }
 
-func (h *Handlers) DeletePayment(w http.ResponseWriter, req *http.Request, data *types.DeletePaymentRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeletePaymentResponse, error) {
+func (h *Handlers) DeletePayment(w http.ResponseWriter, req *http.Request, data *types.DeletePaymentRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeletePaymentResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.payments
 		WHERE id = $1
@@ -84,7 +85,7 @@ func (h *Handlers) DeletePayment(w http.ResponseWriter, req *http.Request, data 
 	return &types.DeletePaymentResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisablePayment(w http.ResponseWriter, req *http.Request, data *types.DisablePaymentRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DisablePaymentResponse, error) {
+func (h *Handlers) DisablePayment(w http.ResponseWriter, req *http.Request, data *types.DisablePaymentRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DisablePaymentResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.payments
 		SET enabled = false, updated_on = $2, updated_sub = $3

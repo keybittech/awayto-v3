@@ -5,8 +5,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/mocks"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 
 	"github.com/golang/mock/gomock"
 	"github.com/stretchr/testify/assert"
@@ -14,16 +14,16 @@ import (
 
 type HandlersTestSetup struct {
 	MockCtrl           *gomock.Controller
-	MockAi             *mocks.MockIAi
-	MockDatabase       *mocks.MockIDatabase
-	MockDatabaseClient *mocks.MockIDatabaseClient
-	MockDatabaseTx     *mocks.MockIDatabaseTx
-	MockDatabaseRows   *mocks.MockIRows
-	MockDatabaseRow    *mocks.MockIRow
-	MockRedis          *mocks.MockIRedis
-	MockRedisClient    *mocks.MockIRedisClient
-	MockKeycloak       *mocks.MockIKeycloak
-	MockSocket         *mocks.MockISocket
+	MockAi             *interfaces.MockIAi
+	MockDatabase       *interfaces.MockIDatabase
+	MockDatabaseClient *interfaces.MockIDatabaseClient
+	MockDatabaseTx     *interfaces.MockIDatabaseTx
+	MockDatabaseRows   *interfaces.MockIRows
+	MockDatabaseRow    *interfaces.MockIRow
+	MockRedis          *interfaces.MockIRedis
+	MockRedisClient    *interfaces.MockIRedisClient
+	MockKeycloak       *interfaces.MockIKeycloak
+	MockSocket         *interfaces.MockISocket
 	Handlers           *Handlers
 	UserSession        *types.UserSession
 }
@@ -31,21 +31,21 @@ type HandlersTestSetup struct {
 func SetupHandlersTest(t *testing.T) *HandlersTestSetup {
 	ctrl := gomock.NewController(t)
 
-	mockAi := mocks.NewMockIAi(ctrl)
+	mockAi := interfaces.NewMockIAi(ctrl)
 
-	mockDatabase := mocks.NewMockIDatabase(ctrl)
-	mockDatabaseClient := mocks.NewMockIDatabaseClient(ctrl)
-	mockDatabaseTx := mocks.NewMockIDatabaseTx(ctrl)
+	mockDatabase := interfaces.NewMockIDatabase(ctrl)
+	mockDatabaseClient := interfaces.NewMockIDatabaseClient(ctrl)
+	mockDatabaseTx := interfaces.NewMockIDatabaseTx(ctrl)
 
-	mockDatabaseRows := mocks.NewMockIRows(ctrl)
-	mockDatabaseRow := mocks.NewMockIRow(ctrl)
+	mockDatabaseRows := interfaces.NewMockIRows(ctrl)
+	mockDatabaseRow := interfaces.NewMockIRow(ctrl)
 
-	mockRedis := mocks.NewMockIRedis(ctrl)
-	mockRedisClient := mocks.NewMockIRedisClient(ctrl)
+	mockRedis := interfaces.NewMockIRedis(ctrl)
+	mockRedisClient := interfaces.NewMockIRedisClient(ctrl)
 
-	mockKeycloak := mocks.NewMockIKeycloak(ctrl)
+	mockKeycloak := interfaces.NewMockIKeycloak(ctrl)
 
-	mockSock := mocks.NewMockISocket(ctrl)
+	mockSock := interfaces.NewMockISocket(ctrl)
 
 	handlers := &Handlers{
 		Ai:       mockAi,
@@ -86,7 +86,7 @@ func (hts *HandlersTestSetup) TearDown() {
 type HandlersTestCase struct {
 	name        string
 	setupMocks  func(*HandlersTestSetup)
-	handlerFunc func(h *Handlers, w http.ResponseWriter, r *http.Request, session *types.UserSession, tx *mocks.MockIDatabaseTx) (interface{}, error)
+	handlerFunc func(h *Handlers, w http.ResponseWriter, r *http.Request, session *types.UserSession, tx *interfaces.MockIDatabaseTx) (interface{}, error)
 	expectedRes interface{}
 	expectedErr error
 }

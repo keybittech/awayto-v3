@@ -1,4 +1,4 @@
-package clients
+package api
 
 import (
 	"testing"
@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func SetupClientsTest(t *testing.T) *interfaces.DefaultTestSetup {
+func SetupHandlersTest(t *testing.T) *interfaces.DefaultTestSetup {
 	ctrl := gomock.NewController(t)
 
 	mockAi := interfaces.NewMockIAi(ctrl)
@@ -42,27 +42,19 @@ func SetupClientsTest(t *testing.T) *interfaces.DefaultTestSetup {
 	}
 }
 
-type ClientsTestCase struct {
-	name        string
-	setupMocks  func(*interfaces.DefaultTestSetup)
-	params      []interface{}
-	handlerFunc func(...interface{}) (interface{}, interface{}, error)
-	expectedRes interface{}
-	expectedErr error
-}
-
-func RunClientsTests(t *testing.T, tests []ClientsTestCase) {
+func RunHandlerTests(t *testing.T, tests []interfaces.DefaultTestCase) {
 	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			hts := SetupClientsTest(t)
+
+		t.Run(tt.Name, func(t *testing.T) {
+			hts := SetupHandlersTest(t)
 			defer hts.TearDown()
 
-			tt.setupMocks(hts)
+			tt.SetupMocks(hts)
 
-			res1, res2, err := tt.handlerFunc(tt.params...)
+			res, err := tt.SystemFunc()
 
-			assert.Equal(t, tt.expectedErr, err)
-			assert.Equal(t, tt.expectedRes, []interface{}{res1, res2})
+			assert.Equal(t, tt.ExpectedErr, err)
+			assert.Equal(t, tt.ExpectedRes, res)
 		})
 	}
 }

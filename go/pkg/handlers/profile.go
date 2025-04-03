@@ -5,12 +5,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostUserProfile(w http.ResponseWriter, req *http.Request, data *types.PostUserProfileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostUserProfileResponse, error) {
+func (h *Handlers) PostUserProfile(w http.ResponseWriter, req *http.Request, data *types.PostUserProfileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostUserProfileResponse, error) {
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_on, created_sub, ip_address, timezone)
 		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid, $9, $10)
@@ -23,7 +23,7 @@ func (h *Handlers) PostUserProfile(w http.ResponseWriter, req *http.Request, dat
 	return &types.PostUserProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) PatchUserProfile(w http.ResponseWriter, req *http.Request, data *types.PatchUserProfileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchUserProfileResponse, error) {
+func (h *Handlers) PatchUserProfile(w http.ResponseWriter, req *http.Request, data *types.PatchUserProfileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchUserProfileResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.users
 		SET first_name = $2, last_name = $3, email = $4, image = $5, updated_sub = $1, updated_on = $6
@@ -43,7 +43,7 @@ func (h *Handlers) PatchUserProfile(w http.ResponseWriter, req *http.Request, da
 	return &types.PatchUserProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetUserProfileDetailsResponse, error) {
+func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetUserProfileDetailsResponse, error) {
 	var userProfiles []*types.IUserProfile
 
 	err := tx.QueryRows(&userProfiles, `
@@ -99,7 +99,7 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 	return &types.GetUserProfileDetailsResponse{UserProfile: userProfile}, nil
 }
 
-func (h *Handlers) GetUserProfileDetailsBySub(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsBySubRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetUserProfileDetailsBySubResponse, error) {
+func (h *Handlers) GetUserProfileDetailsBySub(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsBySubRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetUserProfileDetailsBySubResponse, error) {
 
 	var userProfiles []*types.IUserProfile
 
@@ -120,7 +120,7 @@ func (h *Handlers) GetUserProfileDetailsBySub(w http.ResponseWriter, req *http.R
 	return &types.GetUserProfileDetailsBySubResponse{UserProfile: userProfile}, nil
 }
 
-func (h *Handlers) GetUserProfileDetailsById(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetUserProfileDetailsByIdResponse, error) {
+func (h *Handlers) GetUserProfileDetailsById(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetUserProfileDetailsByIdResponse, error) {
 	var userProfiles []*types.IUserProfile
 
 	err := tx.QueryRows(&userProfiles, `
@@ -141,7 +141,7 @@ func (h *Handlers) GetUserProfileDetailsById(w http.ResponseWriter, req *http.Re
 	return &types.GetUserProfileDetailsByIdResponse{UserProfile: userProfile}, nil
 }
 
-func (h *Handlers) DisableUserProfile(w http.ResponseWriter, req *http.Request, data *types.DisableUserProfileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DisableUserProfileResponse, error) {
+func (h *Handlers) DisableUserProfile(w http.ResponseWriter, req *http.Request, data *types.DisableUserProfileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DisableUserProfileResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.users
 		SET enabled = false, updated_on = $2, updated_sub = $3
@@ -154,7 +154,7 @@ func (h *Handlers) DisableUserProfile(w http.ResponseWriter, req *http.Request, 
 	return &types.DisableUserProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) ActivateProfile(w http.ResponseWriter, req *http.Request, data *types.ActivateProfileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.ActivateProfileResponse, error) {
+func (h *Handlers) ActivateProfile(w http.ResponseWriter, req *http.Request, data *types.ActivateProfileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.ActivateProfileResponse, error) {
 	err := tx.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -174,7 +174,7 @@ func (h *Handlers) ActivateProfile(w http.ResponseWriter, req *http.Request, dat
 	return &types.ActivateProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) DeactivateProfile(w http.ResponseWriter, req *http.Request, data *types.DeactivateProfileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeactivateProfileResponse, error) {
+func (h *Handlers) DeactivateProfile(w http.ResponseWriter, req *http.Request, data *types.DeactivateProfileRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeactivateProfileResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.users
 		SET active = false, updated_on = $2, updated_sub = $1

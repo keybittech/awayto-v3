@@ -1,13 +1,14 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"net/http"
+
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"net/http"
 )
 
-func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetLookupsResponse, error) {
+func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetLookupsResponse, error) {
 	var budgets []*types.ILookup
 	var timelines []*types.ILookup
 	var timeUnits []*types.ITimeUnit

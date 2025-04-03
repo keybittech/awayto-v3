@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -15,10 +16,10 @@ import (
 )
 
 type Redis struct {
-	RedisClient IRedisClient
+	RedisClient interfaces.IRedisClient
 }
 
-func InitRedis() IRedis {
+func InitRedis() interfaces.IRedis {
 
 	redisPass, err := util.EnvFile(os.Getenv("REDIS_PASS_FILE"))
 	if err != nil {
@@ -79,7 +80,7 @@ func SocketIdTopicsKey(socketId string) (string, error) {
 	return "socket_id:" + socketId + ":topics", nil
 }
 
-func (r *Redis) Client() IRedisClient {
+func (r *Redis) Client() interfaces.IRedisClient {
 	return r.RedisClient
 }
 

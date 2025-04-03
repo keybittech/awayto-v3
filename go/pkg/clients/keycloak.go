@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	_ "github.com/lib/pq"
@@ -78,7 +79,7 @@ var (
 	KeycloakPublicKey *rsa.PublicKey
 )
 
-func InitKeycloak() IKeycloak {
+func InitKeycloak() interfaces.IKeycloak {
 	cmds := make(chan KeycloakCommand)
 
 	kc := &KeycloakClient{
@@ -238,17 +239,9 @@ func InitKeycloak() IKeycloak {
 	return kcc
 }
 
-func (k *Keycloak) Chan() chan<- KeycloakCommand {
-	return k.Ch
-}
-
-func (k *Keycloak) Client() *KeycloakClient {
-	return k.C
-}
-
 func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
 	kcReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty: UpdateUserKeycloakCommand,
 		Params: KeycloakParams{
 			UserId:    id,
@@ -269,7 +262,7 @@ func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
 
 func (k *Keycloak) GetGroupAdminRoles() []*types.KeycloakRole {
 	kcGroupAdminRolesChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        GetGroupAdminRolesKeycloakCommand,
 		ReplyChan: kcGroupAdminRolesChan,
 	}
@@ -280,7 +273,7 @@ func (k *Keycloak) GetGroupAdminRoles() []*types.KeycloakRole {
 
 func (k *Keycloak) GetGroupSiteRoles(groupId string) []*types.ClientRoleMappingRole {
 	groupRoleMappingsReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        GetGroupRoleMappingsKeycloakCommand,
 		Params:    KeycloakParams{GroupId: groupId},
 		ReplyChan: groupRoleMappingsReplyChan,
@@ -293,7 +286,7 @@ func (k *Keycloak) GetGroupSiteRoles(groupId string) []*types.ClientRoleMappingR
 
 func (k *Keycloak) CreateGroup(name string) (*types.KeycloakGroup, error) {
 	kcCreateGroupReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        CreateGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupName: name},
 		ReplyChan: kcCreateGroupReplyChan,
@@ -310,7 +303,7 @@ func (k *Keycloak) CreateGroup(name string) (*types.KeycloakGroup, error) {
 
 func (k *Keycloak) GetGroup(id string) (*types.KeycloakGroup, error) {
 	kcGetGroupChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        GetGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: id},
 		ReplyChan: kcGetGroupChan,
@@ -327,7 +320,7 @@ func (k *Keycloak) GetGroup(id string) (*types.KeycloakGroup, error) {
 
 func (k *Keycloak) GetGroupByName(name string) ([]*types.KeycloakGroup, error) {
 	groupByNameReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        GetGroupByNameKeycloakCommand,
 		Params:    KeycloakParams{GroupName: name},
 		ReplyChan: groupByNameReplyChan,
@@ -340,7 +333,7 @@ func (k *Keycloak) GetGroupByName(name string) ([]*types.KeycloakGroup, error) {
 
 func (k *Keycloak) GetGroupSubgroups(groupId string) ([]*types.KeycloakGroup, error) {
 	subgroupsReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        GetGroupSubgroupsKeycloakCommand,
 		Params:    KeycloakParams{GroupId: groupId},
 		ReplyChan: subgroupsReplyChan,
@@ -353,7 +346,7 @@ func (k *Keycloak) GetGroupSubgroups(groupId string) ([]*types.KeycloakGroup, er
 
 func (k *Keycloak) DeleteGroup(id string) error {
 	deleteReply := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        DeleteGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: id},
 		ReplyChan: deleteReply,
@@ -369,7 +362,7 @@ func (k *Keycloak) DeleteGroup(id string) error {
 
 func (k *Keycloak) UpdateGroup(id, name string) error {
 	kcUpdateSubgroupChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        UpdateGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: id, GroupName: name},
 		ReplyChan: kcUpdateSubgroupChan,
@@ -386,7 +379,7 @@ func (k *Keycloak) UpdateGroup(id, name string) error {
 
 func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*types.KeycloakGroup, error) {
 	kcCreateSubgroupChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        CreateSubgroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: groupExternalId, GroupName: subGroupName},
 		ReplyChan: kcCreateSubgroupChan,
@@ -398,7 +391,7 @@ func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*t
 
 	if kcCreateSubgroup.Error != nil && strings.Contains(kcCreateSubgroup.Error.Error(), "exists") {
 		groupSubgroupsReplyChan := make(chan KeycloakResponse)
-		k.Chan() <- KeycloakCommand{
+		k.Ch <- KeycloakCommand{
 			Ty:        GetGroupSubgroupsKeycloakCommand,
 			Params:    KeycloakParams{GroupId: groupExternalId},
 			ReplyChan: groupSubgroupsReplyChan,
@@ -426,7 +419,7 @@ func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*t
 
 func (k *Keycloak) AddRolesToGroup(id string, roles []*types.KeycloakRole) error {
 	kcAddGroupRolesReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        AddRolesToGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: id, Roles: roles},
 		ReplyChan: kcAddGroupRolesReplyChan,
@@ -443,7 +436,7 @@ func (k *Keycloak) AddRolesToGroup(id string, roles []*types.KeycloakRole) error
 
 func (k *Keycloak) DeleteRolesFromGroup(id string, roles []*types.KeycloakRole) error {
 	kcDelGroupRoleReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        DeleteRolesFromGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: id, Roles: roles},
 		ReplyChan: kcDelGroupRoleReplyChan,
@@ -459,7 +452,7 @@ func (k *Keycloak) DeleteRolesFromGroup(id string, roles []*types.KeycloakRole) 
 
 func (k *Keycloak) AddUserToGroup(userId, groupId string) error {
 	kcAddUserToGroupReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        AddUserToGroupKeycloakCommand,
 		Params:    KeycloakParams{UserId: userId, GroupId: groupId},
 		ReplyChan: kcAddUserToGroupReplyChan,
@@ -475,7 +468,7 @@ func (k *Keycloak) AddUserToGroup(userId, groupId string) error {
 
 func (k *Keycloak) DeleteUserFromGroup(userId, groupId string) error {
 	deleteUserReplyChan := make(chan KeycloakResponse)
-	k.Chan() <- KeycloakCommand{
+	k.Ch <- KeycloakCommand{
 		Ty:        DeleteUserFromGroupKeycloakCommand,
 		Params:    KeycloakParams{GroupId: groupId, UserId: userId},
 		ReplyChan: deleteUserReplyChan,
