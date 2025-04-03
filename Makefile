@@ -32,12 +32,12 @@ JAVA_THEMES_DIR=java/themes
 LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
 HOST_LOCAL_DIR=sites/${PROJECT_PREFIX}
-GO_GEN_DIR=$(GO_SRC)/pkg/types
-GO_API_DIR=$(GO_SRC)/pkg/api
-GO_CLIENTS_DIR=$(GO_SRC)/pkg/clients
-GO_HANDLERS_DIR=$(GO_SRC)/pkg/handlers
-GO_INTERFACES_DIR=$(GO_SRC)/pkg/interfaces
-GO_UTIL_DIR=$(GO_SRC)/pkg/util
+GO_GEN_DIR=go/pkg/types
+GO_API_DIR=go/pkg/api
+GO_CLIENTS_DIR=go/pkg/clients
+GO_HANDLERS_DIR=go/pkg/handlers
+GO_INTERFACES_DIR=go/pkg/interfaces
+GO_UTIL_DIR=go/pkg/util
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
 DEMOS_DIR=demos/final
 
@@ -270,10 +270,10 @@ go_test_main: build $(GO_TARGET)
 .PHONY: go_test_pkg
 go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
+	go test -C  $(GO_UTIL_DIR) -v ./...
 	go test -C  $(GO_API_DIR) -v ./...
 	go test -C  $(GO_CLIENTS_DIR) -v ./...
 	go test -C  $(GO_HANDLERS_DIR) -v ./...
-	go test -C  $(GO_UTIL_DIR) -v ./...
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
