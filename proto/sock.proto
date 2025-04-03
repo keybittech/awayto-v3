@@ -46,6 +46,15 @@ enum SocketActions {
   SET_BOX = 25;
 }
 
+message Subscriber {
+  string userSub = 1;
+  string groupId = 2;
+  string roles = 3;
+  string connectionIds = 4;
+  map<string, string> tickets = 5;
+  map<string, string> subscribedTopics = 6;
+}
+
 message SocketParticipant {
   string scid = 1;
   repeated string cids = 2;
@@ -54,6 +63,16 @@ message SocketParticipant {
   string color = 5;
   bool exists = 6;
   bool online = 7;
+}
+
+message SocketMessage {
+  SocketActions action = 1;
+  bool store = 2;
+  bool historical = 3;
+  string topic = 4;
+  string sender = 5;
+  string payload = 6;
+  string timestamp = 7;
 }
 
 message GetSocketTicketRequest {}

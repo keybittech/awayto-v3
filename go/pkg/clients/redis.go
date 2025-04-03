@@ -18,8 +18,6 @@ type Redis struct {
 	RedisClient IRedisClient
 }
 
-type SocketParticipants map[string]*types.SocketParticipant
-
 func InitRedis() IRedis {
 
 	redisPass, err := util.EnvFile(os.Getenv("REDIS_PASS_FILE"))
@@ -61,6 +59,7 @@ func InitRedis() IRedis {
 	}
 	r.InitKeys()
 
+	println("Redis Init")
 	return r
 }
 
@@ -185,7 +184,7 @@ func (r *Redis) RemoveTopicFromConnection(socketId, topic string) error {
 	return nil
 }
 
-func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (SocketParticipants, string, error) {
+func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (map[string]*types.SocketParticipant, string, error) {
 	participantTopicsKey, err := ParticipantTopicsKey(topic)
 	if err != nil {
 		return nil, "", util.ErrCheck(err)
@@ -196,7 +195,7 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targets
 		return nil, "", util.ErrCheck(err)
 	}
 
-	sps := make(SocketParticipants, len(topicSocketIds))
+	sps := make(map[string]*types.SocketParticipant, len(topicSocketIds))
 
 	var participantTargets strings.Builder
 

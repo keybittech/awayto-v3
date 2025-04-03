@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data *types.PostGroupFileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFileResponse, error) {
+func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data *types.PostGroupFileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFileResponse, error) {
 	var groupFileId string
 
 	err := tx.QueryRow(`
@@ -28,7 +28,7 @@ func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data 
 	return &types.PostGroupFileResponse{Id: groupFileId}, nil
 }
 
-func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupFileResponse, error) {
+func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupFileResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.group_files
 		SET group_id = $2, file_id = $3, updated_sub = $4, updated_on = $5
@@ -41,7 +41,7 @@ func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupFileResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data *types.GetGroupFilesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFilesResponse, error) {
+func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data *types.GetGroupFilesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFilesResponse, error) {
 	var groupFiles []*types.IGroupFile
 
 	err := tx.QueryRows(&groupFiles, `
@@ -55,7 +55,7 @@ func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupFilesResponse{Files: groupFiles}, nil
 }
 
-func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFileByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFileByIdResponse, error) {
+func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFileByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFileByIdResponse, error) {
 	var groupFiles []*types.IGroupFile
 
 	err := tx.QueryRows(&groupFiles, `
@@ -69,7 +69,7 @@ func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupFileByIdResponse{File: groupFiles[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupFile(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFileRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupFileResponse, error) {
+func (h *Handlers) DeleteGroupFile(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFileRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupFileResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.group_files
 		WHERE id = $1

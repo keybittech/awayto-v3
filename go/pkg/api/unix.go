@@ -12,6 +12,7 @@ import (
 	"reflect"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
@@ -41,7 +42,7 @@ func (a *API) InitUnixServer(unixPath string) {
 func (a *API) HandleUnixConnection(conn net.Conn) {
 	defer conn.Close()
 
-	var authEvent clients.AuthEvent
+	var authEvent *types.AuthEvent
 
 	scanner := bufio.NewScanner(conn)
 
@@ -61,7 +62,7 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 			return
 		}
 
-		session := &clients.UserSession{
+		session := &types.UserSession{
 			UserSub:   authEvent.UserId,
 			UserEmail: authEvent.Email,
 			AnonIp:    util.AnonIp(authEvent.IpAddress),

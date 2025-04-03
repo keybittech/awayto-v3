@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -95,8 +94,8 @@ var socketEvents *SocketEvents
 
 var ticket, topic, connId, socketId string
 var targets string
-var subscriber *clients.Subscriber
-var session *clients.UserSession
+var subscriber *types.Subscriber
+var session *types.UserSession
 
 func setupSockServer() {
 	var err error
@@ -113,7 +112,7 @@ func setupSockServer() {
 		return
 	}
 
-	session = &clients.UserSession{
+	session = &types.UserSession{
 		UserSub:                 subscriber.UserSub,
 		GroupId:                 "group-id",
 		AvailableUserGroupRoles: []string{"role1"},
@@ -248,13 +247,18 @@ func BenchmarkSocketSendMessage(b *testing.B) {
 
 	mergedParticipants[connId] = participant
 
+	mergedParticipantsBytes, err := json.Marshal(mergedParticipants)
+	if err != nil {
+		b.Fatal(err)
+	}
+
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendMessage(&util.SocketMessage{
+		api.Handlers.Socket.SendMessage(&types.SocketMessage{
 			Action:  6,
 			Sender:  connId,
 			Topic:   topic,
-			Payload: mergedParticipants,
+			Payload: string(mergedParticipantsBytes),
 		}, targets)
 	}
 }
@@ -369,7 +373,7 @@ func BenchmarkSocketHandleUnsub(b *testing.B) {
 func BenchmarkSocketGenerateMessage(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		util.GenerateMessage(5, &util.SocketMessage{})
+		util.GenerateMessage(5, &types.SocketMessage{})
 	}
 }
 

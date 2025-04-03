@@ -25,6 +25,8 @@ type SocketServer struct {
 var (
 	socketPingTicker         *time.Ticker
 	pings                    map[string]time.Time
+	PING                     = "PING"
+	PONG                     = "PONG"
 	sockLimitMu, sockLimited = NewRateLimit()
 	sockHandlerLimit         = rate.Limit(30)
 	sockHandlerBurst         = 10
@@ -82,7 +84,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 }
 
 func (a *API) PingPong(connId string) error {
-	messageBytes := util.GenerateMessage(util.DefaultPadding, &util.SocketMessage{Payload: "PING"})
+	messageBytes := util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
 	if err := a.Handlers.Socket.SendMessageBytes(messageBytes, connId); err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		return err
@@ -90,7 +92,7 @@ func (a *API) PingPong(connId string) error {
 	return nil
 }
 
-func (a *API) HandleSockConnection(subscriber *clients.Subscriber, conn net.Conn, ticket string) {
+func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, ticket string) {
 
 	defer conn.Close()
 
@@ -138,7 +140,7 @@ func (a *API) HandleSockConnection(subscriber *clients.Subscriber, conn net.Conn
 		}
 
 		for topic, targets := range topics {
-			a.Handlers.Socket.SendMessage(&util.SocketMessage{
+			a.Handlers.Socket.SendMessage(&types.SocketMessage{
 				Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 				Topic:   topic,
 				Payload: socketId,
@@ -196,13 +198,13 @@ func (a *API) HandleSockConnection(subscriber *clients.Subscriber, conn net.Conn
 	}
 }
 
-func (a *API) SocketRequest(subscriber *clients.Subscriber, data []byte, connId, socketId string) bool {
+func (a *API) SocketRequest(subscriber *types.Subscriber, data []byte, connId, socketId string) bool {
 	socketMessage := a.SocketMessageReceiver(subscriber.UserSub, data)
 	if socketMessage == nil {
 		return false
 	}
 
-	if socketMessage.Payload == "PONG" {
+	if socketMessage.Payload == PONG {
 		pings[connId] = time.Now()
 		return true
 	}
@@ -211,8 +213,8 @@ func (a *API) SocketRequest(subscriber *clients.Subscriber, data []byte, connId,
 	return true
 }
 
-func (a *API) SocketMessageReceiver(userSub string, data []byte) *util.SocketMessage {
-	var socketMessage util.SocketMessage
+func (a *API) SocketMessageReceiver(userSub string, data []byte) *types.SocketMessage {
+	var socketMessage types.SocketMessage
 
 	messageParams := make([]string, 7)
 
@@ -251,7 +253,7 @@ func (a *API) SocketMessageReceiver(userSub string, data []byte) *util.SocketMes
 	return &socketMessage
 }
 
-func (a *API) SocketMessageRouter(sm *util.SocketMessage, subscriber *clients.Subscriber, connId, socketId string) {
+func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Subscriber, connId, socketId string) {
 	var err error
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
@@ -310,7 +312,7 @@ func (a *API) SocketMessageRouter(sm *util.SocketMessage, subscriber *clients.Su
 		// Setup server client with new subscription to topic including any existing connections
 		a.Handlers.Socket.AddSubscribedTopic(subscriber.UserSub, sm.Topic, cachedParticipantTargets)
 
-		a.Handlers.Socket.SendMessage(&util.SocketMessage{
+		a.Handlers.Socket.SendMessage(&types.SocketMessage{
 			Action: types.SocketActions_SUBSCRIBE,
 			Topic:  sm.Topic,
 		}, connId)
@@ -323,7 +325,7 @@ func (a *API) SocketMessageRouter(sm *util.SocketMessage, subscriber *clients.Su
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(&util.SocketMessage{
+		a.Handlers.Socket.SendMessage(&types.SocketMessage{
 			Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 			Topic:   sm.Topic,
 			Payload: socketId,
@@ -339,7 +341,7 @@ func (a *API) SocketMessageRouter(sm *util.SocketMessage, subscriber *clients.Su
 			return
 		}
 
-		topicMessageParticipants := make(clients.SocketParticipants)
+		topicMessageParticipants := make(map[string]*types.SocketParticipant)
 
 		err = a.Handlers.Database.TxExec(func(tx clients.IDatabaseTx) error {
 			var txErr error
@@ -372,16 +374,22 @@ func (a *API) SocketMessageRouter(sm *util.SocketMessage, subscriber *clients.Su
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(&util.SocketMessage{
+		cachedParticipantsBytes, err := json.Marshal(cachedParticipants)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
+
+		a.Handlers.Socket.SendMessage(&types.SocketMessage{
 			Action:  types.SocketActions_LOAD_SUBSCRIBERS,
 			Sender:  connId,
 			Topic:   sm.Topic,
-			Payload: cachedParticipants,
+			Payload: string(cachedParticipantsBytes),
 		}, cachedParticipantTargets)
 
 	case types.SocketActions_LOAD_MESSAGES:
 		var pageInfo map[string]int
-		if err := json.Unmarshal([]byte(sm.Payload.(string)), &pageInfo); err != nil {
+		if err := json.Unmarshal([]byte(sm.Payload), &pageInfo); err != nil {
 			util.ErrorLog.Println(err)
 			return
 		}

@@ -38,8 +38,6 @@ func InitAi() IAi {
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	println("got key")
-
 	var oaiClient *openai.Client
 
 	if apiKey != "" {
@@ -51,6 +49,8 @@ func InitAi() IAi {
 		Model:   openai.GPT3Dot5Turbo,
 		Prompts: aiPrompts,
 	}
+
+	println("Ai Init")
 
 	return aic
 }

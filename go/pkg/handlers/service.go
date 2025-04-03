@@ -13,7 +13,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *types.PostServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostServiceResponse, error) {
+func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *types.PostServiceRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostServiceResponse, error) {
 	service := data.GetService()
 
 	err := tx.QueryRow(`
@@ -40,7 +40,7 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 	return &types.PostServiceResponse{Id: service.Id}, nil
 }
 
-func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchServiceResponse, error) {
+func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchServiceResponse, error) {
 	service := data.GetService()
 
 	// insert new tiers, re-enabling if conflicting
@@ -130,7 +130,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	return &types.PatchServiceResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *types.GetServicesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServicesResponse, error) {
+func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *types.GetServicesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetServicesResponse, error) {
 	var services []*types.IService
 
 	err := tx.QueryRows(&services, `
@@ -145,7 +145,7 @@ func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetServicesResponse{Services: services}, nil
 }
 
-func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data *types.GetServiceByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetServiceByIdResponse, error) {
+func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data *types.GetServiceByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetServiceByIdResponse, error) {
 	service := &types.IService{}
 
 	var tierBytes []byte
@@ -168,7 +168,7 @@ func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetServiceByIdResponse{Service: service}, nil
 }
 
-func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteServiceResponse, error) {
+func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
 	_, err := tx.Exec(`
@@ -188,7 +188,7 @@ func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data 
 	return &types.DeleteServiceResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableService(w http.ResponseWriter, req *http.Request, data *types.DisableServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableServiceResponse, error) {
+func (h *Handlers) DisableService(w http.ResponseWriter, req *http.Request, data *types.DisableServiceRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DisableServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
 	_, err := tx.Exec(`

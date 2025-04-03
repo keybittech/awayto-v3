@@ -45,7 +45,7 @@ import (
 // For these reasons, the bracket modification process is spread across different focused functions, to help
 // ease the task of debugging and general understanding.
 
-func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *types.PostScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostScheduleResponse, error) {
+func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *types.PostScheduleRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostScheduleResponse, error) {
 	var scheduleId string
 
 	var startTime, endTime *string
@@ -89,7 +89,7 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 	return &types.PostScheduleResponse{Id: scheduleId}, nil
 }
 
-func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request, data *types.PostScheduleBracketsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostScheduleBracketsResponse, error) {
+func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request, data *types.PostScheduleBracketsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostScheduleBracketsResponse, error) {
 
 	existingBracketIds := make([]string, 0)
 	existingBrackets := make(map[string]*types.IScheduleBracket)
@@ -130,7 +130,7 @@ func (h *Handlers) PostScheduleBrackets(w http.ResponseWriter, req *http.Request
 	return &types.PostScheduleBracketsResponse{Success: true}, nil
 }
 
-func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchScheduleResponse, error) {
+func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchScheduleRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchScheduleResponse, error) {
 	schedule := data.GetSchedule()
 
 	var startTime, endTime *string
@@ -155,7 +155,7 @@ func (h *Handlers) PatchSchedule(w http.ResponseWriter, req *http.Request, data 
 	return &types.PatchScheduleResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetSchedules(w http.ResponseWriter, req *http.Request, data *types.GetSchedulesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetSchedulesResponse, error) {
+func (h *Handlers) GetSchedules(w http.ResponseWriter, req *http.Request, data *types.GetSchedulesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetSchedulesResponse, error) {
 	var schedules []*types.ISchedule
 
 	err := tx.QueryRows(&schedules, `
@@ -171,7 +171,7 @@ func (h *Handlers) GetSchedules(w http.ResponseWriter, req *http.Request, data *
 	return &types.GetSchedulesResponse{Schedules: schedules}, nil
 }
 
-func (h *Handlers) GetScheduleById(w http.ResponseWriter, req *http.Request, data *types.GetScheduleByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetScheduleByIdResponse, error) {
+func (h *Handlers) GetScheduleById(w http.ResponseWriter, req *http.Request, data *types.GetScheduleByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetScheduleByIdResponse, error) {
 	var schedules []*types.ISchedule
 
 	err := tx.QueryRows(&schedules, `
@@ -190,7 +190,7 @@ func (h *Handlers) GetScheduleById(w http.ResponseWriter, req *http.Request, dat
 	return &types.GetScheduleByIdResponse{Schedule: schedules[0]}, nil
 }
 
-func (h *Handlers) DeleteSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteScheduleResponse, error) {
+func (h *Handlers) DeleteSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteScheduleRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteScheduleResponse, error) {
 	for _, scheduleId := range strings.Split(data.GetIds(), ",") {
 		err := handleDeletedBrackets(scheduleId, []string{}, tx)
 		if err != nil {
@@ -239,7 +239,7 @@ func (h *Handlers) DeleteSchedule(w http.ResponseWriter, req *http.Request, data
 	return &types.DeleteScheduleResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableSchedule(w http.ResponseWriter, req *http.Request, data *types.DisableScheduleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableScheduleResponse, error) {
+func (h *Handlers) DisableSchedule(w http.ResponseWriter, req *http.Request, data *types.DisableScheduleRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DisableScheduleResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.schedules
 		SET enabled = false, updated_on = $2, updated_sub = $3
@@ -253,7 +253,7 @@ func (h *Handlers) DisableSchedule(w http.ResponseWriter, req *http.Request, dat
 	return &types.DisableScheduleResponse{Success: true}, nil
 }
 
-func (h *Handlers) HandleExistingBrackets(existingBracketIds []string, brackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *clients.UserSession) error {
+func (h *Handlers) HandleExistingBrackets(existingBracketIds []string, brackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *types.UserSession) error {
 
 	// Step 1. Get all existing slots and services ids
 
@@ -511,7 +511,7 @@ func (h *Handlers) HandleExistingBrackets(existingBracketIds []string, brackets 
 	return nil
 }
 
-func (h *Handlers) InsertNewBrackets(scheduleId string, newBrackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *clients.UserSession) error {
+func (h *Handlers) InsertNewBrackets(scheduleId string, newBrackets map[string]*types.IScheduleBracket, tx clients.IDatabaseTx, session *types.UserSession) error {
 	var slotsQuery strings.Builder
 	slotsQuery.WriteString(`
 		INSERT INTO dbtable_schema.schedule_bracket_slots

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func (h *Handlers) PostSiteFeedback(w http.ResponseWriter, req *http.Request, data *types.PostSiteFeedbackRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostSiteFeedbackResponse, error) {
+func (h *Handlers) PostSiteFeedback(w http.ResponseWriter, req *http.Request, data *types.PostSiteFeedbackRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostSiteFeedbackResponse, error) {
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.feedback (message, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3)

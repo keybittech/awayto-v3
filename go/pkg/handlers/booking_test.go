@@ -21,7 +21,7 @@ func TestBooking(t *testing.T) {
 			name: "PostBooking success",
 			setupMocks: func(hts *HandlersTestSetup) {
 				// Configure userSession
-				// mockSession := &clients.UserSession{UserSub: "user-sub"}
+				// mockSession := &types.UserSession{UserSub: "user-sub"}
 				// hts.MockRedis.EXPECT().ReqSession(gomock.Any()).Return(mockSession)
 
 				// Do DB Tx
@@ -43,7 +43,7 @@ func TestBooking(t *testing.T) {
 				// Commit TX
 				// hts.MockDatabaseTx.EXPECT().Commit().Return(nil)
 			},
-			handlerFunc: func(h *Handlers, w http.ResponseWriter, r *http.Request, session *clients.UserSession, tx *mocks.MockIDatabaseTx) (interface{}, error) {
+			handlerFunc: func(h *Handlers, w http.ResponseWriter, r *http.Request, session *types.UserSession, tx *mocks.MockIDatabaseTx) (interface{}, error) {
 				data := &types.PostBookingRequest{
 					Bookings: []*types.IBooking{
 						{

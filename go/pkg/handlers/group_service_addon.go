@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func (h *Handlers) PostGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceAddonRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupServiceAddonResponse, error) {
+func (h *Handlers) PostGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceAddonRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostGroupServiceAddonResponse, error) {
 	// TODO potentially undo the global uuid nature of uuid_service_addons table
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.uuid_service_addons (parent_uuid, service_addon_id, created_sub)
@@ -24,7 +24,7 @@ func (h *Handlers) PostGroupServiceAddon(w http.ResponseWriter, req *http.Reques
 	return &types.PostGroupServiceAddonResponse{}, nil
 }
 
-func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetGroupServiceAddonsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupServiceAddonsResponse, error) {
+func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetGroupServiceAddonsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupServiceAddonsResponse, error) {
 	var groupServiceAddons []*types.IGroupServiceAddon
 
 	err := tx.QueryRows(&groupServiceAddons, `
@@ -40,7 +40,7 @@ func (h *Handlers) GetGroupServiceAddons(w http.ResponseWriter, req *http.Reques
 	return &types.GetGroupServiceAddonsResponse{GroupServiceAddons: groupServiceAddons}, nil
 }
 
-func (h *Handlers) DeleteGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceAddonRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupServiceAddonResponse, error) {
+func (h *Handlers) DeleteGroupServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceAddonRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupServiceAddonResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.uuid_service_addons
 		WHERE parent_uuid = $1 AND service_addon_id = $2

@@ -1,17 +1,56 @@
 package api
 
 import (
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
+	"github.com/golang-jwt/jwt"
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
+
+func validateToken(token, timezone, anonIp string) (*types.UserSession, error) {
+	if strings.Contains(token, "Bearer") {
+		token = strings.Split(token, " ")[1]
+	}
+
+	parsedToken, err := jwt.ParseWithClaims(token, &clients.KeycloakUserWithClaims{}, func(t *jwt.Token) (interface{}, error) {
+		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
+			return nil, errors.New("bad signing method")
+		}
+		return clients.KeycloakPublicKey, nil
+	})
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	if !parsedToken.Valid {
+		return nil, util.ErrCheck(errors.New("invalid token during parse"))
+	}
+	if claims, ok := parsedToken.Claims.(*clients.KeycloakUserWithClaims); ok {
+		session := &types.UserSession{
+			UserSub:                 claims.Subject,
+			UserEmail:               claims.Email,
+			SubGroups:               claims.Groups,
+			AvailableUserGroupRoles: claims.ResourceAccess[claims.Azp].Roles,
+			ExpiresAt:               claims.ExpiresAt,
+			Timezone:                timezone,
+			AnonIp:                  anonIp,
+		}
+
+		return session, nil
+	}
+
+	return nil, nil
+}
 
 func SetForwardingHeadersAndServe(prox *httputil.ReverseProxy, w http.ResponseWriter, r *http.Request) {
 	r.Header.Add("X-Forwarded-For", r.RemoteAddr)
@@ -67,7 +106,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
 	mux.Handle("/login",
 		a.ValidateTokenMiddleware(1, 1)(
-			func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+			func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
 				http.SetCookie(w, &http.Cookie{
 					Name:     "valid_signature",
 					Value:    util.WriteSigned(util.LOGIN_SIGNATURE_NAME, fmt.Sprint(session.ExpiresAt)),
@@ -83,7 +122,7 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 
 	mux.Handle("/logout",
 		a.ValidateTokenMiddleware(1, 1)(
-			func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+			func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
 				http.SetCookie(w, &http.Cookie{
 					Name:     "valid_signature",
 					Value:    "",

@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"google.golang.org/protobuf/reflect/protoreflect"
@@ -31,7 +32,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 	if !handlerFunc.IsValid() {
 		log.Printf("Service Method Not Implemented: %s", serviceName)
-		return func(w http.ResponseWriter, r *http.Request, session *clients.UserSession) {
+		return func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
 			w.WriteHeader(501)
 			return
 		}
@@ -54,7 +55,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		responseHandler = ProtoResponseHandler
 	}
 
-	return func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 		var deferredError error
 		var pbVal reflect.Value
 

@@ -1,0 +1,23 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+message UserSession {
+  string userSub = 1;
+  string userEmail = 2;
+  int64 groupSessionVersion = 3;
+  string groupName = 4;
+  string groupId = 5;
+  string groupSub = 6;
+  string groupExternalId = 7;
+  bool groupAi = 8;
+  repeated string subGroups = 9;
+  string subGroupName = 10;
+  string subGroupExternalId = 11;
+  string roleName = 12;
+  string anonIp = 13;
+  repeated string availableUserGroupRoles = 14;
+  string timezone = 15;
+  int64 expiresAt = 16;
+}

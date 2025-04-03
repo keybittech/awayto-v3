@@ -14,7 +14,7 @@ import (
 	"github.com/google/uuid"
 )
 
-func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *types.PostGroupRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupResponse, error) {
+func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *types.PostGroupRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostGroupResponse, error) {
 	var undos []func()
 
 	defer func() {
@@ -159,7 +159,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.PostGroupResponse{Id: groupId}, nil
 }
 
-func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupResponse, error) {
+func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupResponse, error) {
 
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.groups
@@ -199,7 +199,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PatchGroupResponse{Success: true}, nil
 }
 
-func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.PatchGroupAssignmentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupAssignmentsResponse, error) {
+func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.PatchGroupAssignmentsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupAssignmentsResponse, error) {
 	assignmentsBytes, err := h.Redis.Client().Get(req.Context(), "group_role_assignments:"+session.GroupId).Bytes()
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -223,11 +223,11 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 				groupRoleActionNames = append(groupRoleActionNames, groupRoleActionSet.Name)
 			}
 
-			deletions := []clients.KeycloakRole{}
+			deletions := []*types.KeycloakRole{}
 
 			for _, sgRoleActionSet := range sgRoleActions.Actions {
 				if !slices.Contains(assignmentNames, sgRoleActionSet.Name) {
-					deletions = append(deletions, clients.KeycloakRole{
+					deletions = append(deletions, &types.KeycloakRole{
 						Id:   sgRoleActionSet.Id,
 						Name: sgRoleActionSet.Name,
 					})
@@ -241,7 +241,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 				}
 			}
 
-			additions := []clients.KeycloakRole{}
+			additions := []*types.KeycloakRole{}
 
 			for _, assignSet := range assignmentSet.Actions {
 				if !slices.Contains(groupRoleActionNames, assignSet.Name) {
@@ -253,7 +253,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 						}
 					}
 					if roleId != "" {
-						additions = append(additions, clients.KeycloakRole{
+						additions = append(additions, &types.KeycloakRole{
 							Id:   roleId,
 							Name: assignSet.Name,
 						})
@@ -274,7 +274,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 	return &types.PatchGroupAssignmentsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.GetGroupAssignmentsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupAssignmentsResponse, error) {
+func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.GetGroupAssignmentsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupAssignmentsResponse, error) {
 	kcGroup, err := h.Keycloak.GetGroup(session.GroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -288,7 +288,7 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 		return nil, util.ErrCheck(err)
 	}
 
-	for _, sg := range *subgroups {
+	for _, sg := range subgroups {
 		graaWI := &types.IGroupRoleAuthActions{
 			Actions: []*types.IGroupRoleAuthAction{},
 		}
@@ -325,7 +325,7 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 	return &types.GetGroupAssignmentsResponse{Assignments: assignmentsWithoutId}, nil
 }
 
-func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupResponse, error) {
+func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupResponse, error) {
 	for _, id := range data.GetIds() {
 		var groupExternalId string
 

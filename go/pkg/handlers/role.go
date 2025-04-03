@@ -8,7 +8,7 @@ import (
 	"strings"
 )
 
-func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostRoleResponse, error) {
+func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostRoleResponse, error) {
 	var role types.IRole
 	err := tx.QueryRow(`
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
@@ -50,7 +50,7 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 	return &types.PostRoleResponse{Id: role.Id}, nil
 }
 
-func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetRolesResponse, error) {
+func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetRolesResponse, error) {
 	var roles []*types.IRole
 	err := tx.QueryRows(&roles, `
 		SELECT eur.id, er.name, eur."createdOn" 
@@ -66,7 +66,7 @@ func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *type
 	return &types.GetRolesResponse{Roles: roles}, nil
 }
 
-func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetRoleByIdResponse, error) {
+func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetRoleByIdResponse, error) {
 	var role types.IRole
 	err := tx.QueryRow(`
 		SELECT * FROM dbview_schema.enabled_roles
@@ -79,7 +79,7 @@ func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetRoleByIdResponse{Role: &role}, nil
 }
 
-func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteRoleResponse, error) {
+func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteRoleResponse, error) {
 	var userId string
 	err := tx.QueryRow(`
 		SELECT id FROM dbtable_schema.users WHERE sub = $1

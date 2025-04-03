@@ -47,7 +47,7 @@ type SocketParams struct {
 type SocketResponse struct {
 	Ticket     string
 	Error      error
-	Subscriber *Subscriber
+	Subscriber *types.Subscriber
 	Total      int
 	Targets    string
 	HasSub     bool
@@ -59,17 +59,10 @@ type SocketCommand struct {
 	ReplyChan chan SocketResponse
 }
 
-type Subscriber struct {
-	UserSub          string
-	GroupId          string
-	Roles            string
-	ConnectionIds    string
-	Tickets          map[string]string
-	SubscribedTopics map[string]string
-}
-
-type Subscribers map[string]Subscriber
+type Subscribers map[string]*types.Subscriber
 type Connections map[string]net.Conn
+
+var CID_LENGTH = 36
 
 func InitSocket() ISocket {
 
@@ -90,7 +83,7 @@ func InitSocket() ISocket {
 				if ok {
 					subscriber.Tickets[auth] = connectionId
 				} else {
-					subscriber = Subscriber{
+					subscriber = &types.Subscriber{
 						UserSub:          cmd.Params.UserSub,
 						GroupId:          cmd.Params.GroupId,
 						Roles:            cmd.Params.Roles,
@@ -108,7 +101,7 @@ func InitSocket() ISocket {
 					subscriber.ConnectionIds += connId + " "
 					connections[connId] = cmd.Params.Conn
 					subscribers[cmd.Params.UserSub] = subscriber
-					cmd.ReplyChan <- SocketResponse{Subscriber: &subscriber}
+					cmd.ReplyChan <- SocketResponse{Subscriber: subscriber}
 				} else {
 					cmd.ReplyChan <- SocketResponse{Error: errors.New("no sub found in sock")}
 				}
@@ -135,11 +128,11 @@ func InitSocket() ISocket {
 					cmd.ReplyChan <- SocketResponse{Error: err}
 				}
 
-				var foundSub *Subscriber
+				var foundSub *types.Subscriber
 
 				for _, subscriber := range subscribers {
 					if _, ok := subscriber.Tickets[auth]; ok {
-						foundSub = &subscriber
+						foundSub = subscriber
 						break
 					}
 				}
@@ -182,15 +175,9 @@ func InitSocket() ISocket {
 				if _, ok := subscribers[cmd.Params.UserSub]; !ok {
 					continue
 				}
-				var lastIdx int
-				for currentIdx, targetRune := range cmd.Params.Targets {
-					if targetRune == ' ' {
-						currentTarget := cmd.Params.Targets[lastIdx:currentIdx]
-						if strings.Index(subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic], currentTarget) == -1 {
-							subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic] += currentTarget + " "
-						}
-
-						lastIdx = currentIdx + 1
+				for i := 0; i+CID_LENGTH <= len(cmd.Params.Targets); i += CID_LENGTH {
+					if strings.Index(subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic], cmd.Params.Targets[i:i+CID_LENGTH]) == -1 {
+						subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic] += cmd.Params.Targets[i : i+CID_LENGTH]
 					}
 				}
 
@@ -232,6 +219,8 @@ func InitSocket() ISocket {
 		}
 	}()
 
+	println("Socket Init")
+
 	return &Socket{cmds}
 }
 
@@ -270,7 +259,7 @@ func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (f
 	}, nil
 }
 
-func (s *Socket) GetSocketTicket(session *UserSession) (string, error) {
+func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 	replyChan := make(chan SocketResponse)
 	s.Chan() <- SocketCommand{
 		Ty:        CreateSocketTicketSocketCommand,
@@ -306,7 +295,7 @@ func (s *Socket) SendMessageBytes(messageBytes []byte, targets string) error {
 	return nil
 }
 
-func (s *Socket) SendMessage(message *util.SocketMessage, targets string) error {
+func (s *Socket) SendMessage(message *types.SocketMessage, targets string) error {
 	if len(targets) == 0 {
 		return util.ErrCheck(errors.New("no targets to send message to"))
 	}
@@ -314,7 +303,7 @@ func (s *Socket) SendMessage(message *util.SocketMessage, targets string) error 
 	return s.SendMessageBytes(util.GenerateMessage(util.DefaultPadding, message), targets)
 }
 
-func (s *Socket) GetSubscriberByTicket(ticket string) (*Subscriber, error) {
+func (s *Socket) GetSubscriberByTicket(ticket string) (*types.Subscriber, error) {
 	sockGetSubReplyChan := make(chan SocketResponse)
 	s.Chan() <- SocketCommand{
 		Ty:        GetSubscriberSocketCommand,
@@ -380,7 +369,7 @@ func (s *Socket) RoleCall(userSub string) error {
 	close(replyChan)
 
 	if len(reply.Targets) > 0 {
-		if err := s.SendMessage(&util.SocketMessage{Action: types.SocketActions_ROLE_CALL}, reply.Targets); err != nil {
+		if err := s.SendMessage(&types.SocketMessage{Action: types.SocketActions_ROLE_CALL}, reply.Targets); err != nil {
 			return util.ErrCheck(reply.Error)
 		}
 	}

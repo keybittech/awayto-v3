@@ -9,7 +9,7 @@ import (
 	"time"
 )
 
-func (h *Handlers) PostContact(w http.ResponseWriter, req *http.Request, data *types.PostContactRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostContactResponse, error) {
+func (h *Handlers) PostContact(w http.ResponseWriter, req *http.Request, data *types.PostContactRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostContactResponse, error) {
 	var contacts []*types.Contact
 
 	err := tx.QueryRows(&contacts, `
@@ -28,7 +28,7 @@ func (h *Handlers) PostContact(w http.ResponseWriter, req *http.Request, data *t
 	return &types.PostContactResponse{Id: contacts[0].GetId()}, nil
 }
 
-func (h *Handlers) PatchContact(w http.ResponseWriter, req *http.Request, data *types.PatchContactRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchContactResponse, error) {
+func (h *Handlers) PatchContact(w http.ResponseWriter, req *http.Request, data *types.PatchContactRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchContactResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.contacts
 		SET name = $2, email = $3, phone = $4, updated_sub = $5, updated_on = $6
@@ -42,7 +42,7 @@ func (h *Handlers) PatchContact(w http.ResponseWriter, req *http.Request, data *
 	return &types.PatchContactResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetContacts(w http.ResponseWriter, req *http.Request, data *types.GetContactsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetContactsResponse, error) {
+func (h *Handlers) GetContacts(w http.ResponseWriter, req *http.Request, data *types.GetContactsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetContactsResponse, error) {
 	var contacts []*types.Contact
 
 	err := tx.QueryRows(&contacts, `
@@ -56,7 +56,7 @@ func (h *Handlers) GetContacts(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetContactsResponse{Contacts: contacts}, nil
 }
 
-func (h *Handlers) GetContactById(w http.ResponseWriter, req *http.Request, data *types.GetContactByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetContactByIdResponse, error) {
+func (h *Handlers) GetContactById(w http.ResponseWriter, req *http.Request, data *types.GetContactByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetContactByIdResponse, error) {
 	var contacts []*types.Contact
 
 	err := tx.QueryRows(&contacts, `
@@ -75,7 +75,7 @@ func (h *Handlers) GetContactById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetContactByIdResponse{Contact: contacts[0]}, nil
 }
 
-func (h *Handlers) DeleteContact(w http.ResponseWriter, req *http.Request, data *types.DeleteContactRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteContactResponse, error) {
+func (h *Handlers) DeleteContact(w http.ResponseWriter, req *http.Request, data *types.DeleteContactRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteContactResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.contacts
 		WHERE id = $1
@@ -88,7 +88,7 @@ func (h *Handlers) DeleteContact(w http.ResponseWriter, req *http.Request, data 
 	return &types.DeleteContactResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableContact(w http.ResponseWriter, req *http.Request, data *types.DisableContactRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableContactResponse, error) {
+func (h *Handlers) DisableContact(w http.ResponseWriter, req *http.Request, data *types.DisableContactRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DisableContactResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.contacts
 		SET enabled = false, updated_on = $2, updated_sub = $3

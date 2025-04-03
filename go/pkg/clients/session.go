@@ -4,28 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 const sessionDuration = 24 * 30 * time.Hour
-
-type UserSession struct {
-	UserSub                 string   `json:"userSub"`
-	UserEmail               string   `json:"userEmail"`
-	GroupSessionVersion     int64    `json:"groupSessionVersion"`
-	GroupName               string   `json:"groupName"`
-	GroupId                 string   `json:"groupId"`
-	GroupSub                string   `json:"groupSub"`
-	GroupExternalId         string   `json:"groupExternalId"`
-	GroupAi                 bool     `json:"ai"`
-	SubGroups               []string `json:"subGroups"`
-	SubGroupName            string   `json:"subGroupName"`
-	SubGroupExternalId      string   `json:"subGroupExternalId"`
-	RoleName                string   `json:"roleName"`
-	AnonIp                  string   `json:"anonIp"`
-	AvailableUserGroupRoles []string `json:"availableUserGroupRoles"`
-	Timezone                string   `json:"timezone"`
-	ExpiresAt               int64    `json:"expiresAt"`
-}
 
 func (r *Redis) SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error) {
 	newVersion := time.Now().UTC().UnixMilli()
@@ -44,13 +27,13 @@ func (r *Redis) GetGroupSessionVersion(ctx context.Context, groupId string) (int
 	return groupVersion, nil
 }
 
-func (r *Redis) GetSession(ctx context.Context, userSub string) (*UserSession, error) {
+func (r *Redis) GetSession(ctx context.Context, userSub string) (*types.UserSession, error) {
 	sessionBytes, err := r.Client().Get(ctx, "user_session:"+userSub).Result()
 	if err != nil {
 		return nil, err
 	}
 
-	var userSession UserSession
+	var userSession types.UserSession
 	err = json.Unmarshal([]byte(sessionBytes), &userSession)
 	if err != nil {
 		return nil, err
@@ -62,7 +45,7 @@ func (r *Redis) GetSession(ctx context.Context, userSub string) (*UserSession, e
 	return &userSession, nil
 }
 
-func (r *Redis) SetSession(ctx context.Context, session *UserSession) error {
+func (r *Redis) SetSession(ctx context.Context, session *types.UserSession) error {
 	sessionJson, err := json.Marshal(session)
 	if err != nil {
 		return err

@@ -12,7 +12,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, data *types.PostManageGroupsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostManageGroupsResponse, error) {
+func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, data *types.PostManageGroupsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostManageGroupsResponse, error) {
 	var group types.IGroup
 
 	err := tx.QueryRow(`
@@ -42,7 +42,7 @@ func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, da
 	return &types.PostManageGroupsResponse{Id: group.GetId(), Name: group.GetName(), Roles: data.GetRoles()}, nil
 }
 
-func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, data *types.PatchManageGroupsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchManageGroupsResponse, error) {
+func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, data *types.PatchManageGroupsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchManageGroupsResponse, error) {
 	var group types.IGroup
 
 	// Perform the update operation
@@ -98,7 +98,7 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	return &types.PatchManageGroupsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, data *types.GetManageGroupsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetManageGroupsResponse, error) {
+func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, data *types.GetManageGroupsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetManageGroupsResponse, error) {
 	groups := []*types.IGroup{}
 
 	err := tx.QueryRows(&groups, `
@@ -111,7 +111,7 @@ func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, dat
 	return &types.GetManageGroupsResponse{Groups: groups}, nil
 }
 
-func (h *Handlers) DeleteManageGroups(w http.ResponseWriter, req *http.Request, data *types.DeleteManageGroupsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteManageGroupsResponse, error) {
+func (h *Handlers) DeleteManageGroups(w http.ResponseWriter, req *http.Request, data *types.DeleteManageGroupsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteManageGroupsResponse, error) {
 	for _, id := range strings.Split(data.GetIds(), ",") {
 		_, err := tx.Exec(`
 			DELETE FROM dbtable_schema.groups

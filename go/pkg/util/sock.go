@@ -4,7 +4,6 @@ import (
 	"crypto/sha1"
 	"encoding/base64"
 	"encoding/binary"
-	"encoding/json"
 	"errors"
 	"net"
 	"strconv"
@@ -14,16 +13,6 @@ import (
 )
 
 var MAX_SOCKET_MESSAGE_LENGTH = 65535
-
-type SocketMessage struct {
-	Action     types.SocketActions
-	Store      bool
-	Historical bool
-	Topic      string
-	Sender     string
-	Payload    interface{}
-	Timestamp  string
-}
 
 func GetSocketId(userSub, connId string) string {
 	return userSub + ":" + connId
@@ -167,7 +156,7 @@ func WriteSocketConnectionMessage(msg []byte, conn net.Conn) error {
 	return nil
 }
 
-func GenerateMessage(padTo int, message *SocketMessage) []byte {
+func GenerateMessage(padTo int, message *types.SocketMessage) []byte {
 	storeStr := "f"
 	if message.Store {
 		storeStr = "t"
@@ -178,19 +167,6 @@ func GenerateMessage(padTo int, message *SocketMessage) []byte {
 		historicalStr = "t"
 	}
 
-	payloadStr := ""
-	switch v := message.Payload.(type) {
-	case string:
-		payloadStr = v
-	case nil:
-		payloadStr = ""
-	default:
-		pl, err := json.Marshal(v)
-		if err == nil {
-			payloadStr = string(pl)
-		}
-	}
-
 	actionNumber := strconv.Itoa(int(message.Action.Number()))
 
 	paddedMessage := PaddedLen(padTo, len(actionNumber)) + actionNumber +
@@ -199,7 +175,7 @@ func GenerateMessage(padTo int, message *SocketMessage) []byte {
 		PaddedLen(padTo, len(message.Timestamp)) + message.Timestamp +
 		PaddedLen(padTo, len(message.Topic)) + message.Topic +
 		PaddedLen(padTo, len(message.Sender)) + message.Sender +
-		PaddedLen(padTo, len(payloadStr)) + payloadStr
+		PaddedLen(padTo, len(message.Payload)) + message.Payload
 
 	return []byte(paddedMessage)
 }

@@ -7,7 +7,7 @@ import (
 	"net/http"
 )
 
-func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetLookupsResponse, error) {
+func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetLookupsResponse, error) {
 	var budgets []*types.ILookup
 	var timelines []*types.ILookup
 	var timeUnits []*types.ITimeUnit

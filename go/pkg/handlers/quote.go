@@ -11,7 +11,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostQuoteResponse, error) {
+func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostQuoteResponse, error) {
 
 	var slotTaken bool
 	err := tx.QueryRow(`
@@ -100,7 +100,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 	}}, nil
 }
 
-func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *types.PatchQuoteRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchQuoteResponse, error) {
+func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *types.PatchQuoteRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchQuoteResponse, error) {
 	_, err := tx.Exec(`
       UPDATE dbtable_schema.quotes
       SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
@@ -113,7 +113,7 @@ func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PatchQuoteResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *types.GetQuotesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetQuotesResponse, error) {
+func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *types.GetQuotesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetQuotesResponse, error) {
 	var quotes []*types.IQuote
 	err := tx.QueryRows(&quotes, `
 		SELECT q.*
@@ -128,7 +128,7 @@ func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.GetQuotesResponse{Quotes: quotes}, nil
 }
 
-func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *types.GetQuoteByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetQuoteByIdResponse, error) {
+func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *types.GetQuoteByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetQuoteByIdResponse, error) {
 	var quotes []*types.IQuote
 
 	err := tx.QueryRows(&quotes, `
@@ -142,7 +142,7 @@ func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *
 	return &types.GetQuoteByIdResponse{Quote: quotes[0]}, nil
 }
 
-func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *types.DeleteQuoteRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteQuoteResponse, error) {
+func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *types.DeleteQuoteRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteQuoteResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.quotes
 		WHERE id = $1
@@ -154,7 +154,7 @@ func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *t
 	return &types.DeleteQuoteResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableQuote(w http.ResponseWriter, req *http.Request, data *types.DisableQuoteRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DisableQuoteResponse, error) {
+func (h *Handlers) DisableQuote(w http.ResponseWriter, req *http.Request, data *types.DisableQuoteRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DisableQuoteResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {

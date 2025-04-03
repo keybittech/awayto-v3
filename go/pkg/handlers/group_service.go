@@ -10,7 +10,7 @@ import (
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupServiceResponse, error) {
+func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostGroupServiceResponse, error) {
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.group_services (group_id, service_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
@@ -26,7 +26,7 @@ func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, da
 	return &types.PostGroupServiceResponse{}, nil
 }
 
-func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, data *types.GetGroupServicesRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupServicesResponse, error) {
+func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, data *types.GetGroupServicesRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupServicesResponse, error) {
 	var groupServices []*types.IGroupService
 
 	err := tx.QueryRows(&groupServices, `
@@ -43,7 +43,7 @@ func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupServicesResponse{GroupServices: groupServices}, nil
 }
 
-func (h *Handlers) DeleteGroupService(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupServiceResponse, error) {
+func (h *Handlers) DeleteGroupService(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupServiceResponse, error) {
 
 	serviceIds := strings.Split(data.Ids, ",")
 	_, err := tx.Exec(`

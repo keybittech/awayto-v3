@@ -80,14 +80,14 @@ func (db *Database) GetSocketAllowances(tx IDatabaseTx, userSub, description, ha
 	return subscribed, nil
 }
 
-func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (SocketParticipants, error) {
+func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (map[string]*types.SocketParticipant, error) {
 
 	err := tx.SetDbVar("sock_topic", topic)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	participants := make(SocketParticipants)
+	participants := make(map[string]*types.SocketParticipant)
 
 	topicRows, err := tx.Query(`
 		SELECT
@@ -133,7 +133,7 @@ func (db *Database) GetTopicMessageParticipants(tx IDatabaseTx, topic string) (S
 	return participants, nil
 }
 
-func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants SocketParticipants) (SocketParticipants, error) {
+func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants map[string]*types.SocketParticipant) (map[string]*types.SocketParticipant, error) {
 
 	for userSub, details := range participants {
 		// Get user anon info
@@ -155,7 +155,7 @@ func (db *Database) GetSocketParticipantDetails(tx IDatabaseTx, participants Soc
 	return participants, nil
 }
 
-func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *util.SocketMessage) error {
+func (db *Database) StoreTopicMessage(tx IDatabaseTx, connId string, message *types.SocketMessage) error {
 
 	message.Store = false
 	message.Historical = true
@@ -212,7 +212,7 @@ func (db *Database) GetTopicMessages(tx IDatabaseTx, topic string, page, pageSiz
 	}
 
 	if messages[pageSize-1] != nil {
-		messages = append(messages, util.GenerateMessage(util.DefaultPadding, &util.SocketMessage{
+		messages = append(messages, util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{
 			Topic:  topic,
 			Action: types.SocketActions_HAS_MORE_MESSAGES,
 		}))

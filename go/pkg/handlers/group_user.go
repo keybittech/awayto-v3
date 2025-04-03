@@ -9,7 +9,7 @@ import (
 	"strings"
 )
 
-func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupUserResponse, error) {
+func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PatchGroupUserResponse, error) {
 	userId := data.GetUserId()
 	roleId := data.GetRoleId()
 
@@ -88,7 +88,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUsersResponse, error) {
+func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUsersResponse, error) {
 	var groupUsers []*types.IGroupUser
 
 	err := tx.QueryRows(&groupUsers, `
@@ -107,7 +107,7 @@ func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupUsersResponse{GroupUsers: groupUsers}, nil
 }
 
-func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserByIdResponse, error) {
+func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupUserByIdResponse, error) {
 	var groupUsers []*types.IGroupUser
 
 	err := tx.QueryRows(&groupUsers, `
@@ -140,7 +140,7 @@ func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupUserByIdResponse{GroupUser: groupUsers[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupUserResponse, error) {
+func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.DeleteGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
@@ -156,7 +156,7 @@ func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, dat
 	return &types.DeleteGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data *types.LockGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.LockGroupUserResponse, error) {
+func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data *types.LockGroupUserRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.LockGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
@@ -175,7 +175,7 @@ func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data 
 	return &types.LockGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) UnlockGroupUser(w http.ResponseWriter, req *http.Request, data *types.UnlockGroupUserRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.UnlockGroupUserResponse, error) {
+func (h *Handlers) UnlockGroupUser(w http.ResponseWriter, req *http.Request, data *types.UnlockGroupUserRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.UnlockGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {

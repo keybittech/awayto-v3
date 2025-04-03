@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	redis "github.com/redis/go-redis/v9"
 )
@@ -23,9 +22,9 @@ type IDatabase interface {
 	AdminRoleId() string
 	InitDBSocketConnection(tx IDatabaseTx, userSub string, connId string) (func(), error)
 	GetSocketAllowances(tx IDatabaseTx, userSub, description, handle string) (bool, error)
-	GetTopicMessageParticipants(tx IDatabaseTx, topic string) (SocketParticipants, error)
-	GetSocketParticipantDetails(tx IDatabaseTx, participants SocketParticipants) (SocketParticipants, error)
-	StoreTopicMessage(tx IDatabaseTx, connId string, message *util.SocketMessage) error
+	GetTopicMessageParticipants(tx IDatabaseTx, topic string) (map[string]*types.SocketParticipant, error)
+	GetSocketParticipantDetails(tx IDatabaseTx, participants map[string]*types.SocketParticipant) (map[string]*types.SocketParticipant, error)
+	StoreTopicMessage(tx IDatabaseTx, connId string, message *types.SocketMessage) error
 	GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error)
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error
 	TxExec(doFunc func(IDatabaseTx) error, ids ...string) error
@@ -75,12 +74,12 @@ type IRedis interface {
 	InitRedisSocketConnection(socketId string) error
 	HandleUnsub(socketId string) (map[string]string, error)
 	RemoveTopicFromConnection(socketId, topic string) error
-	GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (SocketParticipants, string, error)
+	GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (map[string]*types.SocketParticipant, string, error)
 	TrackTopicParticipant(ctx context.Context, topic, socketId string) error
 	GetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
-	GetSession(ctx context.Context, userSub string) (*UserSession, error)
-	SetSession(ctx context.Context, session *UserSession) error
+	GetSession(ctx context.Context, userSub string) (*types.UserSession, error)
+	SetSession(ctx context.Context, session *types.UserSession) error
 	DeleteSession(ctx context.Context, userSub string) error
 }
 
@@ -100,19 +99,17 @@ type IKeycloak interface {
 	Chan() chan<- KeycloakCommand
 	Client() *KeycloakClient
 	UpdateUser(id, firstName, lastName string) error
-	GetUserTokenValid(token string) (*KeycloakUser, error)
-	GetUserInfoById(id string) (*KeycloakUser, error)
-	GetGroupAdminRoles() []KeycloakRole
-	GetGroupSiteRoles(groupId string) []ClientRoleMappingRole
-	CreateOrGetSubGroup(groupExternalId, subGroupName string) (*KeycloakGroup, error)
-	CreateGroup(name string) (*KeycloakGroup, error)
-	GetGroup(id string) (*KeycloakGroup, error)
-	GetGroupByName(name string) (*[]KeycloakGroup, error)
-	GetGroupSubgroups(groupId string) (*[]KeycloakGroup, error)
+	GetGroupAdminRoles() []*types.KeycloakRole
+	GetGroupSiteRoles(groupId string) []*types.ClientRoleMappingRole
+	CreateOrGetSubGroup(groupExternalId, subGroupName string) (*types.KeycloakGroup, error)
+	CreateGroup(name string) (*types.KeycloakGroup, error)
+	GetGroup(id string) (*types.KeycloakGroup, error)
+	GetGroupByName(name string) ([]*types.KeycloakGroup, error)
+	GetGroupSubgroups(groupId string) ([]*types.KeycloakGroup, error)
 	DeleteGroup(id string) error
 	UpdateGroup(id, name string) error
-	AddRolesToGroup(id string, roles []KeycloakRole) error
-	DeleteRolesFromGroup(id string, roles []KeycloakRole) error
+	AddRolesToGroup(id string, roles []*types.KeycloakRole) error
+	DeleteRolesFromGroup(id string, roles []*types.KeycloakRole) error
 	AddUserToGroup(userId, groupId string) error
 	DeleteUserFromGroup(userId, groupId string) error
 }
@@ -120,10 +117,10 @@ type IKeycloak interface {
 type ISocket interface {
 	Chan() chan<- SocketCommand
 	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
-	GetSocketTicket(session *UserSession) (string, error)
+	GetSocketTicket(session *types.UserSession) (string, error)
 	SendMessageBytes(messageBytes []byte, targets string) error
-	SendMessage(message *util.SocketMessage, targets string) error
-	GetSubscriberByTicket(ticket string) (*Subscriber, error)
+	SendMessage(message *types.SocketMessage, targets string) error
+	GetSubscriberByTicket(ticket string) (*types.Subscriber, error)
 	AddSubscribedTopic(userSub, topic string, targets string)
 	DeleteSubscribedTopic(userSub, topic string)
 	HasTopicSubscription(userSub, topic string) bool

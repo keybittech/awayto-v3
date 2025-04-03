@@ -1,0 +1,111 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+message AuthEventDetails {
+  string authMethod = 1;
+  string authType = 2;
+  string email = 3;
+  string firstName = 4;
+  string lastName = 5;
+  string username = 6;
+  string registerMethod = 7;
+  string redirectUri = 8;
+}
+
+message AuthEvent {
+  string clientId = 1;
+  string eventId = 2;
+  string ipAddress = 3;
+  string realmId = 4;
+  string timestamp = 5;
+  string userId = 6;
+  string webhookName = 7;
+  string groupCode = 8;
+  string email = 9;
+  string firstName = 10;
+  string lastName = 11;
+  string username = 12;
+  AuthEventDetails details = 13;
+  string timezone = 14;
+}
+
+message KeycloakUser {
+  int64 createdTimestamp = 3;
+  string username = 4;
+  bool enabled = 5;
+  bool totp = 6;
+  string name = 7;
+  string preferredUsername = 8 [json_name = "preferred_username"];
+  string givenName = 9 [json_name = "given_name"];
+  string familyName = 10 [json_name = "family_name"];
+  bool emailVerified = 11;
+  string firstName = 12;
+  string lastName = 13;
+  string email = 14;
+  string federationLink = 15;
+  repeated string groups = 16;
+  repeated string availableGroupRoles = 17;
+  string azp = 18;
+}
+
+message KeycloakUserGroup {
+  string id = 1;
+  string name = 2;
+  string path = 3;
+}
+
+message KeycloakGroup {
+  string id = 1;
+  string name = 2;
+  string path = 3;
+  string parentId = 4;
+  repeated KeycloakGroup subGroups = 5;
+}
+
+message KeycloakRole {
+  string id = 1;
+  string name = 2;
+  bool scopeParamRequired = 3;
+  bool composite = 4;
+  bool clientRole = 5;
+  string containerId = 6;
+  string description = 7;
+}
+
+message ClientRoleMappingRole {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+  bool scopeParamRequired = 4;
+  bool composite = 5;
+  bool clientRole = 6;
+}
+
+message ClientRoleMapping {
+  repeated ClientRoleMappingRole mappings = 1;
+}
+
+message KeycloakRealmInfo {
+  string realm = 1;
+  string publicKey = 2 [json_name = "public_key"];
+  string tokenService = 3 [json_name = "token-service"];
+  string accountService = 4 [json_name = "account-service"];
+  int64 tokensNotBefore = 5 [json_name = "tokens-not-before"];
+}
+
+message KeycloakRealmClient {
+  string id = 1;
+  string clientId = 2;
+}
+
+message OIDCToken {
+  string accessToken = 1 [json_name = "access_token"];
+  double expiresIn = 2 [json_name = "expires_in"];
+  double refreshExpiresIn = 3 [json_name = "refresh_expires_in"];
+  string refreshToken = 4 [json_name = "refresh_token"];
+  string tokenType = 5 [json_name = "token_type"];
+  int64 notBeforePolicy = 6 [json_name = "not-before-policy"];
+  string scope = 7;
+}

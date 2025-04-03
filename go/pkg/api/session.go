@@ -4,17 +4,13 @@ import (
 	"errors"
 	"net"
 	"net/http"
-	"strings"
 
-	"github.com/golang-jwt/jwt"
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"golang.org/x/time/rate"
 )
 
-// Adapted from https://blog.logrocket.com/rate-limiting-go-application
-
-type SessionHandler func(w http.ResponseWriter, r *http.Request, session *clients.UserSession)
+type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.UserSession)
 
 type SessionMux struct {
 	mux *http.ServeMux
@@ -24,32 +20,6 @@ func NewSessionMux() *SessionMux {
 	return &SessionMux{
 		mux: http.NewServeMux(),
 	}
-}
-
-func validateToken(token string) (*clients.KeycloakUser, error) {
-	if strings.Contains(token, "Bearer") {
-		token = strings.Split(token, " ")[1]
-	}
-
-	parsedToken, err := jwt.ParseWithClaims(token, &clients.KeycloakUser{}, func(t *jwt.Token) (interface{}, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, errors.New("bad signing method")
-		}
-		return clients.KeycloakPublicKey, nil
-	})
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	if !parsedToken.Valid {
-		return nil, util.ErrCheck(errors.New("invalid token during parse"))
-	}
-
-	if claims, ok := parsedToken.Claims.(*clients.KeycloakUser); ok {
-		return claims, nil
-	}
-
-	return nil, nil
 }
 
 var sessionHandlerLimit = 2
@@ -88,28 +58,19 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 		}
 
 		// validate provided token to return a user struct
-		kcUser, err := validateToken(token[0])
+		session, err := validateToken(token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 		if err != nil {
 			deferredErr = util.ErrCheck(err)
 			return
 		}
 
 		// rate limit authenticated user
-		limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, kcUser.Sub)
+		limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, session.UserSub)
 		if limited {
 			WriteLimit(w)
 			return
 		}
 
-		session := &clients.UserSession{
-			UserSub:                 kcUser.Sub,
-			UserEmail:               kcUser.Email,
-			SubGroups:               kcUser.Groups,
-			AvailableUserGroupRoles: kcUser.ResourceAccess[kcUser.Azp].Roles,
-			Timezone:                req.Header.Get("X-TZ"),
-			ExpiresAt:               kcUser.ExpiresAt,
-			AnonIp:                  util.AnonIp(req.RemoteAddr),
-		}
 		handler(w, req, session)
 	})
 

@@ -8,7 +8,7 @@ import (
 	"time"
 )
 
-func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.PostGroupFeedbackRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFeedbackResponse, error) {
+func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.PostGroupFeedbackRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.PostGroupFeedbackResponse, error) {
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.group_feedback (message, group_id, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3::uuid, $4)
@@ -22,7 +22,7 @@ func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, d
 	return &types.PostGroupFeedbackResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest, session *clients.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFeedbackResponse, error) {
+func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest, session *types.UserSession, tx clients.IDatabaseTx) (*types.GetGroupFeedbackResponse, error) {
 	var feedback []*types.IFeedback
 
 	err := tx.QueryRows(&feedback, `

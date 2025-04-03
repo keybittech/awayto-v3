@@ -1,14 +1,15 @@
 package handlers
 
 import (
+	"fmt"
+	"net/http"
+
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"fmt"
-	"net/http"
 )
 
-func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent clients.AuthEvent, session *clients.UserSession, tx clients.IDatabaseTx) (string, error) {
+func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent *types.AuthEvent, session *types.UserSession, tx clients.IDatabaseTx) (string, error) {
 
 	_, err := h.PostUserProfile(nil, req, &types.PostUserProfileRequest{
 		FirstName: authEvent.FirstName,
@@ -37,7 +38,7 @@ func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent clients.Aut
 	return `{ "success": true }`, nil
 }
 
-func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent clients.AuthEvent, session *clients.UserSession, tx clients.IDatabaseTx) (string, error) {
+func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent *types.AuthEvent, session *types.UserSession, tx clients.IDatabaseTx) (string, error) {
 
 	group := &types.IGroup{}
 	err := tx.QueryRow(`

@@ -88,26 +88,16 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 				return
 			}
 
-			kcUser, err := a.Handlers.Keycloak.GetUserTokenValid(token[0])
+			session, err := validateToken(token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 			if err != nil {
 				deferredErr = util.ErrCheck(err)
 				return
 			}
 
-			limited := Limiter(mu, limitedClients, limit, burst, kcUser.Sub)
+			limited := Limiter(mu, limitedClients, limit, burst, session.UserSub)
 			if limited {
 				WriteLimit(w)
 				return
-			}
-
-			session := &clients.UserSession{
-				UserSub:                 kcUser.Sub,
-				UserEmail:               kcUser.Email,
-				SubGroups:               kcUser.Groups,
-				AvailableUserGroupRoles: kcUser.ResourceAccess[kcUser.Azp].Roles,
-				Timezone:                req.Header.Get("X-TZ"),
-				ExpiresAt:               kcUser.ExpiresAt,
-				AnonIp:                  util.AnonIp(req.RemoteAddr),
 			}
 
 			next(w, req, session)
@@ -116,7 +106,7 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 }
 
 func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
-	return func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 		var deferredErr error
 		var skipRebuild bool
 		gidSelect := req.Header.Get("X-Gid-Select")
@@ -188,7 +178,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 
 				kcGroups, err := a.Handlers.Keycloak.GetGroupByName(kcGroupName)
 
-				for _, gr := range *kcGroups {
+				for _, gr := range kcGroups {
 					if gr.Path == kcGroupName {
 						session.GroupExternalId = gr.Id
 						break
@@ -197,7 +187,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 
 				kcSubgroups, err := a.Handlers.Keycloak.GetGroupSubgroups(session.GroupExternalId)
 
-				for _, gr := range *kcSubgroups {
+				for _, gr := range kcSubgroups {
 					if gr.Path == session.SubGroupName {
 						session.SubGroupExternalId = gr.Id
 						break
@@ -252,11 +242,11 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 	return func(next SessionHandler) SessionHandler {
 
 		if opts.SiteRole == "" || opts.SiteRole == types.SiteRoles_UNRESTRICTED.String() {
-			return func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 				next(w, req, session)
 			}
 		} else {
-			return func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 				hasSiteRole := slices.Contains(session.AvailableUserGroupRoles, opts.SiteRole)
 
 				fmt.Println(fmt.Sprintf("access of %s, request allowed: %v", req.URL, hasSiteRole))
@@ -295,7 +285,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 	shouldStore := types.CacheType_STORE == opts.CacheType
 
 	return func(next SessionHandler) SessionHandler {
-		return func(w http.ResponseWriter, req *http.Request, session *clients.UserSession) {
+		return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 			// gives a cache key like absd-asff-asff-asfdgroup/users
 			cacheKey := session.UserSub + strings.TrimLeft(req.URL.String(), os.Getenv("API_PATH"))
 

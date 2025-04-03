@@ -1,7 +1,6 @@
 package api
 
 import (
-	"fmt"
 	"net/http"
 
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
@@ -27,7 +26,6 @@ func (a *API) InitMux() *http.ServeMux {
 		if fd.Services().Len() == 0 {
 			return true
 		}
-		println(fmt.Sprintf("Attaching services for %s", fd.Path()))
 
 		services := fd.Services().Get(0)
 

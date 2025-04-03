@@ -8,6 +8,8 @@ import (
 	"golang.org/x/time/rate"
 )
 
+// Adapted from https://blog.logrocket.com/rate-limiting-go-application
+
 type LimitedClient struct {
 	limiter  *rate.Limiter
 	lastSeen time.Time
