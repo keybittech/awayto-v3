@@ -119,8 +119,8 @@ $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 
 GO_DEV_FLAGS=GO_ENVFILE_LOC=$(PROJECT_DIR)/.env GO_ERROR_LOG=$(PROJECT_DIR)/${GO_ERROR_LOG} LOG_LEVEL=debug
-GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1}
-GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1}
+GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1} $${V:-}
+GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-}
 
 #################################
 #           TARGETS             #

@@ -15,11 +15,15 @@ type ErrRes struct {
 	ErrorMessage string `json:"errorMessage"`
 }
 
+func successStatus(statusCode int) bool {
+	return statusCode >= 200 && statusCode < 300
+}
+
 func Get(url string, headers http.Header) ([]byte, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	for key, values := range headers {
@@ -30,14 +34,18 @@ func Get(url string, headers http.Header) ([]byte, error) {
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	defer resp.Body.Close()
 
+	if !successStatus(resp.StatusCode) {
+		return nil, ErrCheck(errors.New(http.StatusText(resp.StatusCode)))
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	return respBody, nil
@@ -47,7 +55,7 @@ func GetWithParams(url string, headers http.Header, queryParams url.Values) ([]b
 	client := &http.Client{}
 	req, err := http.NewRequest("GET", url, strings.NewReader(queryParams.Encode()))
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	for key, values := range headers {
@@ -58,14 +66,18 @@ func GetWithParams(url string, headers http.Header, queryParams url.Values) ([]b
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	defer resp.Body.Close()
 
+	if !successStatus(resp.StatusCode) {
+		return nil, ErrCheck(errors.New(http.StatusText(resp.StatusCode)))
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	return respBody, nil
@@ -75,7 +87,7 @@ func Mutate(method string, url string, headers http.Header, dataBody []byte) ([]
 	client := &http.Client{}
 	req, err := http.NewRequest(method, url, bytes.NewBuffer(dataBody))
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	for key, values := range headers {
@@ -86,14 +98,18 @@ func Mutate(method string, url string, headers http.Header, dataBody []byte) ([]
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	defer resp.Body.Close()
 
+	if !successStatus(resp.StatusCode) {
+		return nil, ErrCheck(errors.New(http.StatusText(resp.StatusCode)))
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	if resp.StatusCode == 204 {
@@ -105,7 +121,7 @@ func Mutate(method string, url string, headers http.Header, dataBody []byte) ([]
 
 		err = json.Unmarshal(respBody, &errRes)
 		if err != nil {
-			return nil, err
+			return nil, ErrCheck(err)
 		}
 
 		if errRes.Error != "" {
@@ -125,7 +141,7 @@ func PostFormData(url string, headers http.Header, data url.Values) ([]byte, err
 
 	req, err := http.NewRequest("POST", url, strings.NewReader(data.Encode()))
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	for key, values := range headers {
@@ -140,14 +156,18 @@ func PostFormData(url string, headers http.Header, data url.Values) ([]byte, err
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	defer resp.Body.Close()
 
+	if !successStatus(resp.StatusCode) {
+		return nil, ErrCheck(errors.New(http.StatusText(resp.StatusCode)))
+	}
+
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, ErrCheck(err)
 	}
 
 	return respBody, nil

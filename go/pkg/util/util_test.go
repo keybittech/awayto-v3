@@ -188,7 +188,8 @@ func TestUtilErrCheck(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "nil error", args: args{err: nil}, wantErr: false},
-		{name: "non-nil error", args: args{err: errors.New("test error")}, wantErr: true}}
+		{name: "non-nil error", args: args{err: errors.New("test error")}, wantErr: true},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := ErrCheck(tt.args.err); (err != nil) != tt.wantErr {
@@ -208,7 +209,8 @@ func TestUtilNewNullString(t *testing.T) {
 		want sql.NullString
 	}{
 		{name: "empty string", args: args{s: ""}, want: sql.NullString{String: "", Valid: false}},
-		{name: "non-empty string", args: args{s: "test"}, want: sql.NullString{String: "test", Valid: true}}}
+		{name: "non-empty string", args: args{s: "test"}, want: sql.NullString{String: "test", Valid: true}},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := NewNullString(tt.args.s); !reflect.DeepEqual(got, tt.want) {
@@ -228,7 +230,8 @@ func TestUtilIsUUID(t *testing.T) {
 		want bool
 	}{
 		{name: "Normal uuid", args: args{id: "00000000-0000-0000-0000-000000000000"}, want: true},
-		{name: "Non uuid", args: args{id: "test"}, want: false}}
+		{name: "Non uuid", args: args{id: "test"}, want: false},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsUUID(tt.args.id); got != tt.want {
@@ -248,7 +251,8 @@ func TestUtilIsEpoch(t *testing.T) {
 		want bool
 	}{
 		{name: "Normal epoch", args: args{id: "0123456789"}, want: true},
-		{name: "Non epoch", args: args{id: "test"}, want: false}}
+		{name: "Non epoch", args: args{id: "test"}, want: false},
+	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := IsEpoch(tt.args.id); got != tt.want {
