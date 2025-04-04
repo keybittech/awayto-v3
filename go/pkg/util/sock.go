@@ -19,11 +19,14 @@ func GetSocketId(userSub, connId string) string {
 }
 
 func SplitSocketId(id string) (string, string, error) {
+	if len(id) <= 1 {
+		return "", "", ErrCheck(errors.New("malformed split socket id " + id))
+	}
 	colonIdx := strings.Index(id, ":")
 	if colonIdx != -1 && len(id) > colonIdx {
 		return id[0:colonIdx], id[colonIdx+1:], nil
 	} else {
-		return "", "", ErrCheck(errors.New("malformed id " + id))
+		return "", "", ErrCheck(errors.New("no text after socket divider " + id))
 	}
 }
 

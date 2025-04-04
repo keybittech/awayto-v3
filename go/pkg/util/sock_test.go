@@ -1,6 +1,8 @@
 package util
 
 import (
+	"fmt"
+	"io"
 	"net"
 	"reflect"
 	"testing"
@@ -8,7 +10,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
-func TestGetSocketId(t *testing.T) {
+func TestUtilGetSocketId(t *testing.T) {
 	type args struct {
 		userSub string
 		connId  string
@@ -18,7 +20,8 @@ func TestGetSocketId(t *testing.T) {
 		args args
 		want string
 	}{
-		// TODO: Add test cases.
+		{name: "empty values", args: args{userSub: "", connId: ""}, want: ":"},
+		{name: "non-nil error", args: args{userSub: "a", connId: "b"}, want: "a:b"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,7 +32,7 @@ func TestGetSocketId(t *testing.T) {
 	}
 }
 
-func TestSplitSocketId(t *testing.T) {
+func TestUtilSplitSocketId(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -40,7 +43,14 @@ func TestSplitSocketId(t *testing.T) {
 		want1   string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{name: "empty values", args: args{id: ""}, want: "", want1: "", wantErr: true},
+		{name: "valid socket id", args: args{id: "a:b"}, want: "a", want1: "b", wantErr: false},
+		{name: "id with no colon", args: args{id: "abc"}, want: "", want1: "", wantErr: true},
+		{name: "id with multiple colons", args: args{id: "a:b:c"}, want: "a", want1: "b:c", wantErr: false},
+		{name: "id with leading space", args: args{id: " a:b"}, want: " a", want1: "b", wantErr: false},
+		{name: "id with trailing space", args: args{id: "a:b "}, want: "a", want1: "b ", wantErr: false},
+		{name: "id with only colon", args: args{id: ":"}, want: "", want1: "", wantErr: true},
+		{name: "id with multiple colons in the middle", args: args{id: "user:sub:123"}, want: "user", want1: "sub:123", wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -59,7 +69,7 @@ func TestSplitSocketId(t *testing.T) {
 	}
 }
 
-func TestComputeWebSocketAcceptKey(t *testing.T) {
+func TestUtilComputeWebSocketAcceptKey(t *testing.T) {
 	type args struct {
 		clientKey string
 	}
@@ -68,7 +78,8 @@ func TestComputeWebSocketAcceptKey(t *testing.T) {
 		args args
 		want string
 	}{
-		// TODO: Add test cases.
+		{name: "no values", args: args{clientKey: ""}, want: "Kfh9QIsMVZcl6xEPYxPHzW8SZ8w="},
+		{name: "test value", args: args{clientKey: "test"}, want: "tNpbgC8ZQDOcSkHAWopKzQjJ1hI="},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -79,7 +90,33 @@ func TestComputeWebSocketAcceptKey(t *testing.T) {
 	}
 }
 
-func TestReadSocketConnectionMessage(t *testing.T) {
+type MockConn struct {
+	net.Conn
+	data []byte
+}
+
+func (m *MockConn) Read(data []byte) (int, error) {
+	// Copy data from internal buffer into the provided data slice
+	// Simulating a "read" by copying data into the provided slice until it's full or there's no more data
+	n := len(data)
+	if len(m.data) == 0 {
+		return 0, io.EOF // Return EOF when there's no more data to read
+	}
+	if n > len(m.data) {
+		n = len(m.data)
+	}
+	copy(data[:n], m.data[:n])
+	m.data = m.data[n:] // Remove the read part of the data
+
+	return n, nil
+}
+
+func (m *MockConn) Write(p []byte) (n int, err error) {
+	m.data = append(m.data, p...)
+	return len(p), nil
+}
+
+func TestUtilReadSocketConnectionMessage(t *testing.T) {
 	type args struct {
 		conn net.Conn
 	}
@@ -89,7 +126,21 @@ func TestReadSocketConnectionMessage(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Valid message with mask",
+			args: args{
+				conn: &MockConn{
+					data: []byte{
+						0x81,                   // first byte (fin, opcode)
+						0x85,                   // second byte (mask, payload length)
+						0x00, 0x00, 0x00, 0x00, // mask key (0x00000000 for simplicity)
+						0x48, 0x65, 0x6c, 0x6c, 0x6f, // payload data "Hello" (XOR'd with the mask)
+					},
+				},
+			},
+			want:    []byte("Hello"), // expected payload data after unmasking
+			wantErr: false,           // no error expected
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -105,7 +156,16 @@ func TestReadSocketConnectionMessage(t *testing.T) {
 	}
 }
 
-func TestWriteSocketConnectionMessage(t *testing.T) {
+type MockErrConn struct {
+	net.Conn
+	data []byte
+}
+
+func (m *MockErrConn) Write(p []byte) (n int, err error) {
+	return 0, fmt.Errorf("simulated write error")
+}
+
+func TestUtilWriteSocketConnectionMessage(t *testing.T) {
 	type args struct {
 		msg  []byte
 		conn net.Conn
@@ -115,7 +175,46 @@ func TestWriteSocketConnectionMessage(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Write error on connection",
+			args: args{
+				msg:  []byte("test"),
+				conn: &MockErrConn{}, // You can simulate an error on the connection by modifying the Write method to return an error
+			},
+			wantErr: true,
+		},
+		{
+			name: "Zero message",
+			args: args{
+				msg:  []byte{},
+				conn: &MockConn{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Valid message (small payload)",
+			args: args{
+				msg:  []byte("Hello"),
+				conn: &MockConn{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Valid message (extended length)",
+			args: args{
+				msg:  make([]byte, 130), // payload larger than 125, so it should use extended length encoding
+				conn: &MockConn{},
+			},
+			wantErr: false,
+		},
+		{
+			name: "Valid message (large payload)",
+			args: args{
+				msg:  make([]byte, 70000), // payload larger than 65535, it should use 8-byte extended length encoding
+				conn: &MockConn{},
+			},
+			wantErr: false,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -126,7 +225,31 @@ func TestWriteSocketConnectionMessage(t *testing.T) {
 	}
 }
 
-func TestGenerateMessage(t *testing.T) {
+type PayloadData struct {
+	InnerData string
+}
+
+type TestPayload struct {
+	Id   string
+	Data PayloadData
+}
+
+func TestUtilGenerateMessage(t *testing.T) {
+	testMessage := types.SocketMessage{
+		Action:     44,
+		Topic:      "topic",
+		Payload:    "payload",
+		Store:      false,
+		Historical: false,
+		Sender:     "sender",
+		Timestamp:  "timestamp",
+	}
+	storedMessage := testMessage
+	storedMessage.Store = true
+	historicalMessage := testMessage
+	historicalMessage.Historical = true
+	badActionMessage := testMessage
+	badActionMessage.Action = -44
 	type args struct {
 		padTo   int
 		message *types.SocketMessage
@@ -136,7 +259,10 @@ func TestGenerateMessage(t *testing.T) {
 		args args
 		want []byte
 	}{
-		// TODO: Add test cases.
+		{name: "standard message", args: args{5, &testMessage}, want: []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")},
+		{name: "stored message", args: args{5, &storedMessage}, want: []byte("000024400001t00001f00009timestamp00005topic00006sender00007payload")},
+		{name: "historical message", args: args{5, &historicalMessage}, want: []byte("000024400001f00001t00009timestamp00005topic00006sender00007payload")},
+		{name: "bad action message", args: args{5, &badActionMessage}, want: []byte("00003-4400001f00001f00009timestamp00005topic00006sender00007payload")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -147,7 +273,8 @@ func TestGenerateMessage(t *testing.T) {
 	}
 }
 
-func TestParseMessage(t *testing.T) {
+func TestUtilParseMessage(t *testing.T) {
+	message := []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")
 	type args struct {
 		padTo  int
 		cursor int
@@ -160,7 +287,105 @@ func TestParseMessage(t *testing.T) {
 		want1   string
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "parses action",
+			args: args{
+				padTo:  5,
+				cursor: 0,
+				data:   message,
+			},
+			want:    7,    // Expected end of the first parsed value
+			want1:   "44", // First value
+			wantErr: false,
+		},
+		{
+			name: "parses store",
+			args: args{
+				padTo:  5,
+				cursor: 7,
+				data:   message,
+			},
+			want:    13,  // Expected end after second value
+			want1:   "f", // Second value
+			wantErr: false,
+		},
+		{
+			name: "parses historical",
+			args: args{
+				padTo:  5,
+				cursor: 13,
+				data:   message,
+			},
+			want:    19,  // Expected end after third value
+			want1:   "f", // Third value
+			wantErr: false,
+		},
+		{
+			name: "parses timestamp",
+			args: args{
+				padTo:  5,
+				cursor: 19,
+				data:   message,
+			},
+			want:    33,          // Expected end after timestamp value
+			want1:   "timestamp", // Timestamp value
+			wantErr: false,
+		},
+		{
+			name: "parses topic",
+			args: args{
+				padTo:  5,
+				cursor: 33,
+				data:   message,
+			},
+			want:    43,      // Expected end after topic value
+			want1:   "topic", // Topic value
+			wantErr: false,
+		},
+		{
+			name: "parses sender",
+			args: args{
+				padTo:  5,
+				cursor: 43,
+				data:   message,
+			},
+			want:    54,       // Expected end after sender value
+			want1:   "sender", // Sender value
+			wantErr: false,
+		},
+		{
+			name: "parses payload",
+			args: args{
+				padTo:  5,
+				cursor: 54,
+				data:   message,
+			},
+			want:    66,        // Expected end after payload value
+			want1:   "payload", // Payload value
+			wantErr: false,
+		},
+		{
+			name: "data too short",
+			args: args{
+				padTo:  5,
+				cursor: 0,
+				data:   []byte("000094"), // 00009 means the value coming after needs to be 9 characters
+			},
+			want:    0,
+			want1:   "",
+			wantErr: true,
+		},
+		{
+			name: "out of range value index",
+			args: args{
+				padTo:  5,
+				cursor: 99, // greater index than the data provided
+				data:   []byte("000024400001f00001f00009timestamp"),
+			},
+			want:    0,
+			want1:   "",
+			wantErr: true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
