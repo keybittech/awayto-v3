@@ -11,7 +11,10 @@ require (
 	google.golang.org/protobuf v1.36.5
 )
 
-require buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.5-20250219170025-d39267d9df8f.1 // indirect
+require (
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.5-20250219170025-d39267d9df8f.1 // indirect
+	github.com/google/go-cmp v0.6.0 // indirect
+)
 
 replace github.com/keybittech/awayto-v3/go/pkg/types => ../types
 

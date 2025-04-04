@@ -78,11 +78,14 @@ func (e *ErrLog) Println(v ...any) {
 }
 
 func UserError(err string) error {
-	return errors.New(fmt.Sprintf("%s %s %s", ErrorForUser, err, ErrorForUser))
+	return errors.New(ErrorForUser + " " + err + " " + ErrorForUser)
 }
 
+const ErrorForUserLen = len(ErrorForUser) + 1
+
 func SnipUserError(err string) string {
-	return strings.TrimSpace(strings.Split(err, ErrorForUser)[1])
+	result := err[ErrorForUserLen:]
+	return result[:len(result)-ErrorForUserLen]
 }
 
 func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []string, pbVal reflect.Value) error {
@@ -129,7 +132,9 @@ func ErrCheck(err error) error {
 
 	_, file, line, _ := runtime.Caller(1)
 
-	return errors.New(fmt.Sprintf("%s %s:%d", err.Error(), file, line))
+	errStr := err.Error() + " " + file + ":" + strconv.Itoa(line)
+
+	return errors.New(errStr)
 }
 
 func NewNullString(s string) sql.NullString {
@@ -142,8 +147,9 @@ func NewNullString(s string) sql.NullString {
 	}
 }
 
+var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
+
 func IsUUID(id string) bool {
-	uuidPattern := regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 	return uuidPattern.MatchString(id)
 }
 
@@ -169,20 +175,6 @@ func EnvFile(loc string) (string, error) {
 	return strings.Trim(string(envFile), "\n"), nil
 }
 
-func CastSlice[T any](items []interface{}) ([]T, bool) {
-	results := make([]T, len(items))
-
-	for i, item := range items {
-		val, ok := item.(T)
-		if !ok {
-			return nil, false
-		}
-		results[i] = val
-	}
-
-	return results, true
-}
-
 func AnonIp(ipAddr string) string {
 	ipParts := strings.Split(ipAddr, ".")
 	if len(ipParts) != 4 {
@@ -202,7 +194,10 @@ func StringIn(s string, ss []string) bool {
 }
 
 func StringOut(s string, ss []string) []string {
-	var ns []string
+	if len(ss) == 0 {
+		return ss
+	}
+	ns := make([]string, 0, len(ss)-1)
 	for _, cs := range ss {
 		if cs == s {
 			continue
@@ -213,32 +208,11 @@ func StringOut(s string, ss []string) []string {
 }
 
 func ExeTime(name string) func(info string) {
-	fmt.Printf("beginning execution for %s\n", name)
+	ErrorLog.Println("beginning execution for " + name)
 	start := time.Now()
 	return func(info string) {
-		fmt.Printf("%s execution time: %v %s\n", name, time.Since(start), info)
+		ErrorLog.Println(name + " execution time: " + time.Since(start).String() + " " + info)
 	}
-}
-
-func ToPascalCase(input string) string {
-	words := strings.Split(input, "-")
-	caser := cases.Title(language.English)
-	for i, word := range words {
-		words[i] = caser.String(word)
-	}
-	return strings.Join(words, "")
-}
-
-func Base64UrlDecode(str string) ([]byte, error) {
-	s := strings.ReplaceAll(str, "-", "+")
-	s = strings.ReplaceAll(s, "_", "/")
-	switch len(s) % 4 {
-	case 2:
-		s += "=="
-	case 3:
-		s += "="
-	}
-	return base64.StdEncoding.DecodeString(s)
 }
 
 func WriteSigned(name, unsignedValue string) string {
