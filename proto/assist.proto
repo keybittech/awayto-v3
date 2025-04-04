@@ -15,7 +15,6 @@ service AssistService {
       body: "*"
     };
     option (cache) = STORE; 
-    option (load) = true;
   }
 
   rpc GetSuggestion(GetSuggestionRequest) returns (GetSuggestionResponse) {
@@ -23,7 +22,6 @@ service AssistService {
       get: "/v1/assist/suggest/{id}/{prompt}"
     };
     option (cache) = STORE; 
-    option (load) = true;
   }
 }
 

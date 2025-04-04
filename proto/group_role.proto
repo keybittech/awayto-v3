@@ -15,7 +15,7 @@ service GroupRoleService {
       post: "/v1/group/roles"
       body: "*"
     };
-    option (siteRole) = APP_GROUP_ROLES; 
+    option (site_role) = APP_GROUP_ROLES; 
   }
 
   rpc PatchGroupRole(PatchGroupRoleRequest) returns (PatchGroupRoleResponse) {
@@ -23,7 +23,7 @@ service GroupRoleService {
       patch: "/v1/group/role"
       body: "*"
     };
-    option (siteRole) = APP_GROUP_ROLES; 
+    option (site_role) = APP_GROUP_ROLES; 
   }
 
   rpc PatchGroupRoles(PatchGroupRolesRequest) returns (PatchGroupRolesResponse) {
@@ -31,21 +31,21 @@ service GroupRoleService {
       patch: "/v1/group/roles"
       body: "*"
     };
-    option (siteRole) = APP_GROUP_ROLES; 
+    option (site_role) = APP_GROUP_ROLES; 
   }
 
   rpc GetGroupRoles(GetGroupRolesRequest) returns (GetGroupRolesResponse) {
     option (google.api.http) = {
       get: "/v1/group/roles"
     };
-    // option (siteRole) = APP_GROUP_ROLES; 
+    // option (site_role) = APP_GROUP_ROLES; 
   }
 
   rpc DeleteGroupRole(DeleteGroupRoleRequest) returns (DeleteGroupRoleResponse) {
     option (google.api.http) = {
       delete: "/v1/group/roles/{ids}"
     };
-    option (siteRole) = APP_GROUP_ROLES; 
+    option (site_role) = APP_GROUP_ROLES; 
   }
 }
 

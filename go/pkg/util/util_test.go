@@ -109,10 +109,9 @@ func TestUtilSnipUserError(t *testing.T) {
 }
 
 func TestUtilRequestError(t *testing.T) {
-	defaultIgnored := []string{"state", "sizeCache", "unknownFields"}
 	testPbStruct := &types.IUserProfile{
-		FirstName: "john",
-		RoleName:  "role_name",
+		FirstName: "test",
+		RoleName:  "role",
 	}
 	type args struct {
 		w            http.ResponseWriter
@@ -130,7 +129,7 @@ func TestUtilRequestError(t *testing.T) {
 			args: args{
 				w:            httptest.NewRecorder(),
 				givenErr:     "test error",
-				ignoreFields: defaultIgnored,
+				ignoreFields: DEFAULT_IGNORED_PROTO_FIELDS,
 				pbVal:        reflect.ValueOf(testPbStruct).Elem(),
 			},
 			wantErr: true,
@@ -140,7 +139,7 @@ func TestUtilRequestError(t *testing.T) {
 			args: args{
 				w:            httptest.NewRecorder(),
 				givenErr:     "test error",
-				ignoreFields: slices.Concat(defaultIgnored, []string{"FirstName"}),
+				ignoreFields: slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}),
 				pbVal:        reflect.ValueOf(testPbStruct).Elem(),
 			},
 			wantErr: true,
@@ -165,12 +164,13 @@ func TestUtilRequestError(t *testing.T) {
 			// Check the error message contains request ID
 			if !strings.Contains(response.Body.String(), "Request Id:") &&
 				!strings.Contains(response.Body.String(), "An error occurred") {
+
 				t.Errorf("Response body doesn't contain expected error message: %s", response.Body.String())
 			}
 
 			// For the second test, verify that FirstName is not in the error
 			if tt.name == "Prevents ignored fields from being logged" {
-				if errText := err.Error(); err != nil && strings.Contains(errText, testPbStruct.FirstName) {
+				if errText := err.Error(); err != nil && strings.Contains(errText, "FirstName="+testPbStruct.FirstName) {
 					t.Errorf("Error contains ignored fields: error = %v, fields = %v", errText, tt.args.ignoreFields)
 				}
 			}

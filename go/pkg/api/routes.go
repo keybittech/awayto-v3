@@ -41,7 +41,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 	var bodyParser BodyParser
 	var responseHandler ResponseHandler
 	handlerOpts := util.ParseHandlerOptions(serviceMethod)
-	ignoreFields := slices.Concat([]string{"state", "sizeCache", "unknownFields"}, handlerOpts.NoLogFields)
+	ignoreFields := slices.Concat(util.DEFAULT_IGNORED_PROTO_FIELDS, handlerOpts.NoLogFields)
 
 	if handlerOpts.MultipartRequest {
 		bodyParser = MultipartBodyParser
@@ -78,13 +78,8 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		pbVal = reflect.ValueOf(pb).Elem()
 
 		// Parse query and path parameters
-
 		util.ParseProtoQueryParams(pbVal, req.URL.Query())
-		util.ParseProtoPathParams(
-			pbVal,
-			strings.Split(handlerOpts.ServiceMethodURL, "/"),
-			strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
-		)
+		util.ParseProtoPathParams(pbVal, handlerOpts.ServiceMethodURL, req.URL.Path)
 
 		results := []reflect.Value{}
 

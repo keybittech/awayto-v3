@@ -16,7 +16,6 @@ service GroupUtilService {
       get: "/v1/group/valid/{name}"
     };
     option (cache) = SKIP; 
-    option (load) = true;
   }
 
   rpc InviteGroupUsers(InviteGroupUsersRequest) returns (InviteGroupUsersResponse) {

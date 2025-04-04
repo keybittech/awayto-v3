@@ -2,8 +2,6 @@ package util
 
 import (
 	"fmt"
-	"io"
-	"net/http"
 	"net/url"
 	"reflect"
 	"strconv"
@@ -31,41 +29,7 @@ type HandlerOptions struct {
 	NoLogFields       []string
 	MultipartRequest  bool
 	MultipartResponse bool
-}
-
-func UnmarshalProto(req *http.Request, pb protoreflect.ProtoMessage) error {
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return err
-	}
-
-	defer req.Body.Close()
-
-	if err = proto.Unmarshal(body, pb); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func DecomposeProto(msg proto.Message) ([]string, []string, []interface{}) {
-	messageReflect := msg.ProtoReflect()
-	fields := messageReflect.Descriptor().Fields()
-
-	var columns []string
-	var placeholders []string
-	var values []interface{}
-
-	for i := 0; i < fields.Len(); i++ {
-		field := fields.Get(i)
-		if messageReflect.Has(field) {
-			columns = append(columns, string(field.Name()))
-			placeholders = append(placeholders, "$"+strconv.Itoa(len(values)+1))
-			values = append(values, messageReflect.Get(field).Interface())
-		}
-	}
-
-	return columns, placeholders, values
+	Throttle          int32
 }
 
 func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
@@ -129,6 +93,10 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		parsedOptions.CacheDuration = proto.GetExtension(inputOpts, types.E_CacheDuration).(int32)
 	}
 
+	if proto.HasExtension(inputOpts, types.E_Throttle) {
+		parsedOptions.Throttle = proto.GetExtension(inputOpts, types.E_Throttle).(int32)
+	}
+
 	if proto.HasExtension(inputOpts, types.E_MultipartRequest) {
 		parsedOptions.MultipartRequest = proto.GetExtension(inputOpts, types.E_MultipartRequest).(bool)
 	}
@@ -140,14 +108,21 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	return parsedOptions
 }
 
+func parseTag(field reflect.StructField, fieldName string) string {
+	tagValue := field.Tag.Get(fieldName)
+	if tagValue == "" {
+		tagValue = strings.ToLower(field.Name)
+	} else if commaIndex := strings.Index(tagValue, ","); commaIndex != -1 {
+		tagValue = tagValue[:commaIndex]
+	}
+	return tagValue
+}
+
 func ParseProtoQueryParams(pbVal reflect.Value, queryParams url.Values) {
 	if len(queryParams) > 0 {
 		for i := 0; i < pbVal.NumField(); i++ {
 			f := pbVal.Type().Field(i)
-			jsonTag := f.Tag.Get("json")
-			if jsonTag == "" {
-				jsonTag = strings.ToLower(f.Name)
-			}
+			jsonTag := parseTag(f, "json")
 
 			if values, ok := queryParams[jsonTag]; ok && len(values) > 0 {
 				fv := pbVal.Field(i)
@@ -159,30 +134,52 @@ func ParseProtoQueryParams(pbVal reflect.Value, queryParams url.Values) {
 	}
 }
 
-func ParseProtoPathParams(pbVal reflect.Value, methodParameters, requestParameters []string) {
-	if len(methodParameters) > 0 && len(methodParameters) == len(requestParameters) {
-		for i := 0; i < len(methodParameters); i++ {
-			mp := methodParameters[i]
+func ParseProtoPathParams(pbVal reflect.Value, methodParameters, requestParameters string) {
+	var lastIdx int
+	var lastParam, currentTarget, currentValue string
+	methodParamLenIdx := len(methodParameters) - 1
+	for currentIdx, targetRune := range methodParameters {
+		endIdx := currentIdx == methodParamLenIdx
 
-			if strings.HasPrefix(mp, "{") {
-				mp = strings.TrimLeft(mp, "{")
-				mp = strings.TrimRight(mp, "}")
+		if targetRune == '/' || endIdx {
+			if endIdx { // if last item, shift right because there is no trailing slash
+				currentIdx = currentIdx + 1
+			}
 
-				for k := 0; k < pbVal.NumField(); k++ {
-					f := pbVal.Type().Field(k)
-					jsonTag := f.Tag.Get("json")
-					if jsonTag == "" {
-						jsonTag = strings.ToLower(f.Name)
-					}
+			// /v1 /group /schedules /{groupScheduleId} /date /{date}
+			// /v1 /group /schedules /some-id /date /23874923874
+			currentTarget = methodParameters[lastIdx:currentIdx]
 
-					if strings.Split(jsonTag, ",")[0] == mp {
-						fv := pbVal.Field(k)
-						if fv.IsValid() && fv.CanSet() && fv.Kind() == reflect.String {
-							fv.SetString(requestParameters[i])
+			lastIdx = currentIdx + 1
+
+			if strings.Index(currentTarget, "{") == 0 { // now parsing an extractable value
+
+				currentTarget = currentTarget[1 : len(currentTarget)-1] // remove braces from {pathParam}
+
+				trimIdx := strings.Index(requestParameters, lastParam) + len(lastParam) + 1 // lastParam will be the same name (schedules) which we can index off of
+				requestParameters = requestParameters[trimIdx:]                             // trim up to request param value
+				if endIdx {                                                                 // if last item, the above trim result will be the value
+					currentValue = requestParameters
+				} else {
+					currentValue = requestParameters[:strings.Index(requestParameters, "/")]
+				}
+
+				if currentValue != "" {
+					if fVal := pbVal.FieldByName(TitleCase.String(currentTarget)); fVal != reflect.Zero(pbVal.Type()) && fVal.IsValid() && fVal.CanSet() {
+						if fVal.Kind() == reflect.Int {
+							if intVal, err := strconv.Atoi(currentValue); err == nil {
+								fVal.SetInt(int64(intVal))
+							} else {
+								ErrorLog.Println("received a path param as int struct but path value not int: " + currentTarget + " got: " + currentValue)
+							}
+						} else if fVal.Kind() == reflect.String {
+							fVal.SetString(currentValue)
 						}
 					}
 				}
 			}
+
+			lastParam = currentTarget
 		}
 	}
 }

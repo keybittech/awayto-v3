@@ -31,7 +31,8 @@ var (
 	DefaultPadding int
 	SigningToken   []byte
 
-	LOGIN_SIGNATURE_NAME = "login_signature_name"
+	LOGIN_SIGNATURE_NAME         = "login_signature_name"
+	DEFAULT_IGNORED_PROTO_FIELDS = []string{"state", "sizeCache", "unknownFields"}
 )
 
 func init() {
@@ -49,7 +50,8 @@ func init() {
 		log.Fatal(err)
 	}
 	ErrorLog = &ErrLog{log.New(file, "", log.Ldate|log.Ltime)}
-	TitleCase = cases.Title(language.Und)
+
+	TitleCase = cases.Title(language.Und, cases.NoLower)
 	DefaultPadding = 5
 
 	if LoggingMode == nil || *LoggingMode == "" {
