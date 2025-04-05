@@ -110,7 +110,7 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 func parseTag(field reflect.StructField, fieldName string) string {
 	tagValue := field.Tag.Get(fieldName)
 	if tagValue == "" {
-		tagValue = strings.ToLower(field.Name)
+		tagValue = strings.ToLower(field.Name[:1]) + field.Name[1:]
 	} else if commaIndex := strings.Index(tagValue, ","); commaIndex != -1 {
 		tagValue = tagValue[:commaIndex]
 	}

@@ -240,3 +240,45 @@ func BenchmarkPostFormData(b *testing.B) {
 		_, _ = PostFormData("/test", http.Header{"Content-Type": {"application/json"}}, url.Values{"key": {"value"}})
 	}
 }
+
+func Test_successStatus(t *testing.T) {
+	type args struct {
+		statusCode int
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		{name: "success code", args: args{200}, want: true},
+		{name: "bad code 1", args: args{199}, want: false},
+		{name: "bad code 2", args: args{300}, want: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := successStatus(tt.args.statusCode); got != tt.want {
+				t.Errorf("successStatus(%v) = %v, want %v", tt.args.statusCode, got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_successStatus(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = successStatus(200)
+	}
+}
+
+func Benchmark_successStatusNegative(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = successStatus(199)
+	}
+}

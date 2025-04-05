@@ -269,3 +269,58 @@ func BenchmarkParseProtoPathParams(b *testing.B) {
 		ParseProtoPathParams(val, strings.Split(options.ServiceMethodURL, "/"), strings.Split(strings.TrimLeft(url, "/api"), "/"))
 	}
 }
+
+func Test_parseTag(t *testing.T) {
+	pb := getServiceType(t, getMethodDescriptor(t, "GetGroupScheduleByDate")).New().Interface()
+	field, ok := reflect.ValueOf(pb).Elem().Type().FieldByName("GroupScheduleId")
+	if !ok {
+		t.Fatal("no field GroupScheduleId")
+	}
+	type args struct {
+		field     reflect.StructField
+		fieldName string
+	}
+	tests := []struct {
+		name string
+		args args
+		want string
+	}{
+		{name: "parses existing field", args: args{field, "json"}, want: "groupScheduleId"},
+		{name: "handles non-existing field", args: args{field, "other"}, want: "groupScheduleId"},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := parseTag(tt.args.field, tt.args.fieldName); got != tt.want {
+				t.Errorf("parseTag(%v, %v) = %v, want %v", tt.args.field, tt.args.fieldName, got, tt.want)
+			}
+		})
+	}
+}
+
+func Benchmark_parseTag(b *testing.B) {
+	pb := getServiceType(b, getMethodDescriptor(b, "GetGroupScheduleByDate")).New().Interface()
+	field, ok := reflect.ValueOf(pb).Elem().Type().FieldByName("GroupScheduleId")
+	if !ok {
+		b.Fatal("no field GroupScheduleId")
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = parseTag(field, "json")
+	}
+}
+
+func Benchmark_parseTagParsed(b *testing.B) {
+	pb := getServiceType(b, getMethodDescriptor(b, "GetGroupScheduleByDate")).New().Interface()
+	field, ok := reflect.ValueOf(pb).Elem().Type().FieldByName("GroupScheduleId")
+	if !ok {
+		b.Fatal("no field GroupScheduleId")
+	}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = parseTag(field, "other")
+	}
+}
