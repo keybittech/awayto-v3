@@ -23,30 +23,12 @@ func mockServer() *httptest.Server {
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 	})
 
-	handler.HandleFunc("/post", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			w.Write([]byte("Post OK"))
-		} else {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
-	handler.HandleFunc("/form", func(w http.ResponseWriter, r *http.Request) {
-		if r.Method == http.MethodPost {
-			if err := r.ParseForm(); err != nil {
-				http.Error(w, "Bad Request", http.StatusBadRequest)
-				return
-			}
-			w.Write([]byte("Form Submitted"))
-		} else {
-			http.Error(w, "Method Not Allowed", http.StatusMethodNotAllowed)
-		}
-	})
-
 	return httptest.NewServer(handler)
 }
 
 func TestUtilGet(t *testing.T) {
+	headers := http.Header{}
+	headers.Add("test-header-1", "test 1")
 	tests := []struct {
 		name    string
 		url     string
@@ -55,6 +37,7 @@ func TestUtilGet(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "valid URL", url: "/test", headers: nil, want: []byte("OK"), wantErr: false},
+		{name: "valid URL w headers", url: "/test", headers: headers, want: []byte("OK"), wantErr: false},
 		{name: "invalid URL", url: "/error", headers: nil, want: nil, wantErr: true},
 	}
 
@@ -74,6 +57,40 @@ func TestUtilGet(t *testing.T) {
 				t.Errorf("Get() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilGet(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Get("/test", nil)
+	}
+}
+
+func BenchmarkUtilGetHeaders(b *testing.B) {
+	headers := http.Header{}
+	headers.Add("test-header-1", "test 1")
+	headers.Add("test-header-2", "test 2")
+	headers.Add("test-header-3", "test 3")
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Get("/test", headers)
+	}
+}
+
+func BenchmarkUtilGetError(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Get("/error", nil)
 	}
 }
 
@@ -106,6 +123,26 @@ func TestUtilGetWithParams(t *testing.T) {
 				t.Errorf("GetWithParams() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilGetWithParams(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = GetWithParams("/test", nil, url.Values{"key": {"value"}})
+	}
+}
+
+func BenchmarkUtilGetWithParamsError(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = GetWithParams("/error", nil, url.Values{"key": {"value"}})
 	}
 }
 
@@ -142,6 +179,26 @@ func TestUtilMutate(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilMutate(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Mutate("POST", "/test", http.Header{"Content-Type": {"application/json"}}, []byte(`{"key":"value"}`))
+	}
+}
+
+func BenchmarkUtilMutateError(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = Mutate("POST", "/error", http.Header{"Content-Type": {"application/json"}}, []byte(`{"key":`))
+	}
+}
+
 func TestUtilPostFormData(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -152,7 +209,7 @@ func TestUtilPostFormData(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "valid POST form data", url: "/test", headers: nil, data: url.Values{"key": {"value"}}, want: []byte("OK"), wantErr: false},
-		{name: "invalid URL with POST form data", url: "/invalid", headers: nil, data: url.Values{"key": {"value"}}, want: nil, wantErr: true},
+		{name: "invalid URL with POST form data", url: "/error", headers: nil, data: url.Values{"key": {"value"}}, want: nil, wantErr: true},
 	}
 
 	server := mockServer()
@@ -171,5 +228,15 @@ func TestUtilPostFormData(t *testing.T) {
 				t.Errorf("PostFormData() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilPostFormData(b *testing.B) {
+	server := mockServer()
+	defer server.Close()
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = PostFormData("/test", http.Header{"Content-Type": {"application/json"}}, url.Values{"key": {"value"}})
 	}
 }
