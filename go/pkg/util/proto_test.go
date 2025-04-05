@@ -3,6 +3,7 @@ package util
 import (
 	"net/url"
 	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -11,120 +12,23 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
-func TestUtilParseHandlerOptions(t *testing.T) {
-	var postPrompt protoreflect.MethodDescriptor
-	var postFileContents protoreflect.MethodDescriptor
-	var getFileContents protoreflect.MethodDescriptor
-	var getBookingTranscripts protoreflect.MethodDescriptor
-	var postGroupRole protoreflect.MethodDescriptor
+func getMethodDescriptor(testModule interface{}, methodName string) protoreflect.MethodDescriptor {
 
-	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
-		if fd.Services().Len() == 0 {
-			return true
+	md := getMethodDescriptorOp(methodName)
+
+	if md == nil {
+		if mod, ok := testModule.(*testing.T); ok {
+			mod.Fatalf("Could not find %s method", methodName)
 		}
-
-		services := fd.Services().Get(0)
-
-		for i := 0; i <= services.Methods().Len()-1; i++ {
-			serviceMethod := services.Methods().Get(i)
-
-			switch serviceMethod.Name() {
-			case "PostPrompt":
-				postPrompt = serviceMethod
-			case "PostFileContents":
-				postFileContents = serviceMethod
-			case "GetFileContents":
-				getFileContents = serviceMethod
-			case "GetBookingTranscripts":
-				getBookingTranscripts = serviceMethod
-			case "PostGroupRole":
-				postGroupRole = serviceMethod
-			default:
-			}
+		if mod, ok := testModule.(*testing.B); ok {
+			mod.Fatalf("Could not find %s method", methodName)
 		}
-		return true
-	})
-
-	if postPrompt == nil || postFileContents == nil || getFileContents == nil || getBookingTranscripts == nil || postGroupRole == nil {
-		t.Fatalf(
-			"got nil service method %t %t %t %t %t",
-			postPrompt == nil,
-			postFileContents == nil,
-			getFileContents == nil,
-			getBookingTranscripts == nil,
-			postGroupRole == nil,
-		)
 	}
 
-	type args struct {
-		md protoreflect.MethodDescriptor
-	}
-	tests := []struct {
-		name     string
-		args     args
-		validate func(*HandlerOptions) bool
-	}{
-		{
-			name: "cache=STORE",
-			args: args{postPrompt},
-			validate: func(got *HandlerOptions) bool {
-				return got.CacheType == types.CacheType_STORE
-			},
-		},
-		{
-			name: "throttle=1",
-			args: args{postFileContents},
-			validate: func(got *HandlerOptions) bool {
-				return got.Throttle == 1
-			},
-		},
-		{
-			name: "multipart_request=true",
-			args: args{postFileContents},
-			validate: func(got *HandlerOptions) bool {
-				return got.MultipartRequest == true
-			},
-		},
-		{
-			name: "cache=SKIP",
-			args: args{getFileContents},
-			validate: func(got *HandlerOptions) bool {
-				return got.CacheType == types.CacheType_SKIP
-			},
-		},
-		{
-			name: "multipart_response=true",
-			args: args{getFileContents},
-			validate: func(got *HandlerOptions) bool {
-				return got.MultipartResponse == true
-			},
-		},
-		{
-			name: "cache_duration=180",
-			args: args{getBookingTranscripts},
-			validate: func(got *HandlerOptions) bool {
-				return got.CacheDuration == 180
-			},
-		},
-		{
-			name: "site_role=APP_GROUP_ROLES",
-			args: args{postGroupRole},
-			validate: func(got *HandlerOptions) bool {
-				return got.SiteRole == types.SiteRoles_APP_GROUP_ROLES.String()
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := ParseHandlerOptions(tt.args.md)
-			if !tt.validate(got) {
-				t.Errorf("ParseHandlerOptions() failed validation for %s", tt.name)
-			}
-		})
-	}
+	return md
 }
 
-func getMethodDescriptor(t *testing.T, methodName string) protoreflect.MethodDescriptor {
+func getMethodDescriptorOp(methodName string) protoreflect.MethodDescriptor {
 	var md protoreflect.MethodDescriptor
 
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
@@ -147,13 +51,25 @@ func getMethodDescriptor(t *testing.T, methodName string) protoreflect.MethodDes
 		return true
 	})
 
-	if md == nil {
-		t.Fatalf("Could not find %s method", methodName)
-	}
 	return md
 }
 
-func getServiceType(t *testing.T, descriptor protoreflect.MethodDescriptor) protoreflect.MessageType {
+func getServiceType(testModule interface{}, inputDescriptor protoreflect.MethodDescriptor) protoreflect.MessageType {
+	st := getServiceTypeOp(inputDescriptor)
+
+	if st == nil {
+		if mod, ok := testModule.(*testing.T); ok {
+			mod.Fatalf("Could not find %s input descriptor", inputDescriptor.Input().FullName())
+		}
+		if mod, ok := testModule.(*testing.B); ok {
+			mod.Fatalf("Could not find %s input descriptor", inputDescriptor.Input().FullName())
+		}
+	}
+
+	return st
+}
+
+func getServiceTypeOp(descriptor protoreflect.MethodDescriptor) protoreflect.MessageType {
 	var serviceType protoreflect.MessageType
 
 	protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
@@ -165,10 +81,85 @@ func getServiceType(t *testing.T, descriptor protoreflect.MethodDescriptor) prot
 		return true
 	})
 
-	if serviceType == nil {
-		t.Fatal("Could not find input message type for GetUserProfileDetailsBySub")
-	}
 	return serviceType
+}
+
+func TestUtilParseHandlerOptions(t *testing.T) {
+	type args struct {
+		md protoreflect.MethodDescriptor
+	}
+	tests := []struct {
+		name     string
+		md       protoreflect.MethodDescriptor
+		validate func(*HandlerOptions) bool
+	}{
+		{
+			name: "cache=STORE",
+			md:   getMethodDescriptor(t, "PostPrompt"),
+			validate: func(got *HandlerOptions) bool {
+				return got.CacheType == types.CacheType_STORE
+			},
+		},
+		{
+			name: "throttle=1",
+			md:   getMethodDescriptor(t, "PostFileContents"),
+			validate: func(got *HandlerOptions) bool {
+				return got.Throttle == 1
+			},
+		},
+		{
+			name: "multipart_request=true",
+			md:   getMethodDescriptor(t, "PostFileContents"),
+			validate: func(got *HandlerOptions) bool {
+				return got.MultipartRequest == true
+			},
+		},
+		{
+			name: "cache=SKIP",
+			md:   getMethodDescriptor(t, "GetFileContents"),
+			validate: func(got *HandlerOptions) bool {
+				return got.CacheType == types.CacheType_SKIP
+			},
+		},
+		{
+			name: "multipart_response=true",
+			md:   getMethodDescriptor(t, "GetFileContents"),
+			validate: func(got *HandlerOptions) bool {
+				return got.MultipartResponse == true
+			},
+		},
+		{
+			name: "cache_duration=180",
+			md:   getMethodDescriptor(t, "GetBookingTranscripts"),
+			validate: func(got *HandlerOptions) bool {
+				return got.CacheDuration == 180
+			},
+		},
+		{
+			name: "site_role=APP_GROUP_ROLES",
+			md:   getMethodDescriptor(t, "PostGroupRole"),
+			validate: func(got *HandlerOptions) bool {
+				return got.SiteRole == types.SiteRoles_APP_GROUP_ROLES.String()
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got := ParseHandlerOptions(tt.md)
+			if !tt.validate(got) {
+				t.Errorf("ParseHandlerOptions() failed validation for %s", tt.name)
+			}
+		})
+	}
+}
+
+func BenchmarkUtilParseHandlerOptions(b *testing.B) {
+	md := getMethodDescriptor(b, "PostPrompt")
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = ParseHandlerOptions(md)
+	}
 }
 
 func TestUtilParseProtoQueryParams(t *testing.T) {
@@ -201,6 +192,38 @@ func TestUtilParseProtoQueryParams(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilParseProtoQueryParamsComplex(b *testing.B) {
+	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
+	pb := getServiceType(b, md).New().Interface()
+	// More complex query with multiple parameters
+	queryParams := url.Values{
+		"sub":     []string{"test-subject"},
+		"user_id": []string{"123456"},
+		"role":    []string{"admin"},
+		"active":  []string{"true"},
+	}
+	val := reflect.ValueOf(pb).Elem()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ParseProtoQueryParams(val, queryParams)
+	}
+}
+
+func BenchmarkUtilParseProtoQueryParams(b *testing.B) {
+	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
+	pb := getServiceType(b, md).New().Interface()
+	queryParams := url.Values{
+		"sub": []string{"test"},
+	}
+	val := reflect.ValueOf(pb).Elem()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ParseProtoQueryParams(val, queryParams)
+	}
+}
+
 func TestUtilParseProtoPathParams(t *testing.T) {
 	tests := []struct {
 		name   string
@@ -223,13 +246,26 @@ func TestUtilParseProtoPathParams(t *testing.T) {
 			pb := getServiceType(t, tt.method).New().Interface()
 			ParseProtoPathParams(
 				reflect.ValueOf(pb).Elem(),
-				ParseHandlerOptions(tt.method).ServiceMethodURL,
-				tt.url,
+				strings.Split(ParseHandlerOptions(tt.method).ServiceMethodURL, "/"),
+				strings.Split(strings.TrimPrefix(tt.url, "/api"), "/"),
 			)
 
 			if !proto.Equal(pb, tt.want) {
 				t.Errorf("ParseProtoPathParams() = %v, want %v", pb, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilParseProtoPathParams(b *testing.B) {
+	md := getMethodDescriptor(b, "GetGroupScheduleByDate")
+	pb := getServiceType(b, md).New().Interface()
+	url := "/api/v1/group/schedules/group-schedule-id/date/date-value"
+	options := ParseHandlerOptions(md)
+	val := reflect.ValueOf(pb).Elem()
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		ParseProtoPathParams(val, strings.Split(options.ServiceMethodURL, "/"), strings.Split(strings.TrimLeft(url, "/api"), "/"))
 	}
 }

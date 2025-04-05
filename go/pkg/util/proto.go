@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/url"
 	"reflect"
-	"strconv"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -134,52 +133,27 @@ func ParseProtoQueryParams(pbVal reflect.Value, queryParams url.Values) {
 	}
 }
 
-func ParseProtoPathParams(pbVal reflect.Value, methodParameters, requestParameters string) {
-	var lastIdx int
-	var lastParam, currentTarget, currentValue string
-	methodParamLenIdx := len(methodParameters) - 1
-	for currentIdx, targetRune := range methodParameters {
-		endIdx := currentIdx == methodParamLenIdx
+func ParseProtoPathParams(pbVal reflect.Value, methodParameters, requestParameters []string) {
+	if len(methodParameters) > 0 && len(methodParameters) == len(requestParameters) {
+		for i := 0; i < len(methodParameters); i++ {
+			mp := methodParameters[i]
 
-		if targetRune == '/' || endIdx {
-			if endIdx { // if last item, shift right because there is no trailing slash
-				currentIdx = currentIdx + 1
-			}
+			if strings.HasPrefix(mp, "{") {
+				mp = strings.TrimLeft(mp, "{")
+				mp = strings.TrimRight(mp, "}")
 
-			// /v1 /group /schedules /{groupScheduleId} /date /{date}
-			// /v1 /group /schedules /some-id /date /23874923874
-			currentTarget = methodParameters[lastIdx:currentIdx]
+				for k := 0; k < pbVal.NumField(); k++ {
+					f := pbVal.Type().Field(k)
+					jsonTag := parseTag(f, "json")
 
-			lastIdx = currentIdx + 1
-
-			if strings.Index(currentTarget, "{") == 0 { // now parsing an extractable value
-
-				currentTarget = currentTarget[1 : len(currentTarget)-1] // remove braces from {pathParam}
-
-				trimIdx := strings.Index(requestParameters, lastParam) + len(lastParam) + 1 // lastParam will be the same name (schedules) which we can index off of
-				requestParameters = requestParameters[trimIdx:]                             // trim up to request param value
-				if endIdx {                                                                 // if last item, the above trim result will be the value
-					currentValue = requestParameters
-				} else {
-					currentValue = requestParameters[:strings.Index(requestParameters, "/")]
-				}
-
-				if currentValue != "" {
-					if fVal := pbVal.FieldByName(TitleCase.String(currentTarget)); fVal != reflect.Zero(pbVal.Type()) && fVal.IsValid() && fVal.CanSet() {
-						if fVal.Kind() == reflect.Int {
-							if intVal, err := strconv.Atoi(currentValue); err == nil {
-								fVal.SetInt(int64(intVal))
-							} else {
-								ErrorLog.Println("received a path param as int struct but path value not int: " + currentTarget + " got: " + currentValue)
-							}
-						} else if fVal.Kind() == reflect.String {
-							fVal.SetString(currentValue)
+					if strings.Split(jsonTag, ",")[0] == mp {
+						fv := pbVal.Field(k)
+						if fv.IsValid() && fv.CanSet() && fv.Kind() == reflect.String {
+							fv.SetString(requestParameters[i])
 						}
 					}
 				}
 			}
-
-			lastParam = currentTarget
 		}
 	}
 }

@@ -79,7 +79,11 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		// Parse query and path parameters
 		util.ParseProtoQueryParams(pbVal, req.URL.Query())
-		util.ParseProtoPathParams(pbVal, handlerOpts.ServiceMethodURL, req.URL.Path)
+		util.ParseProtoPathParams(
+			pbVal,
+			strings.Split(handlerOpts.ServiceMethodURL, "/"),
+			strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
+		)
 
 		results := []reflect.Value{}
 

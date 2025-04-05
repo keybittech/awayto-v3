@@ -120,7 +120,7 @@ AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 
 GO_DEV_FLAGS=GO_ENVFILE_LOC=$(PROJECT_DIR)/.env GO_ERROR_LOG=$(PROJECT_DIR)/${GO_ERROR_LOG} LOG_LEVEL=debug
 GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1} $${V:-}
-GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-}
+GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} # -cpuprofile=cpu.prof
 
 #################################
 #           TARGETS             #
@@ -272,14 +272,18 @@ go_test_main: build $(GO_TARGET)
 .PHONY: go_test_pkg
 go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
-	go test -C $(GO_UTIL_DIR) $(GO_TEST_FLAGS) ./...
 	go test -C $(GO_API_DIR) $(GO_TEST_FLAGS) ./...
 	go test -C $(GO_CLIENTS_DIR) $(GO_TEST_FLAGS) ./...
 	go test -C $(GO_HANDLERS_DIR) $(GO_TEST_FLAGS) ./...
+	go test -C $(GO_UTIL_DIR) $(GO_TEST_FLAGS) ./...
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -cpuprofile=cpu.prof ${PROJECT_REPO}/go
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/go
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_UTIL_DIR)
 
 .PHONY: go_coverage
 go_coverage: $(GO_MOCK_TARGET)
