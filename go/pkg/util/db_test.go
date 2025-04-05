@@ -25,3 +25,11 @@ func TestUtilWithPagination(t *testing.T) {
 		})
 	}
 }
+
+func BenchmarkUtilWithPagination(b *testing.B) {
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		_ = WithPagination("SELECT * FROM products WHERE category = 'test'", 3, 15)
+	}
+}

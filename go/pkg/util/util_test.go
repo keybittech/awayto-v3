@@ -66,6 +66,23 @@ func TestUtilErrLog_Println(t *testing.T) {
 	os.Remove(filePath)
 }
 
+func BenchmarkUtilErrLog_Println(b *testing.B) {
+	filePath := "/tmp/log_test"
+	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	if err != nil {
+		b.Fatal(err)
+	}
+	defer file.Close()
+	logger := log.New(file, "", log.Ldate|log.Ltime)
+	errLogger := &ErrLog{logger}
+
+	b.ResetTimer()
+
+	for i := 0; i < b.N; i++ {
+		errLogger.Println("test")
+	}
+}
+
 func TestUtilUserError(t *testing.T) {
 	type args struct {
 		err string
@@ -88,6 +105,13 @@ func TestUtilUserError(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilUserError(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = UserError("error")
+	}
+}
+
 func TestUtilSnipUserError(t *testing.T) {
 	type args struct {
 		err string
@@ -105,6 +129,13 @@ func TestUtilSnipUserError(t *testing.T) {
 				t.Errorf("SnipUserError() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilSnipUserError(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = SnipUserError("ERROR_FOR_USER error ERROR_FOR_USER")
 	}
 }
 
@@ -178,6 +209,17 @@ func TestUtilRequestError(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilRequestError(b *testing.B) {
+	testPbStruct := &types.IUserProfile{
+		FirstName: "test",
+		RoleName:  "role",
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		RequestError(httptest.NewRecorder(), "test error", slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}), reflect.ValueOf(testPbStruct).Elem())
+	}
+}
+
 func TestUtilErrCheck(t *testing.T) {
 	type args struct {
 		err error
@@ -196,6 +238,13 @@ func TestUtilErrCheck(t *testing.T) {
 				t.Errorf("ErrCheck() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilErrCheck(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = ErrCheck(errors.New("test error"))
 	}
 }
 
@@ -220,6 +269,13 @@ func TestUtilNewNullString(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilNewNullString(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = NewNullString("test error")
+	}
+}
+
 func TestUtilIsUUID(t *testing.T) {
 	type args struct {
 		id string
@@ -241,6 +297,22 @@ func TestUtilIsUUID(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilIsUUID(b *testing.B) {
+	str := "00000000-0000-0000-0000-000000000000"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = IsUUID(str)
+	}
+}
+
+func BenchmarkUtilIsUUIDNegative(b *testing.B) {
+	str := "test"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = IsUUID(str)
+	}
+}
+
 func TestUtilIsEpoch(t *testing.T) {
 	type args struct {
 		id string
@@ -259,6 +331,22 @@ func TestUtilIsEpoch(t *testing.T) {
 				t.Errorf("IsEpoch() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilIsEpoch(b *testing.B) {
+	var goodId = "0123456789"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = IsEpoch(goodId)
+	}
+}
+
+func BenchmarkUtilIsEpochNegative(b *testing.B) {
+	var badId = "test"
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = IsEpoch(badId)
 	}
 }
 
@@ -284,6 +372,20 @@ func TestUtilPaddedLen(t *testing.T) {
 				t.Errorf("PaddedLen() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilPaddedLen(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = PaddedLen(5, 3)
+	}
+}
+
+func BenchmarkUtilPaddedLenNegative(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = PaddedLen(-5, -3)
 	}
 }
 
@@ -334,6 +436,25 @@ func TestUtilEnvFile(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilEnvFile(b *testing.B) {
+	tmpDirName := "test-project-dir"
+	tmpDir, err := os.MkdirTemp("", tmpDirName)
+	if err != nil {
+		b.Fatalf("Failed to create temp directory: %v", err)
+	}
+	defer os.RemoveAll(tmpDir)
+	oldDir := os.Getenv("PROJECT_DIR")
+	os.Setenv("PROJECT_DIR", tmpDir)
+	defer func() { os.Setenv("PROJECT_DIR", oldDir) }()
+	filePath := filepath.Join(tmpDir, "test.txt")
+	err = os.WriteFile(filePath, []byte("test content\n\n"), 0644)
+
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = EnvFile("test.txt")
+	}
+}
+
 func TestUtilAnonIp(t *testing.T) {
 	type args struct {
 		ipAddr string
@@ -352,6 +473,20 @@ func TestUtilAnonIp(t *testing.T) {
 				t.Errorf("AnonIp() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilAnonIp(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = AnonIp("1.1.1.1")
+	}
+}
+
+func BenchmarkUtilAnonIpNegative(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = AnonIp("1.1.1")
 	}
 }
 
@@ -377,6 +512,13 @@ func TestUtilStringIn(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilStringIn(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = StringIn("test", []string{"test"})
+	}
+}
+
 func TestUtilStringOut(t *testing.T) {
 	type args struct {
 		s  string
@@ -398,6 +540,13 @@ func TestUtilStringOut(t *testing.T) {
 				t.Errorf("StringOut() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilStringOut(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = StringOut("test", []string{"test", "case"})
 	}
 }
 
@@ -430,6 +579,29 @@ func TestUtilExeTime(t *testing.T) {
 	})
 }
 
+func BenchmarkUtilExeTime(b *testing.B) {
+	var buf bytes.Buffer
+	originalLogger := ErrorLog
+	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
+	defer func() { ErrorLog = originalLogger }()
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = ExeTime("testFunction")
+	}
+}
+
+func BenchmarkUtilExeTimeDeferFunc(b *testing.B) {
+	var buf bytes.Buffer
+	originalLogger := ErrorLog
+	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
+	defer func() { ErrorLog = originalLogger }()
+	deferFunc := ExeTime("testFunction")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		deferFunc("test")
+	}
+}
+
 func TestUtilWriteSigned(t *testing.T) {
 	type args struct {
 		name          string
@@ -456,6 +628,13 @@ func TestUtilWriteSigned(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilWriteSigned(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = WriteSigned("a", "b")
+	}
+}
+
 func TestUtilVerifySigned(t *testing.T) {
 	type args struct {
 		name        string
@@ -475,5 +654,13 @@ func TestUtilVerifySigned(t *testing.T) {
 				t.Errorf("VerifySigned() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilVerifySigned(b *testing.B) {
+	signedValue := WriteSigned("a", "b")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = VerifySigned("a", signedValue)
 	}
 }

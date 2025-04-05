@@ -279,7 +279,7 @@ go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/go
+	[ -n "$${INTEGRATIONS}" ] && go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/go || true
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)

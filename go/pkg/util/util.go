@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"os"
 	"reflect"
-	"regexp"
 	"runtime"
 	"slices"
 	"strconv"
@@ -149,15 +148,39 @@ func NewNullString(s string) sql.NullString {
 	}
 }
 
-var uuidPattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
-
 func IsUUID(id string) bool {
-	return uuidPattern.MatchString(id)
+	if len(id) != 36 {
+		return false
+	}
+
+	if id[8] != '-' || id[13] != '-' || id[18] != '-' || id[23] != '-' {
+		return false
+	}
+
+	for i := 0; i < 36; i++ {
+		if i == 8 || i == 13 || i == 18 || i == 23 {
+			continue
+		}
+
+		b := id[i]
+		if !((b >= '0' && b <= '9') || (b >= 'a' && b <= 'f')) {
+			return false
+		}
+	}
+
+	return true
 }
 
 func IsEpoch(id string) bool {
-	_, err := strconv.ParseInt(id, 10, 64)
-	return err == nil
+	if len(id) == 0 {
+		return false
+	}
+	for _, c := range id {
+		if c < '0' || c > '9' {
+			return false
+		}
+	}
+	return true
 }
 
 func PaddedLen(padTo int, length int) string {
