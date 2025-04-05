@@ -2,7 +2,7 @@ package util
 
 import "testing"
 
-func TestUtilWithPagination(t *testing.T) {
+func TestWithPagination(t *testing.T) {
 	type args struct {
 		query    string
 		page     int
@@ -26,7 +26,7 @@ func TestUtilWithPagination(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilDbWithPagination(b *testing.B) {
+func BenchmarkWithPagination(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {

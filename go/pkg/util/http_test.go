@@ -26,7 +26,7 @@ func mockServer() *httptest.Server {
 	return httptest.NewServer(handler)
 }
 
-func TestUtilGet(t *testing.T) {
+func TestGet(t *testing.T) {
 	headers := http.Header{}
 	headers.Add("test-header-1", "test 1")
 	tests := []struct {
@@ -60,7 +60,7 @@ func TestUtilGet(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilHttpGet(b *testing.B) {
+func BenchmarkGet(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -70,7 +70,7 @@ func BenchmarkUtilHttpGet(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilHttpGetHeaders(b *testing.B) {
+func BenchmarkGetHeaders(b *testing.B) {
 	headers := http.Header{}
 	headers.Add("test-header-1", "test 1")
 	headers.Add("test-header-2", "test 2")
@@ -84,7 +84,7 @@ func BenchmarkUtilHttpGetHeaders(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilHttpGetError(b *testing.B) {
+func BenchmarkGetError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -94,7 +94,7 @@ func BenchmarkUtilHttpGetError(b *testing.B) {
 	}
 }
 
-func TestUtilGetWithParams(t *testing.T) {
+func TestGetWithParams(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string
@@ -126,7 +126,7 @@ func TestUtilGetWithParams(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilHttpGetWithParams(b *testing.B) {
+func BenchmarkGetWithParams(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -136,7 +136,7 @@ func BenchmarkUtilHttpGetWithParams(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilHttpGetWithParamsError(b *testing.B) {
+func BenchmarkGetWithParamsError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -146,7 +146,7 @@ func BenchmarkUtilHttpGetWithParamsError(b *testing.B) {
 	}
 }
 
-func TestUtilMutate(t *testing.T) {
+func TestMutate(t *testing.T) {
 	tests := []struct {
 		name    string
 		method  string
@@ -179,7 +179,7 @@ func TestUtilMutate(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilHttpMutate(b *testing.B) {
+func BenchmarkMutate(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -189,7 +189,7 @@ func BenchmarkUtilHttpMutate(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilHttpMutateError(b *testing.B) {
+func BenchmarkMutateError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -199,7 +199,7 @@ func BenchmarkUtilHttpMutateError(b *testing.B) {
 	}
 }
 
-func TestUtilPostFormData(t *testing.T) {
+func TestPostFormData(t *testing.T) {
 	tests := []struct {
 		name    string
 		url     string
@@ -231,7 +231,7 @@ func TestUtilPostFormData(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilHttpPostFormData(b *testing.B) {
+func BenchmarkPostFormData(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 

@@ -10,7 +10,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
-func TestUtilGetSocketId(t *testing.T) {
+func TestGetSocketId(t *testing.T) {
 	type args struct {
 		userSub string
 		connId  string
@@ -32,21 +32,21 @@ func TestUtilGetSocketId(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSockGetSocketId(b *testing.B) {
+func BenchmarkGetSocketId(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GetSocketId("a", "b")
 	}
 }
 
-func BenchmarkUtilSockGetSocketIdNegative(b *testing.B) {
+func BenchmarkGetSocketIdNegative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = GetSocketId("", "")
 	}
 }
 
-func TestUtilSplitSocketId(t *testing.T) {
+func TestSplitSocketId(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -83,28 +83,28 @@ func TestUtilSplitSocketId(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSockSplitSocketId(b *testing.B) {
+func BenchmarkSplitSocketId(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _, _ = SplitSocketId("a:b")
 	}
 }
 
-func BenchmarkUtilSockSplitSocketIdNegative(b *testing.B) {
+func BenchmarkSplitSocketIdNegative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _, _ = SplitSocketId("")
 	}
 }
 
-func BenchmarkUtilSockSplitSocketIdNegativeColon(b *testing.B) {
+func BenchmarkSplitSocketIdNegativeColon(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_, _, _ = SplitSocketId("a:")
 	}
 }
 
-func TestUtilComputeWebSocketAcceptKey(t *testing.T) {
+func TestComputeWebSocketAcceptKey(t *testing.T) {
 	type args struct {
 		clientKey string
 	}
@@ -125,7 +125,7 @@ func TestUtilComputeWebSocketAcceptKey(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSockComputeWebSocketAcceptKey(b *testing.B) {
+func BenchmarkComputeWebSocketAcceptKey(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = ComputeWebSocketAcceptKey("test")
@@ -158,7 +158,7 @@ func (m *MockConn) Write(p []byte) (n int, err error) {
 	return len(p), nil
 }
 
-func TestUtilReadSocketConnectionMessage(t *testing.T) {
+func TestReadSocketConnectionMessage(t *testing.T) {
 	type args struct {
 		conn net.Conn
 	}
@@ -208,7 +208,7 @@ func TestUtilReadSocketConnectionMessage(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSockReadSocketConnectionMessage(b *testing.B) {
+func BenchmarkReadSocketConnectionMessage(b *testing.B) {
 	conn := &MockConn{
 		data: []byte{
 			0x81,                   // first byte (fin, opcode)
@@ -232,7 +232,7 @@ func (m *MockErrConn) Write(p []byte) (n int, err error) {
 	return 0, fmt.Errorf("simulated write error")
 }
 
-func TestUtilWriteSocketConnectionMessage(t *testing.T) {
+func TestWriteSocketConnectionMessage(t *testing.T) {
 	type args struct {
 		msg  []byte
 		conn net.Conn
@@ -292,7 +292,7 @@ func TestUtilWriteSocketConnectionMessage(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSockWriteSocketConnectionMessage(b *testing.B) {
+func BenchmarkWriteSocketConnectionMessage(b *testing.B) {
 	data := []byte("test")
 	conn := &MockConn{}
 	b.ResetTimer()
@@ -301,7 +301,7 @@ func BenchmarkUtilSockWriteSocketConnectionMessage(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilSockWriteSocketConnectionMessageLarge(b *testing.B) {
+func BenchmarkWriteSocketConnectionMessageLarge(b *testing.B) {
 	data := make([]byte, 70000)
 	conn := &MockConn{}
 	b.ResetTimer()
@@ -310,7 +310,7 @@ func BenchmarkUtilSockWriteSocketConnectionMessageLarge(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilSockWriteSocketConnectionMessageError(b *testing.B) {
+func BenchmarkWriteSocketConnectionMessageError(b *testing.B) {
 	data := []byte("test")
 	conn := &MockErrConn{}
 	b.ResetTimer()
@@ -328,7 +328,7 @@ type TestPayload struct {
 	Data PayloadData
 }
 
-func TestUtilGenerateMessage(t *testing.T) {
+func TestGenerateMessage(t *testing.T) {
 	testMessage := types.SocketMessage{
 		Action:     44,
 		Topic:      "topic",
@@ -367,7 +367,7 @@ func TestUtilGenerateMessage(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSockGenerateMessage(b *testing.B) {
+func BenchmarkGenerateMessage(b *testing.B) {
 	padTo := 5
 	testMessage := &types.SocketMessage{
 		Action:     44,
@@ -384,7 +384,7 @@ func BenchmarkUtilSockGenerateMessage(b *testing.B) {
 	}
 }
 
-func TestUtilParseMessage(t *testing.T) {
+func TestParseMessage(t *testing.T) {
 	message := []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")
 	type args struct {
 		padTo  int
@@ -515,7 +515,7 @@ func TestUtilParseMessage(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSockParseMessage(b *testing.B) {
+func BenchmarkParseMessage(b *testing.B) {
 	padTo := 5
 	cursor := 0
 	message := []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")

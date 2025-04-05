@@ -18,7 +18,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
-func TestUtilErrLog_Println(t *testing.T) {
+func TestErrLog_Println(t *testing.T) {
 	filePath := "/tmp/log_test"
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -66,7 +66,7 @@ func TestUtilErrLog_Println(t *testing.T) {
 	os.Remove(filePath)
 }
 
-func BenchmarkUtilMainErrLog_Println(b *testing.B) {
+func BenchmarkErrLog_Println(b *testing.B) {
 	filePath := "/tmp/log_test"
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -83,7 +83,7 @@ func BenchmarkUtilMainErrLog_Println(b *testing.B) {
 	}
 }
 
-func TestUtilUserError(t *testing.T) {
+func TestUserError(t *testing.T) {
 	type args struct {
 		err string
 	}
@@ -105,14 +105,14 @@ func TestUtilUserError(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainUserError(b *testing.B) {
+func BenchmarkUserError(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = UserError("error")
 	}
 }
 
-func TestUtilSnipUserError(t *testing.T) {
+func TestSnipUserError(t *testing.T) {
 	type args struct {
 		err string
 	}
@@ -132,14 +132,14 @@ func TestUtilSnipUserError(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainSnipUserError(b *testing.B) {
+func BenchmarkSnipUserError(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = SnipUserError("ERROR_FOR_USER error ERROR_FOR_USER")
 	}
 }
 
-func TestUtilRequestError(t *testing.T) {
+func TestRequestError(t *testing.T) {
 	testPbStruct := &types.IUserProfile{
 		FirstName: "test",
 		RoleName:  "role",
@@ -209,7 +209,7 @@ func TestUtilRequestError(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainRequestError(b *testing.B) {
+func BenchmarkRequestError(b *testing.B) {
 	testPbStruct := &types.IUserProfile{
 		FirstName: "test",
 		RoleName:  "role",
@@ -220,7 +220,7 @@ func BenchmarkUtilMainRequestError(b *testing.B) {
 	}
 }
 
-func TestUtilErrCheck(t *testing.T) {
+func TestErrCheck(t *testing.T) {
 	type args struct {
 		err error
 	}
@@ -241,14 +241,14 @@ func TestUtilErrCheck(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainErrCheck(b *testing.B) {
+func BenchmarkErrCheck(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = ErrCheck(errors.New("test error"))
 	}
 }
 
-func TestUtilNewNullString(t *testing.T) {
+func TestNewNullString(t *testing.T) {
 	type args struct {
 		s string
 	}
@@ -269,14 +269,14 @@ func TestUtilNewNullString(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainNewNullString(b *testing.B) {
+func BenchmarkNewNullString(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = NewNullString("test error")
 	}
 }
 
-func TestUtilIsUUID(t *testing.T) {
+func TestIsUUID(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -297,7 +297,7 @@ func TestUtilIsUUID(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainIsUUID(b *testing.B) {
+func BenchmarkIsUUID(b *testing.B) {
 	str := "00000000-0000-0000-0000-000000000000"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -305,7 +305,7 @@ func BenchmarkUtilMainIsUUID(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilMainIsUUIDNegative(b *testing.B) {
+func BenchmarkIsUUIDNegative(b *testing.B) {
 	str := "test"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -313,7 +313,7 @@ func BenchmarkUtilMainIsUUIDNegative(b *testing.B) {
 	}
 }
 
-func TestUtilIsEpoch(t *testing.T) {
+func TestIsEpoch(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -334,7 +334,7 @@ func TestUtilIsEpoch(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainIsEpoch(b *testing.B) {
+func BenchmarkIsEpoch(b *testing.B) {
 	var goodId = "0123456789"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -342,7 +342,7 @@ func BenchmarkUtilMainIsEpoch(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilMainIsEpochNegative(b *testing.B) {
+func BenchmarkIsEpochNegative(b *testing.B) {
 	var badId = "test"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -350,7 +350,7 @@ func BenchmarkUtilMainIsEpochNegative(b *testing.B) {
 	}
 }
 
-func TestUtilPaddedLen(t *testing.T) {
+func TestPaddedLen(t *testing.T) {
 	type args struct {
 		padTo  int
 		length int
@@ -375,21 +375,21 @@ func TestUtilPaddedLen(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainPaddedLen(b *testing.B) {
+func BenchmarkPaddedLen(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = PaddedLen(5, 3)
 	}
 }
 
-func BenchmarkUtilMainPaddedLenNegative(b *testing.B) {
+func BenchmarkPaddedLenNegative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = PaddedLen(-5, -3)
 	}
 }
 
-func TestUtilEnvFile(t *testing.T) {
+func TestEnvFile(t *testing.T) {
 	tmpDirName := "test-project-dir"
 	tmpDir, err := os.MkdirTemp("", tmpDirName)
 	if err != nil {
@@ -436,7 +436,7 @@ func TestUtilEnvFile(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainEnvFile(b *testing.B) {
+func BenchmarkEnvFile(b *testing.B) {
 	tmpDirName := "test-project-dir"
 	tmpDir, err := os.MkdirTemp("", tmpDirName)
 	if err != nil {
@@ -455,7 +455,7 @@ func BenchmarkUtilMainEnvFile(b *testing.B) {
 	}
 }
 
-func TestUtilAnonIp(t *testing.T) {
+func TestAnonIp(t *testing.T) {
 	type args struct {
 		ipAddr string
 	}
@@ -476,21 +476,21 @@ func TestUtilAnonIp(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainAnonIp(b *testing.B) {
+func BenchmarkAnonIp(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = AnonIp("1.1.1.1")
 	}
 }
 
-func BenchmarkUtilMainAnonIpNegative(b *testing.B) {
+func BenchmarkAnonIpNegative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = AnonIp("1.1.1")
 	}
 }
 
-func TestUtilStringIn(t *testing.T) {
+func TestStringIn(t *testing.T) {
 	type args struct {
 		s  string
 		ss []string
@@ -512,14 +512,14 @@ func TestUtilStringIn(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainStringIn(b *testing.B) {
+func BenchmarkStringIn(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = StringIn("test", []string{"test"})
 	}
 }
 
-func TestUtilStringOut(t *testing.T) {
+func TestStringOut(t *testing.T) {
 	type args struct {
 		s  string
 		ss []string
@@ -543,14 +543,14 @@ func TestUtilStringOut(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainStringOut(b *testing.B) {
+func BenchmarkStringOut(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = StringOut("test", []string{"test", "case"})
 	}
 }
 
-func TestUtilExeTime(t *testing.T) {
+func TestExeTime(t *testing.T) {
 	var buf bytes.Buffer
 	originalLogger := ErrorLog
 	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
@@ -579,7 +579,7 @@ func TestUtilExeTime(t *testing.T) {
 	})
 }
 
-func BenchmarkUtilMainExeTime(b *testing.B) {
+func BenchmarkExeTime(b *testing.B) {
 	var buf bytes.Buffer
 	originalLogger := ErrorLog
 	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
@@ -590,7 +590,7 @@ func BenchmarkUtilMainExeTime(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilMainExeTimeDeferFunc(b *testing.B) {
+func BenchmarkExeTimeDeferFunc(b *testing.B) {
 	var buf bytes.Buffer
 	originalLogger := ErrorLog
 	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
@@ -602,7 +602,7 @@ func BenchmarkUtilMainExeTimeDeferFunc(b *testing.B) {
 	}
 }
 
-func TestUtilWriteSigned(t *testing.T) {
+func TestWriteSigned(t *testing.T) {
 	type args struct {
 		name          string
 		unsignedValue string
@@ -628,14 +628,14 @@ func TestUtilWriteSigned(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainWriteSigned(b *testing.B) {
+func BenchmarkWriteSigned(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = WriteSigned("a", "b")
 	}
 }
 
-func TestUtilVerifySigned(t *testing.T) {
+func TestVerifySigned(t *testing.T) {
 	type args struct {
 		name        string
 		signedValue string
@@ -657,7 +657,7 @@ func TestUtilVerifySigned(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMainVerifySigned(b *testing.B) {
+func BenchmarkVerifySigned(b *testing.B) {
 	signedValue := WriteSigned("a", "b")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

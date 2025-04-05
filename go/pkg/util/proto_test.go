@@ -84,7 +84,7 @@ func getServiceTypeOp(descriptor protoreflect.MethodDescriptor) protoreflect.Mes
 	return serviceType
 }
 
-func TestUtilParseHandlerOptions(t *testing.T) {
+func TestParseHandlerOptions(t *testing.T) {
 	type args struct {
 		md protoreflect.MethodDescriptor
 	}
@@ -153,7 +153,7 @@ func TestUtilParseHandlerOptions(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilProtoParseHandlerOptions(b *testing.B) {
+func BenchmarkParseHandlerOptions(b *testing.B) {
 	md := getMethodDescriptor(b, "PostPrompt")
 	b.ResetTimer()
 
@@ -162,7 +162,7 @@ func BenchmarkUtilProtoParseHandlerOptions(b *testing.B) {
 	}
 }
 
-func TestUtilParseProtoQueryParams(t *testing.T) {
+func TestParseProtoQueryParams(t *testing.T) {
 	tests := []struct {
 		name        string
 		method      protoreflect.MethodDescriptor
@@ -192,7 +192,7 @@ func TestUtilParseProtoQueryParams(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilProtoParseProtoQueryParamsComplex(b *testing.B) {
+func BenchmarkParseProtoQueryParamsComplex(b *testing.B) {
 	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
 	pb := getServiceType(b, md).New().Interface()
 	// More complex query with multiple parameters
@@ -210,7 +210,7 @@ func BenchmarkUtilProtoParseProtoQueryParamsComplex(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilProtoParseProtoQueryParams(b *testing.B) {
+func BenchmarkParseProtoQueryParams(b *testing.B) {
 	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
 	pb := getServiceType(b, md).New().Interface()
 	queryParams := url.Values{
@@ -224,7 +224,7 @@ func BenchmarkUtilProtoParseProtoQueryParams(b *testing.B) {
 	}
 }
 
-func TestUtilParseProtoPathParams(t *testing.T) {
+func TestParseProtoPathParams(t *testing.T) {
 	tests := []struct {
 		name   string
 		method protoreflect.MethodDescriptor
@@ -257,7 +257,7 @@ func TestUtilParseProtoPathParams(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilProtoParseProtoPathParams(b *testing.B) {
+func BenchmarkParseProtoPathParams(b *testing.B) {
 	md := getMethodDescriptor(b, "GetGroupScheduleByDate")
 	pb := getServiceType(b, md).New().Interface()
 	url := "/api/v1/group/schedules/group-schedule-id/date/date-value"
