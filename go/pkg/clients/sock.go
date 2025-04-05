@@ -97,9 +97,20 @@ func InitSocket() interfaces.ISocket {
 
 			case CreateSocketConnectionSocketCommand:
 				if subscriber, ok := subscribers[cmd.Params.UserSub]; ok {
-					auth, connId, _ := util.SplitSocketId(cmd.Params.Ticket)
+					auth, connId, err := util.SplitSocketId(cmd.Params.Ticket)
+					if err != nil {
+						cmd.ReplyChan <- SocketResponse{Error: err}
+						break
+					}
+
+					if _, ok := subscriber.Tickets[auth]; !ok {
+						cmd.ReplyChan <- SocketResponse{Error: errors.New("invalid ticket")}
+						break
+					}
+
 					delete(subscriber.Tickets, auth)
-					subscriber.ConnectionIds += connId + " "
+					subscriber.ConnectionIds += connId
+
 					connections[connId] = cmd.Params.Conn
 					subscribers[cmd.Params.UserSub] = subscriber
 					cmd.ReplyChan <- SocketResponse{Subscriber: subscriber}
@@ -107,15 +118,16 @@ func InitSocket() interfaces.ISocket {
 					cmd.ReplyChan <- SocketResponse{Error: errors.New("no sub found in sock")}
 				}
 
+				// when testing this use a test socket to do whatever operation then get subscriber by id to test changes
 			case DeleteSocketConnectionSocketCommand:
 				if subscriber, ok := subscribers[cmd.Params.UserSub]; ok {
 					_, connId, _ := util.SplitSocketId(cmd.Params.Ticket)
 					delete(connections, connId)
 					connIdStartIdx := strings.Index(subscriber.ConnectionIds, connId)
-					connIdEndIdx := connIdStartIdx + 37 // uuid + space length
+					connIdEndIdx := connIdStartIdx + CID_LENGTH // uuid length
 					if connIdStartIdx == -1 || len(subscriber.ConnectionIds) < connIdEndIdx {
-						cmd.ReplyChan <- SocketResponse{}
-						continue
+						cmd.ReplyChan <- SocketResponse{Error: errors.New("connection id not found to delete")}
+						break
 					}
 					subscriber.ConnectionIds = subscriber.ConnectionIds[:connIdStartIdx] + subscriber.ConnectionIds[connIdEndIdx:]
 					if len(subscriber.ConnectionIds) == 0 {
@@ -127,6 +139,7 @@ func InitSocket() interfaces.ISocket {
 				auth, _, err := util.SplitSocketId(cmd.Params.Ticket)
 				if err != nil {
 					cmd.ReplyChan <- SocketResponse{Error: err}
+					break
 				}
 
 				var foundSub *types.Subscriber
@@ -145,42 +158,41 @@ func InitSocket() interfaces.ISocket {
 				}
 
 			case SendSocketMessageSocketCommand:
+				var sentAtLeastOne bool
 				var sendErr error
-				var lastIdx int
 				var attemptedTargets string
-				singleTargetLen := len(cmd.Params.Targets) - 1
-				for currentIdx, targetRune := range cmd.Params.Targets {
-					if targetRune == ' ' || currentIdx == singleTargetLen {
-						if currentIdx == singleTargetLen {
-							currentIdx = currentIdx + 1
-						}
-
-						currentTarget := cmd.Params.Targets[lastIdx:currentIdx]
-						if strings.Index(attemptedTargets, currentTarget) == -1 {
-							if conn, ok := connections[currentTarget]; ok {
-								sendErr = util.WriteSocketConnectionMessage(cmd.Params.MessageBytes, conn)
-								if sendErr != nil {
-									continue
-								}
+				for i := 0; i+CID_LENGTH <= len(cmd.Params.Targets); i += CID_LENGTH {
+					connId := cmd.Params.Targets[i : i+CID_LENGTH]
+					if strings.Index(attemptedTargets, connId) == -1 {
+						if conn, ok := connections[connId]; ok {
+							sendErr = util.WriteSocketConnectionMessage(cmd.Params.MessageBytes, conn)
+							if sendErr != nil {
+								continue
 							}
-
-							attemptedTargets += currentTarget
+							sentAtLeastOne = true
 						}
-						lastIdx = currentIdx + 1
+
+						attemptedTargets += connId
 					}
+				}
+				if !sentAtLeastOne {
+					sendErr = errors.New("no targets to send to")
 				}
 				cmd.ReplyChan <- SocketResponse{Error: sendErr}
 
 			case AddSubscribedTopicSocketCommand:
 				// Do not remove the _ here as we want to directly modify the original subscribers object
 				if _, ok := subscribers[cmd.Params.UserSub]; !ok {
-					continue
+					cmd.ReplyChan <- SocketResponse{Error: errors.New("no subscriber found to add topic")}
+					break
 				}
 				for i := 0; i+CID_LENGTH <= len(cmd.Params.Targets); i += CID_LENGTH {
-					if strings.Index(subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic], cmd.Params.Targets[i:i+CID_LENGTH]) == -1 {
-						subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic] += cmd.Params.Targets[i : i+CID_LENGTH]
+					connId := cmd.Params.Targets[i : i+CID_LENGTH]
+					if strings.Index(subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic], connId) == -1 {
+						subscribers[cmd.Params.UserSub].SubscribedTopics[cmd.Params.Topic] += connId
 					}
 				}
+				cmd.ReplyChan <- SocketResponse{}
 
 			case GetSubscribedTargetsSocketCommand:
 				if subscriber, ok := subscribers[cmd.Params.UserSub]; ok {
@@ -193,6 +205,7 @@ func InitSocket() interfaces.ISocket {
 				if _, ok := subscribers[cmd.Params.UserSub]; ok {
 					delete(subscribers[cmd.Params.UserSub].SubscribedTopics, cmd.Params.Topic)
 				}
+				cmd.ReplyChan <- SocketResponse{}
 
 			case HasSubscribedTopicSocketCommand:
 				hasSub := false
@@ -206,6 +219,8 @@ func InitSocket() interfaces.ISocket {
 			default:
 				log.Fatal("unknown command type", cmd.Ty)
 			}
+
+			close(cmd.ReplyChan)
 		}
 	}()
 
@@ -225,74 +240,76 @@ func InitSocket() interfaces.ISocket {
 	return &Socket{cmds}
 }
 
-func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (func(), error) {
-	replyChan := make(chan SocketResponse)
-	s.Ch <- SocketCommand{
-		Ty: CreateSocketConnectionSocketCommand,
-		Params: SocketParams{
-			UserSub: userSub,
-			Ticket:  ticket,
-			Conn:    conn,
-		},
-		ReplyChan: replyChan,
+func (s *Socket) GetCommandChannel() chan<- SocketCommand {
+	return s.Ch
+}
+
+func (s *Socket) SendCommand(cmdType SocketCommandType, params SocketParams) (SocketResponse, error) {
+	createCmd := func(p SocketParams, replyChan chan SocketResponse) SocketCommand {
+		return SocketCommand{
+			Ty:        cmdType,
+			Params:    p,
+			ReplyChan: replyChan,
+		}
 	}
 
-	reply := <-replyChan
-	if reply.Error != nil {
-		return nil, util.ErrCheck(reply.Error)
+	return SendCommand(s, createCmd, params)
+}
+
+func (s *Socket) InitConnection(conn net.Conn, userSub string, ticket string) (func(), error) {
+	response, err := s.SendCommand(CreateSocketConnectionSocketCommand, SocketParams{
+		UserSub: userSub,
+		Ticket:  ticket,
+		Conn:    conn,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	return func() {
-		replyChan := make(chan SocketResponse)
-		s.Ch <- SocketCommand{
-			Ty: DeleteSocketConnectionSocketCommand,
-			Params: SocketParams{
-				UserSub: userSub,
-				Ticket:  ticket,
-			},
-			ReplyChan: replyChan,
-		}
-		<-replyChan
+		s.SendCommand(DeleteSocketConnectionSocketCommand, SocketParams{
+			UserSub: userSub,
+			Ticket:  ticket,
+		})
 	}, nil
 }
 
 func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
-	replyChan := make(chan SocketResponse)
-	s.Ch <- SocketCommand{
-		Ty:        CreateSocketTicketSocketCommand,
-		Params:    SocketParams{UserSub: session.UserSub, GroupId: session.GroupId, Roles: strings.Join(session.AvailableUserGroupRoles, " ")},
-		ReplyChan: replyChan,
-	}
-	reply := <-replyChan
+	response, err := s.SendCommand(CreateSocketTicketSocketCommand, SocketParams{
+		UserSub: session.UserSub,
+		GroupId: session.GroupId,
+		Roles:   strings.Join(session.AvailableUserGroupRoles, " "),
+	})
 
-	if reply.Error != nil {
-		return "", util.ErrCheck(reply.Error)
+	if err = ChannelError(err, response.Error); err != nil {
+		return "", util.ErrCheck(err)
 	}
 
-	return reply.Ticket, nil
+	return response.Ticket, nil
 }
 
 func (s *Socket) SendMessageBytes(messageBytes []byte, targets string) error {
-	replyChan := make(chan SocketResponse)
-	s.Ch <- SocketCommand{
-		Ty: SendSocketMessageSocketCommand,
-		Params: SocketParams{
-			Targets:      targets,
-			MessageBytes: messageBytes,
-		},
-		ReplyChan: replyChan,
+	if targets == "" {
+		return util.ErrCheck(errors.New("no targets provided"))
 	}
-	reply := <-replyChan
-	close(replyChan)
 
-	if reply.Error != nil {
-		return util.ErrCheck(reply.Error)
+	response, err := s.SendCommand(SendSocketMessageSocketCommand, SocketParams{
+		Targets:      targets,
+		MessageBytes: messageBytes,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil
 }
 
 func (s *Socket) SendMessage(message *types.SocketMessage, targets string) error {
+	if message == nil {
+		return util.ErrCheck(errors.New("message object required"))
+	}
 	if len(targets) == 0 {
 		return util.ErrCheck(errors.New("no targets to send message to"))
 	}
@@ -301,73 +318,70 @@ func (s *Socket) SendMessage(message *types.SocketMessage, targets string) error
 }
 
 func (s *Socket) GetSubscriberByTicket(ticket string) (*types.Subscriber, error) {
-	sockGetSubReplyChan := make(chan SocketResponse)
-	s.Ch <- SocketCommand{
-		Ty:        GetSubscriberSocketCommand,
-		Params:    SocketParams{Ticket: ticket},
-		ReplyChan: sockGetSubReplyChan,
-	}
-	sockGetSubReply := <-sockGetSubReplyChan
-	close(sockGetSubReplyChan)
-
-	if sockGetSubReply.Error != nil {
-		return nil, util.ErrCheck(sockGetSubReply.Error)
+	if ticket == "" {
+		return nil, util.ErrCheck(errors.New("ticket required"))
 	}
 
-	return sockGetSubReply.Subscriber, nil
+	response, err := s.SendCommand(GetSubscriberSocketCommand, SocketParams{
+		Ticket: ticket,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return response.Subscriber, nil
 }
 
-func (s *Socket) AddSubscribedTopic(userSub, topic string, targets string) {
-	s.Ch <- SocketCommand{
-		Ty: AddSubscribedTopicSocketCommand,
-		Params: SocketParams{
-			UserSub: userSub,
-			Topic:   topic,
-			Targets: targets,
-		},
+func (s *Socket) AddSubscribedTopic(userSub, topic string, targets string) error {
+	response, err := s.SendCommand(AddSubscribedTopicSocketCommand, SocketParams{
+		UserSub: userSub,
+		Topic:   topic,
+		Targets: targets,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
+
+	return nil
 }
 
-func (s *Socket) DeleteSubscribedTopic(userSub, topic string) {
-	s.Ch <- SocketCommand{
-		Ty: DeleteSubscribedTopicSocketCommand,
-		Params: SocketParams{
-			UserSub: userSub,
-			Topic:   topic,
-		},
+func (s *Socket) DeleteSubscribedTopic(userSub, topic string) error {
+	response, err := s.SendCommand(DeleteSubscribedTopicSocketCommand, SocketParams{
+		UserSub: userSub,
+		Topic:   topic,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
+
+	return nil
 }
 
-func (s *Socket) HasTopicSubscription(userSub, topic string) bool {
-	replyChan := make(chan SocketResponse)
-	s.Ch <- SocketCommand{
-		Ty: HasSubscribedTopicSocketCommand,
-		Params: SocketParams{
-			UserSub: userSub,
-			Topic:   topic,
-		},
-		ReplyChan: replyChan,
+func (s *Socket) HasTopicSubscription(userSub, topic string) (bool, error) {
+	response, err := s.SendCommand(HasSubscribedTopicSocketCommand, SocketParams{
+		UserSub: userSub,
+		Topic:   topic,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return false, util.ErrCheck(err)
 	}
-	reply := <-replyChan
-	close(replyChan)
-	return reply.HasSub
+
+	return response.HasSub, nil
 }
 
 func (s *Socket) RoleCall(userSub string) error {
-	replyChan := make(chan SocketResponse)
-	s.Ch <- SocketCommand{
-		Ty: GetSubscribedTargetsSocketCommand,
-		Params: SocketParams{
-			UserSub: userSub,
-		},
-		ReplyChan: replyChan,
-	}
-	reply := <-replyChan
-	close(replyChan)
+	response, _ := s.SendCommand(GetSubscribedTargetsSocketCommand, SocketParams{
+		UserSub: userSub,
+	})
 
-	if len(reply.Targets) > 0 {
-		if err := s.SendMessage(&types.SocketMessage{Action: types.SocketActions_ROLE_CALL}, reply.Targets); err != nil {
-			return util.ErrCheck(reply.Error)
+	if len(response.Targets) > 0 {
+		err := s.SendMessage(&types.SocketMessage{Action: types.SocketActions_ROLE_CALL}, response.Targets)
+		if err != nil {
+			return util.ErrCheck(response.Error)
 		}
 	}
 

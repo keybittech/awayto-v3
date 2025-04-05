@@ -103,7 +103,7 @@ func InitKeycloak() interfaces.IKeycloak {
 					cmd.ReplyChan <- KeycloakResponse{Error: err}
 				} else {
 					kc.Token = oidcToken
-					cmd.ReplyChan <- KeycloakResponse{Error: nil}
+					cmd.ReplyChan <- KeycloakResponse{}
 				}
 			case SetKeycloakRealmClientsKeycloakCommand:
 				realmClients, err := kc.GetRealmClients()
@@ -112,15 +112,13 @@ func InitKeycloak() interfaces.IKeycloak {
 				} else {
 					for _, realmClient := range realmClients {
 						if realmClient.ClientId == string(os.Getenv("KC_CLIENT")) {
-							println("setting app client")
 							kc.AppClient = realmClient
 						}
 						if realmClient.ClientId == string(os.Getenv("KC_API_CLIENT")) {
-							println("setting api client")
 							kc.ApiClient = realmClient
 						}
 					}
-					cmd.ReplyChan <- KeycloakResponse{Error: nil}
+					cmd.ReplyChan <- KeycloakResponse{}
 				}
 			case SetKeycloakRolesKeycloakCommand:
 				var groupAdminRoles []*types.KeycloakRole
@@ -136,7 +134,7 @@ func InitKeycloak() interfaces.IKeycloak {
 						}
 					}
 					kc.GroupAdminRoles = groupAdminRoles
-					cmd.ReplyChan <- KeycloakResponse{Error: nil}
+					cmd.ReplyChan <- KeycloakResponse{}
 				}
 			case GetGroupAdminRolesKeycloakCommand:
 				cmd.ReplyChan <- KeycloakResponse{Roles: kc.GroupAdminRoles}
@@ -185,8 +183,10 @@ func InitKeycloak() interfaces.IKeycloak {
 				mappings, err := kc.GetGroupRoleMappings(cmd.Params.GroupId)
 				cmd.ReplyChan <- KeycloakResponse{Mappings: mappings, Error: err}
 			default:
-				log.Fatal("unknown command type", cmd.Ty)
+				cmd.ReplyChan <- KeycloakResponse{Error: errors.New("unknown command type")}
+				util.ErrorLog.Println("unknown command type", cmd.Ty)
 			}
+			close(cmd.ReplyChan)
 		}
 	}()
 
@@ -200,28 +200,22 @@ func InitKeycloak() interfaces.IKeycloak {
 		}
 	}()
 
-	tokenCommandReply := make(chan KeycloakResponse)
-	cmds <- KeycloakCommand{Ty: SetKeycloakTokenKeycloakCommand, ReplyChan: tokenCommandReply}
-	tokenCommand := <-tokenCommandReply
-	close(tokenCommandReply)
-	if tokenCommand.Error != nil {
-		log.Fatal(util.ErrCheck(tokenCommand.Error))
+	kcc := &Keycloak{}
+	kcc.Ch = cmds
+
+	response, err := kcc.SendCommand(SetKeycloakTokenKeycloakCommand, KeycloakParams{})
+	if err = ChannelError(err, response.Error); err != nil {
+		log.Fatal(util.ErrCheck(response.Error))
 	}
 
-	realmClientsReply := make(chan KeycloakResponse)
-	cmds <- KeycloakCommand{Ty: SetKeycloakRealmClientsKeycloakCommand, ReplyChan: realmClientsReply}
-	realmClients := <-realmClientsReply
-	close(realmClientsReply)
-	if realmClients.Error != nil {
-		log.Fatal(util.ErrCheck(realmClients.Error))
+	response, err = kcc.SendCommand(SetKeycloakRealmClientsKeycloakCommand, KeycloakParams{})
+	if err = ChannelError(err, response.Error); err != nil {
+		log.Fatal(util.ErrCheck(response.Error))
 	}
 
-	rolesCommandReply := make(chan KeycloakResponse)
-	cmds <- KeycloakCommand{Ty: SetKeycloakRolesKeycloakCommand, ReplyChan: rolesCommandReply}
-	rolesCommand := <-rolesCommandReply
-	close(rolesCommandReply)
-	if rolesCommand.Error != nil {
-		log.Fatal(util.ErrCheck(rolesCommand.Error))
+	response, err = kcc.SendCommand(SetKeycloakRolesKeycloakCommand, KeycloakParams{})
+	if err = ChannelError(err, response.Error); err != nil {
+		log.Fatal(util.ErrCheck(response.Error))
 	}
 
 	pk, err := kc.FetchPublicKey()
@@ -231,176 +225,157 @@ func InitKeycloak() interfaces.IKeycloak {
 	kc.PublicKey = pk
 	KeycloakPublicKey = pk
 
-	kcc := &Keycloak{}
 	kcc.C = kc
-	kcc.Ch = cmds
 
 	println("Keycloak Init")
 	return kcc
 }
 
-func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
-	kcReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty: UpdateUserKeycloakCommand,
-		Params: KeycloakParams{
-			UserId:    id,
-			FirstName: firstName,
-			LastName:  lastName,
-		},
-		ReplyChan: kcReplyChan,
+func (k *Keycloak) GetCommandChannel() chan<- KeycloakCommand {
+	return k.Ch
+}
+
+func (k *Keycloak) SendCommand(cmdType KeycloakCommandType, params KeycloakParams) (KeycloakResponse, error) {
+	createCmd := func(p KeycloakParams, replyChan chan KeycloakResponse) KeycloakCommand {
+		return KeycloakCommand{
+			Ty:        cmdType,
+			Params:    p,
+			ReplyChan: replyChan,
+		}
 	}
 
-	kcReply := <-kcReplyChan
+	return SendCommand(k, createCmd, params)
+}
 
-	if kcReply.Error != nil {
-		return kcReply.Error
+func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
+	response, err := k.SendCommand(UpdateUserKeycloakCommand, KeycloakParams{
+		UserId:    id,
+		FirstName: firstName,
+		LastName:  lastName,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil
 }
 
-func (k *Keycloak) GetGroupAdminRoles() []*types.KeycloakRole {
-	kcGroupAdminRolesChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        GetGroupAdminRolesKeycloakCommand,
-		ReplyChan: kcGroupAdminRolesChan,
+func (k *Keycloak) GetGroupAdminRoles() ([]*types.KeycloakRole, error) {
+	response, err := k.SendCommand(GetGroupAdminRolesKeycloakCommand, KeycloakParams{})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
 	}
-	kcGroupAdminRoles := <-kcGroupAdminRolesChan
-	close(kcGroupAdminRolesChan)
-	return kcGroupAdminRoles.Roles
+
+	return response.Roles, nil
 }
 
-func (k *Keycloak) GetGroupSiteRoles(groupId string) []*types.ClientRoleMappingRole {
-	groupRoleMappingsReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        GetGroupRoleMappingsKeycloakCommand,
-		Params:    KeycloakParams{GroupId: groupId},
-		ReplyChan: groupRoleMappingsReplyChan,
-	}
-	groupRoleMappingReply := <-groupRoleMappingsReplyChan
-	close(groupRoleMappingsReplyChan)
+func (k *Keycloak) GetGroupSiteRoles(groupId string) ([]*types.ClientRoleMappingRole, error) {
+	response, err := k.SendCommand(GetGroupRoleMappingsKeycloakCommand, KeycloakParams{
+		GroupId: groupId,
+	})
 
-	return groupRoleMappingReply.Mappings
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return response.Mappings, nil
 }
 
 func (k *Keycloak) CreateGroup(name string) (*types.KeycloakGroup, error) {
-	kcCreateGroupReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        CreateGroupKeycloakCommand,
-		Params:    KeycloakParams{GroupName: name},
-		ReplyChan: kcCreateGroupReplyChan,
-	}
-	kcCreateGroupReply := <-kcCreateGroupReplyChan
-	close(kcCreateGroupReplyChan)
+	response, err := k.SendCommand(CreateGroupKeycloakCommand, KeycloakParams{
+		GroupName: name,
+	})
 
-	if kcCreateGroupReply.Error != nil {
-		return nil, kcCreateGroupReply.Error
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	return kcCreateGroupReply.Group, nil
+	return response.Group, nil
 }
 
 func (k *Keycloak) GetGroup(id string) (*types.KeycloakGroup, error) {
-	kcGetGroupChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        GetGroupKeycloakCommand,
-		Params:    KeycloakParams{GroupId: id},
-		ReplyChan: kcGetGroupChan,
-	}
-	kcGetGroup := <-kcGetGroupChan
-	close(kcGetGroupChan)
+	response, err := k.SendCommand(GetGroupKeycloakCommand, KeycloakParams{
+		GroupId: id,
+	})
 
-	if kcGetGroup.Error != nil {
-		return nil, kcGetGroup.Error
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	return kcGetGroup.Group, nil
+	return response.Group, nil
 }
 
 func (k *Keycloak) GetGroupByName(name string) ([]*types.KeycloakGroup, error) {
-	groupByNameReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        GetGroupByNameKeycloakCommand,
-		Params:    KeycloakParams{GroupName: name},
-		ReplyChan: groupByNameReplyChan,
-	}
-	groupByNameReply := <-groupByNameReplyChan
-	close(groupByNameReplyChan)
+	response, err := k.SendCommand(GetGroupByNameKeycloakCommand, KeycloakParams{
+		GroupName: name,
+	})
 
-	return groupByNameReply.Groups, nil
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return response.Groups, nil
 }
 
 func (k *Keycloak) GetGroupSubgroups(groupId string) ([]*types.KeycloakGroup, error) {
-	subgroupsReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        GetGroupSubgroupsKeycloakCommand,
-		Params:    KeycloakParams{GroupId: groupId},
-		ReplyChan: subgroupsReplyChan,
-	}
-	subgroupsReply := <-subgroupsReplyChan
-	close(subgroupsReplyChan)
+	response, err := k.SendCommand(GetGroupSubgroupsKeycloakCommand, KeycloakParams{
+		GroupId: groupId,
+	})
 
-	return subgroupsReply.Groups, nil
+	if err = ChannelError(err, response.Error); err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return response.Groups, nil
 }
 
 func (k *Keycloak) DeleteGroup(id string) error {
-	deleteReply := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        DeleteGroupKeycloakCommand,
-		Params:    KeycloakParams{GroupId: id},
-		ReplyChan: deleteReply,
-	}
-	deleteGroup := <-deleteReply
-	close(deleteReply)
-	if deleteGroup.Error != nil {
-		return deleteGroup.Error
+	response, err := k.SendCommand(DeleteGroupKeycloakCommand, KeycloakParams{
+		GroupId: id,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil
 }
 
 func (k *Keycloak) UpdateGroup(id, name string) error {
-	kcUpdateSubgroupChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        UpdateGroupKeycloakCommand,
-		Params:    KeycloakParams{GroupId: id, GroupName: name},
-		ReplyChan: kcUpdateSubgroupChan,
-	}
-	kcUpdateSubgroup := <-kcUpdateSubgroupChan
-	close(kcUpdateSubgroupChan)
+	response, err := k.SendCommand(UpdateGroupKeycloakCommand, KeycloakParams{
+		GroupId:   id,
+		GroupName: name,
+	})
 
-	if kcUpdateSubgroup.Error != nil {
-		return kcUpdateSubgroup.Error
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil
 }
 
 func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*types.KeycloakGroup, error) {
-	kcCreateSubgroupChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        CreateSubgroupKeycloakCommand,
-		Params:    KeycloakParams{GroupId: groupExternalId, GroupName: subGroupName},
-		ReplyChan: kcCreateSubgroupChan,
+	kcCreateSubgroup, err := k.SendCommand(CreateSubgroupKeycloakCommand, KeycloakParams{
+		GroupId:   groupExternalId,
+		GroupName: subGroupName,
+	})
+
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
-	kcCreateSubgroup := <-kcCreateSubgroupChan
-	close(kcCreateSubgroupChan)
 
 	var kcSubGroup *types.KeycloakGroup
 
 	if kcCreateSubgroup.Error != nil && strings.Contains(kcCreateSubgroup.Error.Error(), "exists") {
-		groupSubgroupsReplyChan := make(chan KeycloakResponse)
-		k.Ch <- KeycloakCommand{
-			Ty:        GetGroupSubgroupsKeycloakCommand,
-			Params:    KeycloakParams{GroupId: groupExternalId},
-			ReplyChan: groupSubgroupsReplyChan,
-		}
-		groupSubgroupsReply := <-groupSubgroupsReplyChan
-		close(groupSubgroupsReplyChan)
+		groupSubgroupsReply, err := k.SendCommand(GetGroupSubgroupsKeycloakCommand, KeycloakParams{
+			GroupId:   groupExternalId,
+			GroupName: subGroupName,
+		})
 
-		if groupSubgroupsReply.Error != nil {
-			return nil, groupSubgroupsReply.Error
+		if err = ChannelError(err, groupSubgroupsReply.Error); err != nil {
+			return nil, util.ErrCheck(err)
 		}
 
 		for _, sg := range groupSubgroupsReply.Groups {
@@ -409,7 +384,7 @@ func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*t
 			}
 		}
 	} else if kcCreateSubgroup.Error != nil || kcCreateSubgroup.Group.Id == "" {
-		return nil, kcCreateSubgroup.Error
+		return nil, util.ErrCheck(kcCreateSubgroup.Error)
 	} else {
 		kcSubGroup = kcCreateSubgroup.Group
 	}
@@ -418,66 +393,52 @@ func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*t
 }
 
 func (k *Keycloak) AddRolesToGroup(id string, roles []*types.KeycloakRole) error {
-	kcAddGroupRolesReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        AddRolesToGroupKeycloakCommand,
-		Params:    KeycloakParams{GroupId: id, Roles: roles},
-		ReplyChan: kcAddGroupRolesReplyChan,
-	}
-	kcAddGroupRolesReply := <-kcAddGroupRolesReplyChan
-	close(kcAddGroupRolesReplyChan)
+	response, err := k.SendCommand(AddRolesToGroupKeycloakCommand, KeycloakParams{
+		GroupId: id,
+		Roles:   roles,
+	})
 
-	if kcAddGroupRolesReply.Error != nil {
-		return kcAddGroupRolesReply.Error
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil
 }
 
 func (k *Keycloak) DeleteRolesFromGroup(id string, roles []*types.KeycloakRole) error {
-	kcDelGroupRoleReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        DeleteRolesFromGroupKeycloakCommand,
-		Params:    KeycloakParams{GroupId: id, Roles: roles},
-		ReplyChan: kcDelGroupRoleReplyChan,
-	}
-	deleteGroupRoleReply := <-kcDelGroupRoleReplyChan
-	close(kcDelGroupRoleReplyChan)
-	if deleteGroupRoleReply.Error != nil {
-		return deleteGroupRoleReply.Error
+	response, err := k.SendCommand(DeleteRolesFromGroupKeycloakCommand, KeycloakParams{
+		GroupId: id,
+		Roles:   roles,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil
 }
 
 func (k *Keycloak) AddUserToGroup(userId, groupId string) error {
-	kcAddUserToGroupReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        AddUserToGroupKeycloakCommand,
-		Params:    KeycloakParams{UserId: userId, GroupId: groupId},
-		ReplyChan: kcAddUserToGroupReplyChan,
-	}
-	kcAddUserToGroupReply := <-kcAddUserToGroupReplyChan
-	close(kcAddUserToGroupReplyChan)
-	if kcAddUserToGroupReply.Error != nil {
-		return kcAddUserToGroupReply.Error
+	response, err := k.SendCommand(AddUserToGroupKeycloakCommand, KeycloakParams{
+		GroupId: groupId,
+		UserId:  userId,
+	})
+
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil
 }
 
 func (k *Keycloak) DeleteUserFromGroup(userId, groupId string) error {
-	deleteUserReplyChan := make(chan KeycloakResponse)
-	k.Ch <- KeycloakCommand{
-		Ty:        DeleteUserFromGroupKeycloakCommand,
-		Params:    KeycloakParams{GroupId: groupId, UserId: userId},
-		ReplyChan: deleteUserReplyChan,
-	}
-	deleteUserReply := <-deleteUserReplyChan
-	close(deleteUserReplyChan)
+	response, err := k.SendCommand(DeleteUserFromGroupKeycloakCommand, KeycloakParams{
+		GroupId: groupId,
+		UserId:  userId,
+	})
 
-	if deleteUserReply.Error != nil {
-		return deleteUserReply.Error
+	if err = ChannelError(err, response.Error); err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil

@@ -6,31 +6,15 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
-
-type NullConn struct{}
-
-func (n NullConn) Read(b []byte) (int, error)         { return 0, io.EOF }
-func (n NullConn) Write(b []byte) (int, error)        { return len(b), nil }
-func (n NullConn) Close() error                       { return nil }
-func (n NullConn) LocalAddr() net.Addr                { return nil }
-func (n NullConn) RemoteAddr() net.Addr               { return nil }
-func (n NullConn) SetDeadline(t time.Time) error      { return nil }
-func (n NullConn) SetReadDeadline(t time.Time) error  { return nil }
-func (n NullConn) SetWriteDeadline(t time.Time) error { return nil }
-
-// NewNullConn returns a new no-op connection
-func NewNullConn() net.Conn {
-	return NullConn{}
-}
 
 func getSocketTicket() (string, error) {
 	// Get authentication token first
@@ -118,7 +102,7 @@ func setupSockServer() {
 		AvailableUserGroupRoles: []string{"role1"},
 	}
 
-	go api.HandleSockConnection(subscriber, &NullConn{}, ticket)
+	go api.HandleSockConnection(subscriber, interfaces.NewNullConn(), ticket)
 	time.Sleep(2 * time.Second)
 
 	ticketParts := strings.Split(ticket, ":")
@@ -274,7 +258,7 @@ func BenchmarkSocketInitConnection(b *testing.B) {
 	ticket, _ := api.Handlers.Socket.GetSocketTicket(session)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.InitConnection(&NullConn{}, subscriber.UserSub, ticket)
+		api.Handlers.Socket.InitConnection(&interfaces.NullConn{}, subscriber.UserSub, ticket)
 	}
 }
 
@@ -394,6 +378,6 @@ func BenchmarkSocketSplitSocketId(b *testing.B) {
 func BenchmarkSocketWriteSocketMessage(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		util.WriteSocketConnectionMessage(socketEvents.loadSubscribersEvent, &NullConn{})
+		util.WriteSocketConnectionMessage(socketEvents.loadSubscribersEvent, &interfaces.NullConn{})
 	}
 }

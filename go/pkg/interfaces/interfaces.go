@@ -3,6 +3,7 @@ package interfaces
 import (
 	"context"
 	"database/sql"
+	"io"
 	"net"
 	"strings"
 	"time"
@@ -98,8 +99,8 @@ type IRedisClient interface {
 
 type IKeycloak interface {
 	UpdateUser(id, firstName, lastName string) error
-	GetGroupAdminRoles() []*types.KeycloakRole
-	GetGroupSiteRoles(groupId string) []*types.ClientRoleMappingRole
+	GetGroupAdminRoles() ([]*types.KeycloakRole, error)
+	GetGroupSiteRoles(groupId string) ([]*types.ClientRoleMappingRole, error)
 	CreateOrGetSubGroup(groupExternalId, subGroupName string) (*types.KeycloakGroup, error)
 	CreateGroup(name string) (*types.KeycloakGroup, error)
 	GetGroup(id string) (*types.KeycloakGroup, error)
@@ -119,9 +120,9 @@ type ISocket interface {
 	SendMessageBytes(messageBytes []byte, targets string) error
 	SendMessage(message *types.SocketMessage, targets string) error
 	GetSubscriberByTicket(ticket string) (*types.Subscriber, error)
-	AddSubscribedTopic(userSub, topic string, targets string)
-	DeleteSubscribedTopic(userSub, topic string)
-	HasTopicSubscription(userSub, topic string) bool
+	AddSubscribedTopic(userSub, topic string, targets string) error
+	DeleteSubscribedTopic(userSub, topic string) error
+	HasTopicSubscription(userSub, topic string) (bool, error)
 	RoleCall(userSub string) error
 }
 
@@ -151,4 +152,20 @@ type DefaultTestCase struct {
 
 func (hts *DefaultTestSetup) TearDown() {
 	hts.MockCtrl.Finish()
+}
+
+type NullConn struct{}
+
+func (n NullConn) Read(b []byte) (int, error)         { return 0, io.EOF }
+func (n NullConn) Write(b []byte) (int, error)        { return len(b), nil }
+func (n NullConn) Close() error                       { return nil }
+func (n NullConn) LocalAddr() net.Addr                { return nil }
+func (n NullConn) RemoteAddr() net.Addr               { return nil }
+func (n NullConn) SetDeadline(t time.Time) error      { return nil }
+func (n NullConn) SetReadDeadline(t time.Time) error  { return nil }
+func (n NullConn) SetWriteDeadline(t time.Time) error { return nil }
+
+// NewNullConn returns a new no-op connection
+func NewNullConn() net.Conn {
+	return NullConn{}
 }

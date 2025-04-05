@@ -112,7 +112,12 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	}
 
 	// Add admin roles to the admin subgroup
-	err = h.Keycloak.AddRolesToGroup(kcAdminSubgroupExternalId, h.Keycloak.GetGroupAdminRoles())
+	roles, err := h.Keycloak.GetGroupAdminRoles()
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = h.Keycloak.AddRolesToGroup(kcAdminSubgroupExternalId, roles)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -209,6 +214,11 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 
 	json.Unmarshal(assignmentsBytes, &groupRoleActions)
 
+	adminRoles, err := h.Keycloak.GetGroupAdminRoles()
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	for sgPath, assignmentSet := range data.Assignments {
 
 		assignmentNames := []string{}
@@ -246,7 +256,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 			for _, assignSet := range assignmentSet.Actions {
 				if !slices.Contains(groupRoleActionNames, assignSet.Name) {
 					var roleId string
-					for _, appRole := range h.Keycloak.GetGroupAdminRoles() {
+					for _, appRole := range adminRoles {
 						if appRole.Name == assignSet.Name {
 							roleId = appRole.Id
 							break
@@ -297,7 +307,10 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 			Actions: []*types.IGroupRoleAuthAction{},
 		}
 
-		sgRoles := h.Keycloak.GetGroupSiteRoles(sg.Id)
+		sgRoles, err := h.Keycloak.GetGroupSiteRoles(sg.Id)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 
 		for _, sgRole := range sgRoles {
 			graaWI.Actions = append(graaWI.Actions, &types.IGroupRoleAuthAction{

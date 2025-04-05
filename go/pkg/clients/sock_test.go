@@ -1,25 +1,95 @@
 package clients
 
 import (
+	"log"
 	"net"
-	"reflect"
+	"strings"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
+
+var testSocket *Socket
+var testSocketUserSession *types.UserSession
+var testSocketMessage *types.SocketMessage
+var testTicket, auth, connId string
+
+func init() {
+	var err error
+	testSocket = InitSocket().(*Socket)
+	testSocketUserSession = &types.UserSession{
+		UserSub:                 "user-sub",
+		GroupId:                 "group-id",
+		AvailableUserGroupRoles: []string{"APP_GROUP_ADMIN"},
+	}
+	testTicket, err = testSocket.GetSocketTicket(testSocketUserSession)
+	if err != nil || testTicket == "" {
+		log.Fatal(err)
+	}
+	_, connId, err = util.SplitSocketId(testTicket)
+	if err != nil {
+		log.Fatal(err)
+	}
+	testSocketMessage = &types.SocketMessage{
+		Action:     44,
+		Topic:      "topic",
+		Payload:    "payload",
+		Store:      false,
+		Historical: false,
+		Sender:     "sender",
+		Timestamp:  "timestamp",
+	}
+}
 
 func TestInitSocket(t *testing.T) {
 	tests := []struct {
 		name string
-		want interfaces.ISocket
 	}{
-		// TODO: Add test cases.
+		{name: "does init the websocket client"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := InitSocket(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("InitSocket() = %v, want %v", got, tt.want)
+			if got := InitSocket(); got == nil {
+				t.Error("InitSocket() returned nil")
+			}
+		})
+	}
+}
+
+func TestSocket_GetSocketTicket(t *testing.T) {
+	type args struct {
+		session *types.UserSession
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		{name: "get a ticket", args: args{testSocketUserSession}, wantErr: false},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := testSocket.GetSocketTicket(tt.args.session)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Socket.GetSocketTicket(%v) error = %v, wantErr %v", tt.args.session, err, tt.wantErr)
+				return
+			}
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Socket.GetSocketTicket(%v) error = %v, wantErr %v", tt.args.session, err, tt.wantErr)
+				return
+			}
+
+			parts := strings.Split(got, ":")
+			if len(parts) != 2 {
+				t.Errorf("Socket.GetSocketTicket(%v) = %v, ticket format should be UUID:UUID", tt.args.session, got)
+				return
+			}
+
+			if len(parts[0]) != 36 || len(parts[1]) != 36 {
+				t.Errorf("Socket.GetSocketTicket(%v) = %v, each part should be a 36-character UUID", tt.args.session, got)
 			}
 		})
 	}
@@ -33,52 +103,42 @@ func TestSocket_InitConnection(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		s       *Socket
 		args    args
 		want    func()
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{name: "use ticket to make connection", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, testTicket}, wantErr: false},
+		{name: "prevents connection with no ticket", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, ""}, wantErr: true},
+		{name: "prevents connection with malformed ticket", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, "a:"}, wantErr: true},
+		{name: "prevents connection with wrong ticket", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, "a:b"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.s.InitConnection(tt.args.conn, tt.args.userSub, tt.args.ticket)
+			_, err := testSocket.InitConnection(tt.args.conn, tt.args.userSub, tt.args.ticket)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Socket.InitConnection(%v, %v, %v) error = %v, wantErr %v", tt.args.conn, tt.args.userSub, tt.args.ticket, err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Socket.InitConnection(%v, %v, %v) = %v, want %v", tt.args.conn, tt.args.userSub, tt.args.ticket, got, tt.want)
-			}
+
 		})
 	}
 }
 
-func TestSocket_GetSocketTicket(t *testing.T) {
-	type args struct {
-		session *types.UserSession
-	}
-	tests := []struct {
-		name    string
-		s       *Socket
-		args    args
-		want    string
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.s.GetSocketTicket(tt.args.session)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Socket.GetSocketTicket(%v) error = %v, wantErr %v", tt.args.session, err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Socket.GetSocketTicket(%v) = %v, want %v", tt.args.session, got, tt.want)
-			}
-		})
-	}
+func TestSocket_TicketRemovalBehavior(t *testing.T) {
+	t.Run("test ticket after renewal", func(t *testing.T) {
+		socket := InitSocket().(*Socket)
+		ticket, _ := socket.GetSocketTicket(testSocketUserSession)
+
+		_, err := socket.InitConnection(interfaces.NewNullConn(), testSocketUserSession.UserSub, ticket)
+		if err != nil {
+			t.Errorf("Failed with first ticket: %v", err)
+		}
+
+		_, err = socket.InitConnection(interfaces.NewNullConn(), testSocketUserSession.UserSub, ticket)
+		if err == nil {
+			t.Error("Able to reuse ticket")
+		}
+	})
 }
 
 func TestSocket_SendMessageBytes(t *testing.T) {
@@ -88,15 +148,17 @@ func TestSocket_SendMessageBytes(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		s       *Socket
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{name: "send a basic message", args: args{[]byte("PING"), connId}, wantErr: false},
+		{name: "errors when no targets provided", args: args{[]byte("PING"), ""}, wantErr: true},
+		{name: "errors when no targets found", args: args{[]byte("PING"), "bad-target"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.SendMessageBytes(tt.args.messageBytes, tt.args.targets); (err != nil) != tt.wantErr {
+
+			if err := testSocket.SendMessageBytes(tt.args.messageBytes, tt.args.targets); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.SendMessageBytes(%v, %v) error = %v, wantErr %v", tt.args.messageBytes, tt.args.targets, err, tt.wantErr)
 			}
 		})
@@ -110,15 +172,18 @@ func TestSocket_SendMessage(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		s       *Socket
 		args    args
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{name: "sends normal message", args: args{testSocketMessage, connId}, wantErr: false},
+		{name: "sends partial message", args: args{&types.SocketMessage{}, connId}, wantErr: false},
+		{name: "requires message object", args: args{nil, connId}, wantErr: true},
+		{name: "requires targets to send to", args: args{testSocketMessage, ""}, wantErr: true},
+		{name: "requires valid targets to send to", args: args{testSocketMessage, connId}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.SendMessage(tt.args.message, tt.args.targets); (err != nil) != tt.wantErr {
+			if err := testSocket.SendMessage(tt.args.message, tt.args.targets); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.SendMessage(%v, %v) error = %v, wantErr %v", tt.args.message, tt.args.targets, err, tt.wantErr)
 			}
 		})
@@ -126,27 +191,43 @@ func TestSocket_SendMessage(t *testing.T) {
 }
 
 func TestSocket_GetSubscriberByTicket(t *testing.T) {
+	renewedTicket, _ := testSocket.GetSocketTicket(testSocketUserSession)
 	type args struct {
 		ticket string
 	}
 	tests := []struct {
 		name    string
-		s       *Socket
 		args    args
-		want    *types.Subscriber
 		wantErr bool
 	}{
-		// TODO: Add test cases.
+		{name: "success with valid ticket", args: args{renewedTicket}, wantErr: false},
+		{name: "errors with no ticket", args: args{""}, wantErr: true},
+		{name: "errors with invalid ticket", args: args{"a:"}, wantErr: true},
+		{name: "errors when no target found", args: args{"a:b"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.s.GetSubscriberByTicket(tt.args.ticket)
+			newSocket := testSocket
+			if tt.name == "success with valid ticket" {
+				newSocket = InitSocket().(*Socket)
+				renewedTicket, _ := newSocket.GetSocketTicket(testSocketUserSession)
+				tt.args.ticket = renewedTicket
+			}
+			got, err := newSocket.GetSubscriberByTicket(tt.args.ticket)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Socket.GetSubscriberByTicket(%v) error = %v, wantErr %v", tt.args.ticket, err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Socket.GetSubscriberByTicket(%v) = %v, want %v", tt.args.ticket, got, tt.want)
+
+			if err == nil {
+				if got == nil {
+					t.Errorf("Socket.GetSubscriberByTicket(%v) returned nil", tt.args.ticket)
+				}
+
+				// Verify the returned subscriber has the expected ticket
+				if _, ok := got.Tickets[strings.Split(tt.args.ticket, ":")[0]]; !ok {
+					t.Errorf("Socket.GetSubscriberByTicket(%v) returned subscriber without matching ticket", tt.args.ticket)
+				}
 			}
 		})
 	}
@@ -160,14 +241,13 @@ func TestSocket_AddSubscribedTopic(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		s    *Socket
 		args args
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.s.AddSubscribedTopic(tt.args.userSub, tt.args.topic, tt.args.targets)
+			testSocket.AddSubscribedTopic(tt.args.userSub, tt.args.topic, tt.args.targets)
 		})
 	}
 }
@@ -179,14 +259,13 @@ func TestSocket_DeleteSubscribedTopic(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		s    *Socket
 		args args
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.s.DeleteSubscribedTopic(tt.args.userSub, tt.args.topic)
+			testSocket.DeleteSubscribedTopic(tt.args.userSub, tt.args.topic)
 		})
 	}
 }
@@ -198,7 +277,6 @@ func TestSocket_HasTopicSubscription(t *testing.T) {
 	}
 	tests := []struct {
 		name string
-		s    *Socket
 		args args
 		want bool
 	}{
@@ -206,7 +284,7 @@ func TestSocket_HasTopicSubscription(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.s.HasTopicSubscription(tt.args.userSub, tt.args.topic); got != tt.want {
+			if got := testSocket.HasTopicSubscription(tt.args.userSub, tt.args.topic); got != tt.want {
 				t.Errorf("Socket.HasTopicSubscription(%v, %v) = %v, want %v", tt.args.userSub, tt.args.topic, got, tt.want)
 			}
 		})
@@ -219,7 +297,6 @@ func TestSocket_RoleCall(t *testing.T) {
 	}
 	tests := []struct {
 		name    string
-		s       *Socket
 		args    args
 		wantErr bool
 	}{
@@ -227,7 +304,7 @@ func TestSocket_RoleCall(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.RoleCall(tt.args.userSub); (err != nil) != tt.wantErr {
+			if err := testSocket.RoleCall(tt.args.userSub); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.RoleCall(%v) error = %v, wantErr %v", tt.args.userSub, err, tt.wantErr)
 			}
 		})

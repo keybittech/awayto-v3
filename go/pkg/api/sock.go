@@ -268,8 +268,10 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 		return
 	}
 
-	if sm.Action != types.SocketActions_SUBSCRIBE && !a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic) {
-		return
+	if sm.Action != types.SocketActions_SUBSCRIBE {
+		if ok, err := a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic); err != nil || !ok {
+			return
+		}
 	}
 
 	switch sm.Action {
