@@ -153,7 +153,7 @@ func TestUtilParseHandlerOptions(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilParseHandlerOptions(b *testing.B) {
+func BenchmarkUtilProtoParseHandlerOptions(b *testing.B) {
 	md := getMethodDescriptor(b, "PostPrompt")
 	b.ResetTimer()
 
@@ -192,7 +192,7 @@ func TestUtilParseProtoQueryParams(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilParseProtoQueryParamsComplex(b *testing.B) {
+func BenchmarkUtilProtoParseProtoQueryParamsComplex(b *testing.B) {
 	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
 	pb := getServiceType(b, md).New().Interface()
 	// More complex query with multiple parameters
@@ -210,7 +210,7 @@ func BenchmarkUtilParseProtoQueryParamsComplex(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilParseProtoQueryParams(b *testing.B) {
+func BenchmarkUtilProtoParseProtoQueryParams(b *testing.B) {
 	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
 	pb := getServiceType(b, md).New().Interface()
 	queryParams := url.Values{
@@ -257,7 +257,7 @@ func TestUtilParseProtoPathParams(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilParseProtoPathParams(b *testing.B) {
+func BenchmarkUtilProtoParseProtoPathParams(b *testing.B) {
 	md := getMethodDescriptor(b, "GetGroupScheduleByDate")
 	pb := getServiceType(b, md).New().Interface()
 	url := "/api/v1/group/schedules/group-schedule-id/date/date-value"

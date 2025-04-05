@@ -60,7 +60,7 @@ func TestUtilGet(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilGet(b *testing.B) {
+func BenchmarkUtilHttpGet(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -70,7 +70,7 @@ func BenchmarkUtilGet(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilGetHeaders(b *testing.B) {
+func BenchmarkUtilHttpGetHeaders(b *testing.B) {
 	headers := http.Header{}
 	headers.Add("test-header-1", "test 1")
 	headers.Add("test-header-2", "test 2")
@@ -84,7 +84,7 @@ func BenchmarkUtilGetHeaders(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilGetError(b *testing.B) {
+func BenchmarkUtilHttpGetError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -126,7 +126,7 @@ func TestUtilGetWithParams(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilGetWithParams(b *testing.B) {
+func BenchmarkUtilHttpGetWithParams(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -136,7 +136,7 @@ func BenchmarkUtilGetWithParams(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilGetWithParamsError(b *testing.B) {
+func BenchmarkUtilHttpGetWithParamsError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -179,7 +179,7 @@ func TestUtilMutate(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilMutate(b *testing.B) {
+func BenchmarkUtilHttpMutate(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -189,7 +189,7 @@ func BenchmarkUtilMutate(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilMutateError(b *testing.B) {
+func BenchmarkUtilHttpMutateError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
@@ -231,7 +231,7 @@ func TestUtilPostFormData(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilPostFormData(b *testing.B) {
+func BenchmarkUtilHttpPostFormData(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 

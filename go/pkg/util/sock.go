@@ -13,6 +13,7 @@ import (
 )
 
 var MAX_SOCKET_MESSAGE_LENGTH = 65535
+var malformedSocketError = errors.New("malformed socket id")
 
 func GetSocketId(userSub, connId string) string {
 	return userSub + ":" + connId
@@ -20,13 +21,14 @@ func GetSocketId(userSub, connId string) string {
 
 func SplitSocketId(id string) (string, string, error) {
 	if len(id) <= 1 {
-		return "", "", ErrCheck(errors.New("malformed split socket id " + id))
+		return "", "", malformedSocketError
 	}
+
 	colonIdx := strings.Index(id, ":")
-	if colonIdx != -1 && len(id) > colonIdx {
+	if colonIdx != -1 && colonIdx < len(id)-1 {
 		return id[0:colonIdx], id[colonIdx+1:], nil
 	} else {
-		return "", "", ErrCheck(errors.New("no text after socket divider " + id))
+		return "", "", malformedSocketError
 	}
 }
 

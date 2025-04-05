@@ -26,7 +26,7 @@ func TestUtilWithPagination(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilWithPagination(b *testing.B) {
+func BenchmarkUtilDbWithPagination(b *testing.B) {
 	b.ResetTimer()
 
 	for i := 0; i < b.N; i++ {

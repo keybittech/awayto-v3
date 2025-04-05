@@ -66,7 +66,7 @@ func TestUtilErrLog_Println(t *testing.T) {
 	os.Remove(filePath)
 }
 
-func BenchmarkUtilErrLog_Println(b *testing.B) {
+func BenchmarkUtilMainErrLog_Println(b *testing.B) {
 	filePath := "/tmp/log_test"
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
 	if err != nil {
@@ -105,7 +105,7 @@ func TestUtilUserError(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilUserError(b *testing.B) {
+func BenchmarkUtilMainUserError(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = UserError("error")
@@ -132,7 +132,7 @@ func TestUtilSnipUserError(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilSnipUserError(b *testing.B) {
+func BenchmarkUtilMainSnipUserError(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = SnipUserError("ERROR_FOR_USER error ERROR_FOR_USER")
@@ -209,7 +209,7 @@ func TestUtilRequestError(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilRequestError(b *testing.B) {
+func BenchmarkUtilMainRequestError(b *testing.B) {
 	testPbStruct := &types.IUserProfile{
 		FirstName: "test",
 		RoleName:  "role",
@@ -241,7 +241,7 @@ func TestUtilErrCheck(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilErrCheck(b *testing.B) {
+func BenchmarkUtilMainErrCheck(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = ErrCheck(errors.New("test error"))
@@ -269,7 +269,7 @@ func TestUtilNewNullString(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilNewNullString(b *testing.B) {
+func BenchmarkUtilMainNewNullString(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = NewNullString("test error")
@@ -297,7 +297,7 @@ func TestUtilIsUUID(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilIsUUID(b *testing.B) {
+func BenchmarkUtilMainIsUUID(b *testing.B) {
 	str := "00000000-0000-0000-0000-000000000000"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -305,7 +305,7 @@ func BenchmarkUtilIsUUID(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilIsUUIDNegative(b *testing.B) {
+func BenchmarkUtilMainIsUUIDNegative(b *testing.B) {
 	str := "test"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -334,7 +334,7 @@ func TestUtilIsEpoch(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilIsEpoch(b *testing.B) {
+func BenchmarkUtilMainIsEpoch(b *testing.B) {
 	var goodId = "0123456789"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -342,7 +342,7 @@ func BenchmarkUtilIsEpoch(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilIsEpochNegative(b *testing.B) {
+func BenchmarkUtilMainIsEpochNegative(b *testing.B) {
 	var badId = "test"
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -375,14 +375,14 @@ func TestUtilPaddedLen(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilPaddedLen(b *testing.B) {
+func BenchmarkUtilMainPaddedLen(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = PaddedLen(5, 3)
 	}
 }
 
-func BenchmarkUtilPaddedLenNegative(b *testing.B) {
+func BenchmarkUtilMainPaddedLenNegative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = PaddedLen(-5, -3)
@@ -436,7 +436,7 @@ func TestUtilEnvFile(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilEnvFile(b *testing.B) {
+func BenchmarkUtilMainEnvFile(b *testing.B) {
 	tmpDirName := "test-project-dir"
 	tmpDir, err := os.MkdirTemp("", tmpDirName)
 	if err != nil {
@@ -476,14 +476,14 @@ func TestUtilAnonIp(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilAnonIp(b *testing.B) {
+func BenchmarkUtilMainAnonIp(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = AnonIp("1.1.1.1")
 	}
 }
 
-func BenchmarkUtilAnonIpNegative(b *testing.B) {
+func BenchmarkUtilMainAnonIpNegative(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = AnonIp("1.1.1")
@@ -512,7 +512,7 @@ func TestUtilStringIn(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilStringIn(b *testing.B) {
+func BenchmarkUtilMainStringIn(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = StringIn("test", []string{"test"})
@@ -543,7 +543,7 @@ func TestUtilStringOut(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilStringOut(b *testing.B) {
+func BenchmarkUtilMainStringOut(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = StringOut("test", []string{"test", "case"})
@@ -579,7 +579,7 @@ func TestUtilExeTime(t *testing.T) {
 	})
 }
 
-func BenchmarkUtilExeTime(b *testing.B) {
+func BenchmarkUtilMainExeTime(b *testing.B) {
 	var buf bytes.Buffer
 	originalLogger := ErrorLog
 	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
@@ -590,7 +590,7 @@ func BenchmarkUtilExeTime(b *testing.B) {
 	}
 }
 
-func BenchmarkUtilExeTimeDeferFunc(b *testing.B) {
+func BenchmarkUtilMainExeTimeDeferFunc(b *testing.B) {
 	var buf bytes.Buffer
 	originalLogger := ErrorLog
 	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
@@ -628,7 +628,7 @@ func TestUtilWriteSigned(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilWriteSigned(b *testing.B) {
+func BenchmarkUtilMainWriteSigned(b *testing.B) {
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
 		_ = WriteSigned("a", "b")
@@ -657,7 +657,7 @@ func TestUtilVerifySigned(t *testing.T) {
 	}
 }
 
-func BenchmarkUtilVerifySigned(b *testing.B) {
+func BenchmarkUtilMainVerifySigned(b *testing.B) {
 	signedValue := WriteSigned("a", "b")
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {

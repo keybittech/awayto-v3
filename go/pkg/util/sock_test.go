@@ -32,6 +32,20 @@ func TestUtilGetSocketId(t *testing.T) {
 	}
 }
 
+func BenchmarkUtilSockGetSocketId(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = GetSocketId("a", "b")
+	}
+}
+
+func BenchmarkUtilSockGetSocketIdNegative(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = GetSocketId("", "")
+	}
+}
+
 func TestUtilSplitSocketId(t *testing.T) {
 	type args struct {
 		id string
@@ -45,12 +59,12 @@ func TestUtilSplitSocketId(t *testing.T) {
 	}{
 		{name: "empty values", args: args{id: ""}, want: "", want1: "", wantErr: true},
 		{name: "valid socket id", args: args{id: "a:b"}, want: "a", want1: "b", wantErr: false},
+		{name: "id with no end", args: args{id: "a:"}, want: "", want1: "", wantErr: true},
 		{name: "id with no colon", args: args{id: "abc"}, want: "", want1: "", wantErr: true},
 		{name: "id with multiple colons", args: args{id: "a:b:c"}, want: "a", want1: "b:c", wantErr: false},
 		{name: "id with leading space", args: args{id: " a:b"}, want: " a", want1: "b", wantErr: false},
 		{name: "id with trailing space", args: args{id: "a:b "}, want: "a", want1: "b ", wantErr: false},
 		{name: "id with only colon", args: args{id: ":"}, want: "", want1: "", wantErr: true},
-		{name: "id with multiple colons in the middle", args: args{id: "user:sub:123"}, want: "user", want1: "sub:123", wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -66,6 +80,27 @@ func TestUtilSplitSocketId(t *testing.T) {
 				t.Errorf("SplitSocketId() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilSockSplitSocketId(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = SplitSocketId("a:b")
+	}
+}
+
+func BenchmarkUtilSockSplitSocketIdNegative(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = SplitSocketId("")
+	}
+}
+
+func BenchmarkUtilSockSplitSocketIdNegativeColon(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = SplitSocketId("a:")
 	}
 }
 
@@ -87,6 +122,13 @@ func TestUtilComputeWebSocketAcceptKey(t *testing.T) {
 				t.Errorf("ComputeWebSocketAcceptKey() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilSockComputeWebSocketAcceptKey(b *testing.B) {
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = ComputeWebSocketAcceptKey("test")
 	}
 }
 
@@ -138,8 +180,18 @@ func TestUtilReadSocketConnectionMessage(t *testing.T) {
 					},
 				},
 			},
-			want:    []byte("Hello"), // expected payload data after unmasking
-			wantErr: false,           // no error expected
+			want:    []byte("Hello"),
+			wantErr: false,
+		},
+		{
+			name: "Empty message",
+			args: args{
+				conn: &MockConn{
+					data: []byte{},
+				},
+			},
+			want:    nil,
+			wantErr: true,
 		},
 	}
 	for _, tt := range tests {
@@ -153,6 +205,21 @@ func TestUtilReadSocketConnectionMessage(t *testing.T) {
 				t.Errorf("ReadSocketConnectionMessage() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilSockReadSocketConnectionMessage(b *testing.B) {
+	conn := &MockConn{
+		data: []byte{
+			0x81,                   // first byte (fin, opcode)
+			0x85,                   // second byte (mask, payload length)
+			0x00, 0x00, 0x00, 0x00, // mask key (0x00000000 for simplicity)
+			0x48, 0x65, 0x6c, 0x6c, 0x6f, // payload data "Hello" (XOR'd with the mask)
+		},
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _ = ReadSocketConnectionMessage(conn)
 	}
 }
 
@@ -179,7 +246,7 @@ func TestUtilWriteSocketConnectionMessage(t *testing.T) {
 			name: "Write error on connection",
 			args: args{
 				msg:  []byte("test"),
-				conn: &MockErrConn{}, // You can simulate an error on the connection by modifying the Write method to return an error
+				conn: &MockErrConn{},
 			},
 			wantErr: true,
 		},
@@ -222,6 +289,33 @@ func TestUtilWriteSocketConnectionMessage(t *testing.T) {
 				t.Errorf("WriteSocketConnectionMessage() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilSockWriteSocketConnectionMessage(b *testing.B) {
+	data := []byte("test")
+	conn := &MockConn{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = WriteSocketConnectionMessage(data, conn)
+	}
+}
+
+func BenchmarkUtilSockWriteSocketConnectionMessageLarge(b *testing.B) {
+	data := make([]byte, 70000)
+	conn := &MockConn{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = WriteSocketConnectionMessage(data, conn)
+	}
+}
+
+func BenchmarkUtilSockWriteSocketConnectionMessageError(b *testing.B) {
+	data := []byte("test")
+	conn := &MockErrConn{}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = WriteSocketConnectionMessage(data, conn)
 	}
 }
 
@@ -270,6 +364,23 @@ func TestUtilGenerateMessage(t *testing.T) {
 				t.Errorf("GenerateMessage() = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilSockGenerateMessage(b *testing.B) {
+	padTo := 5
+	testMessage := &types.SocketMessage{
+		Action:     44,
+		Topic:      "topic",
+		Payload:    "payload",
+		Store:      false,
+		Historical: false,
+		Sender:     "sender",
+		Timestamp:  "timestamp",
+	}
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_ = GenerateMessage(padTo, testMessage)
 	}
 }
 
@@ -401,5 +512,15 @@ func TestUtilParseMessage(t *testing.T) {
 				t.Errorf("ParseMessage() got1 = %v, want %v", got1, tt.want1)
 			}
 		})
+	}
+}
+
+func BenchmarkUtilSockParseMessage(b *testing.B) {
+	padTo := 5
+	cursor := 0
+	message := []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")
+	b.ResetTimer()
+	for i := 0; i < b.N; i++ {
+		_, _, _ = ParseMessage(padTo, cursor, message)
 	}
 }
