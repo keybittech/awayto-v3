@@ -75,6 +75,28 @@ message SocketMessage {
   string timestamp = 7;
 }
 
+message SocketRequestParams {
+  string userSub = 1;
+  string groupId = 2;
+  string roles = 3;
+  string ticket = 4;
+  string topic = 5;
+  string targets = 6;
+  bytes messageBytes = 7;
+}
+
+message SocketResponseParams {
+  string ticket = 1;
+  Subscriber subscriber = 2;
+  string targets = 3;
+  bool hasSub = 4;
+}
+
+message SocketCommandParams {
+  int32 ty = 1;
+  string clientId = 2;
+}
+
 message GetSocketTicketRequest {}
 
 message GetSocketTicketResponse {

@@ -9,7 +9,7 @@ import (
 )
 
 // CommandHandler interface defines a type that can handle commands of a specific type
-type CommandHandler[Command any, Params any, Response any] interface {
+type CommandHandler[Command any] interface {
 	GetCommandChannel() chan<- Command
 }
 
@@ -19,16 +19,15 @@ type IdentifiedCommand interface {
 }
 
 // SendCommand sends a command to a handler and waits for a response with timeout
-func SendCommand[Command any, Params any, Response any](
-	handler CommandHandler[Command, Params, Response],
-	createCommand func(Params, chan Response) Command,
-	params Params,
+func SendCommand[Command any, Response any](
+	handler CommandHandler[Command],
+	createCommand func(chan Response) Command,
 ) (Response, error) {
 	var emptyResponse Response
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	replyChan := make(chan Response)
-	cmd := createCommand(params, replyChan)
+	cmd := createCommand(replyChan)
 	select {
 	case handler.GetCommandChannel() <- cmd:
 	case <-ctx.Done():
@@ -43,7 +42,7 @@ func SendCommand[Command any, Params any, Response any](
 }
 
 // WorkerPool manages a pool of workers to process commands
-type WorkerPool[Command IdentifiedCommand, Params any, Response any] struct {
+type WorkerPool[Command IdentifiedCommand, Request any, Response any] struct {
 	numWorkers    int
 	commandChan   chan Command
 	workerQueues  []chan Command
@@ -54,16 +53,16 @@ type WorkerPool[Command IdentifiedCommand, Params any, Response any] struct {
 }
 
 // NewWorkerPool creates a new worker pool with the specified number of workers
-func NewWorkerPool[Command IdentifiedCommand, Params any, Response any](
+func NewWorkerPool[Command IdentifiedCommand, Request any, Response any](
 	numWorkers int,
 	bufferSize int,
 	processFunc func(Command),
-) *WorkerPool[Command, Params, Response] {
+) *WorkerPool[Command, Request, Response] {
 	if numWorkers <= 0 {
 		numWorkers = 1
 	}
 
-	pool := &WorkerPool[Command, Params, Response]{
+	pool := &WorkerPool[Command, Request, Response]{
 		numWorkers:    numWorkers,
 		commandChan:   make(chan Command, bufferSize),
 		workerQueues:  make([]chan Command, numWorkers),
@@ -80,7 +79,7 @@ func NewWorkerPool[Command IdentifiedCommand, Params any, Response any](
 }
 
 // Start launches the worker pool
-func (p *WorkerPool[Command, Params, Response]) Start() {
+func (p *WorkerPool[Command, Request, Response]) Start() {
 	// Start command router
 	go p.routeCommands()
 
@@ -92,18 +91,18 @@ func (p *WorkerPool[Command, Params, Response]) Start() {
 }
 
 // Stop gracefully shuts down the worker pool
-func (p *WorkerPool[Command, Params, Response]) Stop() {
+func (p *WorkerPool[Command, Request, Response]) Stop() {
 	close(p.commandChan)
 	p.wg.Wait()
 }
 
 // GetCommandChannel returns the command channel for sending commands
-func (p *WorkerPool[Command, Params, Response]) GetCommandChannel() chan<- Command {
+func (p *WorkerPool[Command, Request, Response]) GetCommandChannel() chan<- Command {
 	return p.commandChan
 }
 
 // routeCommands routes incoming commands to the appropriate worker queue
-func (p *WorkerPool[Command, Params, Response]) routeCommands() {
+func (p *WorkerPool[Command, Request, Response]) routeCommands() {
 	for cmd := range p.commandChan {
 		clientId := cmd.GetClientId()
 		queueIdx := p.getQueueForClient(clientId)
@@ -117,7 +116,7 @@ func (p *WorkerPool[Command, Params, Response]) routeCommands() {
 }
 
 // getQueueForClient determines which queue to use for a given client
-func (p *WorkerPool[Command, Params, Response]) getQueueForClient(clientId string) int {
+func (p *WorkerPool[Command, Request, Response]) getQueueForClient(clientId string) int {
 	p.queueMutex.RLock()
 	if queueIdx, exists := p.clientToQueue[clientId]; exists {
 		p.queueMutex.RUnlock()
@@ -143,7 +142,7 @@ func (p *WorkerPool[Command, Params, Response]) getQueueForClient(clientId strin
 }
 
 // worker processes commands from its assigned queue
-func (p *WorkerPool[Command, Params, Response]) worker(queue <-chan Command) {
+func (p *WorkerPool[Command, Request, Response]) worker(queue <-chan Command) {
 	defer p.wg.Done()
 	for cmd := range queue {
 		p.processFunc(cmd)

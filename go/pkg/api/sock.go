@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -12,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -59,19 +59,36 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				return
 			}
 
+			// connectedSocket := &clients.ConnectedSocket{
+			// 	Conn: conn,
+			// 	Sock: a.Handlers.Socket.(*clients.Socket),
+			// }
+
 			ticket := req.URL.Query().Get("ticket")
 			if ticket == "" {
-				util.ErrorLog.Println(util.ErrCheck(fmt.Errorf("no ticket")))
+				util.ErrorLog.Println(util.ErrCheck(errors.New("no ticket")))
 				return
 			}
 
-			subscriber, err := a.Handlers.Socket.GetSubscriberByTicket(ticket)
-			if err != nil {
+			subscriberRequest, err := a.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, interfaces.SocketRequest{
+				SocketRequestParams: &types.SocketRequestParams{
+					UserSub: "worker",
+					Ticket:  ticket,
+				},
+			})
+
+			if err = clients.ChannelError(err, subscriberRequest.Error); err != nil {
 				util.ErrorLog.Println(util.ErrCheck(err))
 				return
 			}
 
-			go a.HandleSockConnection(subscriber, conn, ticket)
+			// subscriber, err := a.Handlers.Socket.GetSubscriberByTicket(ticket)
+			// if err != nil {
+			// 	util.ErrorLog.Println(util.ErrCheck(err))
+			// 	return
+			// }
+
+			go a.HandleSockConnection(subscriberRequest.Subscriber, conn, ticket)
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Bad Request: Expected WebSocket"))
@@ -83,9 +100,11 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 	)
 }
 
-func (a *API) PingPong(connId string) error {
-	messageBytes := util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
-	if err := a.Handlers.Socket.SendMessageBytes(messageBytes, connId); err != nil {
+var pingBytes = util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
+
+func (a *API) PingPong(userSub, connId string) error {
+	// messageBytes := util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
+	if err := a.Handlers.Socket.SendMessageBytes(userSub, connId, pingBytes); err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		return err
 	}
@@ -104,12 +123,34 @@ func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, 
 
 	socketId := util.GetSocketId(subscriber.UserSub, connId)
 
-	deferSockClose, err := a.Handlers.Socket.InitConnection(conn, subscriber.UserSub, ticket)
-	if err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
+	// deferSockClose, err := a.Handlers.Socket.InitConnection(cs.Conn, subscriber.UserSub, ticket)
+	// if err != nil {
+	// 	util.ErrorLog.Println(util.ErrCheck(err))
+	// 	return
+	// }
+	// defer deferSockClose()
+
+	response, err := a.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
+		SocketRequestParams: &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Ticket:  ticket,
+		},
+		Conn: conn,
+	})
+
+	if err = clients.ChannelError(err, response.Error); err != nil {
+		util.ErrorLog.Println(err)
 		return
 	}
-	defer deferSockClose()
+
+	defer func(us, t string) {
+		a.Handlers.Socket.SendCommand(clients.DeleteSocketConnectionSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: us,
+				Ticket:  t,
+			},
+		})
+	}(subscriber.UserSub, ticket)
 
 	var deferSockDbClose func()
 	err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
@@ -140,11 +181,11 @@ func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, 
 		}
 
 		for topic, targets := range topics {
-			a.Handlers.Socket.SendMessage(&types.SocketMessage{
+			a.Handlers.Socket.SendMessage(subscriber.UserSub, targets, &types.SocketMessage{
 				Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 				Topic:   topic,
 				Payload: socketId,
-			}, targets)
+			})
 			a.Handlers.Redis.RemoveTopicFromConnection(socketId, topic)
 		}
 	}()
@@ -167,12 +208,12 @@ func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, 
 
 	pings[connId] = time.Now()
 
-	err = a.PingPong(connId)
+	err = a.PingPong(subscriber.UserSub, connId)
 
 	for {
 		select {
 		case <-socketPingTicker.C:
-			err := a.PingPong(connId)
+			err := a.PingPong(subscriber.UserSub, connId)
 			if err != nil {
 				return
 			}
@@ -219,7 +260,7 @@ func (a *API) SocketMessageReceiver(userSub string, data []byte) *types.SocketMe
 	messageParams := make([]string, 7)
 
 	if len(data) > util.MAX_SOCKET_MESSAGE_LENGTH {
-		util.ErrorLog.Println(util.ErrCheck(errors.New("socket message too large")))
+		// util.ErrorLog.Println(util.ErrCheck(errors.New("socket message too large")))
 		return nil
 	}
 
@@ -269,7 +310,19 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 	}
 
 	if sm.Action != types.SocketActions_SUBSCRIBE {
-		if ok, err := a.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, sm.Topic); err != nil || !ok {
+		hasSubRequest, err := a.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   sm.Topic,
+			},
+		})
+
+		if err = clients.ChannelError(err, hasSubRequest.Error); err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
+
+		if !hasSubRequest.HasSub {
 			return
 		}
 	}
@@ -311,29 +364,56 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			return
 		}
 
-		// Setup server client with new subscription to topic including any existing connections
-		a.Handlers.Socket.AddSubscribedTopic(subscriber.UserSub, sm.Topic, cachedParticipantTargets)
+		response, err := a.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   sm.Topic,
+				Targets: cachedParticipantTargets,
+			},
+		})
 
-		a.Handlers.Socket.SendMessage(&types.SocketMessage{
+		if err = clients.ChannelError(err, response.Error); err != nil {
+			util.ErrorLog.Println(err)
+			return
+		}
+
+		// // Setup server client with new subscription to topic including any existing connections
+		// a.Handlers.Socket.AddSubscribedTopic(subscriber.UserSub, sm.Topic, cachedParticipantTargets)
+
+		a.Handlers.Socket.SendMessage(subscriber.UserSub, connId, &types.SocketMessage{
 			Action: types.SocketActions_SUBSCRIBE,
 			Topic:  sm.Topic,
-		}, connId)
+		})
 
 	case types.SocketActions_UNSUBSCRIBE:
 
 		_, cachedParticipantTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, true)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(&types.SocketMessage{
+		a.Handlers.Socket.SendMessage(subscriber.UserSub, cachedParticipantTargets, &types.SocketMessage{
 			Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 			Topic:   sm.Topic,
 			Payload: socketId,
-		}, cachedParticipantTargets)
+		})
+
 		a.Handlers.Redis.RemoveTopicFromConnection(connId, sm.Topic)
-		a.Handlers.Socket.DeleteSubscribedTopic(subscriber.UserSub, sm.Topic)
+
+		response, err := a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   sm.Topic,
+			},
+		})
+
+		if err = clients.ChannelError(err, response.Error); err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
+
+		// a.Handlers.Socket.DeleteSubscribedTopic(subscriber.UserSub, sm.Topic)
 
 	case types.SocketActions_LOAD_SUBSCRIBERS:
 
@@ -382,12 +462,12 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(&types.SocketMessage{
+		a.Handlers.Socket.SendMessage(subscriber.UserSub, cachedParticipantTargets, &types.SocketMessage{
 			Action:  types.SocketActions_LOAD_SUBSCRIBERS,
 			Sender:  connId,
 			Topic:   sm.Topic,
 			Payload: string(cachedParticipantsBytes),
-		}, cachedParticipantTargets)
+		})
 
 	case types.SocketActions_LOAD_MESSAGES:
 		var pageInfo map[string]int
@@ -412,11 +492,23 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 
 		for _, messageBytes := range messages {
 			if messageBytes != nil {
-				err := a.Handlers.Socket.SendMessageBytes(messageBytes, connId)
-				if err != nil {
+				response, err := a.Handlers.Socket.SendCommand(clients.SendSocketMessageSocketCommand, interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub:      subscriber.UserSub,
+						Targets:      connId,
+						MessageBytes: messageBytes,
+					},
+				})
+
+				if err = clients.ChannelError(err, response.Error); err != nil {
 					util.ErrorLog.Println(err)
 					return
 				}
+				// err := a.Handlers.Socket.SendMessageBytes(messageBytes, connId)
+				// if err != nil {
+				// 	util.ErrorLog.Println(err)
+				// 	return
+				// }
 			}
 		}
 
@@ -427,18 +519,14 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			return
 		}
 
-		println("indefault")
-
-		err = a.Handlers.Socket.SendMessage(sm, cachedParticipantTargets)
+		err = a.Handlers.Socket.SendMessage(subscriber.UserSub, cachedParticipantTargets, sm)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
 		}
-		println("did default")
 	}
 
 	if sm.Store {
-		println("in store")
 		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 
@@ -452,6 +540,5 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			util.ErrorLog.Println(err)
 			return
 		}
-		println("did store")
 	}
 }

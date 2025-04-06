@@ -114,15 +114,36 @@ type IKeycloak interface {
 	DeleteUserFromGroup(userId, groupId string) error
 }
 
+type SocketRequest struct {
+	*types.SocketRequestParams
+	Conn net.Conn
+}
+
+type SocketResponse struct {
+	*types.SocketResponseParams
+	Error error
+}
+
+type SocketCommand struct {
+	*types.SocketCommandParams
+	Request   SocketRequest
+	ReplyChan chan SocketResponse
+}
+
+func (cmd SocketCommand) GetClientId() string {
+	return cmd.ClientId
+}
+
 type ISocket interface {
+	SendCommand(commandType int32, request SocketRequest) (SocketResponse, error)
 	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
 	GetSocketTicket(session *types.UserSession) (string, error)
-	SendMessageBytes(messageBytes []byte, targets string) error
-	SendMessage(message *types.SocketMessage, targets string) error
-	GetSubscriberByTicket(ticket string) (*types.Subscriber, error)
-	AddSubscribedTopic(userSub, topic string, targets string) error
-	DeleteSubscribedTopic(userSub, topic string) error
-	HasTopicSubscription(userSub, topic string) (bool, error)
+	SendMessageBytes(userSub, targets string, messageBytes []byte) error
+	SendMessage(userSub, targets string, message *types.SocketMessage) error
+	// GetSubscriberByTicket(ticket string) (*types.Subscriber, error)
+	// AddSubscribedTopic(userSub, topic string, targets string) error
+	// DeleteSubscribedTopic(userSub, topic string) error
+	// HasTopicSubscription(userSub, topic string) (bool, error)
 	RoleCall(userSub string) error
 }
 

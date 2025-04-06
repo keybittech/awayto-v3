@@ -140,7 +140,7 @@ func (r *Redis) HandleUnsub(socketId string) (map[string]string, error) {
 			connId := socketId[37:]
 
 			if strings.Index(targets, connId) == -1 {
-				targets += connId + " "
+				targets += connId
 			}
 		}
 
@@ -206,7 +206,7 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targets
 			continue
 		}
 		connId := socketId[37:]
-		participantTargets.Write([]byte(connId + " "))
+		participantTargets.Write([]byte(connId))
 		if targetsOnly {
 			continue
 		}

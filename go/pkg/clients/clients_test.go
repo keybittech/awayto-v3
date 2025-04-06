@@ -12,7 +12,7 @@ import (
 // 	ReplyChan chan MockResponse
 // }
 //
-// type MockParams struct {
+// type MockRequest struct {
 // 	Data string
 // }
 //
@@ -56,7 +56,7 @@ import (
 // 	go MockHandlerProcessor(handler, quit)
 // 	defer close(quit)
 //
-// 	createMockCommand := func(params MockParams, replyChan chan MockResponse) MockCommand {
+// 	createMockCommand := func(params MockRequest, replyChan chan MockResponse) MockCommand {
 // 		return MockCommand{
 // 			Data:      params.Data,
 // 			ReplyChan: replyChan,
@@ -65,13 +65,13 @@ import (
 //
 // 	tests := []struct {
 // 		name    string
-// 		params  MockParams
+// 		params  MockRequest
 // 		want    MockResponse
 // 		wantErr bool
 // 	}{
 // 		{
 // 			name:    "Valid command",
-// 			params:  MockParams{Data: "test-data"},
+// 			params:  MockRequest{Data: "test-data"},
 // 			want:    MockResponse{Result: "Processed: test-data", Error: nil},
 // 			wantErr: false,
 // 		},
@@ -96,7 +96,7 @@ import (
 // 		CommandChan: make(chan MockCommand),
 // 	}
 //
-// 	createMockCommand := func(params MockParams, replyChan chan MockResponse) MockCommand {
+// 	createMockCommand := func(params MockRequest, replyChan chan MockResponse) MockCommand {
 // 		return MockCommand{
 // 			Data:      params.Data,
 // 			ReplyChan: replyChan,
@@ -106,9 +106,9 @@ import (
 // 	originalTimeout := 5 * time.Second
 //
 // 	sendWithShortTimeout := func(
-// 		handler CommandHandler[MockCommand, MockParams, MockResponse],
-// 		createCommand func(MockParams, chan MockResponse) MockCommand,
-// 		params MockParams,
+// 		handler CommandHandler[MockCommand, MockRequest, MockResponse],
+// 		createCommand func(MockRequest, chan MockResponse) MockCommand,
+// 		params MockRequest,
 // 	) (MockResponse, error) {
 // 		var emptyResponse MockResponse
 // 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond) // Short timeout for testing
@@ -128,7 +128,7 @@ import (
 // 		}
 // 	}
 //
-// 	_, err := sendWithShortTimeout(handler, createMockCommand, MockParams{Data: "timeout-test"})
+// 	_, err := sendWithShortTimeout(handler, createMockCommand, MockRequest{Data: "timeout-test"})
 // 	if err == nil {
 // 		t.Error("Expected timeout error, got nil")
 // 	}
@@ -173,7 +173,7 @@ func (cmd MockCommand) GetClientId() string {
 	return cmd.ClientId
 }
 
-type MockParams struct {
+type MockRequest struct {
 	Data string
 }
 
@@ -183,7 +183,7 @@ type MockResponse struct {
 }
 
 type MockHandler struct {
-	pool *WorkerPool[MockCommand, MockParams, MockResponse]
+	pool *WorkerPool[MockCommand, MockRequest, MockResponse]
 }
 
 // NewMockHandler creates a new mock handler with a worker pool
@@ -198,7 +198,7 @@ func NewMockHandler(numWorkers, bufferSize int) *MockHandler {
 		cmd.ReplyChan <- response
 	}
 
-	pool := NewWorkerPool[MockCommand, MockParams, MockResponse](numWorkers, bufferSize, processFunc)
+	pool := NewWorkerPool[MockCommand, MockRequest, MockResponse](numWorkers, bufferSize, processFunc)
 	pool.Start()
 
 	return &MockHandler{pool: pool}
@@ -221,7 +221,7 @@ func TestWorkerPool(t *testing.T) {
 	defer handler.Close()
 
 	// Create a function to create commands
-	createMockCommand := func(params MockParams, replyChan chan MockResponse) MockCommand {
+	createMockCommand := func(params MockRequest, replyChan chan MockResponse) MockCommand {
 		return MockCommand{
 			Data:      params.Data,
 			ReplyChan: replyChan,
@@ -243,7 +243,7 @@ func TestWorkerPool(t *testing.T) {
 		go func(clientIdx int, cId string) {
 			defer wg.Done()
 			for j := 0; j < commandsPerClient; j++ {
-				params := MockParams{
+				params := MockRequest{
 					Data: cId + "-command-" + strconv.Itoa(j),
 				}
 				response, err := SendCommand(handler, createMockCommand, params)
@@ -283,10 +283,10 @@ func BenchmarkSocketWorkerPool(b *testing.B) {
 		socket := NewSocket(numWorkers, clientCount*commandsPerClient)
 
 		// Create command generator function
-		createSocketCommand := func(params SocketParams, replyChan chan SocketResponse) SocketCommand {
+		createSocketCommand := func(params SocketRequest, replyChan chan SocketResponse) SocketCommand {
 			return SocketCommand{
 				Ty:        CreateSocketTicketSocketCommand,
-				Params:    params,
+				Request:   params,
 				ReplyChan: replyChan,
 				ClientId:  params.UserSub, // Use UserSub as client Id
 			}
@@ -302,7 +302,7 @@ func BenchmarkSocketWorkerPool(b *testing.B) {
 			go func(cId string) {
 				defer wg.Done()
 				for j := 0; j < commandsPerClient; j++ {
-					params := SocketParams{
+					params := SocketRequest{
 						UserSub: cId,
 						Targets: "target-" + strconv.Itoa(j%10),
 					}
@@ -324,10 +324,10 @@ func BenchmarkSocketWorkerPool(b *testing.B) {
 // 	defer socket.Close()
 //
 // 	// Example of command creation function for a websocket client
-// 	createSocketCommand := func(params SocketParams, replyChan chan SocketResponse) SocketCommand {
+// 	createSocketCommand := func(params SocketRequest, replyChan chan SocketResponse) SocketCommand {
 // 		return SocketCommand{
-// 			Ty:        CreateSocketTicketSocketCommand, // Assume Ty is added to SocketParams
-// 			Params:    params,
+// 			Ty:        CreateSocketTicketSocketCommand, // Assume Ty is added to SocketRequest
+// 			Request:    params,
 // 			ReplyChan: replyChan,
 // 			ClientId:  params.UserSub, // Use UserSub as client Id
 // 		}
@@ -340,7 +340,7 @@ func BenchmarkSocketWorkerPool(b *testing.B) {
 // 			time.Sleep(150 * time.Millisecond)
 //
 // 			// Process the message by sending a command
-// 			params := SocketParams{
+// 			params := SocketRequest{
 // 				UserSub:      clientId,
 // 				Targets:      "target-" + strconv.Itoa(i%10),
 // 				MessageBytes: []byte("message-" + strconv.Itoa(i%10)),

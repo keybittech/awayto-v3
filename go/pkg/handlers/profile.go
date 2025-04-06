@@ -90,9 +90,11 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 
 	userProfile.AvailableUserGroupRoles = session.AvailableUserGroupRoles
 
-	if err := h.Socket.RoleCall(session.UserSub); err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	// Try to send a request if the user has an active socket connection
+	h.Socket.RoleCall(session.UserSub)
+	// if err := h.Socket.RoleCall(session.UserSub); err != nil {
+	// 	return nil, util.ErrCheck(err)
+	// }
 
 	userProfile.RoleName = session.RoleName
 

@@ -239,15 +239,15 @@ func (k *Keycloak) GetCommandChannel() chan<- KeycloakCommand {
 }
 
 func (k *Keycloak) SendCommand(cmdType KeycloakCommandType, params KeycloakParams) (KeycloakResponse, error) {
-	createCmd := func(p KeycloakParams, replyChan chan KeycloakResponse) KeycloakCommand {
+	createCmd := func(replyChan chan KeycloakResponse) KeycloakCommand {
 		return KeycloakCommand{
 			Ty:        cmdType,
-			Params:    p,
+			Params:    params,
 			ReplyChan: replyChan,
 		}
 	}
 
-	return SendCommand(k, createCmd, params)
+	return SendCommand(k, createCmd)
 }
 
 func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
