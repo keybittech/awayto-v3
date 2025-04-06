@@ -5,164 +5,12 @@ import (
 	"sync"
 	"testing"
 	"time"
-
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
-// type MockCommand struct {
-// 	Data      string
-// 	ReplyChan chan MockResponse
-// }
-//
-// type MockRequest struct {
-// 	Data string
-// }
-//
-// type MockResponse struct {
-// 	Result string
-// 	Error  error
-// }
-//
-// type MockHandler struct {
-// 	CommandChan chan MockCommand
-// }
-//
-// func (h *MockHandler) GetCommandChannel() chan<- MockCommand {
-// 	return h.CommandChan
-// }
-//
-// func MockHandlerProcessor(h *MockHandler, quit chan struct{}) {
-// 	for {
-// 		select {
-// 		case cmd := <-h.CommandChan:
-// 			go func(cmd MockCommand) {
-// 				time.Sleep(10 * time.Millisecond)
-// 				response := MockResponse{
-// 					Result: "Processed: " + cmd.Data,
-// 					Error:  nil,
-// 				}
-// 				cmd.ReplyChan <- response
-// 			}(cmd)
-// 		case <-quit:
-// 			return
-// 		}
-// 	}
-// }
-//
-// func TestSendCommand(t *testing.T) {
-// 	handler := &MockHandler{
-// 		CommandChan: make(chan MockCommand, 5),
-// 	}
-// 	quit := make(chan struct{})
-//
-// 	go MockHandlerProcessor(handler, quit)
-// 	defer close(quit)
-//
-// 	createMockCommand := func(params MockRequest, replyChan chan MockResponse) MockCommand {
-// 		return MockCommand{
-// 			Data:      params.Data,
-// 			ReplyChan: replyChan,
-// 		}
-// 	}
-//
-// 	tests := []struct {
-// 		name    string
-// 		params  MockRequest
-// 		want    MockResponse
-// 		wantErr bool
-// 	}{
-// 		{
-// 			name:    "Valid command",
-// 			params:  MockRequest{Data: "test-data"},
-// 			want:    MockResponse{Result: "Processed: test-data", Error: nil},
-// 			wantErr: false,
-// 		},
-// 	}
-//
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got, err := SendCommand(handler, createMockCommand, tt.params)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("SendCommand() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-// 			if !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("SendCommand() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
-//
-// func TestSendCommandTimeout(t *testing.T) {
-// 	handler := &MockHandler{
-// 		CommandChan: make(chan MockCommand),
-// 	}
-//
-// 	createMockCommand := func(params MockRequest, replyChan chan MockResponse) MockCommand {
-// 		return MockCommand{
-// 			Data:      params.Data,
-// 			ReplyChan: replyChan,
-// 		}
-// 	}
-//
-// 	originalTimeout := 5 * time.Second
-//
-// 	sendWithShortTimeout := func(
-// 		handler CommandHandler[MockCommand, MockRequest, MockResponse],
-// 		createCommand func(MockRequest, chan MockResponse) MockCommand,
-// 		params MockRequest,
-// 	) (MockResponse, error) {
-// 		var emptyResponse MockResponse
-// 		ctx, cancel := context.WithTimeout(context.Background(), 100*time.Millisecond) // Short timeout for testing
-// 		defer cancel()
-// 		replyChan := make(chan MockResponse)
-// 		cmd := createCommand(params, replyChan)
-// 		select {
-// 		case handler.GetCommandChannel() <- cmd:
-// 		case <-ctx.Done():
-// 			return emptyResponse, errors.New("timed out when sending command")
-// 		}
-// 		select {
-// 		case response := <-replyChan:
-// 			return response, nil
-// 		case <-ctx.Done():
-// 			return emptyResponse, errors.New("timed out when receiving command")
-// 		}
-// 	}
-//
-// 	_, err := sendWithShortTimeout(handler, createMockCommand, MockRequest{Data: "timeout-test"})
-// 	if err == nil {
-// 		t.Error("Expected timeout error, got nil")
-// 	}
-//
-// 	// Restore the original timeout value (though it doesn't affect existing functions)
-// 	_ = originalTimeout
-// }
-//
-// func TestChannelError(t *testing.T) {
-// 	type args struct {
-// 		general  error
-// 		response error
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		args    args
-// 		wantErr bool
-// 	}{
-// 		// TODO: Add test cases.
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			if err := ChannelError(tt.args.general, tt.args.response); (err != nil) != tt.wantErr {
-// 				t.Errorf("ChannelError(%v, %v) error = %v, wantErr %v", tt.args.general, tt.args.response, err, tt.wantErr)
-// 			}
-// 		})
-// 	}
-// }
-
-/////////////////////////
-/////////////////////////
+func reset(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+}
 
 // Mock implementation for testing
 type MockCommand struct {
@@ -192,8 +40,7 @@ type MockHandler struct {
 // NewMockHandler creates a new mock handler with a worker pool
 func NewMockHandler(numWorkers, bufferSize int) *MockHandler {
 	processFunc := func(cmd MockCommand) {
-		// Simulate some processing time
-		time.Sleep(10 * time.Millisecond)
+		time.Sleep(20 * time.Millisecond)
 		response := MockResponse{
 			Result: "Processed: " + cmd.Data + " for client: " + cmd.ClientId,
 			Error:  nil,
@@ -225,8 +72,8 @@ func TestWorkerPool(t *testing.T) {
 
 	// Simulate 3 clients sending 10 commands each
 	var wg sync.WaitGroup
-	clientCount := 3
-	commandsPerClient := 10
+	clientCount := 30
+	commandsPerClient := 30
 	results := make([][]MockResponse, clientCount)
 
 	for i := 0; i < clientCount; i++ {
@@ -237,14 +84,11 @@ func TestWorkerPool(t *testing.T) {
 		go func(clientIdx int, cId string) {
 			defer wg.Done()
 			for j := 0; j < commandsPerClient; j++ {
-				params := MockRequest{
-					Data: cId + "-command-" + strconv.Itoa(j),
-				}
 				createMockCommand := func(replyChan chan MockResponse) MockCommand {
 					return MockCommand{
-						Data:      params.Data,
+						Data:      cId + "-command-" + strconv.Itoa(j),
 						ReplyChan: replyChan,
-						ClientId:  params.Data[:1], // Use first character as client Id for testing
+						ClientId:  cId, // Use first character as client Id for testing
 					}
 				}
 				response, err := SendCommand(handler, createMockCommand)
@@ -269,55 +113,6 @@ func TestWorkerPool(t *testing.T) {
 					clientId, j, results[i][j].Result, expected)
 			}
 		}
-	}
-}
-
-// Benchmark the worker pool
-func BenchmarkSocketWorkerPool(b *testing.B) {
-	// numWorkers := 10
-	clientCount := 10
-	commandsPerClient := 100
-
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		// Create a socket handler with worker pool
-		socket := InitSocket()
-
-		var wg sync.WaitGroup
-		b.StartTimer()
-
-		// Simulate multiple clients sending commands concurrently
-		for c := 0; c < clientCount; c++ {
-			clientId := "client-" + strconv.Itoa(c)
-			wg.Add(1)
-			go func(cId string) {
-				defer wg.Done()
-				for j := 0; j < commandsPerClient; j++ {
-					params := interfaces.SocketRequest{
-						SocketRequestParams: &types.SocketRequestParams{
-							UserSub: cId,
-							Targets: "target-" + strconv.Itoa(j%10),
-						},
-					}
-
-					// Create command generator function
-					createSocketCommand := func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
-						return interfaces.SocketCommand{
-							SocketCommandParams: &types.SocketCommandParams{
-								Ty: CreateSocketTicketSocketCommand,
-							},
-							Request:   params,
-							ReplyChan: replyChan,
-						}
-					}
-					_, _ = SendCommand(socket, createSocketCommand)
-				}
-			}(clientId)
-		}
-
-		wg.Wait()
-		b.StopTimer()
-		socket.Close()
 	}
 }
 

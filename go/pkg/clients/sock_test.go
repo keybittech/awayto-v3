@@ -3,7 +3,9 @@ package clients
 import (
 	"log"
 	"net"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
@@ -56,6 +58,203 @@ func TestInitSocket(t *testing.T) {
 			}
 		})
 	}
+}
+
+func getClientCommands(numClients int) map[int]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
+	createCommands := make(map[int]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand)
+
+	for c := 0; c < numClients; c++ {
+		clientId := "client-" + strconv.Itoa(c)
+		createCommands[c] = func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
+			return interfaces.SocketCommand{
+				SocketCommandParams: &types.SocketCommandParams{
+					Ty: CreateSocketTicketSocketCommand,
+				},
+				Request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: clientId,
+						Targets: "target",
+					},
+				},
+				ReplyChan: replyChan,
+			}
+		}
+	}
+	return createCommands
+}
+
+// Benchmark the worker pool
+func BenchmarkInitSocket1Client1Messages(b *testing.B) {
+	clientCount := 1
+	commandsPerClient := 1
+
+	createCommands := getClientCommands(clientCount)
+
+	socket := InitSocket()
+	reset(b)
+	for i := 0; i < b.N; i++ {
+
+		var wg sync.WaitGroup
+
+		for c := 0; c < clientCount; c++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < commandsPerClient; j++ {
+					SendCommand(socket, createCommands[c])
+				}
+			}()
+		}
+
+		wg.Wait()
+	}
+
+	socket.Close()
+}
+
+// Benchmark the worker pool
+func BenchmarkInitSocket1Client100Messages(b *testing.B) {
+	clientCount := 1
+	commandsPerClient := 100
+
+	createCommands := getClientCommands(clientCount)
+
+	socket := InitSocket()
+	reset(b)
+	for i := 0; i < b.N; i++ {
+
+		var wg sync.WaitGroup
+
+		for c := 0; c < clientCount; c++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < commandsPerClient; j++ {
+					SendCommand(socket, createCommands[c])
+				}
+			}()
+		}
+
+		wg.Wait()
+	}
+
+	socket.Close()
+}
+
+// Benchmark the worker pool
+func BenchmarkInitSocket10Clients1Message(b *testing.B) {
+	clientCount := 10
+	commandsPerClient := 1
+
+	createCommands := getClientCommands(clientCount)
+
+	socket := InitSocket()
+	reset(b)
+	for i := 0; i < b.N; i++ {
+
+		var wg sync.WaitGroup
+
+		for c := 0; c < clientCount; c++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < commandsPerClient; j++ {
+					SendCommand(socket, createCommands[c])
+				}
+			}()
+		}
+
+		wg.Wait()
+	}
+
+	socket.Close()
+}
+
+// Benchmark the worker pool
+func BenchmarkInitSocket10Clients100Messages(b *testing.B) {
+	clientCount := 10
+	commandsPerClient := 100
+
+	createCommands := getClientCommands(clientCount)
+
+	socket := InitSocket()
+	reset(b)
+	for i := 0; i < b.N; i++ {
+
+		var wg sync.WaitGroup
+
+		for c := 0; c < clientCount; c++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < commandsPerClient; j++ {
+					SendCommand(socket, createCommands[c])
+				}
+			}()
+		}
+
+		wg.Wait()
+	}
+
+	socket.Close()
+}
+
+// Benchmark the worker pool
+func BenchmarkInitSocket100Clients1Message(b *testing.B) {
+	clientCount := 100
+	commandsPerClient := 1
+
+	createCommands := getClientCommands(clientCount)
+
+	socket := InitSocket()
+	reset(b)
+	for i := 0; i < b.N; i++ {
+
+		var wg sync.WaitGroup
+
+		for c := 0; c < clientCount; c++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < commandsPerClient; j++ {
+					SendCommand(socket, createCommands[c])
+				}
+			}()
+		}
+
+		wg.Wait()
+	}
+
+	socket.Close()
+}
+
+// Benchmark the worker pool
+func BenchmarkInitSocket100Clients100Messages(b *testing.B) {
+	clientCount := 100
+	commandsPerClient := 100
+
+	createCommands := getClientCommands(clientCount)
+
+	socket := InitSocket()
+	reset(b)
+	for i := 0; i < b.N; i++ {
+
+		var wg sync.WaitGroup
+
+		for c := 0; c < clientCount; c++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				for j := 0; j < commandsPerClient; j++ {
+					SendCommand(socket, createCommands[c])
+				}
+			}()
+		}
+
+		wg.Wait()
+	}
+
+	socket.Close()
 }
 
 func TestSocket_GetSocketTicket(t *testing.T) {

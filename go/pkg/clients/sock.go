@@ -33,7 +33,7 @@ type Connections map[string]net.Conn
 var (
 	CID_LENGTH                    = 36
 	SOCK_WORKERS                  = 10
-	SOCK_COMMAND_CHAN_BUFFER_SIZE = 10
+	SOCK_COMMAND_CHAN_BUFFER_SIZE = 100
 )
 
 type Socket struct {
@@ -208,6 +208,8 @@ func InitSocket() *Socket {
 		default:
 			log.Fatal("unknown command type", cmd.Ty)
 		}
+
+		close(cmd.ReplyChan)
 	}
 
 	pool := NewWorkerPool[
