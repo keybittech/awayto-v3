@@ -88,14 +88,15 @@ func InitKeycloak() interfaces.IKeycloak {
 	}
 
 	go func() {
+		var replyChan chan KeycloakResponse
+		defer func() {
+			if r := recover(); r != nil {
+				err := errors.New(fmt.Sprintf("Did recover from %+v", r))
+				replyChan <- KeycloakResponse{Error: err}
+			}
+		}()
 		for cmd := range cmds {
-			defer func() {
-				if r := recover(); r != nil {
-					err := errors.New(fmt.Sprintf("Did recover from %+v", r))
-					cmd.ReplyChan <- KeycloakResponse{Error: err}
-				}
-			}()
-
+			replyChan = cmd.ReplyChan
 			switch cmd.Ty {
 			case SetKeycloakTokenKeycloakCommand:
 				oidcToken, err := kc.DirectGrantAuthentication()
@@ -186,7 +187,9 @@ func InitKeycloak() interfaces.IKeycloak {
 				cmd.ReplyChan <- KeycloakResponse{Error: errors.New("unknown command type")}
 				util.ErrorLog.Println("unknown command type", cmd.Ty)
 			}
-			close(cmd.ReplyChan)
+
+			close(replyChan)
+			replyChan = nil
 		}
 	}()
 

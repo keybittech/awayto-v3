@@ -284,7 +284,7 @@ func TestSocket_HasTopicSubscription(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := testSocket.HasTopicSubscription(tt.args.userSub, tt.args.topic); got != tt.want {
+			if got, _ := testSocket.HasTopicSubscription(tt.args.userSub, tt.args.topic); got != tt.want {
 				t.Errorf("Socket.HasTopicSubscription(%v, %v) = %v, want %v", tt.args.userSub, tt.args.topic, got, tt.want)
 			}
 		})
@@ -310,3 +310,60 @@ func TestSocket_RoleCall(t *testing.T) {
 		})
 	}
 }
+
+// func TestSocket_GetCommandChannel(t *testing.T) {
+// 	type fields struct {
+// 		Ch chan<- SocketCommand
+// 	}
+// 	tests := []struct {
+// 		name   string
+// 		fields fields
+// 		want   chan<- SocketCommand
+// 	}{
+// 		// TODO: Add test cases.
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			s := &Socket{
+// 				Ch: tt.fields.Ch,
+// 			}
+// 			if got := s.GetCommandChannel(); !reflect.DeepEqual(got, tt.want) {
+// 				t.Errorf("Socket.GetCommandChannel() = %v, want %v", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
+//
+// func TestSocket_SendCommand(t *testing.T) {
+// 	type fields struct {
+// 		Ch chan<- SocketCommand
+// 	}
+// 	type args struct {
+// 		cmdType SocketCommandType
+// 		params  SocketParams
+// 	}
+// 	tests := []struct {
+// 		name    string
+// 		fields  fields
+// 		args    args
+// 		want    SocketResponse
+// 		wantErr bool
+// 	}{
+// 		// TODO: Add test cases.
+// 	}
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			s := &Socket{
+// 				Ch: tt.fields.Ch,
+// 			}
+// 			got, err := s.SendCommand(tt.args.cmdType, tt.args.params)
+// 			if (err != nil) != tt.wantErr {
+// 				t.Errorf("Socket.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.params, err, tt.wantErr)
+// 				return
+// 			}
+// 			if !reflect.DeepEqual(got, tt.want) {
+// 				t.Errorf("Socket.SendCommand(%v, %v) = %v, want %v", tt.args.cmdType, tt.args.params, got, tt.want)
+// 			}
+// 		})
+// 	}
+// }

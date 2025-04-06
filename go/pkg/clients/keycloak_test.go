@@ -58,7 +58,7 @@ func TestKeycloak_GetGroupAdminRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.k.GetGroupAdminRoles(); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := tt.k.GetGroupAdminRoles(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Keycloak.GetGroupAdminRoles() = %v, want %v", got, tt.want)
 			}
 		})
@@ -79,7 +79,7 @@ func TestKeycloak_GetGroupSiteRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.k.GetGroupSiteRoles(tt.args.groupId); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := tt.k.GetGroupSiteRoles(tt.args.groupId); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Keycloak.GetGroupSiteRoles(%v) = %v, want %v", tt.args.groupId, got, tt.want)
 			}
 		})
@@ -348,6 +348,67 @@ func TestKeycloak_DeleteUserFromGroup(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := tt.k.DeleteUserFromGroup(tt.args.userId, tt.args.groupId); (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.DeleteUserFromGroup(%v, %v) error = %v, wantErr %v", tt.args.userId, tt.args.groupId, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestKeycloak_GetCommandChannel(t *testing.T) {
+	type fields struct {
+		C  *KeycloakClient
+		Ch chan<- KeycloakCommand
+	}
+	tests := []struct {
+		name   string
+		fields fields
+		want   chan<- KeycloakCommand
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k := &Keycloak{
+				C:  tt.fields.C,
+				Ch: tt.fields.Ch,
+			}
+			if got := k.GetCommandChannel(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Keycloak.GetCommandChannel() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestKeycloak_SendCommand(t *testing.T) {
+	type fields struct {
+		C  *KeycloakClient
+		Ch chan<- KeycloakCommand
+	}
+	type args struct {
+		cmdType KeycloakCommandType
+		params  KeycloakParams
+	}
+	tests := []struct {
+		name    string
+		fields  fields
+		args    args
+		want    KeycloakResponse
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			k := &Keycloak{
+				C:  tt.fields.C,
+				Ch: tt.fields.Ch,
+			}
+			got, err := k.SendCommand(tt.args.cmdType, tt.args.params)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Keycloak.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.params, err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Keycloak.SendCommand(%v, %v) = %v, want %v", tt.args.cmdType, tt.args.params, got, tt.want)
 			}
 		})
 	}
