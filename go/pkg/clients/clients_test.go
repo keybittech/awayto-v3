@@ -5,6 +5,9 @@ import (
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 // type MockCommand struct {
@@ -220,15 +223,6 @@ func TestWorkerPool(t *testing.T) {
 	handler := NewMockHandler(5, 10)
 	defer handler.Close()
 
-	// Create a function to create commands
-	createMockCommand := func(params MockRequest, replyChan chan MockResponse) MockCommand {
-		return MockCommand{
-			Data:      params.Data,
-			ReplyChan: replyChan,
-			ClientId:  params.Data[:1], // Use first character as client Id for testing
-		}
-	}
-
 	// Simulate 3 clients sending 10 commands each
 	var wg sync.WaitGroup
 	clientCount := 3
@@ -246,7 +240,14 @@ func TestWorkerPool(t *testing.T) {
 				params := MockRequest{
 					Data: cId + "-command-" + strconv.Itoa(j),
 				}
-				response, err := SendCommand(handler, createMockCommand, params)
+				createMockCommand := func(replyChan chan MockResponse) MockCommand {
+					return MockCommand{
+						Data:      params.Data,
+						ReplyChan: replyChan,
+						ClientId:  params.Data[:1], // Use first character as client Id for testing
+					}
+				}
+				response, err := SendCommand(handler, createMockCommand)
 				if err != nil {
 					t.Errorf("SendCommand failed for client %s, command %d: %v", cId, j, err)
 				} else {
@@ -273,24 +274,14 @@ func TestWorkerPool(t *testing.T) {
 
 // Benchmark the worker pool
 func BenchmarkSocketWorkerPool(b *testing.B) {
-	numWorkers := 10
+	// numWorkers := 10
 	clientCount := 10
 	commandsPerClient := 100
 
 	for i := 0; i < b.N; i++ {
 		b.StopTimer()
 		// Create a socket handler with worker pool
-		socket := NewSocket(numWorkers, clientCount*commandsPerClient)
-
-		// Create command generator function
-		createSocketCommand := func(params SocketRequest, replyChan chan SocketResponse) SocketCommand {
-			return SocketCommand{
-				Ty:        CreateSocketTicketSocketCommand,
-				Request:   params,
-				ReplyChan: replyChan,
-				ClientId:  params.UserSub, // Use UserSub as client Id
-			}
-		}
+		socket := InitSocket()
 
 		var wg sync.WaitGroup
 		b.StartTimer()
@@ -302,11 +293,24 @@ func BenchmarkSocketWorkerPool(b *testing.B) {
 			go func(cId string) {
 				defer wg.Done()
 				for j := 0; j < commandsPerClient; j++ {
-					params := SocketRequest{
-						UserSub: cId,
-						Targets: "target-" + strconv.Itoa(j%10),
+					params := interfaces.SocketRequest{
+						SocketRequestParams: &types.SocketRequestParams{
+							UserSub: cId,
+							Targets: "target-" + strconv.Itoa(j%10),
+						},
 					}
-					_, _ = SendCommand(socket, createSocketCommand, params)
+
+					// Create command generator function
+					createSocketCommand := func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
+						return interfaces.SocketCommand{
+							SocketCommandParams: &types.SocketCommandParams{
+								Ty: CreateSocketTicketSocketCommand,
+							},
+							Request:   params,
+							ReplyChan: replyChan,
+						}
+					}
+					_, _ = SendCommand(socket, createSocketCommand)
 				}
 			}(clientId)
 		}

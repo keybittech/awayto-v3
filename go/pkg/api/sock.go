@@ -66,7 +66,6 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 
 			ticket := req.URL.Query().Get("ticket")
 			if ticket == "" {
-				util.ErrorLog.Println(util.ErrCheck(errors.New("no ticket")))
 				return
 			}
 
@@ -81,12 +80,6 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				util.ErrorLog.Println(util.ErrCheck(err))
 				return
 			}
-
-			// subscriber, err := a.Handlers.Socket.GetSubscriberByTicket(ticket)
-			// if err != nil {
-			// 	util.ErrorLog.Println(util.ErrCheck(err))
-			// 	return
-			// }
 
 			go a.HandleSockConnection(subscriberRequest.Subscriber, conn, ticket)
 		} else {
@@ -103,7 +96,6 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 var pingBytes = util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
 
 func (a *API) PingPong(userSub, connId string) error {
-	// messageBytes := util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
 	if err := a.Handlers.Socket.SendMessageBytes(userSub, connId, pingBytes); err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		return err
@@ -122,13 +114,6 @@ func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, 
 	}
 
 	socketId := util.GetSocketId(subscriber.UserSub, connId)
-
-	// deferSockClose, err := a.Handlers.Socket.InitConnection(cs.Conn, subscriber.UserSub, ticket)
-	// if err != nil {
-	// 	util.ErrorLog.Println(util.ErrCheck(err))
-	// 	return
-	// }
-	// defer deferSockClose()
 
 	response, err := a.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
 		SocketRequestParams: &types.SocketRequestParams{
@@ -260,7 +245,6 @@ func (a *API) SocketMessageReceiver(userSub string, data []byte) *types.SocketMe
 	messageParams := make([]string, 7)
 
 	if len(data) > util.MAX_SOCKET_MESSAGE_LENGTH {
-		// util.ErrorLog.Println(util.ErrCheck(errors.New("socket message too large")))
 		return nil
 	}
 
@@ -377,9 +361,6 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			return
 		}
 
-		// // Setup server client with new subscription to topic including any existing connections
-		// a.Handlers.Socket.AddSubscribedTopic(subscriber.UserSub, sm.Topic, cachedParticipantTargets)
-
 		a.Handlers.Socket.SendMessage(subscriber.UserSub, connId, &types.SocketMessage{
 			Action: types.SocketActions_SUBSCRIBE,
 			Topic:  sm.Topic,
@@ -412,8 +393,6 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
-
-		// a.Handlers.Socket.DeleteSubscribedTopic(subscriber.UserSub, sm.Topic)
 
 	case types.SocketActions_LOAD_SUBSCRIBERS:
 
@@ -504,11 +483,6 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 					util.ErrorLog.Println(err)
 					return
 				}
-				// err := a.Handlers.Socket.SendMessageBytes(messageBytes, connId)
-				// if err != nil {
-				// 	util.ErrorLog.Println(err)
-				// 	return
-				// }
 			}
 		}
 

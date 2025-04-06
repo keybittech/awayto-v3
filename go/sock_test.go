@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -90,11 +91,19 @@ func setupSockServer() {
 		return
 	}
 
-	subscriber, err = api.Handlers.Socket.GetSubscriberByTicket(ticket)
-	if err != nil {
-		println(err.Error())
+	subscriberRequest, err := api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, interfaces.SocketRequest{
+		SocketRequestParams: &types.SocketRequestParams{
+			UserSub: "worker",
+			Ticket:  ticket,
+		},
+	})
+
+	if err = clients.ChannelError(err, subscriberRequest.Error); err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
 		return
 	}
+
+	subscriber = subscriberRequest.Subscriber
 
 	session = &types.UserSession{
 		UserSub:                 subscriber.UserSub,
@@ -238,12 +247,12 @@ func BenchmarkSocketSendMessage(b *testing.B) {
 
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendMessage(&types.SocketMessage{
+		api.Handlers.Socket.SendMessage(subscriber.UserSub, targets, &types.SocketMessage{
 			Action:  6,
 			Sender:  connId,
 			Topic:   topic,
 			Payload: string(mergedParticipantsBytes),
-		}, targets)
+		})
 	}
 }
 
@@ -255,10 +264,19 @@ func BenchmarkSocketGetSocketTicket(b *testing.B) {
 }
 
 func BenchmarkSocketInitConnection(b *testing.B) {
-	ticket, _ := api.Handlers.Socket.GetSocketTicket(session)
+	mockConn := &interfaces.NullConn{}
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.InitConnection(&interfaces.NullConn{}, subscriber.UserSub, ticket)
+		b.StopTimer()
+		ticket, _ = api.Handlers.Socket.GetSocketTicket(session)
+		b.StartTimer()
+		api.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Ticket:  ticket,
+			},
+			Conn: mockConn,
+		})
 	}
 }
 
@@ -266,43 +284,74 @@ func BenchmarkSocketGetSubscriberByTicket(b *testing.B) {
 	ticket, _ := api.Handlers.Socket.GetSocketTicket(session)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.GetSubscriberByTicket(ticket)
+		api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: "worker",
+				Ticket:  ticket,
+			},
+		})
 	}
 }
 
 func BenchmarkSocketSendMessageBytes(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendMessageBytes(socketEvents.changeSettingEvent, targets)
+		api.Handlers.Socket.SendMessageBytes(subscriber.UserSub, targets, socketEvents.changeSettingEvent)
 	}
 }
 
 func BenchmarkSocketAddSubscribedTopic(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.AddSubscribedTopic(subscriber.UserSub, topic, targets)
+		api.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   topic,
+				Targets: targets,
+			},
+		})
 	}
 }
 
 func BenchmarkSocketHasTopicSubscription(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.HasTopicSubscription(subscriber.UserSub, topic)
+		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   topic,
+			},
+		})
 	}
 }
 
 func BenchmarkSocketDeleteSubscribedTopic(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.DeleteSubscribedTopic(subscriber.UserSub, topic)
+		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   topic,
+			},
+		})
 	}
 }
 
 func BenchmarkSocketAddAndDeleteSubscribedTopic(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.AddSubscribedTopic(subscriber.UserSub, topic, targets)
-		api.Handlers.Socket.DeleteSubscribedTopic(subscriber.UserSub, topic)
+		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   topic,
+			},
+		})
+		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, interfaces.SocketRequest{
+			SocketRequestParams: &types.SocketRequestParams{
+				UserSub: subscriber.UserSub,
+				Topic:   topic,
+			},
+		})
 	}
 }
 
@@ -352,32 +401,32 @@ func BenchmarkSocketHandleUnsub(b *testing.B) {
 	}
 }
 
-// Utilities
-
-func BenchmarkSocketGenerateMessage(b *testing.B) {
-	reset(b)
-	for c := 0; c < b.N; c++ {
-		util.GenerateMessage(5, &types.SocketMessage{})
-	}
-}
-
-func BenchmarkSocketGetSocketId(b *testing.B) {
-	reset(b)
-	for c := 0; c < b.N; c++ {
-		util.GetSocketId(session.UserSub, connId)
-	}
-}
-
-func BenchmarkSocketSplitSocketId(b *testing.B) {
-	reset(b)
-	for c := 0; c < b.N; c++ {
-		util.SplitSocketId(topic)
-	}
-}
-
-func BenchmarkSocketWriteSocketMessage(b *testing.B) {
-	reset(b)
-	for c := 0; c < b.N; c++ {
-		util.WriteSocketConnectionMessage(socketEvents.loadSubscribersEvent, &interfaces.NullConn{})
-	}
-}
+// // Utilities
+//
+// func BenchmarkSocketGenerateMessage(b *testing.B) {
+// 	reset(b)
+// 	for c := 0; c < b.N; c++ {
+// 		util.GenerateMessage(5, &types.SocketMessage{})
+// 	}
+// }
+//
+// func BenchmarkSocketGetSocketId(b *testing.B) {
+// 	reset(b)
+// 	for c := 0; c < b.N; c++ {
+// 		util.GetSocketId(session.UserSub, connId)
+// 	}
+// }
+//
+// func BenchmarkSocketSplitSocketId(b *testing.B) {
+// 	reset(b)
+// 	for c := 0; c < b.N; c++ {
+// 		util.SplitSocketId(topic)
+// 	}
+// }
+//
+// func BenchmarkSocketWriteSocketMessage(b *testing.B) {
+// 	reset(b)
+// 	for c := 0; c < b.N; c++ {
+// 		util.WriteSocketConnectionMessage(socketEvents.loadSubscribersEvent, &interfaces.NullConn{})
+// 	}
+// }

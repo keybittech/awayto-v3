@@ -136,7 +136,6 @@ func (cmd SocketCommand) GetClientId() string {
 
 type ISocket interface {
 	SendCommand(commandType int32, request SocketRequest) (SocketResponse, error)
-	InitConnection(conn net.Conn, userSub string, ticket string) (func(), error)
 	GetSocketTicket(session *types.UserSession) (string, error)
 	SendMessageBytes(userSub, targets string, messageBytes []byte) error
 	SendMessage(userSub, targets string, message *types.SocketMessage) error
