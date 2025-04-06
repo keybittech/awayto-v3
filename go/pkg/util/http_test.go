@@ -64,7 +64,7 @@ func BenchmarkGet(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = Get("/test", nil)
 	}
@@ -78,7 +78,7 @@ func BenchmarkGetHeaders(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = Get("/test", headers)
 	}
@@ -88,7 +88,7 @@ func BenchmarkGetError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = Get("/error", nil)
 	}
@@ -130,7 +130,7 @@ func BenchmarkGetWithParams(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = GetWithParams("/test", nil, url.Values{"key": {"value"}})
 	}
@@ -140,7 +140,7 @@ func BenchmarkGetWithParamsError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = GetWithParams("/error", nil, url.Values{"key": {"value"}})
 	}
@@ -183,7 +183,7 @@ func BenchmarkMutate(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = Mutate("POST", "/test", http.Header{"Content-Type": {"application/json"}}, []byte(`{"key":"value"}`))
 	}
@@ -193,7 +193,7 @@ func BenchmarkMutateError(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = Mutate("POST", "/error", http.Header{"Content-Type": {"application/json"}}, []byte(`{"key":`))
 	}
@@ -235,7 +235,7 @@ func BenchmarkPostFormData(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = PostFormData("/test", http.Header{"Content-Type": {"application/json"}}, url.Values{"key": {"value"}})
 	}
@@ -267,7 +267,7 @@ func Benchmark_successStatus(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = successStatus(200)
 	}
@@ -277,7 +277,7 @@ func Benchmark_successStatusNegative(b *testing.B) {
 	server := mockServer()
 	defer server.Close()
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = successStatus(199)
 	}

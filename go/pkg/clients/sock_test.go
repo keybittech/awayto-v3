@@ -60,193 +60,151 @@ func TestInitSocket(t *testing.T) {
 	}
 }
 
-func getClientCommands(numClients int) map[int]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
-	createCommands := make(map[int]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand)
-
-	for c := 0; c < numClients; c++ {
-		clientId := "client-" + strconv.Itoa(c)
-		createCommands[c] = func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
+func getClientData(numClients int, commandType int32, requestParams *types.SocketRequestParams, conn ...bool) ([]string, map[string]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand) {
+	clientIds := make([]string, numClients)
+	clientCommands := make(map[string]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand)
+	for i := 0; i < numClients; i++ {
+		clientId := "client-" + strconv.Itoa(numClients) + "-" + strconv.Itoa(i)
+		clientIds[i] = clientId
+		clientCommands[clientId] = func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
+			requestParams.UserSub = clientId
+			request := interfaces.SocketRequest{SocketRequestParams: requestParams}
+			if conn != nil {
+				request.Conn = &interfaces.NullConn{}
+			}
 			return interfaces.SocketCommand{
 				SocketCommandParams: &types.SocketCommandParams{
-					Ty: CreateSocketTicketSocketCommand,
+					Ty:       commandType,
+					ClientId: clientId,
 				},
-				Request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: clientId,
-						Targets: "target",
-					},
-				},
+				Request:   request,
 				ReplyChan: replyChan,
 			}
 		}
 	}
-	return createCommands
+	return clientIds, clientCommands
 }
 
-// Benchmark the worker pool
-func BenchmarkInitSocket1Client1Messages(b *testing.B) {
-	clientCount := 1
-	commandsPerClient := 1
+func BenchmarkSendCommandSingle1Client(b *testing.B) {
+	doSendCommandSingleBench(1, b)
+}
 
-	createCommands := getClientCommands(clientCount)
+func BenchmarkSendCommandSingle10Clients(b *testing.B) {
+	doSendCommandSingleBench(10, b)
+}
 
+func BenchmarkSendCommandSingle100Clients(b *testing.B) {
+	doSendCommandSingleBench(100, b)
+}
+
+func BenchmarkSendCommandSingle1000Clients(b *testing.B) {
+	doSendCommandSingleBench(1000, b)
+}
+
+func doSendCommandSingleBench(clientCount int, b *testing.B) {
 	socket := InitSocket()
-	reset(b)
-	for i := 0; i < b.N; i++ {
+	defer socket.Close()
 
+	clientIds, clientCommands := getClientData(
+		clientCount,
+		CreateSocketTicketSocketCommand,
+		&types.SocketRequestParams{
+			GroupId: "group-id",
+			Roles:   "APP_GROUP_ADMIN",
+		},
+	)
+
+	reset(b)
+
+	for i := 0; i < b.N/clientCount; i++ {
 		var wg sync.WaitGroup
 
 		for c := 0; c < clientCount; c++ {
 			wg.Add(1)
+
+			currentC := c
 			go func() {
 				defer wg.Done()
-				for j := 0; j < commandsPerClient; j++ {
-					SendCommand(socket, createCommands[c])
-				}
+				SendCommand(socket, clientCommands[clientIds[currentC]])
 			}()
 		}
 
 		wg.Wait()
 	}
+}
 
-	socket.Close()
+func BenchmarkSendCommandMulti1Client1Message(b *testing.B) {
+	doSendCommandMultiBench(1, 1, b)
+}
+
+func BenchmarkSendCommandMulti1Client10Messages(b *testing.B) {
+	doSendCommandMultiBench(1, 10, b)
+}
+
+func BenchmarkSendCommandMulti1Client100Messages(b *testing.B) {
+	doSendCommandMultiBench(1, 100, b)
+}
+
+func BenchmarkSendCommandMulti10Clients1Message(b *testing.B) {
+	doSendCommandMultiBench(10, 1, b)
+}
+
+func BenchmarkSendCommandMulti10Clients10Messages(b *testing.B) {
+	doSendCommandMultiBench(10, 10, b)
+}
+
+func BenchmarkSendCommandMulti10Clients100Messages(b *testing.B) {
+	doSendCommandMultiBench(10, 100, b)
+}
+
+func BenchmarkSendCommandMulti100Clients1Message(b *testing.B) {
+	doSendCommandMultiBench(100, 1, b)
+}
+
+func BenchmarkSendCommandMulti100Clients10Messages(b *testing.B) {
+	doSendCommandMultiBench(100, 10, b)
+}
+
+func BenchmarkSendCommandMulti100Clients100Messages(b *testing.B) {
+	doSendCommandMultiBench(100, 100, b)
+}
+
+func BenchmarkSendCommandMulti1000Clients1Message(b *testing.B) {
+	doSendCommandMultiBench(1000, 1, b)
+}
+
+func BenchmarkSendCommandMulti1000Clients10Messages(b *testing.B) {
+	doSendCommandMultiBench(1000, 10, b)
+}
+
+func BenchmarkSendCommandMulti1000Clients100Messages(b *testing.B) {
+	doSendCommandMultiBench(1000, 100, b)
 }
 
 // Benchmark the worker pool
-func BenchmarkInitSocket1Client100Messages(b *testing.B) {
-	clientCount := 1
-	commandsPerClient := 100
-
-	createCommands := getClientCommands(clientCount)
+func doSendCommandMultiBench(clientCount, commandsPerClient int, b *testing.B) {
+	clientIds, createCommands := getClientData(
+		clientCount,
+		CreateSocketTicketSocketCommand,
+		&types.SocketRequestParams{
+			GroupId: "group-id",
+			Roles:   "APP_GROUP_ADMIN",
+		},
+	)
 
 	socket := InitSocket()
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for i := 0; i < b.N/(clientCount*commandsPerClient); i++ {
 
 		var wg sync.WaitGroup
 
 		for c := 0; c < clientCount; c++ {
 			wg.Add(1)
+			currentC := c
 			go func() {
 				defer wg.Done()
 				for j := 0; j < commandsPerClient; j++ {
-					SendCommand(socket, createCommands[c])
-				}
-			}()
-		}
-
-		wg.Wait()
-	}
-
-	socket.Close()
-}
-
-// Benchmark the worker pool
-func BenchmarkInitSocket10Clients1Message(b *testing.B) {
-	clientCount := 10
-	commandsPerClient := 1
-
-	createCommands := getClientCommands(clientCount)
-
-	socket := InitSocket()
-	reset(b)
-	for i := 0; i < b.N; i++ {
-
-		var wg sync.WaitGroup
-
-		for c := 0; c < clientCount; c++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for j := 0; j < commandsPerClient; j++ {
-					SendCommand(socket, createCommands[c])
-				}
-			}()
-		}
-
-		wg.Wait()
-	}
-
-	socket.Close()
-}
-
-// Benchmark the worker pool
-func BenchmarkInitSocket10Clients100Messages(b *testing.B) {
-	clientCount := 10
-	commandsPerClient := 100
-
-	createCommands := getClientCommands(clientCount)
-
-	socket := InitSocket()
-	reset(b)
-	for i := 0; i < b.N; i++ {
-
-		var wg sync.WaitGroup
-
-		for c := 0; c < clientCount; c++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for j := 0; j < commandsPerClient; j++ {
-					SendCommand(socket, createCommands[c])
-				}
-			}()
-		}
-
-		wg.Wait()
-	}
-
-	socket.Close()
-}
-
-// Benchmark the worker pool
-func BenchmarkInitSocket100Clients1Message(b *testing.B) {
-	clientCount := 100
-	commandsPerClient := 1
-
-	createCommands := getClientCommands(clientCount)
-
-	socket := InitSocket()
-	reset(b)
-	for i := 0; i < b.N; i++ {
-
-		var wg sync.WaitGroup
-
-		for c := 0; c < clientCount; c++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for j := 0; j < commandsPerClient; j++ {
-					SendCommand(socket, createCommands[c])
-				}
-			}()
-		}
-
-		wg.Wait()
-	}
-
-	socket.Close()
-}
-
-// Benchmark the worker pool
-func BenchmarkInitSocket100Clients100Messages(b *testing.B) {
-	clientCount := 100
-	commandsPerClient := 100
-
-	createCommands := getClientCommands(clientCount)
-
-	socket := InitSocket()
-	reset(b)
-	for i := 0; i < b.N; i++ {
-
-		var wg sync.WaitGroup
-
-		for c := 0; c < clientCount; c++ {
-			wg.Add(1)
-			go func() {
-				defer wg.Done()
-				for j := 0; j < commandsPerClient; j++ {
-					SendCommand(socket, createCommands[c])
+					SendCommand(socket, createCommands[clientIds[currentC]])
 				}
 			}()
 		}
@@ -438,59 +396,349 @@ func TestSocket_RoleCall(t *testing.T) {
 	}
 }
 
-// func TestSocket_GetCommandChannel(t *testing.T) {
-// 	type fields struct {
-// 		Ch chan<- SocketCommand
-// 	}
-// 	tests := []struct {
-// 		name   string
-// 		fields fields
-// 		want   chan<- SocketCommand
-// 	}{
-// 		// TODO: Add test cases.
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			s := &Socket{
-// 				Ch: tt.fields.Ch,
-// 			}
-// 			if got := s.GetCommandChannel(); !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("Socket.GetCommandChannel() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
-//
-// func TestSocket_SendCommand(t *testing.T) {
-// 	type fields struct {
-// 		Ch chan<- SocketCommand
-// 	}
-// 	type args struct {
-// 		cmdType SocketCommandType
-// 		params  SocketParams
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		fields  fields
-// 		args    args
-// 		want    SocketResponse
-// 		wantErr bool
-// 	}{
-// 		// TODO: Add test cases.
-// 	}
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			s := &Socket{
-// 				Ch: tt.fields.Ch,
-// 			}
-// 			got, err := s.SendCommand(tt.args.cmdType, tt.args.params)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("Socket.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.params, err, tt.wantErr)
-// 				return
-// 			}
-// 			if !reflect.DeepEqual(got, tt.want) {
-// 				t.Errorf("Socket.SendCommand(%v, %v) = %v, want %v", tt.args.cmdType, tt.args.params, got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
+//	func TestSocket_GetCommandChannel(t *testing.T) {
+//		type fields struct {
+//			Ch chan<- SocketCommand
+//		}
+//		tests := []struct {
+//			name   string
+//			fields fields
+//			want   chan<- SocketCommand
+//		}{
+//			// TODO: Add test cases.
+//		}
+//		for _, tt := range tests {
+//			t.Run(tt.name, func(t *testing.T) {
+//				s := &Socket{
+//					Ch: tt.fields.Ch,
+//				}
+//				if got := s.GetCommandChannel(); !reflect.DeepEqual(got, tt.want) {
+//					t.Errorf("Socket.GetCommandChannel() = %v, want %v", got, tt.want)
+//				}
+//			})
+//		}
+//	}
+func TestSocket_SendCommand(t *testing.T) {
+	type args struct {
+		cmd     interfaces.SocketCommand
+		request interfaces.SocketRequest
+	}
+
+	// Create a struct to hold dynamic values that will be shared between tests
+	var state struct {
+		ticket       string
+		connId       string
+		auth         string
+		subscriberId string
+	}
+
+	state.subscriberId = "user123"
+
+	tests := []struct {
+		name     string
+		args     args
+		want     interfaces.SocketResponse
+		wantErr  bool
+		validate func(t *testing.T, got interfaces.SocketResponse) bool
+	}{
+		{
+			name: "Create ticket success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: CreateSocketTicketSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+						GroupId: "group-id",
+						Roles:   "APP_GROUP_ADMIN",
+					},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				if got.SocketResponseParams == nil || got.SocketResponseParams.Ticket == "" {
+					t.Errorf("Expected ticket in response, got none")
+					return false
+				}
+
+				// Save the ticket for later tests
+				state.ticket = got.SocketResponseParams.Ticket
+				parts := strings.Split(state.ticket, ":")
+				if len(parts) != 2 {
+					t.Errorf("Invalid ticket format: %s", state.ticket)
+					return false
+				}
+				state.auth = parts[0]
+				state.connId = parts[1]
+
+				return true
+			},
+		},
+		{
+			name: "Create connection success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: CreateSocketConnectionSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+					},
+					Conn: &interfaces.NullConn{},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				if got.Error != nil {
+					t.Errorf("Unexpected error: %v", got.Error)
+					return false
+				}
+
+				if got.SocketResponseParams == nil || got.SocketResponseParams.Subscriber == nil {
+					t.Errorf("Expected subscriber in response, got none")
+					return false
+				}
+
+				sub := got.SocketResponseParams.Subscriber
+				if sub.UserSub != state.subscriberId {
+					t.Errorf("Expected subscriber ID %s, got %s", state.subscriberId, sub.UserSub)
+					return false
+				}
+
+				if !strings.Contains(sub.ConnectionIds, state.connId) {
+					t.Errorf("Expected connection ID %s in subscriber, got %s", state.connId, sub.ConnectionIds)
+					return false
+				}
+
+				return true
+			},
+		},
+		{
+			name: "Add subscribed topic",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: AddSubscribedTopicSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+						Topic:   "notifications",
+					},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				return got.Error == nil
+			},
+		},
+		{
+			name: "Has subscribed topic success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: HasSubscribedTopicSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+						Topic:   "notifications",
+					},
+				},
+			},
+			want: interfaces.SocketResponse{
+				SocketResponseParams: &types.SocketResponseParams{
+					HasSub: true,
+				},
+			},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				if got.Error != nil {
+					t.Errorf("Unexpected error: %v", got.Error)
+					return false
+				}
+
+				if got.SocketResponseParams == nil || !got.SocketResponseParams.HasSub {
+					t.Errorf("Expected HasSub to be true, got false or nil")
+					return false
+				}
+
+				return true
+			},
+		},
+		{
+			name: "Send socket message success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: SendSocketMessageSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub:      state.subscriberId,
+						MessageBytes: []byte("test message"),
+					},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				return got.Error == nil
+			},
+		},
+		{
+			name: "Get subscribed targets success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: GetSubscribedTargetsSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+					},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				if got.Error != nil {
+					t.Errorf("Unexpected error: %v", got.Error)
+					return false
+				}
+
+				if got.SocketResponseParams == nil || got.SocketResponseParams.Targets == "" {
+					t.Errorf("Expected targets in response, got none, %+v", got)
+					return false
+				}
+
+				if !strings.Contains(got.SocketResponseParams.Targets, state.connId) {
+					t.Errorf("Expected connection ID %s in targets, got %s", state.connId, got.SocketResponseParams.Targets)
+					return false
+				}
+
+				return true
+			},
+		},
+		{
+			name: "Delete subscribed topic",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: DeleteSubscribedTopicSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+						Topic:   "notifications",
+					},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				return got.Error == nil
+			},
+		},
+		{
+			name: "Get subscriber success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: GetSubscriberSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+						// Ticket added during test
+					},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				if got.Error != nil {
+					t.Errorf("Unexpected error: %v", got.Error)
+					return false
+				}
+
+				if got.SocketResponseParams == nil || got.SocketResponseParams.Subscriber == nil {
+					t.Errorf("Expected subscriber in response, got none")
+					return false
+				}
+
+				sub := got.SocketResponseParams.Subscriber
+				if sub.UserSub != state.subscriberId {
+					t.Errorf("Expected subscriber ID %s, got %s", state.subscriberId, sub.UserSub)
+					return false
+				}
+
+				return true
+			},
+		},
+		{
+			name: "Delete connection success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: DeleteSocketConnectionSocketCommand,
+					},
+				},
+				request: interfaces.SocketRequest{
+					SocketRequestParams: &types.SocketRequestParams{
+						UserSub: state.subscriberId,
+					},
+				},
+			},
+			want:    interfaces.SocketResponse{},
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				return got.Error == nil
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			switch tt.args.cmd.Ty {
+			case CreateSocketConnectionSocketCommand:
+				tt.args.request.SocketRequestParams.Ticket = state.ticket
+			case AddSubscribedTopicSocketCommand:
+				tt.args.request.SocketRequestParams.Targets = state.connId
+			case SendSocketMessageSocketCommand:
+				tt.args.request.SocketRequestParams.Targets = state.connId
+			case GetSubscriberSocketCommand:
+				tt.args.request.SocketRequestParams.Ticket = state.auth + ":" + state.connId
+			case DeleteSocketConnectionSocketCommand:
+				tt.args.request.SocketRequestParams.Ticket = state.auth + ":" + state.connId
+			}
+
+			got, err := testSocket.SendCommand(tt.args.cmd.Ty, tt.args.request)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Socket.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmd, tt.args.request, err, tt.wantErr)
+				return
+			}
+
+			if tt.validate != nil {
+				if !tt.validate(t, got) {
+					t.Errorf("Socket.SendCommand(%v, %v) validation failed", tt.args.cmd, tt.args.request)
+				}
+			}
+		})
+	}
+}

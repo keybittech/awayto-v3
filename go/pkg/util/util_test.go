@@ -18,6 +18,11 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
+func reset(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+}
+
 func TestErrLog_Println(t *testing.T) {
 	filePath := "/tmp/log_test"
 	file, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
@@ -76,7 +81,7 @@ func BenchmarkErrLog_Println(b *testing.B) {
 	logger := log.New(file, "", log.Ldate|log.Ltime)
 	errLogger := &ErrLog{logger}
 
-	b.ResetTimer()
+	reset(b)
 
 	for i := 0; i < b.N; i++ {
 		errLogger.Println("test")
@@ -106,7 +111,7 @@ func TestUserError(t *testing.T) {
 }
 
 func BenchmarkUserError(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = UserError("error")
 	}
@@ -133,7 +138,7 @@ func TestSnipUserError(t *testing.T) {
 }
 
 func BenchmarkSnipUserError(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = SnipUserError("ERROR_FOR_USER error ERROR_FOR_USER")
 	}
@@ -214,7 +219,7 @@ func BenchmarkRequestError(b *testing.B) {
 		FirstName: "test",
 		RoleName:  "role",
 	}
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		RequestError(httptest.NewRecorder(), "test error", slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}), reflect.ValueOf(testPbStruct).Elem())
 	}
@@ -242,7 +247,7 @@ func TestErrCheck(t *testing.T) {
 }
 
 func BenchmarkErrCheck(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = ErrCheck(errors.New("test error"))
 	}
@@ -270,7 +275,7 @@ func TestNewNullString(t *testing.T) {
 }
 
 func BenchmarkNewNullString(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = NewNullString("test error")
 	}
@@ -299,7 +304,7 @@ func TestIsUUID(t *testing.T) {
 
 func BenchmarkIsUUID(b *testing.B) {
 	str := "00000000-0000-0000-0000-000000000000"
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = IsUUID(str)
 	}
@@ -307,7 +312,7 @@ func BenchmarkIsUUID(b *testing.B) {
 
 func BenchmarkIsUUIDNegative(b *testing.B) {
 	str := "test"
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = IsUUID(str)
 	}
@@ -336,7 +341,7 @@ func TestIsEpoch(t *testing.T) {
 
 func BenchmarkIsEpoch(b *testing.B) {
 	var goodId = "0123456789"
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = IsEpoch(goodId)
 	}
@@ -344,7 +349,7 @@ func BenchmarkIsEpoch(b *testing.B) {
 
 func BenchmarkIsEpochNegative(b *testing.B) {
 	var badId = "test"
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = IsEpoch(badId)
 	}
@@ -376,14 +381,14 @@ func TestPaddedLen(t *testing.T) {
 }
 
 func BenchmarkPaddedLen(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = PaddedLen(5, 3)
 	}
 }
 
 func BenchmarkPaddedLenNegative(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = PaddedLen(-5, -3)
 	}
@@ -449,7 +454,7 @@ func BenchmarkEnvFile(b *testing.B) {
 	filePath := filepath.Join(tmpDir, "test.txt")
 	err = os.WriteFile(filePath, []byte("test content\n\n"), 0644)
 
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = EnvFile("test.txt")
 	}
@@ -477,14 +482,14 @@ func TestAnonIp(t *testing.T) {
 }
 
 func BenchmarkAnonIp(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = AnonIp("1.1.1.1")
 	}
 }
 
 func BenchmarkAnonIpNegative(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = AnonIp("1.1.1")
 	}
@@ -513,7 +518,7 @@ func TestStringIn(t *testing.T) {
 }
 
 func BenchmarkStringIn(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = StringIn("test", []string{"test"})
 	}
@@ -544,7 +549,7 @@ func TestStringOut(t *testing.T) {
 }
 
 func BenchmarkStringOut(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = StringOut("test", []string{"test", "case"})
 	}
@@ -584,7 +589,7 @@ func BenchmarkExeTime(b *testing.B) {
 	originalLogger := ErrorLog
 	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
 	defer func() { ErrorLog = originalLogger }()
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = ExeTime("testFunction")
 	}
@@ -596,7 +601,7 @@ func BenchmarkExeTimeDeferFunc(b *testing.B) {
 	ErrorLog = &ErrLog{log.New(&buf, "", 0)}
 	defer func() { ErrorLog = originalLogger }()
 	deferFunc := ExeTime("testFunction")
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		deferFunc("test")
 	}
@@ -629,7 +634,7 @@ func TestWriteSigned(t *testing.T) {
 }
 
 func BenchmarkWriteSigned(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = WriteSigned("a", "b")
 	}
@@ -659,7 +664,7 @@ func TestVerifySigned(t *testing.T) {
 
 func BenchmarkVerifySigned(b *testing.B) {
 	signedValue := WriteSigned("a", "b")
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = VerifySigned("a", signedValue)
 	}

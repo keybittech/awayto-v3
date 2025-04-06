@@ -33,14 +33,14 @@ func TestGetSocketId(t *testing.T) {
 }
 
 func BenchmarkGetSocketId(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = GetSocketId("a", "b")
 	}
 }
 
 func BenchmarkGetSocketIdNegative(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = GetSocketId("", "")
 	}
@@ -84,21 +84,21 @@ func TestSplitSocketId(t *testing.T) {
 }
 
 func BenchmarkSplitSocketId(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _, _ = SplitSocketId("a:b")
 	}
 }
 
 func BenchmarkSplitSocketIdNegative(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _, _ = SplitSocketId("")
 	}
 }
 
 func BenchmarkSplitSocketIdNegativeColon(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _, _ = SplitSocketId("a:")
 	}
@@ -126,7 +126,7 @@ func TestComputeWebSocketAcceptKey(t *testing.T) {
 }
 
 func BenchmarkComputeWebSocketAcceptKey(b *testing.B) {
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = ComputeWebSocketAcceptKey("test")
 	}
@@ -217,7 +217,7 @@ func BenchmarkReadSocketConnectionMessage(b *testing.B) {
 			0x48, 0x65, 0x6c, 0x6c, 0x6f, // payload data "Hello" (XOR'd with the mask)
 		},
 	}
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _ = ReadSocketConnectionMessage(conn)
 	}
@@ -295,7 +295,7 @@ func TestWriteSocketConnectionMessage(t *testing.T) {
 func BenchmarkWriteSocketConnectionMessage(b *testing.B) {
 	data := []byte("test")
 	conn := &MockConn{}
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = WriteSocketConnectionMessage(data, conn)
 	}
@@ -304,7 +304,7 @@ func BenchmarkWriteSocketConnectionMessage(b *testing.B) {
 func BenchmarkWriteSocketConnectionMessageLarge(b *testing.B) {
 	data := make([]byte, 70000)
 	conn := &MockConn{}
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = WriteSocketConnectionMessage(data, conn)
 	}
@@ -313,7 +313,7 @@ func BenchmarkWriteSocketConnectionMessageLarge(b *testing.B) {
 func BenchmarkWriteSocketConnectionMessageError(b *testing.B) {
 	data := []byte("test")
 	conn := &MockErrConn{}
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = WriteSocketConnectionMessage(data, conn)
 	}
@@ -378,7 +378,7 @@ func BenchmarkGenerateMessage(b *testing.B) {
 		Sender:     "sender",
 		Timestamp:  "timestamp",
 	}
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_ = GenerateMessage(padTo, testMessage)
 	}
@@ -519,7 +519,7 @@ func BenchmarkParseMessage(b *testing.B) {
 	padTo := 5
 	cursor := 0
 	message := []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")
-	b.ResetTimer()
+	reset(b)
 	for i := 0; i < b.N; i++ {
 		_, _, _ = ParseMessage(padTo, cursor, message)
 	}

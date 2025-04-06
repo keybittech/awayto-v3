@@ -6,10 +6,12 @@ import (
 	"log"
 	"net"
 	"strings"
+	"sync"
 
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"google.golang.org/protobuf/proto"
 
 	"github.com/google/uuid"
 )
@@ -30,10 +32,23 @@ const (
 type Subscribers map[string]*types.Subscriber
 type Connections map[string]net.Conn
 
+type SocketMaps struct {
+	subscribers Subscribers
+	connections Connections
+	mu          sync.RWMutex
+}
+
+func NewSocketMaps() *SocketMaps {
+	return &SocketMaps{
+		subscribers: make(Subscribers),
+		connections: make(Connections),
+	}
+}
+
 var (
 	CID_LENGTH                    = 36
-	SOCK_WORKERS                  = 10
-	SOCK_COMMAND_CHAN_BUFFER_SIZE = 100
+	SOCK_WORKERS                  = 4
+	SOCK_COMMAND_CHAN_BUFFER_SIZE = 8
 )
 
 type Socket struct {
@@ -47,19 +62,19 @@ type ConnectedSocket struct {
 }
 
 func InitSocket() *Socket {
-	subscribers := make(Subscribers)
-	connections := make(Connections)
+	socketMaps := NewSocketMaps()
 
 	processFunc := func(cmd interfaces.SocketCommand) {
-		// Process the socket command based on its type
+		socketMaps.mu.Lock()
+		defer socketMaps.mu.Unlock()
+
 		switch cmd.Ty {
 		case CreateSocketTicketSocketCommand:
 			auth := uuid.NewString()
 			connectionId := uuid.NewString()
 			ticket := auth + ":" + connectionId
 
-			subscriber, ok := subscribers[cmd.Request.UserSub]
-
+			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			if ok {
 				subscriber.Tickets[auth] = connectionId
 			} else {
@@ -71,41 +86,55 @@ func InitSocket() *Socket {
 					SubscribedTopics: make(map[string]string),
 				}
 			}
-			subscribers[cmd.Request.UserSub] = subscriber
+			socketMaps.subscribers[cmd.Request.UserSub] = subscriber
+
 			cmd.ReplyChan <- interfaces.SocketResponse{
-				SocketResponseParams: &types.SocketResponseParams{Ticket: ticket},
+				SocketResponseParams: &types.SocketResponseParams{
+					Ticket: ticket,
+				},
 			}
 
 		case CreateSocketConnectionSocketCommand:
-			if subscriber, ok := subscribers[cmd.Request.UserSub]; ok {
+			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
+			if ok {
 				auth, connId, err := util.SplitSocketId(cmd.Request.Ticket)
 				if err != nil {
-					cmd.ReplyChan <- interfaces.SocketResponse{Error: err}
+					cmd.ReplyChan <- interfaces.SocketResponse{
+						Error: err,
+					}
 					break
 				}
 
 				if _, ok := subscriber.Tickets[auth]; !ok {
-					cmd.ReplyChan <- interfaces.SocketResponse{Error: errors.New("invalid ticket")}
+					cmd.ReplyChan <- interfaces.SocketResponse{
+						Error: errors.New("invalid ticket"),
+					}
 					break
 				}
 
 				delete(subscriber.Tickets, auth)
 				subscriber.ConnectionIds += connId
 
-				connections[connId] = cmd.Request.Conn
-				subscribers[cmd.Request.UserSub] = subscriber
+				socketMaps.connections[connId] = cmd.Request.Conn
+
 				cmd.ReplyChan <- interfaces.SocketResponse{
-					SocketResponseParams: &types.SocketResponseParams{Subscriber: subscriber},
+					SocketResponseParams: &types.SocketResponseParams{
+						Subscriber: proto.Clone(subscriber).(*types.Subscriber),
+					},
 				}
 			} else {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: errors.New("no sub found in sock")}
+				cmd.ReplyChan <- interfaces.SocketResponse{
+					Error: errors.New("no sub found in sock"),
+				}
 			}
 
-			// when testing this use a test socket to do whatever operation then get subscriber by id to test changes
 		case DeleteSocketConnectionSocketCommand:
-			if subscriber, ok := subscribers[cmd.Request.UserSub]; ok {
+			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
+			if ok {
 				_, connId, _ := util.SplitSocketId(cmd.Request.Ticket)
-				delete(connections, connId)
+
+				delete(socketMaps.connections, connId)
+
 				connIdStartIdx := strings.Index(subscriber.ConnectionIds, connId)
 				connIdEndIdx := connIdStartIdx + CID_LENGTH // uuid length
 				if connIdStartIdx == -1 || len(subscriber.ConnectionIds) < connIdEndIdx {
@@ -114,31 +143,32 @@ func InitSocket() *Socket {
 				}
 				subscriber.ConnectionIds = subscriber.ConnectionIds[:connIdStartIdx] + subscriber.ConnectionIds[connIdEndIdx:]
 				if len(subscriber.ConnectionIds) == 0 {
-					delete(subscribers, cmd.Request.UserSub)
+					delete(socketMaps.subscribers, cmd.Request.UserSub)
 				}
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{}
 		case GetSubscriberSocketCommand:
-			auth, _, err := util.SplitSocketId(cmd.Request.Ticket)
+			_, connId, err := util.SplitSocketId(cmd.Request.Ticket)
 			if err != nil {
 				cmd.ReplyChan <- interfaces.SocketResponse{Error: err}
 				break
 			}
 
-			var foundSub *types.Subscriber
+			var found bool
 
-			for _, subscriber := range subscribers {
-				if _, ok := subscriber.Tickets[auth]; ok {
-					foundSub = subscriber
+			for _, subscriber := range socketMaps.subscribers {
+				if strings.Index(subscriber.ConnectionIds, connId) != -1 {
+					found = true
+					cmd.ReplyChan <- interfaces.SocketResponse{
+						SocketResponseParams: &types.SocketResponseParams{
+							Subscriber: proto.Clone(subscriber).(*types.Subscriber),
+						},
+					}
 					break
 				}
 			}
 
-			if foundSub != nil {
-				cmd.ReplyChan <- interfaces.SocketResponse{
-					SocketResponseParams: &types.SocketResponseParams{Subscriber: foundSub},
-				}
-			} else {
+			if !found {
 				cmd.ReplyChan <- interfaces.SocketResponse{Error: errors.New("no subscriber found for ticket")}
 			}
 
@@ -149,7 +179,7 @@ func InitSocket() *Socket {
 			for i := 0; i+CID_LENGTH <= len(cmd.Request.Targets); i += CID_LENGTH {
 				connId := cmd.Request.Targets[i : i+CID_LENGTH]
 				if strings.Index(attemptedTargets, connId) == -1 {
-					if conn, ok := connections[connId]; ok {
+					if conn, ok := socketMaps.connections[connId]; ok {
 						sendErr = util.WriteSocketConnectionMessage(cmd.Request.MessageBytes, conn)
 						if sendErr != nil {
 							continue
@@ -161,48 +191,62 @@ func InitSocket() *Socket {
 				}
 			}
 			if !sentAtLeastOne {
-				sendErr = errors.New(fmt.Sprintf("no targets to send to %v %v", cmd, connections))
+				sendErr = errors.New(fmt.Sprintf("no targets to send to"))
 			}
-			cmd.ReplyChan <- interfaces.SocketResponse{Error: sendErr}
+			cmd.ReplyChan <- interfaces.SocketResponse{
+				Error: sendErr,
+			}
 
 		case AddSubscribedTopicSocketCommand:
-			// Do not remove the _ here as we want to directly modify the original subscribers object
-			if _, ok := subscribers[cmd.Request.UserSub]; !ok {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: errors.New("no subscriber found to add topic")}
+			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
+			if !ok {
+				cmd.ReplyChan <- interfaces.SocketResponse{
+					Error: errors.New("no subscriber found to add topic"),
+				}
 				break
 			}
+
 			for i := 0; i+CID_LENGTH <= len(cmd.Request.Targets); i += CID_LENGTH {
 				connId := cmd.Request.Targets[i : i+CID_LENGTH]
-				if strings.Index(subscribers[cmd.Request.UserSub].SubscribedTopics[cmd.Request.Topic], connId) == -1 {
-					subscribers[cmd.Request.UserSub].SubscribedTopics[cmd.Request.Topic] += connId
+				if strings.Index(subscriber.SubscribedTopics[cmd.Request.Topic], connId) == -1 {
+					subscriber.SubscribedTopics[cmd.Request.Topic] += connId
 				}
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{}
 
 		case GetSubscribedTargetsSocketCommand:
-			if subscriber, ok := subscribers[cmd.Request.UserSub]; ok {
+			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
+			if ok {
 				cmd.ReplyChan <- interfaces.SocketResponse{
-					SocketResponseParams: &types.SocketResponseParams{Targets: subscriber.ConnectionIds},
+					SocketResponseParams: &types.SocketResponseParams{
+						Targets: subscriber.ConnectionIds,
+					},
 				}
 			} else {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: errors.New("subscriber not found")}
+				cmd.ReplyChan <- interfaces.SocketResponse{
+					Error: errors.New("subscriber not found"),
+				}
 			}
 
 		case DeleteSubscribedTopicSocketCommand:
-			if _, ok := subscribers[cmd.Request.UserSub]; ok {
-				delete(subscribers[cmd.Request.UserSub].SubscribedTopics, cmd.Request.Topic)
+			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
+			if ok {
+				delete(subscriber.SubscribedTopics, cmd.Request.Topic)
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{}
 
 		case HasSubscribedTopicSocketCommand:
 			hasSub := false
-			if subscriber, okSub := subscribers[cmd.Request.UserSub]; okSub {
+			subscriber, okSub := socketMaps.subscribers[cmd.Request.UserSub]
+			if okSub {
 				if _, okTopic := subscriber.SubscribedTopics[cmd.Request.Topic]; okTopic {
 					hasSub = true
 				}
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{
-				SocketResponseParams: &types.SocketResponseParams{HasSub: hasSub},
+				SocketResponseParams: &types.SocketResponseParams{
+					HasSub: hasSub,
+				},
 			}
 
 		default:

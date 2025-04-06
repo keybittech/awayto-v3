@@ -155,7 +155,7 @@ func TestParseHandlerOptions(t *testing.T) {
 
 func BenchmarkParseHandlerOptions(b *testing.B) {
 	md := getMethodDescriptor(b, "PostPrompt")
-	b.ResetTimer()
+	reset(b)
 
 	for i := 0; i < b.N; i++ {
 		_ = ParseHandlerOptions(md)
@@ -203,7 +203,7 @@ func BenchmarkParseProtoQueryParamsComplex(b *testing.B) {
 		"active":  []string{"true"},
 	}
 	val := reflect.ValueOf(pb).Elem()
-	b.ResetTimer()
+	reset(b)
 
 	for i := 0; i < b.N; i++ {
 		ParseProtoQueryParams(val, queryParams)
@@ -217,7 +217,7 @@ func BenchmarkParseProtoQueryParams(b *testing.B) {
 		"sub": []string{"test"},
 	}
 	val := reflect.ValueOf(pb).Elem()
-	b.ResetTimer()
+	reset(b)
 
 	for i := 0; i < b.N; i++ {
 		ParseProtoQueryParams(val, queryParams)
@@ -263,7 +263,7 @@ func BenchmarkParseProtoPathParams(b *testing.B) {
 	url := "/api/v1/group/schedules/group-schedule-id/date/date-value"
 	options := ParseHandlerOptions(md)
 	val := reflect.ValueOf(pb).Elem()
-	b.ResetTimer()
+	reset(b)
 
 	for i := 0; i < b.N; i++ {
 		ParseProtoPathParams(val, strings.Split(options.ServiceMethodURL, "/"), strings.Split(strings.TrimLeft(url, "/api"), "/"))
@@ -304,7 +304,7 @@ func Benchmark_parseTag(b *testing.B) {
 		b.Fatal("no field GroupScheduleId")
 	}
 
-	b.ResetTimer()
+	reset(b)
 
 	for i := 0; i < b.N; i++ {
 		_ = parseTag(field, "json")
@@ -318,7 +318,7 @@ func Benchmark_parseTagParsed(b *testing.B) {
 		b.Fatal("no field GroupScheduleId")
 	}
 
-	b.ResetTimer()
+	reset(b)
 
 	for i := 0; i < b.N; i++ {
 		_ = parseTag(field, "other")

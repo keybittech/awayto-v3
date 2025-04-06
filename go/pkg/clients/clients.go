@@ -26,17 +26,32 @@ func SendCommand[Command any, Response any](
 	var emptyResponse Response
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	replyChan := make(chan Response)
+
+	// Create a buffered channel to avoid leaks if no one reads from it
+	replyChan := make(chan Response, 1)
 	cmd := createCommand(replyChan)
+
+	// Try to send the command
 	select {
 	case handler.GetCommandChannel() <- cmd:
 	case <-ctx.Done():
+		// In timeout case, the worker won't receive the command,
+		// so we need to close the channel ourselves
+		close(replyChan)
 		return emptyResponse, errors.New("timed out when sending command")
 	}
+
+	// Wait for response
 	select {
-	case response := <-replyChan:
+	case response, ok := <-replyChan:
+		if !ok {
+			// Channel was closed without a value
+			return emptyResponse, errors.New("reply channel closed without response")
+		}
 		return response, nil
 	case <-ctx.Done():
+		// We don't close the channel here because the worker might still try to use it
+		// It will be garbage collected eventually
 		return emptyResponse, errors.New("timed out when receiving command")
 	}
 }

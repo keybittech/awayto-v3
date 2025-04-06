@@ -92,8 +92,7 @@ func BenchmarkKeycloakAuthentication(b *testing.B) {
 			}
 			client := &http.Client{Transport: tr}
 
-			b.ReportAllocs()
-			b.ResetTimer()
+			reset(b)
 			for i := 0; i < requestsPerClient; i++ {
 				res, err := client.Do(req)
 				if err != nil {

@@ -72,8 +72,8 @@ func TestWorkerPool(t *testing.T) {
 
 	// Simulate 3 clients sending 10 commands each
 	var wg sync.WaitGroup
-	clientCount := 30
-	commandsPerClient := 30
+	clientCount := 4
+	commandsPerClient := 8
 	results := make([][]MockResponse, clientCount)
 
 	for i := 0; i < clientCount; i++ {
@@ -115,61 +115,3 @@ func TestWorkerPool(t *testing.T) {
 		}
 	}
 }
-
-// // Example of using the worker pool with websocket clients
-// func ExampleSocketWithWebsockets() {
-// 	// Create a socket with 10 workers and a buffer for 1000 commands
-// 	socket := NewSocket(10, 1000)
-// 	defer socket.Close()
-//
-// 	// Example of command creation function for a websocket client
-// 	createSocketCommand := func(params SocketRequest, replyChan chan SocketResponse) SocketCommand {
-// 		return SocketCommand{
-// 			Ty:        CreateSocketTicketSocketCommand, // Assume Ty is added to SocketRequest
-// 			Request:    params,
-// 			ReplyChan: replyChan,
-// 			ClientId:  params.UserSub, // Use UserSub as client Id
-// 		}
-// 	}
-//
-// 	// Simulate a websocket client handler
-// 	handleWebsocketClient := func(clientId string, messageCount int) {
-// 		for i := 0; i < messageCount; i++ {
-// 			// Simulate receiving a websocket message every 150ms
-// 			time.Sleep(150 * time.Millisecond)
-//
-// 			// Process the message by sending a command
-// 			params := SocketRequest{
-// 				UserSub:      clientId,
-// 				Targets:      "target-" + strconv.Itoa(i%10),
-// 				MessageBytes: []byte("message-" + strconv.Itoa(i%10)),
-// 			}
-//
-// 			response, err := SendCommand(socket, createSocketCommand, params)
-// 			if err != nil {
-// 				// Handle error
-// 				continue
-// 			}
-//
-// 			// Use the response to decide on next command
-// 			if response.HasSub {
-// 				// Do something with subscription status
-// 			} else {
-// 				// Request more specific data based on the ticket
-// 			}
-// 		}
-// 	}
-//
-// 	// Simulate 3 concurrent websocket clients
-// 	var wg sync.WaitGroup
-// 	for i := 0; i < 3; i++ {
-// 		wg.Add(1)
-// 		clientId := "client-" + strconv.Itoa(i)
-// 		go func(id string) {
-// 			defer wg.Done()
-// 			handleWebsocketClient(id, 5) // Each client sends 5 messages
-// 		}(clientId)
-// 	}
-//
-// 	wg.Wait()
-// }

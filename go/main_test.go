@@ -28,7 +28,7 @@ func reset(b *testing.B) {
 
 // func BenchmarkBoolFormat(b *testing.B) {
 // 	b.ReportAllocs()
-// 	b.ResetTimer()
+// 	reset(b)
 // 	for c := 0; c < b.N; c++ {
 //
 // 		// For true
@@ -51,7 +51,7 @@ func reset(b *testing.B) {
 //
 // func BenchmarkBoolAllocate(b *testing.B) {
 // 	b.ReportAllocs()
-// 	b.ResetTimer()
+// 	reset(b)
 // 	for c := 0; c < b.N; c++ {
 // 		if false {
 // 			_ = "t"
