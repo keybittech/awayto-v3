@@ -99,6 +99,30 @@ func main() {
 
 	defer api.Server.Close()
 
+	go func() {
+		for {
+			time.Sleep(time.Minute)
+
+			println("POOL LENGTH", strconv.Itoa(c.GetGlobalWorkerPool().QueueLength()))
+
+			a.RateLimiters.Range(func(_, value interface{}) bool {
+				limiter := value.(*a.RateLimiter)
+
+				limiter.Mu.Lock()
+				i := 0
+				for ip, lc := range limiter.LimitedClients {
+					if time.Since(lc.LastSeen) > time.Minute {
+						i++
+						delete(limiter.LimitedClients, ip)
+					}
+				}
+				limiter.Mu.Unlock()
+
+				return true
+			})
+		}
+	}()
+
 	certLoc := os.Getenv("CERT_LOC")
 	keyLoc := os.Getenv("CERT_KEY_LOC")
 

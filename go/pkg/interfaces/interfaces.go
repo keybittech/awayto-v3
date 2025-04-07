@@ -134,6 +134,10 @@ func (cmd SocketCommand) GetClientId() string {
 	return cmd.ClientId
 }
 
+func (cmd SocketCommand) GetReplyChannel() interface{} {
+	return cmd.ReplyChan
+}
+
 type ISocket interface {
 	SendCommand(commandType int32, request SocketRequest) (SocketResponse, error)
 	GetSocketTicket(session *types.UserSession) (string, error)

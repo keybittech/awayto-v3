@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -18,8 +19,13 @@ import (
 	"golang.org/x/time/rate"
 )
 
+type SocketConnection struct {
+	Conn    net.Conn
+	Message []byte
+}
+
 type SocketServer struct {
-	Connections map[string]net.Conn
+	Connections sync.Map
 }
 
 var (
@@ -27,7 +33,7 @@ var (
 	pings                    map[string]time.Time
 	PING                     = "PING"
 	PONG                     = "PONG"
-	sockLimitMu, sockLimited = NewRateLimit()
+	sockLimitMu, sockLimited = NewRateLimit("sock")
 	sockHandlerLimit         = rate.Limit(30)
 	sockHandlerBurst         = 10
 )
@@ -37,8 +43,6 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 	socketPingTicker = time.NewTicker(30 * time.Second)
 
 	pings = make(map[string]time.Time)
-
-	go LimitCleanup(sockLimitMu, sockLimited)
 
 	sockHandler := func(w http.ResponseWriter, req *http.Request) {
 		if strings.Contains(req.Header.Get("Connection"), "Upgrade") && req.Header.Get("Upgrade") == "websocket" {
@@ -59,11 +63,6 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				return
 			}
 
-			// connectedSocket := &clients.ConnectedSocket{
-			// 	Conn: conn,
-			// 	Sock: a.Handlers.Socket.(*clients.Socket),
-			// }
-
 			ticket := req.URL.Query().Get("ticket")
 			if ticket == "" {
 				return
@@ -81,7 +80,10 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				return
 			}
 
-			go a.HandleSockConnection(subscriberRequest.Subscriber, conn, ticket)
+			var wg sync.WaitGroup
+			wg.Add(1)
+			a.HandleSockConnection(&wg, subscriberRequest.Subscriber, conn, ticket)
+			wg.Wait()
 		} else {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Bad Request: Expected WebSocket"))
@@ -93,18 +95,9 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 	)
 }
 
-var pingBytes = util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
+func (a *API) HandleSockConnection(wg *sync.WaitGroup, subscriber *types.Subscriber, conn net.Conn, ticket string) {
 
-func (a *API) PingPong(userSub, connId string) error {
-	if err := a.Handlers.Socket.SendMessageBytes(userSub, connId, pingBytes); err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
-		return err
-	}
-	return nil
-}
-
-func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, ticket string) {
-
+	defer wg.Done()
 	defer conn.Close()
 
 	_, connId, err := util.SplitSocketId(ticket)
@@ -135,6 +128,8 @@ func (a *API) HandleSockConnection(subscriber *types.Subscriber, conn net.Conn, 
 				Ticket:  t,
 			},
 		})
+
+		clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
 	}(subscriber.UserSub, ticket)
 
 	var deferSockDbClose func()
@@ -282,12 +277,13 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 	var err error
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
-	defer func() {
+	defer func(us string) {
+		clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 		}
 		cancel()
-	}()
+	}(subscriber.UserSub)
 
 	if sm.Topic == "" {
 		return
@@ -515,4 +511,15 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			return
 		}
 	}
+}
+
+var pingBytes = util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
+
+func (a *API) PingPong(userSub, connId string) error {
+	if err := a.Handlers.Socket.SendMessageBytes(userSub, connId, pingBytes); err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+		return err
+	}
+	clients.GetGlobalWorkerPool().CleanUpClientMapping(userSub)
+	return nil
 }

@@ -2,13 +2,14 @@ package api
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"net/http"
 	"reflect"
 	"slices"
+	"strconv"
 	"strings"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -61,13 +62,14 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
 
-		defer func() {
+		defer func(us string) {
+			clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
 			if p := recover(); p != nil {
 				panic(p)
 			} else if deferredError != nil {
 				util.RequestError(w, deferredError.Error(), ignoreFields, pbVal)
 			}
-		}()
+		}(session.UserSub)
 
 		pb, err := bodyParser(w, req, handlerOpts, serviceType)
 		if err != nil {
@@ -117,7 +119,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			return
 		}
 
-		defer exeTimeDefer(fmt.Sprintf("response len %d", resLen))
+		exeTimeDefer("response len " + strconv.Itoa(resLen))
 	}
 }
 

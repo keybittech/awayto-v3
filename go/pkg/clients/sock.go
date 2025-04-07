@@ -46,14 +46,12 @@ func NewSocketMaps() *SocketMaps {
 }
 
 var (
-	CID_LENGTH                    = 36
-	SOCK_WORKERS                  = 4
-	SOCK_COMMAND_CHAN_BUFFER_SIZE = 8
+	CID_LENGTH = 36
 )
 
 type Socket struct {
 	interfaces.ISocket
-	pool *WorkerPool[interfaces.SocketCommand, interfaces.SocketRequest, interfaces.SocketResponse]
+	handlerId string
 }
 
 type ConnectedSocket struct {
@@ -61,10 +59,29 @@ type ConnectedSocket struct {
 	Sock *Socket
 }
 
+const sockHandlerId = "sock"
+
 func InitSocket() *Socket {
+
+	InitGlobalWorkerPool(4, 8)
+
 	socketMaps := NewSocketMaps()
 
-	processFunc := func(cmd interfaces.SocketCommand) {
+	GetGlobalWorkerPool().RegisterProcessFunction(sockHandlerId, func(sockCmd CombinedCommand) bool {
+
+		cmd, ok := sockCmd.(interfaces.SocketCommand)
+		if !ok {
+			return false
+		}
+
+		defer func(replyChan chan interfaces.SocketResponse) {
+			if r := recover(); r != nil {
+				err := errors.New(fmt.Sprintf("Did recover from %+v", r))
+				replyChan <- interfaces.SocketResponse{Error: err}
+			}
+			close(replyChan)
+		}(cmd.ReplyChan)
+
 		socketMaps.mu.Lock()
 		defer socketMaps.mu.Unlock()
 
@@ -148,7 +165,7 @@ func InitSocket() *Socket {
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{}
 		case GetSubscriberSocketCommand:
-			_, connId, err := util.SplitSocketId(cmd.Request.Ticket)
+			auth, connId, err := util.SplitSocketId(cmd.Request.Ticket)
 			if err != nil {
 				cmd.ReplyChan <- interfaces.SocketResponse{Error: err}
 				break
@@ -157,12 +174,13 @@ func InitSocket() *Socket {
 			var found bool
 
 			for _, subscriber := range socketMaps.subscribers {
-				if strings.Index(subscriber.ConnectionIds, connId) != -1 {
+				if _, ok := subscriber.Tickets[auth]; ok || strings.Index(subscriber.ConnectionIds, connId) != -1 {
 					found = true
 					cmd.ReplyChan <- interfaces.SocketResponse{
 						SocketResponseParams: &types.SocketResponseParams{
 							Subscriber: proto.Clone(subscriber).(*types.Subscriber),
 						},
+						Error: nil,
 					}
 					break
 				}
@@ -253,31 +271,18 @@ func InitSocket() *Socket {
 			log.Fatal("unknown command type", cmd.Ty)
 		}
 
-		close(cmd.ReplyChan)
-	}
+		return true
+	})
 
-	pool := NewWorkerPool[
-		interfaces.SocketCommand,
-		interfaces.SocketRequest,
-		interfaces.SocketResponse,
-	](
-		SOCK_WORKERS,
-		SOCK_COMMAND_CHAN_BUFFER_SIZE,
-		processFunc,
-	)
-	pool.Start()
-
-	return &Socket{pool: pool}
+	return &Socket{handlerId: sockHandlerId}
 }
 
-// GetCommandChannel returns the channel for sending commands
-func (s *Socket) GetCommandChannel() chan<- interfaces.SocketCommand {
-	return s.pool.GetCommandChannel()
+func (s *Socket) RouteCommand(cmd interfaces.SocketCommand) error {
+	return GetGlobalWorkerPool().RouteCommand(cmd)
 }
 
-// Close gracefully shuts down the socket worker pool
 func (s *Socket) Close() {
-	s.pool.Stop()
+	GetGlobalWorkerPool().UnregisterProcessFunction(s.handlerId)
 }
 
 func (s *Socket) SendCommand(cmdType int32, request interfaces.SocketRequest) (interfaces.SocketResponse, error) {

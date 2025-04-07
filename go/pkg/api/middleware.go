@@ -21,9 +21,7 @@ import (
 
 func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.HandlerFunc) http.HandlerFunc {
 
-	mu, limitedClients := NewRateLimit()
-
-	go LimitCleanup(mu, limitedClients)
+	mu, limitedClients := NewRateLimit("limit-middleware")
 
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -55,9 +53,7 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 }
 
 func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
-	mu, limitedClients := NewRateLimit()
-
-	go LimitCleanup(mu, limitedClients)
+	mu, limitedClients := NewRateLimit("validate-token")
 
 	return func(next SessionHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {

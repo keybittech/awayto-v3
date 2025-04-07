@@ -19,12 +19,13 @@ import (
 type AiPrompts map[types.IPrompts]interface{}
 
 type Ai struct {
+	interfaces.IAi
 	Client  *openai.Client
 	Model   string
 	Prompts AiPrompts
 }
 
-func InitAi() interfaces.IAi {
+func InitAi() *Ai {
 
 	aiPrompts := make(AiPrompts)
 	aiPrompts[types.IPrompts_CONVERT_PURPOSE] = convertPurposeMessages

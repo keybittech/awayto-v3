@@ -16,7 +16,7 @@ type API struct {
 }
 
 var (
-	apiLimitMu, apiLimited = NewRateLimit()
+	apiLimitMu, apiLimited = NewRateLimit("api")
 )
 
 func (a *API) InitMux() *http.ServeMux {

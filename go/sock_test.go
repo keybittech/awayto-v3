@@ -2,11 +2,14 @@ package main
 
 import (
 	"context"
+	"crypto/rand"
 	"crypto/tls"
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -111,9 +114,6 @@ func setupSockServer() {
 		AvailableUserGroupRoles: []string{"role1"},
 	}
 
-	go api.HandleSockConnection(subscriber, interfaces.NewNullConn(), ticket)
-	time.Sleep(2 * time.Second)
-
 	ticketParts := strings.Split(ticket, ":")
 	_, connId := ticketParts[0], ticketParts[1]
 
@@ -151,6 +151,48 @@ func setupSockServer() {
 	}
 	time.Sleep(time.Second)
 	println("did setup sock")
+}
+
+func TestHandleSocketConnection(t *testing.T) {
+	ticket, err := getSocketTicket()
+	if err != nil {
+		t.Fatal(err)
+	}
+	data := url.Values{}
+	data.Add("ticket", ticket)
+
+	u, err := url.Parse("wss://localhost:7443/sock?ticket=" + ticket)
+
+	sockConn, err := tls.Dial("tcp", u.Host, &tls.Config{InsecureSkipVerify: true})
+	if err != nil {
+		panic(err)
+	}
+
+	// Generate WebSocket key
+	keyBytes := make([]byte, 16)
+	rand.Read(keyBytes)
+	secWebSocketKey := base64.StdEncoding.EncodeToString(keyBytes)
+
+	// Send HTTP Upgrade request
+	fmt.Fprintf(sockConn, "GET %s HTTP/1.1\r\n", u.RequestURI())
+	fmt.Fprintf(sockConn, "Host: %s\r\n", u.Host)
+	fmt.Fprintf(sockConn, "Upgrade: websocket\r\n")
+	fmt.Fprintf(sockConn, "Connection: Upgrade\r\n")
+	fmt.Fprintf(sockConn, "Sec-WebSocket-Key: %s\r\n", secWebSocketKey)
+	fmt.Fprintf(sockConn, "Sec-WebSocket-Version: 13\r\n")
+	fmt.Fprintf(sockConn, "\r\n")
+
+	for {
+		data, err := util.ReadSocketConnectionMessage(sockConn)
+		if err != nil {
+			println("GOT ERROR", err.Error())
+			if io.EOF == err {
+				break
+			}
+		} else {
+			println("GOT MESSAGE", string(data))
+		}
+	}
 }
 
 // Socket Events

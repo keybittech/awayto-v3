@@ -24,12 +24,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type Database struct {
-	DatabaseClient      interfaces.IDatabaseClient
-	DatabaseAdminSub    string
-	DatabaseAdminRoleId string
-}
-
 type ColTypes struct {
 	reflectString    reflect.Type
 	reflectInt32     reflect.Type
@@ -42,7 +36,14 @@ type ColTypes struct {
 
 var colTypes *ColTypes
 
-func InitDatabase() interfaces.IDatabase {
+type Database struct {
+	interfaces.IDatabase
+	DatabaseClient      interfaces.IDatabaseClient
+	DatabaseAdminSub    string
+	DatabaseAdminRoleId string
+}
+
+func InitDatabase() *Database {
 	dbDriver := os.Getenv("DB_DRIVER")
 	pgUser := os.Getenv("PG_WORKER")
 	pgHost := os.Getenv("PG_HOST")

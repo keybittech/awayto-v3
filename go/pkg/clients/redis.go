@@ -16,10 +16,11 @@ import (
 )
 
 type Redis struct {
+	interfaces.IRedis
 	RedisClient interfaces.IRedisClient
 }
 
-func InitRedis() interfaces.IRedis {
+func InitRedis() *Redis {
 
 	redisPass, err := util.EnvFile(os.Getenv("REDIS_PASS_FILE"))
 	if err != nil {

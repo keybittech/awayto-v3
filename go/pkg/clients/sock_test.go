@@ -16,7 +16,7 @@ import (
 var testSocket *Socket
 var testSocketUserSession *types.UserSession
 var testSocketMessage *types.SocketMessage
-var testTicket, auth, connId string
+var testTicket, auth, testConnId string
 
 func init() {
 	var err error
@@ -30,7 +30,7 @@ func init() {
 	if err != nil || testTicket == "" {
 		log.Fatal(err)
 	}
-	_, connId, err = util.SplitSocketId(testTicket)
+	_, testConnId, err = util.SplitSocketId(testTicket)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -253,6 +253,13 @@ func TestSocket_GetSocketTicket(t *testing.T) {
 }
 
 func TestSocket_InitConnection(t *testing.T) {
+	initSession := testSocketUserSession
+	initSession.UserSub = "user-init-conn"
+	ticket, err := testSocket.GetSocketTicket(initSession)
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	type args struct {
 		conn    net.Conn
 		userSub string
@@ -264,10 +271,10 @@ func TestSocket_InitConnection(t *testing.T) {
 		want    func()
 		wantErr bool
 	}{
-		{name: "use ticket to make connection", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, testTicket}, wantErr: false},
-		{name: "prevents connection with no ticket", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, ""}, wantErr: true},
-		{name: "prevents connection with malformed ticket", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, "a:"}, wantErr: true},
-		{name: "prevents connection with wrong ticket", args: args{interfaces.NewNullConn(), testSocketUserSession.UserSub, "a:b"}, wantErr: true},
+		{name: "use ticket to make connection", args: args{interfaces.NewNullConn(), initSession.UserSub, ticket}, wantErr: false},
+		{name: "prevents connection with no ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, ""}, wantErr: true},
+		{name: "prevents connection with malformed ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, "a:"}, wantErr: true},
+		{name: "prevents connection with wrong ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, "a:b"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -323,8 +330,36 @@ func TestSocket_TicketRemovalBehavior(t *testing.T) {
 	})
 }
 
+func getNewConnection(t *testing.T, userSub string) (*types.UserSession, string, string) {
+	newSession := testSocketUserSession
+	newSession.UserSub = userSub
+	ticket, err := testSocket.GetSocketTicket(newSession)
+	if err != nil {
+		t.Fatal(err)
+	}
+	response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
+		SocketRequestParams: &types.SocketRequestParams{
+			UserSub: testSocketUserSession.UserSub,
+			Ticket:  ticket,
+		},
+		Conn: interfaces.NewNullConn(),
+	})
+
+	err = ChannelError(err, response.Error)
+	if err != nil {
+		t.Errorf("Failed with first ticket: %v", err)
+	}
+
+	_, connId, err := util.SplitSocketId(ticket)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return newSession, ticket, connId
+}
+
 func TestSocket_SendMessageBytes(t *testing.T) {
-	userSub := "user-sub"
+	session, _, connId := getNewConnection(t, "user-send-message-bytes")
 	type args struct {
 		userSub      string
 		targets      string
@@ -335,10 +370,10 @@ func TestSocket_SendMessageBytes(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{name: "send a basic message", args: args{userSub, connId, []byte("PING")}, wantErr: false},
-		{name: "errors when no targets provided", args: args{userSub, "", []byte("PING")}, wantErr: true},
+		{name: "send a basic message", args: args{session.UserSub, connId, []byte("PING")}, wantErr: false},
+		{name: "errors when no targets provided", args: args{session.UserSub, "", []byte("PING")}, wantErr: true},
 		{name: "errors when no user sub provided", args: args{"", connId, []byte("PING")}, wantErr: true},
-		{name: "errors when no targets found", args: args{userSub, "bad-target", []byte("PING")}, wantErr: true},
+		{name: "errors when no targets found", args: args{session.UserSub, "bad-target", []byte("PING")}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -350,7 +385,7 @@ func TestSocket_SendMessageBytes(t *testing.T) {
 }
 
 func TestSocket_SendMessage(t *testing.T) {
-	userSub := "user-sub"
+	session, _, connId := getNewConnection(t, "user-send-message")
 	type args struct {
 		userSub string
 		targets string
@@ -361,11 +396,11 @@ func TestSocket_SendMessage(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{name: "sends normal message", args: args{userSub, connId, testSocketMessage}, wantErr: false},
-		{name: "sends partial message", args: args{userSub, connId, &types.SocketMessage{}}, wantErr: false},
-		{name: "errors when no message", args: args{userSub, connId, nil}, wantErr: true},
-		{name: "errors when no targets", args: args{userSub, "", testSocketMessage}, wantErr: true},
-		{name: "errors when no user sub", args: args{"", connId, testSocketMessage}, wantErr: true},
+		{name: "sends normal message", args: args{session.UserSub, connId, testSocketMessage}, wantErr: false},
+		{name: "sends partial message", args: args{session.UserSub, connId, &types.SocketMessage{}}, wantErr: false},
+		{name: "errors when no message", args: args{session.UserSub, connId, nil}, wantErr: true},
+		{name: "errors when no targets", args: args{session.UserSub, "", testSocketMessage}, wantErr: true},
+		{name: "errors when no user sub", args: args{"", testConnId, testSocketMessage}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

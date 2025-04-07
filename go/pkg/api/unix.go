@@ -10,6 +10,7 @@ import (
 	"net/http"
 	"os"
 	"reflect"
+	"sync"
 
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -35,11 +36,15 @@ func (a *API) InitUnixServer(unixPath string) {
 			continue
 		}
 
-		go a.HandleUnixConnection(conn)
+		var wg sync.WaitGroup
+		wg.Add(1)
+		a.HandleUnixConnection(&wg, conn)
+		wg.Wait()
 	}
 }
 
-func (a *API) HandleUnixConnection(conn net.Conn) {
+func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
+	defer wg.Done()
 	defer conn.Close()
 
 	var authEvent *types.AuthEvent
