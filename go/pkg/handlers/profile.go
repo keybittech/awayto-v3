@@ -33,7 +33,7 @@ func (h *Handlers) PatchUserProfile(w http.ResponseWriter, req *http.Request, da
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.UpdateUser(session.UserSub, data.GetFirstName(), data.GetLastName())
+	err = h.Keycloak.UpdateUser(session.UserSub, session.UserSub, data.GetFirstName(), data.GetLastName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

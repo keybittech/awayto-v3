@@ -43,6 +43,7 @@ const (
 type KeycloakRequest struct {
 	Method    string
 	Resource  string
+	UserSub   string
 	UserId    string
 	GroupId   string
 	FirstName string
@@ -222,17 +223,23 @@ func InitKeycloak() *Keycloak {
 
 	kcc := &Keycloak{handlerId: keycloakHandlerId}
 
-	response, err := kcc.SendCommand(SetKeycloakTokenKeycloakCommand, KeycloakRequest{})
+	response, err := kcc.SendCommand(SetKeycloakTokenKeycloakCommand, KeycloakRequest{
+		UserSub: "worker",
+	})
 	if err = ChannelError(err, response.Error); err != nil {
 		log.Fatal(util.ErrCheck(response.Error))
 	}
 
-	response, err = kcc.SendCommand(SetKeycloakRealmClientsKeycloakCommand, KeycloakRequest{})
+	response, err = kcc.SendCommand(SetKeycloakRealmClientsKeycloakCommand, KeycloakRequest{
+		UserSub: "worker",
+	})
 	if err = ChannelError(err, response.Error); err != nil {
 		log.Fatal(util.ErrCheck(response.Error))
 	}
 
-	response, err = kcc.SendCommand(SetKeycloakRolesKeycloakCommand, KeycloakRequest{})
+	response, err = kcc.SendCommand(SetKeycloakRolesKeycloakCommand, KeycloakRequest{
+		UserSub: "worker",
+	})
 	if err = ChannelError(err, response.Error); err != nil {
 		log.Fatal(util.ErrCheck(response.Error))
 	}
@@ -259,20 +266,24 @@ func (s *Keycloak) Close() {
 }
 
 func (k *Keycloak) SendCommand(cmdType KeycloakCommandType, params KeycloakRequest) (KeycloakResponse, error) {
+	if params.UserSub == "" {
+		return KeycloakResponse{}, errors.New("keycloak command request must contain user sub")
+	}
 	createCmd := func(replyChan chan KeycloakResponse) KeycloakCommand {
 		return KeycloakCommand{
 			Ty:        cmdType,
 			Request:   params,
 			ReplyChan: replyChan,
-			ClientId:  params.UserId,
+			ClientId:  params.UserSub,
 		}
 	}
 
 	return SendCommand(k, createCmd)
 }
 
-func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
+func (k *Keycloak) UpdateUser(userSub, id, firstName, lastName string) error {
 	response, err := k.SendCommand(UpdateUserKeycloakCommand, KeycloakRequest{
+		UserSub:   userSub,
 		UserId:    id,
 		FirstName: firstName,
 		LastName:  lastName,
@@ -285,8 +296,10 @@ func (k *Keycloak) UpdateUser(id, firstName, lastName string) error {
 	return nil
 }
 
-func (k *Keycloak) GetGroupAdminRoles() ([]*types.KeycloakRole, error) {
-	response, err := k.SendCommand(GetGroupAdminRolesKeycloakCommand, KeycloakRequest{})
+func (k *Keycloak) GetGroupAdminRoles(userSub string) ([]*types.KeycloakRole, error) {
+	response, err := k.SendCommand(GetGroupAdminRolesKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
+	})
 
 	if err = ChannelError(err, response.Error); err != nil {
 		return nil, util.ErrCheck(err)
@@ -295,8 +308,9 @@ func (k *Keycloak) GetGroupAdminRoles() ([]*types.KeycloakRole, error) {
 	return response.Roles, nil
 }
 
-func (k *Keycloak) GetGroupSiteRoles(groupId string) ([]*types.ClientRoleMappingRole, error) {
+func (k *Keycloak) GetGroupSiteRoles(userSub, groupId string) ([]*types.ClientRoleMappingRole, error) {
 	response, err := k.SendCommand(GetGroupRoleMappingsKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
 		GroupId: groupId,
 	})
 
@@ -307,8 +321,9 @@ func (k *Keycloak) GetGroupSiteRoles(groupId string) ([]*types.ClientRoleMapping
 	return response.Mappings, nil
 }
 
-func (k *Keycloak) CreateGroup(name string) (*types.KeycloakGroup, error) {
+func (k *Keycloak) CreateGroup(userSub, name string) (*types.KeycloakGroup, error) {
 	response, err := k.SendCommand(CreateGroupKeycloakCommand, KeycloakRequest{
+		UserSub:   userSub,
 		GroupName: name,
 	})
 
@@ -319,8 +334,9 @@ func (k *Keycloak) CreateGroup(name string) (*types.KeycloakGroup, error) {
 	return response.Group, nil
 }
 
-func (k *Keycloak) GetGroup(id string) (*types.KeycloakGroup, error) {
+func (k *Keycloak) GetGroup(userSub, id string) (*types.KeycloakGroup, error) {
 	response, err := k.SendCommand(GetGroupKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
 		GroupId: id,
 	})
 
@@ -331,8 +347,9 @@ func (k *Keycloak) GetGroup(id string) (*types.KeycloakGroup, error) {
 	return response.Group, nil
 }
 
-func (k *Keycloak) GetGroupByName(name string) ([]*types.KeycloakGroup, error) {
+func (k *Keycloak) GetGroupByName(userSub, name string) ([]*types.KeycloakGroup, error) {
 	response, err := k.SendCommand(GetGroupByNameKeycloakCommand, KeycloakRequest{
+		UserSub:   userSub,
 		GroupName: name,
 	})
 
@@ -343,8 +360,9 @@ func (k *Keycloak) GetGroupByName(name string) ([]*types.KeycloakGroup, error) {
 	return response.Groups, nil
 }
 
-func (k *Keycloak) GetGroupSubgroups(groupId string) ([]*types.KeycloakGroup, error) {
+func (k *Keycloak) GetGroupSubgroups(userSub, groupId string) ([]*types.KeycloakGroup, error) {
 	response, err := k.SendCommand(GetGroupSubgroupsKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
 		GroupId: groupId,
 	})
 
@@ -355,8 +373,9 @@ func (k *Keycloak) GetGroupSubgroups(groupId string) ([]*types.KeycloakGroup, er
 	return response.Groups, nil
 }
 
-func (k *Keycloak) DeleteGroup(id string) error {
+func (k *Keycloak) DeleteGroup(userSub, id string) error {
 	response, err := k.SendCommand(DeleteGroupKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
 		GroupId: id,
 	})
 
@@ -367,8 +386,9 @@ func (k *Keycloak) DeleteGroup(id string) error {
 	return nil
 }
 
-func (k *Keycloak) UpdateGroup(id, name string) error {
+func (k *Keycloak) UpdateGroup(userSub, id, name string) error {
 	response, err := k.SendCommand(UpdateGroupKeycloakCommand, KeycloakRequest{
+		UserSub:   userSub,
 		GroupId:   id,
 		GroupName: name,
 	})
@@ -380,8 +400,9 @@ func (k *Keycloak) UpdateGroup(id, name string) error {
 	return nil
 }
 
-func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*types.KeycloakGroup, error) {
+func (k *Keycloak) CreateOrGetSubGroup(userSub, groupExternalId, subGroupName string) (*types.KeycloakGroup, error) {
 	kcCreateSubgroup, err := k.SendCommand(CreateSubgroupKeycloakCommand, KeycloakRequest{
+		UserSub:   userSub,
 		GroupId:   groupExternalId,
 		GroupName: subGroupName,
 	})
@@ -394,6 +415,7 @@ func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*t
 
 	if kcCreateSubgroup.Error != nil && strings.Contains(kcCreateSubgroup.Error.Error(), "exists") {
 		groupSubgroupsReply, err := k.SendCommand(GetGroupSubgroupsKeycloakCommand, KeycloakRequest{
+			UserSub:   userSub,
 			GroupId:   groupExternalId,
 			GroupName: subGroupName,
 		})
@@ -416,8 +438,9 @@ func (k *Keycloak) CreateOrGetSubGroup(groupExternalId, subGroupName string) (*t
 	return kcSubGroup, nil
 }
 
-func (k *Keycloak) AddRolesToGroup(id string, roles []*types.KeycloakRole) error {
+func (k *Keycloak) AddRolesToGroup(userSub, id string, roles []*types.KeycloakRole) error {
 	response, err := k.SendCommand(AddRolesToGroupKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
 		GroupId: id,
 		Roles:   roles,
 	})
@@ -429,23 +452,11 @@ func (k *Keycloak) AddRolesToGroup(id string, roles []*types.KeycloakRole) error
 	return nil
 }
 
-func (k *Keycloak) DeleteRolesFromGroup(id string, roles []*types.KeycloakRole) error {
-	response, err := k.SendCommand(DeleteRolesFromGroupKeycloakCommand, KeycloakRequest{
-		GroupId: id,
-		Roles:   roles,
-	})
-
-	if err = ChannelError(err, response.Error); err != nil {
-		return util.ErrCheck(err)
-	}
-
-	return nil
-}
-
-func (k *Keycloak) AddUserToGroup(userId, groupId string) error {
+func (k *Keycloak) AddUserToGroup(userSub, joiningUserId, groupId string) error {
 	response, err := k.SendCommand(AddUserToGroupKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
 		GroupId: groupId,
-		UserId:  userId,
+		UserId:  joiningUserId,
 	})
 
 	if err = ChannelError(err, response.Error); err != nil {
@@ -455,10 +466,11 @@ func (k *Keycloak) AddUserToGroup(userId, groupId string) error {
 	return nil
 }
 
-func (k *Keycloak) DeleteUserFromGroup(userId, groupId string) error {
+func (k *Keycloak) DeleteUserFromGroup(userSub, deletingUserId, groupId string) error {
 	response, err := k.SendCommand(DeleteUserFromGroupKeycloakCommand, KeycloakRequest{
+		UserSub: userSub,
 		GroupId: groupId,
-		UserId:  userId,
+		UserId:  deletingUserId,
 	})
 
 	if err = ChannelError(err, response.Error); err != nil {

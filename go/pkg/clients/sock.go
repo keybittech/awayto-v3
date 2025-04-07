@@ -285,14 +285,24 @@ func (s *Socket) Close() {
 	GetGlobalWorkerPool().UnregisterProcessFunction(s.handlerId)
 }
 
-func (s *Socket) SendCommand(cmdType int32, request interfaces.SocketRequest) (interfaces.SocketResponse, error) {
+func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, conn ...net.Conn) (interfaces.SocketResponse, error) {
+	if request.UserSub == "" {
+		return interfaces.SocketResponse{}, errors.New("socket command request must contain a user sub")
+	}
+	var userConn net.Conn
+	if len(conn) > 0 {
+		userConn = conn[0]
+	}
 	createCmd := func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
 		return interfaces.SocketCommand{
 			SocketCommandParams: &types.SocketCommandParams{
 				Ty:       cmdType,
 				ClientId: request.UserSub,
 			},
-			Request:   request,
+			Request: interfaces.SocketRequest{
+				SocketRequestParams: request,
+				Conn:                userConn,
+			},
 			ReplyChan: replyChan,
 		}
 	}
@@ -301,12 +311,10 @@ func (s *Socket) SendCommand(cmdType int32, request interfaces.SocketRequest) (i
 }
 
 func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
-	response, err := s.SendCommand(CreateSocketTicketSocketCommand, interfaces.SocketRequest{
-		SocketRequestParams: &types.SocketRequestParams{
-			UserSub: session.UserSub,
-			GroupId: session.GroupId,
-			Roles:   strings.Join(session.AvailableUserGroupRoles, " "),
-		},
+	response, err := s.SendCommand(CreateSocketTicketSocketCommand, &types.SocketRequestParams{
+		UserSub: session.UserSub,
+		GroupId: session.GroupId,
+		Roles:   strings.Join(session.AvailableUserGroupRoles, " "),
 	})
 
 	if err = ChannelError(err, response.Error); err != nil {
@@ -324,12 +332,10 @@ func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) 
 		return util.ErrCheck(errors.New("user sub required to send a message"))
 	}
 
-	response, err := s.SendCommand(SendSocketMessageSocketCommand, interfaces.SocketRequest{
-		SocketRequestParams: &types.SocketRequestParams{
-			UserSub:      userSub,
-			Targets:      targets,
-			MessageBytes: messageBytes,
-		},
+	response, err := s.SendCommand(SendSocketMessageSocketCommand, &types.SocketRequestParams{
+		UserSub:      userSub,
+		Targets:      targets,
+		MessageBytes: messageBytes,
 	})
 
 	if err = ChannelError(err, response.Error); err != nil {
@@ -347,10 +353,8 @@ func (s *Socket) SendMessage(userSub, targets string, message *types.SocketMessa
 }
 
 func (s *Socket) RoleCall(userSub string) error {
-	response, err := s.SendCommand(GetSubscribedTargetsSocketCommand, interfaces.SocketRequest{
-		SocketRequestParams: &types.SocketRequestParams{
-			UserSub: userSub,
-		},
+	response, err := s.SendCommand(GetSubscribedTargetsSocketCommand, &types.SocketRequestParams{
+		UserSub: userSub,
 	})
 
 	if err = ChannelError(err, response.Error); err != nil {

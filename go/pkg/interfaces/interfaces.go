@@ -98,20 +98,20 @@ type IRedisClient interface {
 }
 
 type IKeycloak interface {
-	UpdateUser(id, firstName, lastName string) error
-	GetGroupAdminRoles() ([]*types.KeycloakRole, error)
-	GetGroupSiteRoles(groupId string) ([]*types.ClientRoleMappingRole, error)
-	CreateOrGetSubGroup(groupExternalId, subGroupName string) (*types.KeycloakGroup, error)
-	CreateGroup(name string) (*types.KeycloakGroup, error)
-	GetGroup(id string) (*types.KeycloakGroup, error)
-	GetGroupByName(name string) ([]*types.KeycloakGroup, error)
-	GetGroupSubgroups(groupId string) ([]*types.KeycloakGroup, error)
-	DeleteGroup(id string) error
-	UpdateGroup(id, name string) error
-	AddRolesToGroup(id string, roles []*types.KeycloakRole) error
-	DeleteRolesFromGroup(id string, roles []*types.KeycloakRole) error
-	AddUserToGroup(userId, groupId string) error
-	DeleteUserFromGroup(userId, groupId string) error
+	UpdateUser(userSub, id, firstName, lastName string) error
+	GetGroupAdminRoles(userSub string) ([]*types.KeycloakRole, error)
+	GetGroupSiteRoles(userSub, groupId string) ([]*types.ClientRoleMappingRole, error)
+	CreateOrGetSubGroup(userSub, groupExternalId, subGroupName string) (*types.KeycloakGroup, error)
+	CreateGroup(userSub, name string) (*types.KeycloakGroup, error)
+	GetGroup(userSub, id string) (*types.KeycloakGroup, error)
+	GetGroupByName(userSub, name string) ([]*types.KeycloakGroup, error)
+	GetGroupSubgroups(userSub, groupId string) ([]*types.KeycloakGroup, error)
+	DeleteGroup(userSub, id string) error
+	UpdateGroup(userSub, id, name string) error
+	AddRolesToGroup(userSub, id string, roles []*types.KeycloakRole) error
+	DeleteRolesFromGroup(userSub, id string, roles []*types.KeycloakRole) error
+	AddUserToGroup(userSub, joiningUserId, groupId string) error
+	DeleteUserFromGroup(userSub, deletingUserId, groupId string) error
 }
 
 type SocketRequest struct {

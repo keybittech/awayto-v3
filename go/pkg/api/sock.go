@@ -68,11 +68,9 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				return
 			}
 
-			subscriberRequest, err := a.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, interfaces.SocketRequest{
-				SocketRequestParams: &types.SocketRequestParams{
-					UserSub: "worker",
-					Ticket:  ticket,
-				},
+			subscriberRequest, err := a.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, &types.SocketRequestParams{
+				UserSub: "worker",
+				Ticket:  ticket,
 			})
 
 			if err = clients.ChannelError(err, subscriberRequest.Error); err != nil {
@@ -108,13 +106,10 @@ func (a *API) HandleSockConnection(wg *sync.WaitGroup, subscriber *types.Subscri
 
 	socketId := util.GetSocketId(subscriber.UserSub, connId)
 
-	response, err := a.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
-		SocketRequestParams: &types.SocketRequestParams{
-			UserSub: subscriber.UserSub,
-			Ticket:  ticket,
-		},
-		Conn: conn,
-	})
+	response, err := a.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+		UserSub: subscriber.UserSub,
+		Ticket:  ticket,
+	}, conn)
 
 	if err = clients.ChannelError(err, response.Error); err != nil {
 		util.ErrorLog.Println(err)
@@ -122,11 +117,9 @@ func (a *API) HandleSockConnection(wg *sync.WaitGroup, subscriber *types.Subscri
 	}
 
 	defer func(us, t string) {
-		a.Handlers.Socket.SendCommand(clients.DeleteSocketConnectionSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: us,
-				Ticket:  t,
-			},
+		a.Handlers.Socket.SendCommand(clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
+			UserSub: us,
+			Ticket:  t,
 		})
 
 		clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
@@ -290,11 +283,9 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 	}
 
 	if sm.Action != types.SocketActions_SUBSCRIBE {
-		hasSubRequest, err := a.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   sm.Topic,
-			},
+		hasSubRequest, err := a.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   sm.Topic,
 		})
 
 		if err = clients.ChannelError(err, hasSubRequest.Error); err != nil {
@@ -344,12 +335,10 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 			return
 		}
 
-		response, err := a.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   sm.Topic,
-				Targets: cachedParticipantTargets,
-			},
+		response, err := a.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   sm.Topic,
+			Targets: cachedParticipantTargets,
 		})
 
 		if err = clients.ChannelError(err, response.Error); err != nil {
@@ -378,11 +367,9 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 
 		a.Handlers.Redis.RemoveTopicFromConnection(connId, sm.Topic)
 
-		response, err := a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   sm.Topic,
-			},
+		response, err := a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   sm.Topic,
 		})
 
 		if err = clients.ChannelError(err, response.Error); err != nil {
@@ -467,12 +454,10 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 
 		for _, messageBytes := range messages {
 			if messageBytes != nil {
-				response, err := a.Handlers.Socket.SendCommand(clients.SendSocketMessageSocketCommand, interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub:      subscriber.UserSub,
-						Targets:      connId,
-						MessageBytes: messageBytes,
-					},
+				response, err := a.Handlers.Socket.SendCommand(clients.SendSocketMessageSocketCommand, &types.SocketRequestParams{
+					UserSub:      subscriber.UserSub,
+					Targets:      connId,
+					MessageBytes: messageBytes,
 				})
 
 				if err = clients.ChannelError(err, response.Error); err != nil {

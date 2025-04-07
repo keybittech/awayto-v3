@@ -49,6 +49,9 @@ func GetGlobalWorkerPool() *WorkerPool {
 	return globalWorkerPool
 }
 
+var channelClosedWithoutResponse = errors.New("reply channel closed without response")
+var channelTimedOutBeforeResponse = errors.New("timed out when receiving command")
+
 // SendCommand sends a command to a handler and waits for a response with timeout
 func SendCommand[Command any, Response any](
 	handler CommandHandler[Command],
@@ -73,13 +76,13 @@ func SendCommand[Command any, Response any](
 	case response, ok := <-replyChan:
 		if !ok {
 			// Channel was closed without a value
-			return emptyResponse, errors.New("reply channel closed without response")
+			return emptyResponse, channelClosedWithoutResponse
 		}
 		return response, nil
 	case <-ctx.Done():
 		// We don't close the channel here because the worker might still try to use it
 		// It will be garbage collected eventually
-		return emptyResponse, errors.New("timed out when receiving command")
+		return emptyResponse, channelTimedOutBeforeResponse
 	}
 }
 

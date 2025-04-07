@@ -103,8 +103,6 @@ func main() {
 		for {
 			time.Sleep(time.Minute)
 
-			println("POOL LENGTH", strconv.Itoa(c.GetGlobalWorkerPool().QueueLength()))
-
 			a.RateLimiters.Range(func(_, value interface{}) bool {
 				limiter := value.(*a.RateLimiter)
 

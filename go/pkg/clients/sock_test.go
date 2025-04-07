@@ -272,6 +272,7 @@ func TestSocket_InitConnection(t *testing.T) {
 		wantErr bool
 	}{
 		{name: "use ticket to make connection", args: args{interfaces.NewNullConn(), initSession.UserSub, ticket}, wantErr: false},
+		{name: "requires a connection object", args: args{nil, "test-user", "a:b"}, wantErr: true},
 		{name: "prevents connection with no ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, ""}, wantErr: true},
 		{name: "prevents connection with malformed ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, "a:"}, wantErr: true},
 		{name: "prevents connection with wrong ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, "a:b"}, wantErr: true},
@@ -279,13 +280,10 @@ func TestSocket_InitConnection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
-				SocketRequestParams: &types.SocketRequestParams{
-					UserSub: tt.args.userSub,
-					Ticket:  tt.args.ticket,
-				},
-				Conn: tt.args.conn,
-			})
+			response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+				UserSub: tt.args.userSub,
+				Ticket:  tt.args.ticket,
+			}, tt.args.conn)
 
 			err = ChannelError(err, response.Error)
 
@@ -302,26 +300,20 @@ func TestSocket_TicketRemovalBehavior(t *testing.T) {
 	t.Run("test ticket after renewal", func(t *testing.T) {
 		ticket, _ := testSocket.GetSocketTicket(testSocketUserSession)
 
-		response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: testSocketUserSession.UserSub,
-				Ticket:  ticket,
-			},
-			Conn: interfaces.NewNullConn(),
-		})
+		response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+			UserSub: testSocketUserSession.UserSub,
+			Ticket:  ticket,
+		}, interfaces.NullConn{})
 
 		err = ChannelError(err, response.Error)
 		if err != nil {
 			t.Errorf("Failed with first ticket: %v", err)
 		}
 
-		response, err = testSocket.SendCommand(CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: testSocketUserSession.UserSub,
-				Ticket:  ticket,
-			},
-			Conn: interfaces.NewNullConn(),
-		})
+		response, err = testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+			UserSub: testSocketUserSession.UserSub,
+			Ticket:  ticket,
+		}, interfaces.NullConn{})
 
 		err = ChannelError(err, response.Error)
 		if err == nil {
@@ -337,13 +329,10 @@ func getNewConnection(t *testing.T, userSub string) (*types.UserSession, string,
 	if err != nil {
 		t.Fatal(err)
 	}
-	response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
-		SocketRequestParams: &types.SocketRequestParams{
-			UserSub: testSocketUserSession.UserSub,
-			Ticket:  ticket,
-		},
-		Conn: interfaces.NewNullConn(),
-	})
+	response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+		UserSub: testSocketUserSession.UserSub,
+		Ticket:  ticket,
+	}, interfaces.NullConn{})
 
 	err = ChannelError(err, response.Error)
 	if err != nil {
@@ -456,7 +445,7 @@ func TestSocket_RoleCall(t *testing.T) {
 func TestSocket_SendCommand(t *testing.T) {
 	type args struct {
 		cmd     interfaces.SocketCommand
-		request interfaces.SocketRequest
+		request *types.SocketRequestParams
 	}
 
 	// Create a struct to hold dynamic values that will be shared between tests
@@ -484,12 +473,10 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: CreateSocketTicketSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-						GroupId: "group-id",
-						Roles:   "APP_GROUP_ADMIN",
-					},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
+					GroupId: "group-id",
+					Roles:   "APP_GROUP_ADMIN",
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -521,11 +508,8 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: CreateSocketConnectionSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-					},
-					Conn: &interfaces.NullConn{},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -563,11 +547,9 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: AddSubscribedTopicSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-						Topic:   "notifications",
-					},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
+					Topic:   "notifications",
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -584,11 +566,9 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: HasSubscribedTopicSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-						Topic:   "notifications",
-					},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
+					Topic:   "notifications",
 				},
 			},
 			want: interfaces.SocketResponse{
@@ -619,11 +599,9 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: SendSocketMessageSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub:      state.subscriberId,
-						MessageBytes: []byte("test message"),
-					},
+				request: &types.SocketRequestParams{
+					UserSub:      state.subscriberId,
+					MessageBytes: []byte("test message"),
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -640,10 +618,8 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: GetSubscribedTargetsSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-					},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -675,11 +651,9 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: DeleteSubscribedTopicSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-						Topic:   "notifications",
-					},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
+					Topic:   "notifications",
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -696,11 +670,9 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: GetSubscriberSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-						// Ticket added during test
-					},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
+					// Ticket added during test
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -733,10 +705,8 @@ func TestSocket_SendCommand(t *testing.T) {
 						Ty: DeleteSocketConnectionSocketCommand,
 					},
 				},
-				request: interfaces.SocketRequest{
-					SocketRequestParams: &types.SocketRequestParams{
-						UserSub: state.subscriberId,
-					},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
 				},
 			},
 			want:    interfaces.SocketResponse{},
@@ -751,18 +721,20 @@ func TestSocket_SendCommand(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			switch tt.args.cmd.Ty {
 			case CreateSocketConnectionSocketCommand:
-				tt.args.request.SocketRequestParams.Ticket = state.ticket
+				tt.args.request.Ticket = state.ticket
 			case AddSubscribedTopicSocketCommand:
-				tt.args.request.SocketRequestParams.Targets = state.connId
+				tt.args.request.Targets = state.connId
 			case SendSocketMessageSocketCommand:
-				tt.args.request.SocketRequestParams.Targets = state.connId
+				tt.args.request.Targets = state.connId
 			case GetSubscriberSocketCommand:
-				tt.args.request.SocketRequestParams.Ticket = state.auth + ":" + state.connId
+				tt.args.request.Ticket = state.auth + ":" + state.connId
 			case DeleteSocketConnectionSocketCommand:
-				tt.args.request.SocketRequestParams.Ticket = state.auth + ":" + state.connId
+				tt.args.request.Ticket = state.auth + ":" + state.connId
+			default:
+
 			}
 
-			got, err := testSocket.SendCommand(tt.args.cmd.Ty, tt.args.request)
+			got, err := testSocket.SendCommand(tt.args.cmd.Ty, tt.args.request, &interfaces.NullConn{})
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Socket.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmd, tt.args.request, err, tt.wantErr)

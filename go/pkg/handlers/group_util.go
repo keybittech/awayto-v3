@@ -99,7 +99,7 @@ func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.DeleteUserFromGroup(session.UserSub, groupId)
+	err = h.Keycloak.DeleteUserFromGroup(session.UserSub, session.UserSub, groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -130,7 +130,7 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(session.UserSub, kcRoleSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(session.UserSub, session.UserSub, kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

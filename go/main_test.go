@@ -12,13 +12,15 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+}
 
+func TestMain(t *testing.T) {
 	go main()
 
 	time.Sleep(5 * time.Second)
 	println("did setup main")
 
-	setupSockServer()
+	setupSockServer(t)
 }
 
 func reset(b *testing.B) {

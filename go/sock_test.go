@@ -20,6 +20,88 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
+type SocketEvents struct {
+	loadSubscribersEvent []byte
+	loadMessagesEvent    []byte
+	moveBoxEvent         []byte
+	changeSettingEvent   []byte
+}
+
+var subscriptions [][]byte
+var unsubscribe []byte
+var socketEvents *SocketEvents
+
+var ticket, topic, targets, connId, socketId, exchangeId string
+var subscriber *types.Subscriber
+var session *types.UserSession
+
+func setupSockServer(t *testing.T) {
+	var err error
+	// Get ticket
+	ticket, err = getSocketTicket()
+	if err != nil {
+		println(err.Error())
+		return
+	}
+
+	subscriberRequest, err := api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, &types.SocketRequestParams{
+		UserSub: "worker",
+		Ticket:  ticket,
+	})
+
+	if err = clients.ChannelError(err, subscriberRequest.Error); err != nil {
+		t.Fatal(err)
+		return
+	}
+
+	subscriber = subscriberRequest.Subscriber
+
+	session = &types.UserSession{
+		UserSub:                 subscriber.UserSub,
+		GroupId:                 "group-id",
+		AvailableUserGroupRoles: []string{"role1"},
+	}
+
+	ticketParts := strings.Split(ticket, ":")
+	_, connId := ticketParts[0], ticketParts[1]
+
+	exchangeId = "0195ec07-e989-71ac-a0c4-f6a08d1f93f6"
+	topic = "exchange/0:" + exchangeId
+
+	targets = connId
+	socketId = util.GetSocketId(subscriber.UserSub, connId)
+
+	subscriptions = [][]byte{
+		[]byte("00001800001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId),
+		[]byte("00001800001f00001f0000000047exchange/1:" + exchangeId + "00036" + connId),
+		[]byte("00001800001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId),
+	}
+
+	unsubscribe = []byte("00001900001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId)
+
+	loadSubscribersEvent := []byte("000021000001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId)
+	loadMessagesEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
+		`00024{"page":1,"pageSize":10}`)
+	moveBoxEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
+		`00150{"boxes":[{"id":1743421799040,"color":"#9ec4b8","x":248,"y":301,"text":"E=mc^2"}]}`)
+	changeSettingEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
+		`00032{"settings":{"highlight":false}}`)
+
+	socketEvents = &SocketEvents{
+		loadSubscribersEvent,
+		loadMessagesEvent,
+		moveBoxEvent,
+		changeSettingEvent,
+	}
+
+	// Subscribe to a topic
+	// for i := 0; i < len(subscriptions); i++ {
+	// 	api.SocketRequest(subscriber, subscriptions[i], connId, socketId)
+	// }
+	time.Sleep(time.Second)
+	println("did setup sock")
+}
+
 func getSocketTicket() (string, error) {
 	// Get authentication token first
 	token, err := getKeycloakToken(0)
@@ -65,92 +147,6 @@ func getSocketTicket() (string, error) {
 	}
 
 	return ticket, nil
-}
-
-var exchangeId = "0195ec07-e989-71ac-a0c4-f6a08d1f93f6"
-
-type SocketEvents struct {
-	loadSubscribersEvent []byte
-	loadMessagesEvent    []byte
-	moveBoxEvent         []byte
-	changeSettingEvent   []byte
-}
-
-var subscriptions [][]byte
-var unsubscribe []byte
-var socketEvents *SocketEvents
-
-var ticket, topic, connId, socketId string
-var targets string
-var subscriber *types.Subscriber
-var session *types.UserSession
-
-func setupSockServer() {
-	var err error
-	// Get ticket
-	ticket, err = getSocketTicket()
-	if err != nil {
-		println(err.Error())
-		return
-	}
-
-	subscriberRequest, err := api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, interfaces.SocketRequest{
-		SocketRequestParams: &types.SocketRequestParams{
-			UserSub: "worker",
-			Ticket:  ticket,
-		},
-	})
-
-	if err = clients.ChannelError(err, subscriberRequest.Error); err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
-		return
-	}
-
-	subscriber = subscriberRequest.Subscriber
-
-	session = &types.UserSession{
-		UserSub:                 subscriber.UserSub,
-		GroupId:                 "group-id",
-		AvailableUserGroupRoles: []string{"role1"},
-	}
-
-	ticketParts := strings.Split(ticket, ":")
-	_, connId := ticketParts[0], ticketParts[1]
-
-	topic = "exchange/0:" + exchangeId
-
-	targets = connId
-	socketId = util.GetSocketId(subscriber.UserSub, connId)
-
-	subscriptions = [][]byte{
-		[]byte("00001800001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId),
-		[]byte("00001800001f00001f0000000047exchange/1:" + exchangeId + "00036" + connId),
-		[]byte("00001800001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId),
-	}
-
-	unsubscribe = []byte("00001900001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId)
-
-	loadSubscribersEvent := []byte("000021000001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId)
-	loadMessagesEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
-		`00024{"page":1,"pageSize":10}`)
-	moveBoxEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
-		`00150{"boxes":[{"id":1743421799040,"color":"#9ec4b8","x":248,"y":301,"text":"E=mc^2"}]}`)
-	changeSettingEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
-		`00032{"settings":{"highlight":false}}`)
-
-	socketEvents = &SocketEvents{
-		loadSubscribersEvent,
-		loadMessagesEvent,
-		moveBoxEvent,
-		changeSettingEvent,
-	}
-
-	// Subscribe to a topic
-	for i := 0; i < len(subscriptions); i++ {
-		api.SocketRequest(subscriber, subscriptions[i], connId, socketId)
-	}
-	time.Sleep(time.Second)
-	println("did setup sock")
 }
 
 func TestHandleSocketConnection(t *testing.T) {
@@ -312,13 +308,10 @@ func BenchmarkSocketInitConnection(b *testing.B) {
 		b.StopTimer()
 		ticket, _ = api.Handlers.Socket.GetSocketTicket(session)
 		b.StartTimer()
-		api.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Ticket:  ticket,
-			},
-			Conn: mockConn,
-		})
+		api.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Ticket:  ticket,
+		}, mockConn)
 	}
 }
 
@@ -326,11 +319,9 @@ func BenchmarkSocketGetSubscriberByTicket(b *testing.B) {
 	ticket, _ := api.Handlers.Socket.GetSocketTicket(session)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: "worker",
-				Ticket:  ticket,
-			},
+		api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, &types.SocketRequestParams{
+			UserSub: "worker",
+			Ticket:  ticket,
 		})
 	}
 }
@@ -345,12 +336,10 @@ func BenchmarkSocketSendMessageBytes(b *testing.B) {
 func BenchmarkSocketAddSubscribedTopic(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   topic,
-				Targets: targets,
-			},
+		api.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   topic,
+			Targets: targets,
 		})
 	}
 }
@@ -358,11 +347,9 @@ func BenchmarkSocketAddSubscribedTopic(b *testing.B) {
 func BenchmarkSocketHasTopicSubscription(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   topic,
-			},
+		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   topic,
 		})
 	}
 }
@@ -370,11 +357,9 @@ func BenchmarkSocketHasTopicSubscription(b *testing.B) {
 func BenchmarkSocketDeleteSubscribedTopic(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   topic,
-			},
+		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   topic,
 		})
 	}
 }
@@ -382,17 +367,13 @@ func BenchmarkSocketDeleteSubscribedTopic(b *testing.B) {
 func BenchmarkSocketAddAndDeleteSubscribedTopic(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   topic,
-			},
+		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   topic,
 		})
-		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, interfaces.SocketRequest{
-			SocketRequestParams: &types.SocketRequestParams{
-				UserSub: subscriber.UserSub,
-				Topic:   topic,
-			},
+		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: subscriber.UserSub,
+			Topic:   topic,
 		})
 	}
 }

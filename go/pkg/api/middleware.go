@@ -172,7 +172,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 				session.RoleName = names[2]
 				kcGroupName := "/" + session.GroupName
 
-				kcGroups, err := a.Handlers.Keycloak.GetGroupByName(kcGroupName)
+				kcGroups, err := a.Handlers.Keycloak.GetGroupByName(session.UserSub, kcGroupName)
 
 				for _, gr := range kcGroups {
 					if gr.Path == kcGroupName {
@@ -181,7 +181,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 					}
 				}
 
-				kcSubgroups, err := a.Handlers.Keycloak.GetGroupSubgroups(session.GroupExternalId)
+				kcSubgroups, err := a.Handlers.Keycloak.GetGroupSubgroups(session.UserSub, session.GroupExternalId)
 
 				for _, gr := range kcSubgroups {
 					if gr.Path == session.SubGroupName {

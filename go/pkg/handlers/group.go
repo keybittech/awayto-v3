@@ -7,6 +7,7 @@ import (
 	"slices"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -75,7 +76,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	}
 
 	// Create group resource in Keycloak
-	kcGroup, err := h.Keycloak.CreateGroup(data.GetName())
+	kcGroup, err := h.Keycloak.CreateGroup(session.UserSub, data.GetName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -84,7 +85,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		kcGroupExternalId = kcGroup.Id
 
 		undos = append(undos, func() {
-			err = h.Keycloak.DeleteGroup(kcGroupExternalId)
+			err = h.Keycloak.DeleteGroup(session.UserSub, kcGroupExternalId)
 			if err != nil {
 				util.ErrCheck(err)
 			}
@@ -94,7 +95,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	}
 
 	// Create Admin role subgroup
-	kcAdminSubgroup, err := h.Keycloak.CreateOrGetSubGroup(kcGroupExternalId, "Admin")
+	kcAdminSubgroup, err := h.Keycloak.CreateOrGetSubGroup(session.UserSub, kcGroupExternalId, "Admin")
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -112,18 +113,18 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	}
 
 	// Add admin roles to the admin subgroup
-	roles, err := h.Keycloak.GetGroupAdminRoles()
+	roles, err := h.Keycloak.GetGroupAdminRoles(session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddRolesToGroup(kcAdminSubgroupExternalId, roles)
+	err = h.Keycloak.AddRolesToGroup(session.UserSub, kcAdminSubgroupExternalId, roles)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	// Attach the user to the admin subgroup
-	err = h.Keycloak.AddUserToGroup(session.UserSub, kcAdminSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(session.UserSub, session.UserSub, kcAdminSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -194,7 +195,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Keycloak.UpdateGroup(session.GroupExternalId, data.GetName())
+	h.Keycloak.UpdateGroup(session.UserSub, session.GroupExternalId, data.GetName())
 
 	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
@@ -214,7 +215,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 
 	json.Unmarshal(assignmentsBytes, &groupRoleActions)
 
-	adminRoles, err := h.Keycloak.GetGroupAdminRoles()
+	adminRoles, err := h.Keycloak.GetGroupAdminRoles(session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -245,10 +246,14 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 			}
 
 			if len(deletions) > 0 {
-				err = h.Keycloak.DeleteRolesFromGroup(sgRoleActions.Id, deletions)
-				if err != nil {
+				response, err := h.Keycloak.SendCommand(clients.DeleteRolesFromGroupKeycloakCommand, clients.KeycloakRequest{
+					GroupId: sgRoleActions.Id,
+					Roles:   deletions,
+				})
+				if err = clients.ChannelError(err, response.Error); err != nil {
 					return nil, util.ErrCheck(err)
 				}
+
 			}
 
 			additions := []*types.KeycloakRole{}
@@ -272,7 +277,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 			}
 
 			if len(additions) > 0 {
-				h.Keycloak.AddRolesToGroup(sgRoleActions.Id, additions)
+				h.Keycloak.AddRolesToGroup(session.UserSub, sgRoleActions.Id, additions)
 			}
 		}
 	}
@@ -285,7 +290,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 }
 
 func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.GetGroupAssignmentsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupAssignmentsResponse, error) {
-	kcGroup, err := h.Keycloak.GetGroup(session.GroupExternalId)
+	kcGroup, err := h.Keycloak.GetGroup(session.UserSub, session.GroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -293,7 +298,7 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 	assignments := make(map[string]*types.IGroupRoleAuthActions)
 	assignmentsWithoutId := make(map[string]*types.IGroupRoleAuthActions)
 
-	subgroups, err := h.Keycloak.GetGroupSubgroups(kcGroup.Id)
+	subgroups, err := h.Keycloak.GetGroupSubgroups(session.UserSub, kcGroup.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -307,7 +312,7 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 			Actions: []*types.IGroupRoleAuthAction{},
 		}
 
-		sgRoles, err := h.Keycloak.GetGroupSiteRoles(sg.Id)
+		sgRoles, err := h.Keycloak.GetGroupSiteRoles(session.UserSub, sg.Id)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -349,7 +354,7 @@ func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *t
 			return nil, util.ErrCheck(err)
 		}
 
-		err = h.Keycloak.DeleteGroup(groupExternalId)
+		err = h.Keycloak.DeleteGroup(session.UserSub, groupExternalId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

@@ -53,12 +53,12 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 
 	groupUserSub := groupUser.GetUserSub()
 
-	err = h.Keycloak.DeleteUserFromGroup(groupUserSub, kcOldSubgroupExternalId)
+	err = h.Keycloak.DeleteUserFromGroup(session.UserSub, groupUserSub, kcOldSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(groupUserSub, newSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(session.UserSub, groupUserSub, newSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

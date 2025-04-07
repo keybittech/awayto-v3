@@ -15,7 +15,7 @@ import (
 )
 
 func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data *types.PostGroupRoleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupRoleResponse, error) {
-	kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(session.GroupExternalId, data.GetName())
+	kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(session.UserSub, session.GroupExternalId, data.GetName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -106,7 +106,7 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 		}
 
 		// update the name of the keycloak group which controls this role
-		err = h.Keycloak.UpdateGroup(existingRoleExternalId, data.GetName())
+		err = h.Keycloak.UpdateGroup(session.UserSub, existingRoleExternalId, data.GetName())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -165,7 +165,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 
 	if len(diffs) > 0 {
 
-		kcGroup, err := h.Keycloak.GetGroup(session.GroupExternalId)
+		kcGroup, err := h.Keycloak.GetGroup(session.UserSub, session.GroupExternalId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -180,7 +180,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 		if len(kcGroup.SubGroups) > 0 {
 			for _, subGroup := range kcGroup.SubGroups {
 				if util.StringIn(subGroup.Name, diffRoleNames) {
-					err = h.Keycloak.DeleteGroup(subGroup.Id)
+					err = h.Keycloak.DeleteGroup(session.UserSub, subGroup.Id)
 					if err != nil {
 						return nil, util.ErrCheck(err)
 					}
@@ -206,7 +206,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 			continue
 		}
 
-		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(session.GroupExternalId, role.Name)
+		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(session.UserSub, session.GroupExternalId, role.Name)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -278,7 +278,7 @@ func (h *Handlers) DeleteGroupRole(w http.ResponseWriter, req *http.Request, dat
 				return nil, util.ErrCheck(err)
 			}
 
-			err = h.Keycloak.DeleteGroup(subGroupExternalId)
+			err = h.Keycloak.DeleteGroup(session.UserSub, subGroupExternalId)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
