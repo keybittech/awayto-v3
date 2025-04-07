@@ -78,6 +78,7 @@ type IRedis interface {
 	RemoveTopicFromConnection(socketId, topic string) error
 	GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (map[string]*types.SocketParticipant, string, error)
 	TrackTopicParticipant(ctx context.Context, topic, socketId string) error
+	HasTracking(ctx context.Context, topic, socketId string) (bool, error)
 	GetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	SetGroupSessionVersion(ctx context.Context, groupId string) (int64, error)
 	GetSession(ctx context.Context, userSub string) (*types.UserSession, error)
@@ -93,6 +94,7 @@ type IRedisClient interface {
 	Del(ctx context.Context, keys ...string) *redis.IntCmd
 	SAdd(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
 	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
+	SIsMember(ctx context.Context, key string, member interface{}) *redis.BoolCmd
 	SRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
 	Scan(ctx context.Context, cursor uint64, match string, count int64) *redis.ScanCmd
 }

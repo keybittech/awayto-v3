@@ -301,6 +301,14 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 	switch sm.Action {
 	case types.SocketActions_SUBSCRIBE:
 
+		hasTracking, err := a.Handlers.Redis.HasTracking(ctx, sm.Topic, socketId)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		} else if hasTracking {
+			return
+		}
+
 		// Split socket id is only used here as a convenience
 		// topics are in the format of context/action:ref-id
 		// for example exchange/2:0195ec07-e989-71ac-a0c4-f6a08d1f93f6
@@ -352,6 +360,14 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, subscriber *types.Sub
 		})
 
 	case types.SocketActions_UNSUBSCRIBE:
+
+		hasTracking, err := a.Handlers.Redis.HasTracking(ctx, sm.Topic, socketId)
+		if err != nil {
+			util.ErrorLog.Println(err)
+			return
+		} else if !hasTracking {
+			return
+		}
 
 		_, cachedParticipantTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, true)
 		if err != nil {

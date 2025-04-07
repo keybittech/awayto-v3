@@ -194,6 +194,7 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targets
 
 	topicSocketIds, err := r.Client().SMembers(ctx, participantTopicsKey).Result()
 	if err != nil {
+		println("HER EERROR")
 		return nil, "", util.ErrCheck(err)
 	}
 
@@ -261,4 +262,28 @@ func (r *Redis) TrackTopicParticipant(ctx context.Context, topic, socketId strin
 	}
 
 	return nil
+}
+
+// New function to check if a user is already subscribed to a topic
+func (r *Redis) HasTracking(ctx context.Context, topic, socketId string) (bool, error) {
+	// Get the key for this socket's subscribed topics
+	socketIdTopicsKey, err := SocketIdTopicsKey(socketId)
+	if err != nil {
+		return false, util.ErrCheck(err)
+	}
+
+	// Get the participant topics key for this topic
+	participantTopicsKey, err := ParticipantTopicsKey(topic)
+	if err != nil {
+		return false, util.ErrCheck(err)
+	}
+
+	// Check if this socket is already subscribed to this topic
+	isMember, err := r.Client().SIsMember(ctx, socketIdTopicsKey, participantTopicsKey).Result()
+	if err != nil {
+		// On error, return false (safer to do the DB check)
+		return false, util.ErrCheck(err)
+	}
+
+	return isMember, nil
 }

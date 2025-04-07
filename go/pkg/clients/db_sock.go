@@ -47,36 +47,39 @@ var (
 
 func (db *Database) GetSocketAllowances(tx interfaces.IDatabaseTx, userSub, description, handle string) (bool, error) {
 
-	rows, err := tx.Query(`
-		SELECT b.id
-		FROM dbtable_schema.bookings b
-		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = b.schedule_bracket_slot_id
-		JOIN dbtable_schema.quotes q ON q.id = b.quote_id
-		WHERE sbs.created_sub = $1 OR q.created_sub = $1
-	`, userSub)
+	var subscribed bool
+	err := tx.QueryRow(`
+		SELECT EXISTS (
+			SELECT 1
+			FROM dbtable_schema.bookings b
+			JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = b.schedule_bracket_slot_id
+			JOIN dbtable_schema.quotes q ON q.id = b.quote_id
+			WHERE b.id = $2 AND (sbs.created_sub = $1 OR q.created_sub = $1)
+		)
+	`, userSub, handle).Scan(&subscribed)
 	if err != nil {
 		return false, util.ErrCheck(err)
 	}
 
-	defer rows.Close()
-
-	subscribed := false
-	var r util.IdStruct
-
-	switch description {
-	case exchangeTextNumCheck,
-		exchangeCallNumCheck,
-		exchangeWhiteboardNumCheck:
-
-		for rows.Next() {
-			rows.Scan(&r.Id)
-			if r.Id == handle {
-				subscribed = true
-			}
-		}
-	default:
-		return false, nil
-	}
+	// defer rows.Close()
+	//
+	// subscribed := false
+	// var r util.IdStruct
+	//
+	// switch description {
+	// case exchangeTextNumCheck,
+	// 	exchangeCallNumCheck,
+	// 	exchangeWhiteboardNumCheck:
+	//
+	// 	for rows.Next() {
+	// 		rows.Scan(&r.Id)
+	// 		if r.Id == handle {
+	// 			subscribed = true
+	// 		}
+	// 	}
+	// default:
+	// 	return false, nil
+	// }
 
 	return subscribed, nil
 }
