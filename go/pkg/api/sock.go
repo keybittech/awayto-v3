@@ -68,7 +68,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				return
 			}
 
-			subscriberRequest, err := a.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, &types.SocketRequestParams{
+			subscriberRequest, err := a.Handlers.Socket.SendCommand(clients.GetAuthSubscriberSocketCommand, &types.SocketRequestParams{
 				UserSub: "worker",
 				Ticket:  ticket,
 			})

@@ -264,22 +264,25 @@ landing_dev: build
 .PHONY: go_test
 go_test: docker_up go_test_pkg go_test_main 
 
-.PHONY: go_test_main
-go_test_main: build $(GO_TARGET)
+.PHONY: go_test_ui
+go_test_ui: build $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_SRC) -v -tags=integration -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
-.PHONY: go_test_pkg
-go_test_pkg: $(GO_TARGET) $(GO_MOCK_TARGET)
+.PHONY: go_test_unit
+go_test_unit: $(GO_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_API_DIR) $(GO_TEST_FLAGS) ./...
 	go test -C $(GO_CLIENTS_DIR) $(GO_TEST_FLAGS) ./...
 	go test -C $(GO_HANDLERS_DIR) $(GO_TEST_FLAGS) ./...
 	go test -C $(GO_UTIL_DIR) $(GO_TEST_FLAGS) ./...
 
+.PHONY: go_test_integration
+go_test_integration: $(GO_TARGET)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/go
+
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
-	[ -n "$${INTEGRATIONS}" ] && go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/go || true
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)

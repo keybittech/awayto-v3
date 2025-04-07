@@ -21,7 +21,7 @@ const (
 	DeleteSocketTicketSocketCommand
 	CreateSocketConnectionSocketCommand
 	DeleteSocketConnectionSocketCommand
-	GetSubscriberSocketCommand
+	GetAuthSubscriberSocketCommand
 	SendSocketMessageSocketCommand
 	AddSubscribedTopicSocketCommand
 	GetSubscribedTargetsSocketCommand
@@ -31,17 +31,20 @@ const (
 
 type Subscribers map[string]*types.Subscriber
 type Connections map[string]net.Conn
+type AuthSubscribers map[string]string
 
 type SocketMaps struct {
-	subscribers Subscribers
-	connections Connections
-	mu          sync.RWMutex
+	subscribers     Subscribers
+	connections     Connections
+	authSubscribers AuthSubscribers
+	mu              sync.RWMutex
 }
 
 func NewSocketMaps() *SocketMaps {
 	return &SocketMaps{
-		subscribers: make(Subscribers),
-		connections: make(Connections),
+		subscribers:     make(Subscribers),
+		connections:     make(Connections),
+		authSubscribers: make(AuthSubscribers),
 	}
 }
 
@@ -61,6 +64,19 @@ type ConnectedSocket struct {
 
 const sockHandlerId = "sock"
 
+var emptySocketResponse = interfaces.SocketResponse{}
+
+var (
+	authSubscriberNotFound = errors.New("auth subscriber not found")
+	noSubscriberForAuth    = errors.New("no subscriber for auth")
+	invalidTicket          = errors.New("invalid ticket")
+	noDeletionConnectionId = errors.New("connection id not found to delete")
+	noSubFoundInSock       = errors.New("no sub found in sock")
+	noTargetsToSend        = errors.New("no targets to send to")
+	noSubscriberToAddTopic = errors.New("no subscriber found to add topic")
+	noSubscriberTargets    = errors.New("no subscriber targets")
+)
+
 func InitSocket() *Socket {
 
 	InitGlobalWorkerPool(4, 8)
@@ -76,7 +92,7 @@ func InitSocket() *Socket {
 
 		defer func(replyChan chan interfaces.SocketResponse) {
 			if r := recover(); r != nil {
-				err := errors.New(fmt.Sprintf("Did recover from %+v", r))
+				err := errors.New("socket channel recovery: " + fmt.Sprint(r))
 				replyChan <- interfaces.SocketResponse{Error: err}
 			}
 			close(replyChan)
@@ -88,6 +104,8 @@ func InitSocket() *Socket {
 		switch cmd.Ty {
 		case CreateSocketTicketSocketCommand:
 			auth := uuid.NewString()
+			socketMaps.authSubscribers[auth] = cmd.Request.UserSub
+
 			connectionId := uuid.NewString()
 			ticket := auth + ":" + connectionId
 
@@ -124,11 +142,12 @@ func InitSocket() *Socket {
 
 				if _, ok := subscriber.Tickets[auth]; !ok {
 					cmd.ReplyChan <- interfaces.SocketResponse{
-						Error: errors.New("invalid ticket"),
+						Error: invalidTicket,
 					}
 					break
 				}
 
+				delete(socketMaps.authSubscribers, auth)
 				delete(subscriber.Tickets, auth)
 				subscriber.ConnectionIds += connId
 
@@ -141,7 +160,7 @@ func InitSocket() *Socket {
 				}
 			} else {
 				cmd.ReplyChan <- interfaces.SocketResponse{
-					Error: errors.New("no sub found in sock"),
+					Error: noSubFoundInSock,
 				}
 			}
 
@@ -155,7 +174,7 @@ func InitSocket() *Socket {
 				connIdStartIdx := strings.Index(subscriber.ConnectionIds, connId)
 				connIdEndIdx := connIdStartIdx + CID_LENGTH // uuid length
 				if connIdStartIdx == -1 || len(subscriber.ConnectionIds) < connIdEndIdx {
-					cmd.ReplyChan <- interfaces.SocketResponse{Error: errors.New("connection id not found to delete")}
+					cmd.ReplyChan <- interfaces.SocketResponse{Error: noDeletionConnectionId}
 					break
 				}
 				subscriber.ConnectionIds = subscriber.ConnectionIds[:connIdStartIdx] + subscriber.ConnectionIds[connIdEndIdx:]
@@ -163,31 +182,30 @@ func InitSocket() *Socket {
 					delete(socketMaps.subscribers, cmd.Request.UserSub)
 				}
 			}
-			cmd.ReplyChan <- interfaces.SocketResponse{}
-		case GetSubscriberSocketCommand:
-			auth, connId, err := util.SplitSocketId(cmd.Request.Ticket)
+			cmd.ReplyChan <- emptySocketResponse
+		case GetAuthSubscriberSocketCommand:
+			auth, _, err := util.SplitSocketId(cmd.Request.Ticket)
 			if err != nil {
 				cmd.ReplyChan <- interfaces.SocketResponse{Error: err}
 				break
 			}
 
-			var found bool
-
-			for _, subscriber := range socketMaps.subscribers {
-				if _, ok := subscriber.Tickets[auth]; ok || strings.Index(subscriber.ConnectionIds, connId) != -1 {
-					found = true
-					cmd.ReplyChan <- interfaces.SocketResponse{
-						SocketResponseParams: &types.SocketResponseParams{
-							Subscriber: proto.Clone(subscriber).(*types.Subscriber),
-						},
-						Error: nil,
-					}
-					break
-				}
+			userSub, ok := socketMaps.authSubscribers[auth]
+			if !ok {
+				cmd.ReplyChan <- interfaces.SocketResponse{Error: authSubscriberNotFound}
+				break
 			}
 
-			if !found {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: errors.New("no subscriber found for ticket")}
+			subscriber, ok := socketMaps.subscribers[userSub]
+			if !ok {
+				cmd.ReplyChan <- interfaces.SocketResponse{Error: noSubscriberForAuth}
+				break
+			}
+
+			cmd.ReplyChan <- interfaces.SocketResponse{
+				SocketResponseParams: &types.SocketResponseParams{
+					Subscriber: proto.Clone(subscriber).(*types.Subscriber),
+				},
 			}
 
 		case SendSocketMessageSocketCommand:
@@ -209,7 +227,7 @@ func InitSocket() *Socket {
 				}
 			}
 			if !sentAtLeastOne {
-				sendErr = errors.New(fmt.Sprintf("no targets to send to"))
+				sendErr = noTargetsToSend
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{
 				Error: sendErr,
@@ -219,7 +237,7 @@ func InitSocket() *Socket {
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			if !ok {
 				cmd.ReplyChan <- interfaces.SocketResponse{
-					Error: errors.New("no subscriber found to add topic"),
+					Error: noSubscriberToAddTopic,
 				}
 				break
 			}
@@ -230,20 +248,20 @@ func InitSocket() *Socket {
 					subscriber.SubscribedTopics[cmd.Request.Topic] += connId
 				}
 			}
-			cmd.ReplyChan <- interfaces.SocketResponse{}
+			cmd.ReplyChan <- emptySocketResponse
 
 		case GetSubscribedTargetsSocketCommand:
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
-			if ok {
+			if !ok {
 				cmd.ReplyChan <- interfaces.SocketResponse{
-					SocketResponseParams: &types.SocketResponseParams{
-						Targets: subscriber.ConnectionIds,
-					},
+					Error: noSubscriberTargets,
 				}
-			} else {
-				cmd.ReplyChan <- interfaces.SocketResponse{
-					Error: errors.New("subscriber not found"),
-				}
+			}
+
+			cmd.ReplyChan <- interfaces.SocketResponse{
+				SocketResponseParams: &types.SocketResponseParams{
+					Targets: subscriber.ConnectionIds,
+				},
 			}
 
 		case DeleteSubscribedTopicSocketCommand:
@@ -251,7 +269,7 @@ func InitSocket() *Socket {
 			if ok {
 				delete(subscriber.SubscribedTopics, cmd.Request.Topic)
 			}
-			cmd.ReplyChan <- interfaces.SocketResponse{}
+			cmd.ReplyChan <- emptySocketResponse
 
 		case HasSubscribedTopicSocketCommand:
 			hasSub := false
@@ -285,9 +303,11 @@ func (s *Socket) Close() {
 	GetGlobalWorkerPool().UnregisterProcessFunction(s.handlerId)
 }
 
+var socketCommandMustHaveSub = errors.New("socket command request must contain a user sub")
+
 func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, conn ...net.Conn) (interfaces.SocketResponse, error) {
 	if request.UserSub == "" {
-		return interfaces.SocketResponse{}, errors.New("socket command request must contain a user sub")
+		return emptySocketResponse, socketCommandMustHaveSub
 	}
 	var userConn net.Conn
 	if len(conn) > 0 {

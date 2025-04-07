@@ -17,7 +17,7 @@ func init() {
 func TestMain(t *testing.T) {
 	go main()
 
-	time.Sleep(5 * time.Second)
+	time.Sleep(500 * time.Millisecond)
 	println("did setup main")
 
 	setupSockServer(t)

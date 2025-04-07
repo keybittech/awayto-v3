@@ -479,7 +479,7 @@ func TestSocket_SendCommand(t *testing.T) {
 					Roles:   "APP_GROUP_ADMIN",
 				},
 			},
-			want:    interfaces.SocketResponse{},
+			want:    emptySocketResponse,
 			wantErr: false,
 			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
 				if got.SocketResponseParams == nil || got.SocketResponseParams.Ticket == "" {
@@ -501,6 +501,41 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 		},
 		{
+			name: "Get subscriber success",
+			args: args{
+				cmd: interfaces.SocketCommand{
+					SocketCommandParams: &types.SocketCommandParams{
+						Ty: GetAuthSubscriberSocketCommand,
+					},
+				},
+				request: &types.SocketRequestParams{
+					UserSub: state.subscriberId,
+					// Ticket added during test
+				},
+			},
+			want:    emptySocketResponse,
+			wantErr: false,
+			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+				if got.Error != nil {
+					t.Errorf("Unexpected error: %v", got.Error)
+					return false
+				}
+
+				if got.SocketResponseParams == nil || got.SocketResponseParams.Subscriber == nil {
+					t.Errorf("Expected subscriber in response, got none")
+					return false
+				}
+
+				sub := got.SocketResponseParams.Subscriber
+				if sub.UserSub != state.subscriberId {
+					t.Errorf("Expected subscriber ID %s, got %s", state.subscriberId, sub.UserSub)
+					return false
+				}
+
+				return true
+			},
+		},
+		{
 			name: "Create connection success",
 			args: args{
 				cmd: interfaces.SocketCommand{
@@ -512,7 +547,7 @@ func TestSocket_SendCommand(t *testing.T) {
 					UserSub: state.subscriberId,
 				},
 			},
-			want:    interfaces.SocketResponse{},
+			want:    emptySocketResponse,
 			wantErr: false,
 			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
 				if got.Error != nil {
@@ -552,7 +587,7 @@ func TestSocket_SendCommand(t *testing.T) {
 					Topic:   "notifications",
 				},
 			},
-			want:    interfaces.SocketResponse{},
+			want:    emptySocketResponse,
 			wantErr: false,
 			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
 				return got.Error == nil
@@ -604,7 +639,7 @@ func TestSocket_SendCommand(t *testing.T) {
 					MessageBytes: []byte("test message"),
 				},
 			},
-			want:    interfaces.SocketResponse{},
+			want:    emptySocketResponse,
 			wantErr: false,
 			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
 				return got.Error == nil
@@ -622,7 +657,7 @@ func TestSocket_SendCommand(t *testing.T) {
 					UserSub: state.subscriberId,
 				},
 			},
-			want:    interfaces.SocketResponse{},
+			want:    emptySocketResponse,
 			wantErr: false,
 			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
 				if got.Error != nil {
@@ -656,45 +691,10 @@ func TestSocket_SendCommand(t *testing.T) {
 					Topic:   "notifications",
 				},
 			},
-			want:    interfaces.SocketResponse{},
+			want:    emptySocketResponse,
 			wantErr: false,
 			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
 				return got.Error == nil
-			},
-		},
-		{
-			name: "Get subscriber success",
-			args: args{
-				cmd: interfaces.SocketCommand{
-					SocketCommandParams: &types.SocketCommandParams{
-						Ty: GetSubscriberSocketCommand,
-					},
-				},
-				request: &types.SocketRequestParams{
-					UserSub: state.subscriberId,
-					// Ticket added during test
-				},
-			},
-			want:    interfaces.SocketResponse{},
-			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
-				if got.Error != nil {
-					t.Errorf("Unexpected error: %v", got.Error)
-					return false
-				}
-
-				if got.SocketResponseParams == nil || got.SocketResponseParams.Subscriber == nil {
-					t.Errorf("Expected subscriber in response, got none")
-					return false
-				}
-
-				sub := got.SocketResponseParams.Subscriber
-				if sub.UserSub != state.subscriberId {
-					t.Errorf("Expected subscriber ID %s, got %s", state.subscriberId, sub.UserSub)
-					return false
-				}
-
-				return true
 			},
 		},
 		{
@@ -709,7 +709,7 @@ func TestSocket_SendCommand(t *testing.T) {
 					UserSub: state.subscriberId,
 				},
 			},
-			want:    interfaces.SocketResponse{},
+			want:    emptySocketResponse,
 			wantErr: false,
 			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
 				return got.Error == nil
@@ -726,7 +726,7 @@ func TestSocket_SendCommand(t *testing.T) {
 				tt.args.request.Targets = state.connId
 			case SendSocketMessageSocketCommand:
 				tt.args.request.Targets = state.connId
-			case GetSubscriberSocketCommand:
+			case GetAuthSubscriberSocketCommand:
 				tt.args.request.Ticket = state.auth + ":" + state.connId
 			case DeleteSocketConnectionSocketCommand:
 				tt.args.request.Ticket = state.auth + ":" + state.connId

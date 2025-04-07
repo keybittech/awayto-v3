@@ -10,6 +10,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -42,7 +43,7 @@ func setupSockServer(t *testing.T) {
 		return
 	}
 
-	subscriberRequest, err := api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, &types.SocketRequestParams{
+	subscriberRequest, err := api.Handlers.Socket.SendCommand(clients.GetAuthSubscriberSocketCommand, &types.SocketRequestParams{
 		UserSub: "worker",
 		Ticket:  ticket,
 	})
@@ -141,48 +142,6 @@ func getSocketTicket() (string, string, error) {
 	_, connId := ticketParts[0], ticketParts[1]
 
 	return ticket, connId, nil
-}
-
-func BenchmarkTestHandleSocketConnection(b *testing.B) {
-	ticket, _, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
-	data := url.Values{}
-	data.Add("ticket", ticket)
-
-	u, err := url.Parse("wss://localhost:7443/sock?ticket=" + ticket)
-
-	sockConn, err := tls.Dial("tcp", u.Host, &tls.Config{InsecureSkipVerify: true})
-	if err != nil {
-		panic(err)
-	}
-
-	// Generate WebSocket key
-	keyBytes := make([]byte, 16)
-	rand.Read(keyBytes)
-	secWebSocketKey := base64.StdEncoding.EncodeToString(keyBytes)
-
-	// Send HTTP Upgrade request
-	fmt.Fprintf(sockConn, "GET %s HTTP/1.1\r\n", u.RequestURI())
-	fmt.Fprintf(sockConn, "Host: %s\r\n", u.Host)
-	fmt.Fprintf(sockConn, "Upgrade: websocket\r\n")
-	fmt.Fprintf(sockConn, "Connection: Upgrade\r\n")
-	fmt.Fprintf(sockConn, "Sec-WebSocket-Key: %s\r\n", secWebSocketKey)
-	fmt.Fprintf(sockConn, "Sec-WebSocket-Version: 13\r\n")
-	fmt.Fprintf(sockConn, "\r\n")
-
-	for {
-		data, err := util.ReadSocketConnectionMessage(sockConn)
-		if err != nil {
-			println("GOT ERROR", err.Error())
-			if io.EOF == err {
-				break
-			}
-		} else {
-			println("GOT MESSAGE", string(data))
-		}
-	}
 }
 
 // Socket Events
@@ -317,24 +276,23 @@ func BenchmarkSocketSendMessage(b *testing.B) {
 		})
 	}
 }
-
 func BenchmarkSocketGetSocketTicket(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
+		b.StopTimer()
+		session.UserSub = session.UserSub + strconv.Itoa(c)
+		b.StartTimer()
+
 		api.Handlers.Socket.GetSocketTicket(session)
 	}
 }
 
 func BenchmarkSocketInitConnection(b *testing.B) {
-	ticket, _, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
 	mockConn := &interfaces.NullConn{}
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		b.StopTimer()
-		ticket, _ = api.Handlers.Socket.GetSocketTicket(session)
+		ticket, _ := api.Handlers.Socket.GetSocketTicket(session)
 		b.StartTimer()
 		api.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
 			UserSub: subscriber.UserSub,
@@ -343,12 +301,13 @@ func BenchmarkSocketInitConnection(b *testing.B) {
 	}
 }
 
-func BenchmarkSocketGetSubscriberByTicket(b *testing.B) {
+func BenchmarkSocketGetAuthSubscriberSocketCommand(b *testing.B) {
+	session.UserSub = "auth-sub-test"
 	ticket, _ := api.Handlers.Socket.GetSocketTicket(session)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.GetSubscriberSocketCommand, &types.SocketRequestParams{
-			UserSub: "worker",
+		api.Handlers.Socket.SendCommand(clients.GetAuthSubscriberSocketCommand, &types.SocketRequestParams{
+			UserSub: session.UserSub,
 			Ticket:  ticket,
 		})
 	}
@@ -449,6 +408,48 @@ func BenchmarkSocketHandleUnsub(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		api.Handlers.Redis.HandleUnsub(socketId)
+	}
+}
+
+func BenchmarkTestHandleSocketConnection(b *testing.B) {
+	ticket, _, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
+	data := url.Values{}
+	data.Add("ticket", ticket)
+
+	u, err := url.Parse("wss://localhost:7443/sock?ticket=" + ticket)
+
+	sockConn, err := tls.Dial("tcp", u.Host, &tls.Config{InsecureSkipVerify: true})
+	if err != nil {
+		panic(err)
+	}
+
+	// Generate WebSocket key
+	keyBytes := make([]byte, 16)
+	rand.Read(keyBytes)
+	secWebSocketKey := base64.StdEncoding.EncodeToString(keyBytes)
+
+	// Send HTTP Upgrade request
+	fmt.Fprintf(sockConn, "GET %s HTTP/1.1\r\n", u.RequestURI())
+	fmt.Fprintf(sockConn, "Host: %s\r\n", u.Host)
+	fmt.Fprintf(sockConn, "Upgrade: websocket\r\n")
+	fmt.Fprintf(sockConn, "Connection: Upgrade\r\n")
+	fmt.Fprintf(sockConn, "Sec-WebSocket-Key: %s\r\n", secWebSocketKey)
+	fmt.Fprintf(sockConn, "Sec-WebSocket-Version: 13\r\n")
+	fmt.Fprintf(sockConn, "\r\n")
+
+	for {
+		data, err := util.ReadSocketConnectionMessage(sockConn)
+		if err != nil {
+			println("GOT ERROR", err.Error())
+			if io.EOF == err {
+				break
+			}
+		} else {
+			println("GOT MESSAGE", string(data))
+		}
 	}
 }
 
