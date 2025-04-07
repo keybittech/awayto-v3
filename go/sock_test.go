@@ -31,16 +31,14 @@ var subscriptions [][]byte
 var unsubscribe []byte
 var socketEvents *SocketEvents
 
-var ticket, topic, targets, connId, socketId, exchangeId string
+var topic, targets, socketId, exchangeId string
 var subscriber *types.Subscriber
 var session *types.UserSession
 
 func setupSockServer(t *testing.T) {
-	var err error
-	// Get ticket
-	ticket, err = getSocketTicket()
+	ticket, connId, err := getSocketTicket()
 	if err != nil {
-		println(err.Error())
+		t.Fatal(err)
 		return
 	}
 
@@ -61,9 +59,6 @@ func setupSockServer(t *testing.T) {
 		GroupId:                 "group-id",
 		AvailableUserGroupRoles: []string{"role1"},
 	}
-
-	ticketParts := strings.Split(ticket, ":")
-	_, connId := ticketParts[0], ticketParts[1]
 
 	exchangeId = "0195ec07-e989-71ac-a0c4-f6a08d1f93f6"
 	topic = "exchange/0:" + exchangeId
@@ -94,24 +89,20 @@ func setupSockServer(t *testing.T) {
 		changeSettingEvent,
 	}
 
-	// Subscribe to a topic
-	// for i := 0; i < len(subscriptions); i++ {
-	// 	api.SocketRequest(subscriber, subscriptions[i], connId, socketId)
-	// }
 	time.Sleep(time.Second)
 	println("did setup sock")
 }
 
-func getSocketTicket() (string, error) {
+func getSocketTicket() (string, string, error) {
 	// Get authentication token first
 	token, err := getKeycloakToken(0)
 	if err != nil {
-		return "", fmt.Errorf("error getting auth token: %v", err)
+		return "", "", fmt.Errorf("error getting auth token: %v", err)
 	}
 
 	req, err := http.NewRequest("GET", "https://localhost:7443/api/v1/sock/ticket", nil)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	req.Header.Add("Authorization", "Bearer "+token)
@@ -122,37 +113,40 @@ func getSocketTicket() (string, error) {
 	client := &http.Client{Transport: tr}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", "", err
 	}
 
 	// Debug the response if it's not JSON
 	if len(body) > 0 && body[0] != '{' {
-		return "", fmt.Errorf("unexpected ticket response: %s", string(body))
+		return "", "", fmt.Errorf("unexpected ticket response: %s", string(body))
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return "", fmt.Errorf("ticket JSON parse error: %v, body: %s", err, string(body))
+		return "", "", fmt.Errorf("ticket JSON parse error: %v, body: %s", err, string(body))
 	}
 
 	ticket, ok := result["ticket"].(string)
 	if !ok {
-		return "", fmt.Errorf("ticket not found in response")
+		return "", "", fmt.Errorf("ticket not found in response")
 	}
 
-	return ticket, nil
+	ticketParts := strings.Split(ticket, ":")
+	_, connId := ticketParts[0], ticketParts[1]
+
+	return ticket, connId, nil
 }
 
-func TestHandleSocketConnection(t *testing.T) {
-	ticket, err := getSocketTicket()
+func BenchmarkTestHandleSocketConnection(b *testing.B) {
+	ticket, _, err := getSocketTicket()
 	if err != nil {
-		t.Fatal(err)
+		b.Fatal(err)
 	}
 	data := url.Values{}
 	data.Add("ticket", ticket)
@@ -194,6 +188,11 @@ func TestHandleSocketConnection(t *testing.T) {
 // Socket Events
 
 func BenchmarkSocketSubscribe(b *testing.B) {
+	_, connId, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
+
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		api.SocketRequest(subscriber, subscriptions[0], connId, socketId)
@@ -204,6 +203,11 @@ func BenchmarkSocketSubscribe(b *testing.B) {
 }
 
 func BenchmarkSocketUnsubscribe(b *testing.B) {
+	_, connId, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
+
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		api.SocketRequest(subscriber, unsubscribe, connId, socketId)
@@ -214,6 +218,10 @@ func BenchmarkSocketUnsubscribe(b *testing.B) {
 }
 
 func BenchmarkSocketLoadSubscribers(b *testing.B) {
+	_, connId, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		api.SocketRequest(subscriber, socketEvents.loadSubscribersEvent, connId, socketId)
@@ -221,6 +229,10 @@ func BenchmarkSocketLoadSubscribers(b *testing.B) {
 }
 
 func BenchmarkSocketLoadMessages(b *testing.B) {
+	_, connId, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		api.SocketRequest(subscriber, socketEvents.loadMessagesEvent, connId, socketId)
@@ -228,6 +240,10 @@ func BenchmarkSocketLoadMessages(b *testing.B) {
 }
 
 func BenchmarkSocketDefault(b *testing.B) {
+	_, connId, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		api.SocketRequest(subscriber, socketEvents.changeSettingEvent, connId, socketId)
@@ -235,6 +251,10 @@ func BenchmarkSocketDefault(b *testing.B) {
 }
 
 func BenchmarkSocketDefaultStore(b *testing.B) {
+	_, connId, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		api.SocketRequest(subscriber, socketEvents.moveBoxEvent, connId, socketId)
@@ -265,6 +285,10 @@ func BenchmarkSocketRoleCall(b *testing.B) {
 }
 
 func BenchmarkSocketSendMessage(b *testing.B) {
+	_, connId, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
 	mergedParticipants := make(map[string]*types.SocketParticipant, 1)
 	participant := &types.SocketParticipant{
 		Name:   "name",
@@ -302,6 +326,10 @@ func BenchmarkSocketGetSocketTicket(b *testing.B) {
 }
 
 func BenchmarkSocketInitConnection(b *testing.B) {
+	ticket, _, err := getSocketTicket()
+	if err != nil {
+		b.Fatal(err)
+	}
 	mockConn := &interfaces.NullConn{}
 	reset(b)
 	for c := 0; c < b.N; c++ {

@@ -169,10 +169,6 @@ func (p *WorkerPool) QueueLength() int {
 func (p *WorkerPool) CleanUpClientMapping(clientId string) {
 	p.queueMutex.Lock()
 	defer p.queueMutex.Unlock()
-	for k, v := range p.clientToQueue {
-		println("IN CHECK", k, v)
-	}
-
 	delete(p.clientToQueue, clientId)
 }
 
