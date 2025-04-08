@@ -163,24 +163,19 @@ func generateCodeChallenge() string {
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
 
-func BenchmarkKeycloakRegistrationViaForm(b *testing.B) {
+func TestKeycloakRegistrationViaForm(t *testing.T) {
 	numConnections := 5 // Number of concurrent registration processes
-	requestsPerClient := b.N / numConnections
-
+	var successes int
 	var wg sync.WaitGroup
-	successful := atomic.Int64{}
-	failed := atomic.Int64{}
 
-	startTime := time.Now()
+	t.Run("users can register", func(t *testing.T) {
+		for c := 0; c < numConnections; c++ {
+			wg.Add(1)
+			go func(cid int) {
+				defer wg.Done()
 
-	for c := 0; c < numConnections; c++ {
-		wg.Add(1)
-		go func(cid int) {
-			defer wg.Done()
-
-			for i := 0; i < requestsPerClient; i++ {
 				// Create unique identifier for each registration
-				uniqueID := fmt.Sprintf("%d_%d_%d", cid, i, time.Now().UnixNano())
+				uniqueID := fmt.Sprintf("%d_%d", cid, time.Now().UnixNano())
 				email := fmt.Sprintf("testuser_%s@example.com", uniqueID)
 				firstName := "Test"
 				lastName := fmt.Sprintf("User_%s", uniqueID)
@@ -188,24 +183,19 @@ func BenchmarkKeycloakRegistrationViaForm(b *testing.B) {
 
 				success, err := registerKeycloakUserViaForm(email, firstName, lastName, password)
 				if err != nil || !success {
-					b.Logf("Registration failed: %v", err)
-					failed.Add(1)
-					continue
+					t.Logf("Registration failed: %v", err)
+					return
 				}
+				successes++
 
-				b.Logf("Successfully registered user with email: %s", email)
-				successful.Add(1)
-			}
-		}(c)
-	}
+			}(c)
+		}
+		if successes != numConnections {
+			t.Errorf("Registration Successes: %d", successes)
+		}
+	})
 
 	wg.Wait()
-
-	duration := time.Since(startTime).Seconds()
-	fmt.Printf("Registration benchmark completed in %.2f seconds\n", duration)
-	fmt.Printf("Successful registrations: %d (%.2f/sec)\n", successful.Load(), float64(successful.Load())/duration)
-	fmt.Printf("Failed registrations: %d (%.2f%%)\n", failed.Load(), float64(failed.Load())/float64(b.N)*100)
-	fmt.Printf("Total throughput: %.2f registrations/sec\n", float64(b.N)/duration)
 }
 
 func BenchmarkKeycloakAuthentication(b *testing.B) {

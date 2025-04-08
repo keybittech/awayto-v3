@@ -63,6 +63,8 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				return
 			}
 
+			conn.SetReadDeadline(time.Time{})
+
 			ticket := req.URL.Query().Get("ticket")
 			if ticket == "" {
 				return

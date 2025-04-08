@@ -73,8 +73,8 @@ func main() {
 	api = &a.API{
 		Server: &http.Server{
 			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
-			ReadTimeout:  5 * time.Minute,
-			WriteTimeout: 15 * time.Second,
+			ReadTimeout:  time.Minute,
+			WriteTimeout: time.Minute,
 		},
 		Handlers: &h.Handlers{
 			Ai:       c.InitAi(),
