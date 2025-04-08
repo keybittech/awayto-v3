@@ -64,6 +64,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 			}
 
 			conn.SetReadDeadline(time.Time{})
+			conn.SetWriteDeadline(time.Time{})
 
 			ticket := req.URL.Query().Get("ticket")
 			if ticket == "" {
@@ -190,11 +191,13 @@ func (a *API) HandleSockConnection(wg *sync.WaitGroup, subscriber *types.Subscri
 		case <-socketPingTicker.C:
 			err := a.PingPong(subscriber.UserSub, connId)
 			if err != nil {
+				println("returned due to ping error ", err.Error())
 				return
 			}
 		case data := <-messages:
 			if len(data) == 2 {
 				// EOF
+				println("returned due to messages EOF")
 				return
 			} else {
 
@@ -205,10 +208,12 @@ func (a *API) HandleSockConnection(wg *sync.WaitGroup, subscriber *types.Subscri
 				go a.SocketRequest(subscriber, data, connId, socketId)
 			}
 		case err := <-errs:
+			println("read error " + err.Error())
 			util.ErrorLog.Println(util.ErrCheck(err))
 		}
 
 		if time.Since(pings[connId]) > 1*time.Minute {
+			println("returned due to ping timeout")
 			return
 		}
 	}
