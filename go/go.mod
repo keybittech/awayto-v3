@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go
 
-go 1.23.6
+go 1.24.0
 
 require (
 	github.com/joho/godotenv v1.5.1
@@ -11,6 +11,7 @@ require (
 	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000
 	github.com/playwright-community/playwright-go v0.4902.0
+	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
 	google.golang.org/protobuf v1.36.5
 )
 
@@ -35,7 +36,6 @@ require (
 	github.com/redis/go-redis/v9 v9.7.1 // indirect
 	github.com/sashabaranov/go-openai v1.38.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8 // indirect
 	golang.org/x/text v0.22.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect

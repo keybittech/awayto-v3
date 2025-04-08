@@ -416,7 +416,7 @@ host_sync_env:
 #################################
 
 .PHONY: host_deploy
-host_deploy: host_sync_env
+host_deploy: go_test_unit host_sync_env
 	$(SSH) 'cd "$(H_REM_DIR)" && sh $(DEPLOY_SCRIPT)'
 
 .PHONY: host_update_cert

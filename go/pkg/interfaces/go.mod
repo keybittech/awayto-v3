@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go/pkg/interfaces
 
-go 1.23.6
+go 1.24.0
 
 require (
 	github.com/golang/mock v1.6.0

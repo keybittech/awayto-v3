@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go/pkg/util
 
-go 1.23.6
+go 1.24.0
 
 require (
 	github.com/golang/protobuf v1.5.4
