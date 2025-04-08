@@ -43,7 +43,7 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
 
     if (message && style && setTopicMessages) {
       for (const user of Object.values(userList)) {
-        if (user?.cids.includes(sender)) {
+        if (user?.cids.includes(sender) || historical) {
           setTopicMessages(m => {
             const newMessage = {
               ...user,
