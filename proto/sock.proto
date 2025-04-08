@@ -83,13 +83,16 @@ message SocketRequestParams {
   string topic = 5;
   string targets = 6;
   bytes messageBytes = 7;
+  string connId = 8;
 }
 
 message SocketResponseParams {
   string ticket = 1;
-  Subscriber subscriber = 2;
-  string targets = 3;
-  bool hasSub = 4;
+  string targets = 2;
+  bool hasSub = 3;
+  string userSub = 4;
+  string groupId = 5;
+  string roles = 6;
 }
 
 message SocketCommandParams {

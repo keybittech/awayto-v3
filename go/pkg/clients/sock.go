@@ -11,7 +11,6 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"google.golang.org/protobuf/proto"
 
 	"github.com/google/uuid"
 )
@@ -21,7 +20,6 @@ const (
 	DeleteSocketTicketSocketCommand
 	CreateSocketConnectionSocketCommand
 	DeleteSocketConnectionSocketCommand
-	GetAuthSubscriberSocketCommand
 	SendSocketMessageSocketCommand
 	AddSubscribedTopicSocketCommand
 	GetSubscribedTargetsSocketCommand
@@ -130,9 +128,21 @@ func InitSocket() *Socket {
 			}
 
 		case CreateSocketConnectionSocketCommand:
-			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
+			auth, _, err := util.SplitColonJoined(cmd.Request.Ticket)
+			if err != nil {
+				cmd.ReplyChan <- interfaces.SocketResponse{Error: err}
+				break
+			}
+
+			userSub, ok := socketMaps.authSubscribers[auth]
+			if !ok {
+				cmd.ReplyChan <- interfaces.SocketResponse{Error: authSubscriberNotFound}
+				break
+			}
+
+			subscriber, ok := socketMaps.subscribers[userSub]
 			if ok {
-				auth, connId, err := util.SplitSocketId(cmd.Request.Ticket)
+				auth, connId, err := util.SplitColonJoined(cmd.Request.Ticket)
 				if err != nil {
 					cmd.ReplyChan <- interfaces.SocketResponse{
 						Error: err,
@@ -155,7 +165,9 @@ func InitSocket() *Socket {
 
 				cmd.ReplyChan <- interfaces.SocketResponse{
 					SocketResponseParams: &types.SocketResponseParams{
-						Subscriber: proto.Clone(subscriber).(*types.Subscriber),
+						UserSub: subscriber.UserSub,
+						GroupId: subscriber.GroupId,
+						Roles:   subscriber.Roles,
 					},
 				}
 			} else {
@@ -167,11 +179,9 @@ func InitSocket() *Socket {
 		case DeleteSocketConnectionSocketCommand:
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			if ok {
-				_, connId, _ := util.SplitSocketId(cmd.Request.Ticket)
+				delete(socketMaps.connections, cmd.Request.ConnId)
 
-				delete(socketMaps.connections, connId)
-
-				connIdStartIdx := strings.Index(subscriber.ConnectionIds, connId)
+				connIdStartIdx := strings.Index(subscriber.ConnectionIds, cmd.Request.ConnId)
 				connIdEndIdx := connIdStartIdx + CID_LENGTH // uuid length
 				if connIdStartIdx == -1 || len(subscriber.ConnectionIds) < connIdEndIdx {
 					cmd.ReplyChan <- interfaces.SocketResponse{Error: noDeletionConnectionId}
@@ -183,30 +193,6 @@ func InitSocket() *Socket {
 				}
 			}
 			cmd.ReplyChan <- emptySocketResponse
-		case GetAuthSubscriberSocketCommand:
-			auth, _, err := util.SplitSocketId(cmd.Request.Ticket)
-			if err != nil {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: err}
-				break
-			}
-
-			userSub, ok := socketMaps.authSubscribers[auth]
-			if !ok {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: authSubscriberNotFound}
-				break
-			}
-
-			subscriber, ok := socketMaps.subscribers[userSub]
-			if !ok {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: noSubscriberForAuth}
-				break
-			}
-
-			cmd.ReplyChan <- interfaces.SocketResponse{
-				SocketResponseParams: &types.SocketResponseParams{
-					Subscriber: proto.Clone(subscriber).(*types.Subscriber),
-				},
-			}
 
 		case SendSocketMessageSocketCommand:
 			var sentAtLeastOne bool

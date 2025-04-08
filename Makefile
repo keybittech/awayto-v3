@@ -262,7 +262,7 @@ landing_dev: build
 #################################
 
 .PHONY: go_test
-go_test: docker_up go_test_pkg go_test_main 
+go_test: go_test_bench go_test_integration_long
 
 .PHONY: go_test_ui
 go_test_ui: build $(GO_TARGET)
@@ -279,7 +279,11 @@ go_test_unit: $(GO_TARGET) $(GO_MOCK_TARGET)
 
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/go
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ${PROJECT_REPO}/go
+
+.PHONY: go_test_integration_long
+go_test_integration_long: $(GO_TARGET)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ${PROJECT_REPO}/go
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)

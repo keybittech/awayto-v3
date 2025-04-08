@@ -30,7 +30,7 @@ func init() {
 	if err != nil || testTicket == "" {
 		log.Fatal(err)
 	}
-	_, testConnId, err = util.SplitSocketId(testTicket)
+	_, testConnId, err = util.SplitColonJoined(testTicket)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -339,7 +339,7 @@ func getNewConnection(t *testing.T, userSub string) (*types.UserSession, string,
 		t.Errorf("Failed with first ticket: %v", err)
 	}
 
-	_, connId, err := util.SplitSocketId(ticket)
+	_, connId, err := util.SplitColonJoined(ticket)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -501,41 +501,6 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 		},
 		{
-			name: "Get subscriber success",
-			args: args{
-				cmd: interfaces.SocketCommand{
-					SocketCommandParams: &types.SocketCommandParams{
-						Ty: GetAuthSubscriberSocketCommand,
-					},
-				},
-				request: &types.SocketRequestParams{
-					UserSub: state.subscriberId,
-					// Ticket added during test
-				},
-			},
-			want:    emptySocketResponse,
-			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
-				if got.Error != nil {
-					t.Errorf("Unexpected error: %v", got.Error)
-					return false
-				}
-
-				if got.SocketResponseParams == nil || got.SocketResponseParams.Subscriber == nil {
-					t.Errorf("Expected subscriber in response, got none")
-					return false
-				}
-
-				sub := got.SocketResponseParams.Subscriber
-				if sub.UserSub != state.subscriberId {
-					t.Errorf("Expected subscriber ID %s, got %s", state.subscriberId, sub.UserSub)
-					return false
-				}
-
-				return true
-			},
-		},
-		{
 			name: "Create connection success",
 			args: args{
 				cmd: interfaces.SocketCommand{
@@ -555,19 +520,23 @@ func TestSocket_SendCommand(t *testing.T) {
 					return false
 				}
 
-				if got.SocketResponseParams == nil || got.SocketResponseParams.Subscriber == nil {
-					t.Errorf("Expected subscriber in response, got none")
+				if got.SocketResponseParams == nil || got.SocketResponseParams.UserSub == "" {
+					t.Errorf("Expected subscriber userSub in response, got none")
 					return false
 				}
 
-				sub := got.SocketResponseParams.Subscriber
-				if sub.UserSub != state.subscriberId {
-					t.Errorf("Expected subscriber ID %s, got %s", state.subscriberId, sub.UserSub)
+				if got.SocketResponseParams == nil || got.SocketResponseParams.GroupId == "" {
+					t.Errorf("Expected subscriber userSub in response, got none")
 					return false
 				}
 
-				if !strings.Contains(sub.ConnectionIds, state.connId) {
-					t.Errorf("Expected connection ID %s in subscriber, got %s", state.connId, sub.ConnectionIds)
+				if got.SocketResponseParams == nil || got.SocketResponseParams.Roles == "" {
+					t.Errorf("Expected subscriber userSub in response, got none")
+					return false
+				}
+
+				if got.SocketResponseParams.UserSub != state.subscriberId {
+					t.Errorf("Expected subscriber ID %s, got %s", state.subscriberId, got.SocketResponseParams.UserSub)
 					return false
 				}
 
@@ -726,8 +695,6 @@ func TestSocket_SendCommand(t *testing.T) {
 				tt.args.request.Targets = state.connId
 			case SendSocketMessageSocketCommand:
 				tt.args.request.Targets = state.connId
-			case GetAuthSubscriberSocketCommand:
-				tt.args.request.Ticket = state.auth + ":" + state.connId
 			case DeleteSocketConnectionSocketCommand:
 				tt.args.request.Ticket = state.auth + ":" + state.connId
 			default:

@@ -15,11 +15,11 @@ import (
 var MAX_SOCKET_MESSAGE_LENGTH = 65535
 var malformedSocketError = errors.New("malformed socket id")
 
-func GetSocketId(userSub, connId string) string {
+func GetColonJoined(userSub, connId string) string {
 	return userSub + ":" + connId
 }
 
-func SplitSocketId(id string) (string, string, error) {
+func SplitColonJoined(id string) (string, string, error) {
 	if len(id) <= 1 {
 		return "", "", malformedSocketError
 	}

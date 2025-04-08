@@ -22,7 +22,8 @@ type IDatabase interface {
 	Client() IDatabaseClient
 	AdminSub() string
 	AdminRoleId() string
-	InitDBSocketConnection(tx IDatabaseTx, userSub string, connId string) (func(), error)
+	InitDbSocketConnection(tx IDatabaseTx, userSub string, connId string) error
+	RemoveDbSocketConnection(tx IDatabaseTx, userSub string, connId string) error
 	GetSocketAllowances(tx IDatabaseTx, userSub, description, handle string) (bool, error)
 	GetTopicMessageParticipants(tx IDatabaseTx, topic string) (map[string]*types.SocketParticipant, error)
 	GetSocketParticipantDetails(tx IDatabaseTx, participants map[string]*types.SocketParticipant) (map[string]*types.SocketParticipant, error)

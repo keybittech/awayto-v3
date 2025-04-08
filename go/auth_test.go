@@ -164,8 +164,11 @@ func generateCodeChallenge() string {
 }
 
 func TestKeycloakRegistrationViaForm(t *testing.T) {
+	if testing.Short() {
+		t.Skip("skipping registration test")
+	}
 	numConnections := 5 // Number of concurrent registration processes
-	var successes int
+	var successes atomic.Int32
 	var wg sync.WaitGroup
 
 	t.Run("users can register", func(t *testing.T) {
@@ -186,16 +189,17 @@ func TestKeycloakRegistrationViaForm(t *testing.T) {
 					t.Logf("Registration failed: %v", err)
 					return
 				}
-				successes++
 
+				successes.Add(1)
 			}(c)
 		}
-		if successes != numConnections {
-			t.Errorf("Registration Successes: %d", successes)
+
+		wg.Wait()
+
+		if int(successes.Load()) != numConnections {
+			t.Errorf("Registration Successes: %d", successes.Load())
 		}
 	})
-
-	wg.Wait()
 }
 
 func BenchmarkKeycloakAuthentication(b *testing.B) {

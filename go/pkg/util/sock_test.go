@@ -10,7 +10,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
-func TestGetSocketId(t *testing.T) {
+func TestGetColonJoined(t *testing.T) {
 	type args struct {
 		userSub string
 		connId  string
@@ -25,7 +25,7 @@ func TestGetSocketId(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := GetSocketId(tt.args.userSub, tt.args.connId); got != tt.want {
+			if got := GetColonJoined(tt.args.userSub, tt.args.connId); got != tt.want {
 				t.Errorf("GetSocketId() = %v, want %v", got, tt.want)
 			}
 		})
@@ -35,18 +35,18 @@ func TestGetSocketId(t *testing.T) {
 func BenchmarkGetSocketId(b *testing.B) {
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_ = GetSocketId("a", "b")
+		_ = GetColonJoined("a", "b")
 	}
 }
 
 func BenchmarkGetSocketIdNegative(b *testing.B) {
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_ = GetSocketId("", "")
+		_ = GetColonJoined("", "")
 	}
 }
 
-func TestSplitSocketId(t *testing.T) {
+func TestSplitColonJoined(t *testing.T) {
 	type args struct {
 		id string
 	}
@@ -68,7 +68,7 @@ func TestSplitSocketId(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := SplitSocketId(tt.args.id)
+			got, got1, err := SplitColonJoined(tt.args.id)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("SplitSocketId() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -83,24 +83,24 @@ func TestSplitSocketId(t *testing.T) {
 	}
 }
 
-func BenchmarkSplitSocketId(b *testing.B) {
+func BenchmarkSplitColonJoined(b *testing.B) {
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_, _, _ = SplitSocketId("a:b")
+		_, _, _ = SplitColonJoined("a:b")
 	}
 }
 
-func BenchmarkSplitSocketIdNegative(b *testing.B) {
+func BenchmarkSplitColonJoinedNegative(b *testing.B) {
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_, _, _ = SplitSocketId("")
+		_, _, _ = SplitColonJoined("")
 	}
 }
 
-func BenchmarkSplitSocketIdNegativeColon(b *testing.B) {
+func BenchmarkSplitColonJoinedNegativeColon(b *testing.B) {
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_, _, _ = SplitSocketId("a:")
+		_, _, _ = SplitColonJoined("a:")
 	}
 }
 

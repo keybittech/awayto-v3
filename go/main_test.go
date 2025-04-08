@@ -14,13 +14,16 @@ func init() {
 	}
 }
 
-func TestMain(t *testing.T) {
+func TestMain(m *testing.M) {
 	go main()
 
 	time.Sleep(500 * time.Millisecond)
 	println("did setup main")
 
-	setupSockServer(t)
+	setupSockServer()
+	println("done main")
+
+	m.Run()
 }
 
 func reset(b *testing.B) {

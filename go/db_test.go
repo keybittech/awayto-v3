@@ -71,7 +71,7 @@ func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 
 func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	err := api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
-		description, handle, _ := util.SplitSocketId(topic)
+		description, handle, _ := util.SplitColonJoined(topic)
 		reset(b)
 		for c := 0; c < b.N; c++ {
 			api.Handlers.Database.GetSocketAllowances(tx, session.UserSub, description, handle)

@@ -11,32 +11,42 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (db *Database) InitDBSocketConnection(tx interfaces.IDatabaseTx, userSub string, connId string) (func(), error) {
-	_, err := tx.Exec(`
-		INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
-		VALUES ($1::uuid, $2)
-	`, userSub, connId)
+func (db *Database) InitDbSocketConnection(connId, userSub, groupId, roles string) error {
+	err := db.TxExec(func(tx interfaces.IDatabaseTx) error {
+		_, err := tx.Exec(`
+			INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
+			VALUES ($1::uuid, $2)
+		`, userSub, connId)
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+		return nil
+	}, userSub, groupId, roles)
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return util.ErrCheck(err)
 	}
 
-	return func() {
-		err := db.TxExec(func(itx interfaces.IDatabaseTx) error {
-			_, txErr := itx.Exec(`
-				DELETE FROM dbtable_schema.sock_connections
-				USING dbtable_schema.sock_connections sc
-				LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
-				WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL AND sc.connection_id = $1 
-			`, connId)
-			if txErr != nil {
-				return util.ErrCheck(err)
-			}
-			return nil
-		}, "worker", "", "")
-		if err != nil {
-			util.ErrorLog.Println(err)
+	return nil
+}
+
+func (db *Database) RemoveDbSocketConnection(connId string) error {
+	err := db.TxExec(func(itx interfaces.IDatabaseTx) error {
+		_, txErr := itx.Exec(`
+			DELETE FROM dbtable_schema.sock_connections
+			USING dbtable_schema.sock_connections sc
+			LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
+			WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL AND sc.connection_id = $1 
+		`, connId)
+		if txErr != nil {
+			return util.ErrCheck(txErr)
 		}
-	}, nil
+		return nil
+	}, "worker", "", "")
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	return nil
 }
 
 var (
