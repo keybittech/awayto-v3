@@ -208,7 +208,7 @@ working/proto-stamp: $(wildcard proto/*.proto)
 	fi
 	touch $@
 
-$(GO_TARGET): $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
+$(GO_TARGET): go_tidy $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
