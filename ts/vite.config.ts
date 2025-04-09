@@ -41,6 +41,11 @@ export default defineConfig(_ => {
     html: {
       cspNonce: 'VITE_NONCE'
     },
+    esbuild: {
+      define: {
+        'println': 'console.log'
+      }
+    },
     build: {
       outDir: 'build',
       rollupOptions: {

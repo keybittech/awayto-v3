@@ -225,10 +225,6 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targets
 		}
 	}
 
-	if len(participantTargets.String()) == 0 {
-		return sps, "", nil
-	}
-
 	return sps, participantTargets.String(), nil
 }
 

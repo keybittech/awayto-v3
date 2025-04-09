@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -181,35 +180,21 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 	case types.SocketActions_LOAD_SUBSCRIBERS:
 
-		cachedParticipants, cachedParticipantTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, false)
+		participants, onlineTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, false)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
 		}
 
-		topicMessageParticipants := make(map[string]*types.SocketParticipant)
-
 		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 
-			topicMessageParticipants, txErr = a.Handlers.Database.GetTopicMessageParticipants(tx, sm.Topic)
+			txErr = a.Handlers.Database.GetTopicMessageParticipants(tx, sm.Topic, participants)
 			if txErr != nil {
 				return util.ErrCheck(txErr)
 			}
 
-			for scid, topicMessageParticipant := range topicMessageParticipants {
-				if cachedParticipant, ok := cachedParticipants[scid]; ok {
-					for _, cid := range topicMessageParticipant.Cids {
-						if strings.Index(cachedParticipantTargets, cid) == -1 {
-							cachedParticipant.Cids = append(cachedParticipant.Cids, cid)
-						}
-					}
-				} else {
-					cachedParticipants[scid] = topicMessageParticipant
-				}
-			}
-
-			cachedParticipants, txErr = a.Handlers.Database.GetSocketParticipantDetails(tx, cachedParticipants)
+			txErr = a.Handlers.Database.GetSocketParticipantDetails(tx, participants)
 			if txErr != nil {
 				return util.ErrCheck(txErr)
 			}
@@ -220,13 +205,13 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			return
 		}
 
-		cachedParticipantsBytes, err := json.Marshal(cachedParticipants)
+		cachedParticipantsBytes, err := json.Marshal(participants)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(userSub, cachedParticipantTargets, &types.SocketMessage{
+		a.Handlers.Socket.SendMessage(userSub, onlineTargets, &types.SocketMessage{
 			Action:  types.SocketActions_LOAD_SUBSCRIBERS,
 			Sender:  connId,
 			Topic:   sm.Topic,

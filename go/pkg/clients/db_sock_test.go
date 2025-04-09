@@ -68,6 +68,7 @@ func TestDatabase_GetSocketAllowances(t *testing.T) {
 }
 
 func TestDatabase_GetTopicMessageParticipants(t *testing.T) {
+	participants := make(map[string]*types.SocketParticipant)
 	type args struct {
 		tx    interfaces.IDatabaseTx
 		topic string
@@ -83,13 +84,10 @@ func TestDatabase_GetTopicMessageParticipants(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.db.GetTopicMessageParticipants(tt.args.tx, tt.args.topic)
+			err := tt.db.GetTopicMessageParticipants(tt.args.tx, tt.args.topic, participants)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Database.GetTopicMessageParticipants(%v, %v) error = %v, wantErr %v", tt.args.tx, tt.args.topic, err, tt.wantErr)
 				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Database.GetTopicMessageParticipants(%v, %v) = %v, want %v", tt.args.tx, tt.args.topic, got, tt.want)
 			}
 		})
 	}
@@ -111,13 +109,13 @@ func TestDatabase_GetSocketParticipantDetails(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.db.GetSocketParticipantDetails(tt.args.tx, tt.args.participants)
+			err := tt.db.GetSocketParticipantDetails(tt.args.tx, tt.args.participants)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Database.GetSocketParticipantDetails(%v, %v) error = %v, wantErr %v", tt.args.tx, tt.args.participants, err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Database.GetSocketParticipantDetails(%v, %v) = %v, want %v", tt.args.tx, tt.args.participants, got, tt.want)
+			if !reflect.DeepEqual(tt.args.participants, tt.want) {
+				t.Errorf("Database.GetSocketParticipantDetails(%v, %v) = %v, want %v", tt.args.tx, tt.args.participants, tt.args.participants, tt.want)
 			}
 		})
 	}

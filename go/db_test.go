@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
@@ -57,10 +58,11 @@ func BenchmarkDbTxExec(b *testing.B) {
 }
 
 func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
+	participants := make(map[string]*types.SocketParticipant)
 	err := api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 		reset(b)
 		for c := 0; c < b.N; c++ {
-			api.Handlers.Database.GetTopicMessageParticipants(tx, topic)
+			api.Handlers.Database.GetTopicMessageParticipants(tx, topic, participants)
 		}
 		return nil
 	}, "", "", "")

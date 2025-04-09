@@ -25,8 +25,8 @@ type IDatabase interface {
 	InitDbSocketConnection(tx IDatabaseTx, userSub string, connId string) error
 	RemoveDbSocketConnection(tx IDatabaseTx, userSub string, connId string) error
 	GetSocketAllowances(tx IDatabaseTx, userSub, description, handle string) (bool, error)
-	GetTopicMessageParticipants(tx IDatabaseTx, topic string) (map[string]*types.SocketParticipant, error)
-	GetSocketParticipantDetails(tx IDatabaseTx, participants map[string]*types.SocketParticipant) (map[string]*types.SocketParticipant, error)
+	GetTopicMessageParticipants(tx IDatabaseTx, topic string, participants map[string]*types.SocketParticipant) error
+	GetSocketParticipantDetails(tx IDatabaseTx, participants map[string]*types.SocketParticipant) error
 	StoreTopicMessage(tx IDatabaseTx, connId string, message *types.SocketMessage) error
 	GetTopicMessages(tx IDatabaseTx, topic string, page, pageSize int) ([][]byte, error)
 	QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error

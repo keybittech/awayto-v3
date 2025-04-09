@@ -3,12 +3,12 @@ package clients
 import (
 	"fmt"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/lib/pq"
 )
 
 func (db *Database) InitDbSocketConnection(connId, userSub, groupId, roles string) error {
@@ -94,39 +94,34 @@ func (db *Database) GetSocketAllowances(tx interfaces.IDatabaseTx, userSub, desc
 	return subscribed, nil
 }
 
-func (db *Database) GetTopicMessageParticipants(tx interfaces.IDatabaseTx, topic string) (map[string]*types.SocketParticipant, error) {
+func (db *Database) GetTopicMessageParticipants(tx interfaces.IDatabaseTx, topic string, participants map[string]*types.SocketParticipant) error {
 
 	err := tx.SetDbVar("sock_topic", topic)
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return util.ErrCheck(err)
 	}
-
-	participants := make(map[string]*types.SocketParticipant)
 
 	topicRows, err := tx.Query(`
 		SELECT
 			created_sub,
-			JSONB_AGG(connection_id)
+			ARRAY_AGG(connection_id)
 		FROM dbtable_schema.topic_messages
 		WHERE topic = $1
 		GROUP BY created_sub
 	`, topic)
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return util.ErrCheck(err)
 	}
 
 	defer topicRows.Close()
-	var userSub string
-	var cids []string
-	var cidsBytes []byte
-
 	for topicRows.Next() {
-		err = topicRows.Scan(&userSub, &cidsBytes)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
+		var userSub string
+		var cids []string
 
-		cids = strings.Split(string(cidsBytes), " ")
+		err = topicRows.Scan(&userSub, (*pq.StringArray)(&cids))
+		if err != nil {
+			return util.ErrCheck(err)
+		}
 
 		if participant, ok := participants[userSub]; ok {
 			for _, cid := range cids {
@@ -141,14 +136,13 @@ func (db *Database) GetTopicMessageParticipants(tx interfaces.IDatabaseTx, topic
 
 	err = tx.SetDbVar("sock_topic", "")
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return util.ErrCheck(err)
 	}
 
-	return participants, nil
+	return nil
 }
 
-func (db *Database) GetSocketParticipantDetails(tx interfaces.IDatabaseTx, participants map[string]*types.SocketParticipant) (map[string]*types.SocketParticipant, error) {
-
+func (db *Database) GetSocketParticipantDetails(tx interfaces.IDatabaseTx, participants map[string]*types.SocketParticipant) error {
 	for userSub, details := range participants {
 		// Get user anon info
 		err := tx.QueryRow(`
@@ -162,11 +156,11 @@ func (db *Database) GetSocketParticipantDetails(tx interfaces.IDatabaseTx, parti
 			WHERE u.sub = $1
 		`, userSub).Scan(&details.Name, &details.Role)
 		if err != nil {
-			return nil, util.ErrCheck(err)
+			return util.ErrCheck(err)
 		}
 	}
 
-	return participants, nil
+	return nil
 }
 
 func (db *Database) StoreTopicMessage(tx interfaces.IDatabaseTx, connId string, message *types.SocketMessage) error {

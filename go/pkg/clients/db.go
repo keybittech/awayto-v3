@@ -46,8 +46,8 @@ type Database struct {
 func InitDatabase() *Database {
 	dbDriver := os.Getenv("DB_DRIVER")
 	pgUser := os.Getenv("PG_WORKER")
-	pgHost := os.Getenv("PG_HOST")
-	pgPort := os.Getenv("PG_PORT")
+	// pgHost := os.Getenv("PG_HOST")
+	// pgPort := os.Getenv("PG_PORT")
 	pgDb := os.Getenv("PG_DB")
 	pgPass, err := util.EnvFile(os.Getenv("PG_WORKER_PASS_FILE"))
 	if err != nil {
@@ -55,9 +55,10 @@ func InitDatabase() *Database {
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	connString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable", dbDriver, pgUser, pgPass, pgHost, pgPort, pgDb)
+	// connString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable", dbDriver, pgUser, pgPass, pgHost, pgPort, pgDb)
+	connString2 := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", dbDriver, pgUser, pgPass, pgDb, os.Getenv("UNIX_SOCK_DIR"))
 
-	db, err := sql.Open(dbDriver, connString)
+	db, err := sql.Open(dbDriver, connString2)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		log.Fatal(util.ErrCheck(err))

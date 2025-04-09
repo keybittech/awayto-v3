@@ -32,7 +32,13 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
     connected,
     sendMessage,
     storeMessage
-  } = useWebSocketSubscribe<{ page: number, pageSize: number, message: string, style: SocketMessage['style'] }>(topicId, ({ timestamp, sender, action, payload, historical }) => {
+  } = useWebSocketSubscribe<{ page: number, pageSize: number, message: string, style: SocketMessage['style'] }>(topicId, ({
+    timestamp,
+    sender,
+    action,
+    payload,
+    historical
+  }) => {
 
     if (action == SocketActions.HAS_MORE_MESSAGES) {
       setHasMore(true)
@@ -43,7 +49,7 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
 
     if (message && style && setTopicMessages) {
       for (const user of Object.values(userList)) {
-        if (user?.cids.includes(sender) || historical) {
+        if (user?.cids.includes(sender)) {
           setTopicMessages(m => {
             const newMessage = {
               ...user,
