@@ -179,6 +179,7 @@ func InitSocket() *Socket {
 		case DeleteSocketConnectionSocketCommand:
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			if ok {
+				println("deleting socket connection for", cmd.Request.ConnId)
 				delete(socketMaps.connections, cmd.Request.ConnId)
 
 				connIdStartIdx := strings.Index(subscriber.ConnectionIds, cmd.Request.ConnId)
@@ -188,42 +189,52 @@ func InitSocket() *Socket {
 					break
 				}
 				subscriber.ConnectionIds = subscriber.ConnectionIds[:connIdStartIdx] + subscriber.ConnectionIds[connIdEndIdx:]
+				println("subscriber", cmd.Request.UserSub, "got new connids", subscriber.ConnectionIds)
 				if len(subscriber.ConnectionIds) == 0 {
+					println("deleted subscriber", cmd.Request.UserSub, "with 0 connid")
 					delete(socketMaps.subscribers, cmd.Request.UserSub)
 				}
 			}
 			cmd.ReplyChan <- emptySocketResponse
 
 		case SendSocketMessageSocketCommand:
+			println("\n============== Send event ================\n")
 			var sentAtLeastOne bool
 			var sendErr error
 			var attemptedTargets string
 			println(cmd.Request.UserSub, "is trying to send to", cmd.Request.Targets, string(cmd.Request.MessageBytes))
 			var connectionIds string
-			for k, _ := range socketMaps.connections {
+			for k := range socketMaps.connections {
 				connectionIds += k + " "
 			}
-			println("current connection ids are", connectionIds)
+			println("tar len", len(cmd.Request.Targets))
 			for i := 0; i+CID_LENGTH <= len(cmd.Request.Targets); i += CID_LENGTH {
 				connId := cmd.Request.Targets[i : i+CID_LENGTH]
+				println("checking connid", connId)
+				println("current attempted", attemptedTargets)
 				if strings.Index(attemptedTargets, connId) == -1 {
+					println("attempting to check", connId, "with current ids being", connectionIds)
 					if conn, ok := socketMaps.connections[connId]; ok {
+						println("did match connection")
 						sendErr = util.WriteSocketConnectionMessage(cmd.Request.MessageBytes, conn)
 						if sendErr != nil {
+							println("did error")
 							continue
 						}
+						println("did send success")
 						sentAtLeastOne = true
 					}
 
 					attemptedTargets += connId
 				}
 			}
-			if !sentAtLeastOne {
+			if !sentAtLeastOne && sendErr == nil {
 				sendErr = noTargetsToSend
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{
 				Error: sendErr,
 			}
+			println("\n============== End Send event ================\n")
 
 		case AddSubscribedTopicSocketCommand:
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
