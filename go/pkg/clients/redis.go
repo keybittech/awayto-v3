@@ -194,7 +194,6 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targets
 
 	topicSocketIds, err := r.Client().SMembers(ctx, participantTopicsKey).Result()
 	if err != nil {
-		println("HER EERROR")
 		return nil, "", util.ErrCheck(err)
 	}
 

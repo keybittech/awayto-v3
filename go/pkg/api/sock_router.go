@@ -167,7 +167,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			Payload: socketId,
 		})
 
-		a.Handlers.Redis.RemoveTopicFromConnection(connId, sm.Topic)
+		a.Handlers.Redis.RemoveTopicFromConnection(socketId, sm.Topic)
 
 		response, err := a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
 			UserSub: userSub,
