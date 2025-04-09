@@ -23,5 +23,5 @@ ENV IS_GROUP_ADMIN="current_setting('app_session.roles') LIKE '%APP_GROUP_SCHEDU
 COPY ./deploy/scripts/db /docker-entrypoint-initdb.d
 RUN chmod -R 755 /docker-entrypoint-initdb.d/
 
-CMD ["postgres", "-c", "unix_socket_directories=/tmp", "-c", "unix_socket_permissions=0777", "-c", "listen_addresses=0.0.0.0"]
+CMD ["postgres", "-c", "unix_socket_directories=/var/run/postgresql", "-c", "unix_socket_permissions=0777", "-c", "listen_addresses=0.0.0.0"]
 

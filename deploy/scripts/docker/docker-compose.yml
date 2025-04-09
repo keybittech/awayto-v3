@@ -19,7 +19,7 @@ services:
       - pg_pass
       - pg_worker_pass
     volumes: 
-      - ${UNIX_SOCK_DIR}:/tmp
+      - ${UNIX_SOCK_DIR}:/var/run/postgresql
       - pg_data:/var/lib/postgresql/data
 
   redis: # 6379
