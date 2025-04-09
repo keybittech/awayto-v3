@@ -59,6 +59,10 @@ export function WSTextProvider({ children, topicId, topicMessages, setTopicMessa
               timestamp
             }
 
+            if (m.filter(msg => msg.timestamp == timestamp).length) {
+              return m;
+            }
+
             if (historical) {
               return [newMessage, ...m];
             } else {

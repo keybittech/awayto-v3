@@ -34,7 +34,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
 
   const [draggingId, setDraggingId] = useState<number | null>(null);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent, boxId: number) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent, boxId: number) => {
     e.preventDefault();
     setDraggingId(boxId);
   }, []);
@@ -53,40 +53,51 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
     }, {} as Record<number, React.JSX.Element>)
   }, [boxes]);
 
+  const setCoordinates = (e: MouseEvent | React.Touch, draggingId: number) => {
+    if (!whiteboardRef) return;
+
+    const { x, y } = getRelativeCoordinates(e, whiteboardRef);
+
+    let newX = Math.max(x, 0);
+    let newY = Math.max(y, 0);
+
+    setBoxes(prevBoxes => {
+      const updatedBoxes = prevBoxes.map(box =>
+        box.id === draggingId
+          ? { ...box, x: newX, y: newY }
+          : box
+      );
+      didUpdate(updatedBoxes);
+      return updatedBoxes;
+    });
+  }
+
   useEffect(() => {
     if (draggingId) {
       const handleGlobalMouseMove = (e: MouseEvent) => {
-        if (!whiteboardRef) return;
-
-        const { x, y } = getRelativeCoordinates(e, whiteboardRef);
-
-        let newX = Math.max(x, 0);
-        let newY = Math.max(y, 0);
-
-        setBoxes(prevBoxes => {
-          const pb = prevBoxes.find(pbf => pbf.id == draggingId);
-          if (pb) {
-            pb.x = newX;
-            pb.y = newY;
-          }
-          didUpdate(prevBoxes);
-          return [...prevBoxes];
-        });
+        setCoordinates(e, draggingId);
+      };
+      const handleGlobalTouchMove = (e: TouchEvent) => {
+        setCoordinates(e.touches[0], draggingId);
       };
 
       const handleGlobalMouseUp = () => {
         setDraggingId(null);
       };
 
+      window.addEventListener('touchmove', handleGlobalTouchMove);
+      window.addEventListener('touchend', handleGlobalMouseUp);
       window.addEventListener('mousemove', handleGlobalMouseMove);
       window.addEventListener('mouseup', handleGlobalMouseUp);
 
       return () => {
+        window.removeEventListener('touchmove', handleGlobalTouchMove);
+        window.removeEventListener('touchend', handleGlobalMouseUp);
         window.removeEventListener('mousemove', handleGlobalMouseMove);
         window.removeEventListener('mouseup', handleGlobalMouseUp);
       };
     }
-  }, [draggingId]);
+  }, [draggingId, whiteboardRef, setBoxes, didUpdate]);
 
   return <>
     {boxes.map(box => (
@@ -104,8 +115,10 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
           width: 'max-content',
           minWidth: '80px',
           maxWidth: '400px',
-          borderRadius: 1
+          borderRadius: 1,
+          touchAction: 'none' // Prevent default touch actions
         }}
+        onTouchEnd={handleMouseUp}
       >
         <DragIndicatorIcon
           {...targets(`whiteboard boxes drag box ${box.id}`, `press and hold the mouse to drag this box over the whiteboard`)}
@@ -117,9 +130,9 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
             cursor: draggingId === box.id ? "grabbing" : "grab",
           }}
           fontSize="small"
-
           onMouseDown={e => handleMouseDown(e, box.id)}
           onMouseUp={handleMouseUp}
+          onTouchStart={e => handleMouseDown(e, box.id)}
         />
         {boxComponents[box.id]}
         <IconButton

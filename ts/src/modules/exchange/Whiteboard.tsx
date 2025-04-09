@@ -250,7 +250,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   }, []);
 
   // New scroll handling for touch events
-  const handleFileScrollTouch = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+  const handleFileScrollTouch = useCallback((_: React.TouchEvent<HTMLDivElement>) => {
     if (scrollTimeout.current) {
       clearTimeout(scrollTimeout.current);
     }
@@ -302,7 +302,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
     }, 1000);
     const interval = setInterval(sendBatchedData, 150);
     return () => clearInterval(interval);
-  }, []);
+  }, [connectionId]);
 
   useEffect(() => {
     sendWhiteboardMessage(SocketActions.SHARE_FILE, { sharedFile });
