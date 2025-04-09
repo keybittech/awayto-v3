@@ -110,6 +110,7 @@ func InitSocket() *Socket {
 
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			if ok {
+				subscriber.ConnectionId = connectionId
 				subscriber.Tickets[auth] = connectionId
 			} else {
 				subscriber = &types.Subscriber{
@@ -240,7 +241,7 @@ func InitSocket() *Socket {
 						println("did match connection")
 						sendErr = util.WriteSocketConnectionMessage(cmd.Request.MessageBytes, conn)
 						if sendErr != nil {
-							println("FAILED WITH WRITE ERROR")
+							println("FAILED WITH WRITE ERROR", sendErr.Error())
 							continue
 						}
 						println("did send success")
