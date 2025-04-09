@@ -1,4 +1,3 @@
-
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 import 'react-pdf/dist/esm/Page/TextLayer.css';
@@ -18,8 +17,6 @@ import { IFile, IWhiteboard, SocketActions, DraggableBoxData, useWebSocketSubscr
 import WhiteboardOptionsMenu from './WhiteboardOptionsMenu';
 import WhiteboardBoxes from './WhiteboardBoxes';
 
-// onwhiteboard load use effect check fileDetails from modal close then do a confirm action to getFileContents ?
-
 interface WhiteboardProps extends IComponent {
   topicId: string;
   optionsMenu: React.JSX.Element;
@@ -38,6 +35,10 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   const fileScroller = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const boxDidUpdate = useRef<boolean>(false);
+  // Track if currently drawing
+  const isDrawing = useRef<boolean>(false);
+  // Track last touch position
+  const lastTouchPoint = useRef<{ x: number, y: number } | null>(null);
 
   const whiteboard = useRef<IWhiteboard>({
     boxes: [],
@@ -154,18 +155,22 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
     requestAnimationFrame(draw);
   };
 
+  // Modified to support both mouse and touch events
   const handleMouseDown = useCallback((event: React.MouseEvent<HTMLCanvasElement>) => {
     event.preventDefault();
     const canvas = whiteboardRef.current;
     if (!canvas) return;
 
+    isDrawing.current = true;
     const startPoint = getRelativeCoordinates(event, canvas);
-    let lastPoint = startPoint;
+    lastTouchPoint.current = startPoint;
 
     const onMouseMove = (e: MouseEvent) => {
+      if (!isDrawing.current) return;
+
       const endPoint = getRelativeCoordinates(e, canvas);
       const newLine = {
-        startPoint: { ...lastPoint },
+        startPoint: { ...lastTouchPoint.current! },
         endPoint: { ...endPoint }
       };
       whiteboard.current = {
@@ -179,16 +184,82 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
       handleLines([newLine], whiteboard.current.settings.stroke, whiteboard.current.settings.highlight);
 
       // Update lastPoint
-      lastPoint = endPoint;
+      lastTouchPoint.current = endPoint;
     };
 
     const onMouseUp = () => {
+      isDrawing.current = false;
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
 
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
+  }, []);
+
+  // New touch event handlers
+  const handleTouchStart = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    const canvas = whiteboardRef.current;
+    if (!canvas) return;
+
+    isDrawing.current = true;
+    const touch = event.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const startPoint = {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+    lastTouchPoint.current = startPoint;
+  }, []);
+
+  const handleTouchMove = useCallback((event: React.TouchEvent<HTMLCanvasElement>) => {
+    event.preventDefault();
+    if (!isDrawing.current) return;
+
+    const canvas = whiteboardRef.current;
+    if (!canvas || !lastTouchPoint.current) return;
+
+    const touch = event.touches[0];
+    const rect = canvas.getBoundingClientRect();
+    const endPoint = {
+      x: touch.clientX - rect.left,
+      y: touch.clientY - rect.top
+    };
+
+    const newLine = {
+      startPoint: { ...lastTouchPoint.current },
+      endPoint: { ...endPoint }
+    };
+
+    whiteboard.current = {
+      ...whiteboard.current,
+      lines: [
+        ...whiteboard.current.lines,
+        newLine
+      ],
+    };
+
+    handleLines([newLine], whiteboard.current.settings.stroke, whiteboard.current.settings.highlight);
+    lastTouchPoint.current = endPoint;
+  }, []);
+
+  const handleTouchEnd = useCallback(() => {
+    isDrawing.current = false;
+    lastTouchPoint.current = null;
+  }, []);
+
+  // New scroll handling for touch events
+  const handleFileScrollTouch = useCallback((event: React.TouchEvent<HTMLDivElement>) => {
+    if (scrollTimeout.current) {
+      clearTimeout(scrollTimeout.current);
+    }
+    scrollTimeout.current = setTimeout(() => {
+      if (!fileScroller.current) return;
+      const position = [fileScroller.current.scrollLeft, fileScroller.current.scrollTop];
+      whiteboard.current.settings.position = position;
+      sendWhiteboardMessage(SocketActions.SET_POSITION, { settings: { position } });
+    }, 150);
   }, []);
 
   const textRenderer = useCallback((textItem: { str: string }) => {
@@ -240,7 +311,6 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   useEffect(() => {
     const scrollDiv = fileScroller.current;
     if (scrollDiv) {
-
       const onFileScroll = (_: Event) => {
         if (scrollTimeout.current) {
           clearTimeout(scrollTimeout.current);
@@ -331,6 +401,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         <Box
           onClick={() => !active && setActive(true)}
           ref={fileScroller}
+          onTouchMove={handleFileScrollTouch}
           sx={{
             backgroundColor: fileContents ? '#ccc' : 'white',
             flex: 1,
@@ -338,6 +409,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
             position: 'relative',
             padding: '16px',
             height: '100%',
+            WebkitOverflowScrolling: 'touch', // Improve iOS scrolling
           }}
         >
           <WhiteboardBoxes
@@ -354,11 +426,15 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
             sx={{
               position: 'absolute',
               zIndex: 1002,
-              pointerEvents: canvasPointerEvents
+              pointerEvents: canvasPointerEvents,
+              touchAction: 'none', // Prevent browser handling of touch gestures
             }}
             ref={whiteboardRef}
             component='canvas'
             onMouseDown={handleMouseDown}
+            onTouchStart={handleTouchStart}
+            onTouchMove={handleTouchMove}
+            onTouchEnd={handleTouchEnd}
           />
 
           {!fileContents ? <></> : <Document // File Viewer
