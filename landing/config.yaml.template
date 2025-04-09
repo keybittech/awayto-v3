@@ -10,20 +10,24 @@ Params:
 
 menu:
   main:
+    - identifier: home
+      name: Home
+      pageref: /
+      weight: 1
     - identifier: features
       name: Features
-      url: /features
+      pageref: /features
       weight: 10
     - identifier: about 
       name: About
-      url: /about
+      pageref: /about
       weight: 20
     - identifier: pricing
       name: Pricing
-      url: /pricing
+      pageref: /pricing
       weight: 30
     - identifier: use_of_ai
       name: Use of AI
-      url: /use_of_ai
+      pageref: /use_of_ai
       weight: 50
 

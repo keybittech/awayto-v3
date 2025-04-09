@@ -122,7 +122,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 			case <-pingTimer.C:
 				// Close connections not responding to pings
 				pingVal, _ := pings.Load(connId)
-				if lastSeen, ok := pingVal.(time.Time); ok && time.Since(lastSeen) > 45*time.Second {
+				if lastSeen, ok := pingVal.(time.Time); ok && time.Since(lastSeen) > 90*time.Second {
 					println("returned due to ping timeout")
 					return
 				}

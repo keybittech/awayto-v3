@@ -3,27 +3,15 @@
 <html lang="{{ site.LanguageCode }}">
   {{ partial "head.html" . }}
 
-  <body class="not-ready" data-menu="{{ isset site.Menus `main` }}">
+  <body data-menu="{{ isset site.Menus `main` }}">
     {{ partial "header.html" . }}
 
-    <main class="main">{{ block "main" . }}{{ end }}</main>
+    <main>{{ block "main" . }}{{ end }}</main>
 
     <script>
       document.addEventListener("DOMContentLoaded", function() {
         document.querySelector('#current-year').innerHTML = (new Date()).getFullYear();
-
-        const header = document.querySelector(".header");
-        const menu = document.querySelector(".sidebar ul");
-        const fixedClass = "fixed";
-    
-        function checkHeight() {
-          menu.classList[window.scrollY > header.offsetHeight ? 'add' : 'remove'](fixedClass);
-        }
   
-        window.addEventListener("scroll", checkHeight);
-
-        checkHeight();
-
         const allLinks = document.querySelectorAll('.sidebar a');
   
         const observer = new IntersectionObserver(entries => {

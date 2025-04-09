@@ -1,5 +1,5 @@
-<li><a href="/"><strong>Home</strong></a></li>
-{{- range site.Menus.main }}
-  <li><a href="{{ .URL }}">{{ .Name }}</a></li>
-{{- end }}
+{{ $currentPage := . }}
+{{ range site.Menus.main }}
+  <li class="{{ if $currentPage.IsMenuCurrent "main" . }}active-menu{{ end }}"><a href="{{ .URL }}">{{ .Name }}</a></li>
+{{ end }}
 

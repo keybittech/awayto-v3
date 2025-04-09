@@ -82,7 +82,7 @@ export const theme = createTheme(paletteTheme, {
     MuiTableCell: {
       styleOverrides: {
         root: {
-          padding: '4px 8px !important'
+          padding: '.4rem .8rem !important'
         }
       }
     },
@@ -147,7 +147,7 @@ export const theme = createTheme(paletteTheme, {
       styleOverrides: {
         asterisk: {
           color: 'red',
-          fontSize: '32px',
+          fontSize: '3.2rem',
           float: 'right'
         }
       }
@@ -219,11 +219,11 @@ export const useStyles = (): { [key: string]: SxProps } => {
       display: 'flex'
     },
     siteTitle: {
-      fontSize: '1.5rem',
+      fontSize: '2.4rem',
       textAlign: 'center'
     },
     menuText: {
-      fontSize: '.75rem'
+      fontSize: '1.2rem'
     },
     colorBox: {
       width: '30px',
@@ -265,13 +265,13 @@ export const useStyles = (): { [key: string]: SxProps } => {
     },
     infoHeader: {
       fontWeight: 500,
-      fontSize: '1rem',
+      fontSize: '1.6rem',
       textTransform: 'uppercase',
       color: '#aaa !important'
     },
     infoLabel: {
       fontWeight: 500,
-      fontSize: '1rem'
+      fontSize: '1.6rem'
     },
     infoCard: {
       height: '200px',
@@ -296,7 +296,7 @@ export const useStyles = (): { [key: string]: SxProps } => {
       backgroundColor: 'transparent',
       color: '#fff',
       fontWeight: 700,
-      fontSize: '2rem',
+      fontSize: '3.2rem',
       width: { xs: '80px', sm: '100px', md: '120px' },
       height: '100%',
       alignItems: 'center'
@@ -347,18 +347,18 @@ export const useStyles = (): { [key: string]: SxProps } => {
     },
     variableText: {
       [theme.breakpoints.down('md')]: {
-        fontSize: '24px',
+        fontSize: '2.4rem',
       },
       [theme.breakpoints.up('md')]: {
-        fontSize: '20px',
+        fontSize: '2rem',
       },
     },
     variableButtonIcon: {
       [theme.breakpoints.down('sm')]: {
-        fontSize: '24px',
+        fontSize: '2.4rem',
       },
       [theme.breakpoints.up('md')]: {
-        fontSize: '12px !important',
+        fontSize: '1.2rem !important',
       },
     },
     mdHide: {

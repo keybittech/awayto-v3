@@ -166,7 +166,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
                     {group.displayName && (debouncedName.length && !group.isValid) && !checkState.isUninitialized && !checkState.isFetching ? <Box
                       sx={{
                         color: '#000',
-                        fontSize: '12px',
+                        fontSize: '1.2rem',
                         padding: '0 8px',
                         backgroundColor: 'rgb(255, 150, 150)',
                         border: '2px solid rgb(255, 100, 100)',

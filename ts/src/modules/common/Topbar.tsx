@@ -138,7 +138,9 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
             <Avatar src={Icon} sx={{ width: 24, height: 24 }} />
             <Typography variant="h6">{VITE_REACT_APP_PROJECT_TITLE}</Typography>
           </Grid>
-          <Typography variant="button" color="secondary" fontSize="12px" letterSpacing={2}><strong>Preview</strong></Typography>
+          <Typography variant="button" color="secondary" fontSize="1.2rem" letterSpacing={2}>
+            <strong>Preview</strong>
+          </Typography>
         </ListSubheader>
         <MenuItem
           {...targets(`main menu go home`, `go to the home page`)}

@@ -1,21 +1,17 @@
+<input id="_open_menu" type="checkbox" />
 <header class="header">
-  <div class="logo">
-    <a class="site-name" href="{{ `` | absURL }}">{{ site.Title }}</a>
-    <!-- <a class="btn-dark"></a> -->
-  </div>
-  <div class="open-header-menu">
-    <input id="_open_menu" type="checkbox" />
-    <label for="_open_menu" class="open-menu">Menu</label>
-    <nav>
-      <ul>
-        <li>{{ partial "register.html" }}</li>
-        <li>{{ partial "gotoapp.html" }}</li>
-        {{ partial "site_menu.html" }}
-      </ul>
-    </nav>
-  </div>
+  <a class="header-btn" href="{{ `` | absURL }}">{{ site.Title }}</a>
+  <div class="header-spacer"></div>
   <div class="header-btns">
     {{ partial "register.html" }}
     {{ partial "gotoapp.html" }}
   </div>
+  <label for="_open_menu" class="open-menu header-btn">Menu</label>
 </header>
+<nav>
+  <ul>
+    <li>{{ partial "register.html" }}</li>
+    <li>{{ partial "gotoapp.html" }}</li>
+    {{ partial "site_menu.html" }}
+  </ul>
+</nav>

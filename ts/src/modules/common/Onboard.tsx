@@ -120,7 +120,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
             <Tooltip title="Logout">
               <Button
                 {...targets(`site logout`, `logout of the website`)}
-                sx={{ fontSize: '10px' }}
+                sx={{ fontSize: '1rem' }}
                 onClick={logout}
               >
                 Logout
@@ -233,7 +233,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
             <Alert action={
               !group.id && <Button
                 {...targets(`use group code`, `toggle group code entry to join a group instead of creating one`)}
-                sx={{ fontSize: '10px' }}
+                sx={{ fontSize: '1rem' }}
                 onClick={() => { setAssist('join_group') }}
               >
                 Use Group Code

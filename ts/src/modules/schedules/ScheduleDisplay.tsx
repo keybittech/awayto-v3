@@ -278,7 +278,7 @@ export default function ScheduleDisplay({ isKiosk, schedule, setSchedule }: Sche
                       sx={{
                         p: .5,
                         float: 'right',
-                        fontSize: '8px',
+                        fontSize: '.8rem',
                         display: selectedBracket?.id == b.id ? 'inline' : 'none',
                         bgcolor: '#333'
                       }}
