@@ -180,13 +180,12 @@ input#_open_menu ~ nav li + li a {
   }
 
   .post-content {
-    padding: 0;
+    padding: 1rem 0;
     margin-left: var(--side);
     width: calc(100% - var(--side));
   }
   .post-content > * {
-    margin-left: 10%;
-    margin-right: 30%;
+    margin-right: var(--side);
   }
 }
 
