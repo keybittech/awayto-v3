@@ -65,14 +65,15 @@ const sockHandlerId = "sock"
 var emptySocketResponse = interfaces.SocketResponse{}
 
 var (
-	authSubscriberNotFound = errors.New("auth subscriber not found")
-	noSubscriberForAuth    = errors.New("no subscriber for auth")
-	invalidTicket          = errors.New("invalid ticket")
-	noDeletionConnectionId = errors.New("connection id not found to delete")
-	noSubFoundInSock       = errors.New("no sub found in sock")
-	noTargetsToSend        = errors.New("no targets to send to")
-	noSubscriberToAddTopic = errors.New("no subscriber found to add topic")
-	noSubscriberTargets    = errors.New("no subscriber targets")
+	authSubscriberNotFound    = errors.New("auth subscriber not found")
+	noSubscriberForAuth       = errors.New("no subscriber for auth")
+	invalidTicket             = errors.New("invalid ticket")
+	invalidTicketConnectionId = errors.New("invalid ticket conn id")
+	noDeletionConnectionId    = errors.New("connection id not found to delete")
+	noSubFoundInSock          = errors.New("no sub found in sock")
+	noTargetsToSend           = errors.New("no targets to send to")
+	noSubscriberToAddTopic    = errors.New("no subscriber found to add topic")
+	noSubscriberTargets       = errors.New("no subscriber targets")
 )
 
 func InitSocket() *Socket {
@@ -115,6 +116,7 @@ func InitSocket() *Socket {
 					UserSub:          cmd.Request.UserSub,
 					GroupId:          cmd.Request.GroupId,
 					Roles:            cmd.Request.Roles,
+					ConnectionId:     connectionId,
 					Tickets:          map[string]string{auth: connectionId},
 					SubscribedTopics: make(map[string]string),
 				}
@@ -157,8 +159,16 @@ func InitSocket() *Socket {
 					break
 				}
 
-				delete(socketMaps.authSubscribers, auth)
 				delete(subscriber.Tickets, auth)
+				delete(socketMaps.authSubscribers, auth)
+
+				if subscriber.ConnectionId != connId {
+					cmd.ReplyChan <- interfaces.SocketResponse{
+						Error: invalidTicketConnectionId,
+					}
+					break
+				}
+
 				subscriber.ConnectionIds += connId
 
 				socketMaps.connections[connId] = cmd.Request.Conn
@@ -185,7 +195,9 @@ func InitSocket() *Socket {
 				connIdStartIdx := strings.Index(subscriber.ConnectionIds, cmd.Request.ConnId)
 				connIdEndIdx := connIdStartIdx + CID_LENGTH // uuid length
 				if connIdStartIdx == -1 || len(subscriber.ConnectionIds) < connIdEndIdx {
-					cmd.ReplyChan <- interfaces.SocketResponse{Error: noDeletionConnectionId}
+					cmd.ReplyChan <- interfaces.SocketResponse{
+						Error: noDeletionConnectionId,
+					}
 					break
 				}
 				subscriber.ConnectionIds = subscriber.ConnectionIds[:connIdStartIdx] + subscriber.ConnectionIds[connIdEndIdx:]
@@ -198,11 +210,21 @@ func InitSocket() *Socket {
 			cmd.ReplyChan <- emptySocketResponse
 
 		case SendSocketMessageSocketCommand:
-			println("\n============== Send event ================\n")
+			println("\n\n============== Send event ================")
 			var sentAtLeastOne bool
 			var sendErr error
 			var attemptedTargets string
-			println(cmd.Request.UserSub, "is trying to send to", cmd.Request.Targets, string(cmd.Request.MessageBytes))
+
+			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
+			if !ok {
+				cmd.ReplyChan <- interfaces.SocketResponse{
+					Error: errors.New("bad subscriber during logging send message"),
+				}
+				break
+			}
+
+			println("user sub:", subscriber.UserSub)
+			println("conn id:", subscriber.ConnectionId, "is trying to send to", cmd.Request.Targets, string(cmd.Request.MessageBytes))
 			var connectionIds string
 			for k := range socketMaps.connections {
 				connectionIds += k + " "
@@ -218,7 +240,7 @@ func InitSocket() *Socket {
 						println("did match connection")
 						sendErr = util.WriteSocketConnectionMessage(cmd.Request.MessageBytes, conn)
 						if sendErr != nil {
-							println("did error")
+							println("FAILED WITH WRITE ERROR")
 							continue
 						}
 						println("did send success")
@@ -229,12 +251,13 @@ func InitSocket() *Socket {
 				}
 			}
 			if !sentAtLeastOne && sendErr == nil {
+				println("FAILED WITH SEND ONE ERROR")
 				sendErr = noTargetsToSend
 			}
 			cmd.ReplyChan <- interfaces.SocketResponse{
 				Error: sendErr,
 			}
-			println("\n============== End Send event ================\n")
+			println("============== End Send event ================\n")
 
 		case AddSubscribedTopicSocketCommand:
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]

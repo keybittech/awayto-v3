@@ -50,9 +50,10 @@ message Subscriber {
   string userSub = 1;
   string groupId = 2;
   string roles = 3;
-  string connectionIds = 4;
-  map<string, string> tickets = 5;
-  map<string, string> subscribedTopics = 6;
+  string connectionId = 4;
+  string connectionIds = 5;
+  map<string, string> tickets = 6;
+  map<string, string> subscribedTopics = 7;
 }
 
 message SocketParticipant {
