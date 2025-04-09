@@ -198,6 +198,12 @@ func InitSocket() *Socket {
 			var sentAtLeastOne bool
 			var sendErr error
 			var attemptedTargets string
+			println(cmd.Request.UserSub, "is trying to send to", cmd.Request.Targets, string(cmd.Request.MessageBytes))
+			var connectionIds string
+			for k, _ := range socketMaps.connections {
+				connectionIds += k + " "
+			}
+			println("current connection ids are", connectionIds)
 			for i := 0; i+CID_LENGTH <= len(cmd.Request.Targets); i += CID_LENGTH {
 				connId := cmd.Request.Targets[i : i+CID_LENGTH]
 				if strings.Index(attemptedTargets, connId) == -1 {
