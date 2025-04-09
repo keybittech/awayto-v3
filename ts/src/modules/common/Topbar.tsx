@@ -16,12 +16,11 @@ import ListItemText from '@mui/material/ListItemText';
 import Tooltip from '@mui/material/Tooltip';
 import Button from '@mui/material/Button';
 import IconButton from '@mui/material/IconButton';
-import Chip from '@mui/material/Chip';
 import Avatar from '@mui/material/Avatar';
 
 import ThreePIcon from '@mui/icons-material/ThreeP';
 import LogoutIcon from '@mui/icons-material/Logout';
-import GroupIcon from '@mui/icons-material/Group';
+import HomeIcon from '@mui/icons-material/HomeWork';
 import ApprovalIcon from '@mui/icons-material/Approval';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import DoneIcon from '@mui/icons-material/Done';
@@ -146,7 +145,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           {...targets(`main menu go home`, `go to the home page`)}
           onClick={e => handleNavAndClose(e, '/')}
         >
-          <ListItemIcon><GroupIcon color={location.pathname === '/' ? "secondary" : "primary"} /></ListItemIcon>
+          <ListItemIcon><HomeIcon color={location.pathname === '/' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText>Home</ListItemText>
         </MenuItem>
 

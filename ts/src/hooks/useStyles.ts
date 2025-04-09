@@ -13,6 +13,9 @@ type Theme = { theme: MuiTheme };
 
 const drawerWidth = 175;
 const paletteTheme = createTheme({
+  typography: {
+    htmlFontSize: 10,
+  },
   colorSchemes: {
     light: {
       palette: {

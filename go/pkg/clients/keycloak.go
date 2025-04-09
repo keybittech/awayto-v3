@@ -93,7 +93,6 @@ type Keycloak struct {
 const keycloakHandlerId = "keycloak"
 
 func InitKeycloak() *Keycloak {
-	cmds := make(chan KeycloakCommand)
 
 	kc := &KeycloakClient{
 		Server: os.Getenv("KC_INTERNAL"),
@@ -211,17 +210,22 @@ func InitKeycloak() *Keycloak {
 		return true
 	})
 
+	kcc := &Keycloak{handlerId: keycloakHandlerId}
+
 	ticker := time.NewTicker(30 * time.Second)
 	go func() {
 		for {
 			select {
 			case _ = <-ticker.C:
-				cmds <- KeycloakCommand{Ty: SetKeycloakTokenKeycloakCommand}
+				response, err := kcc.SendCommand(SetKeycloakTokenKeycloakCommand, KeycloakRequest{
+					UserSub: "worker",
+				})
+				if err = ChannelError(err, response.Error); err != nil {
+					util.ErrorLog.Println(util.ErrCheck(response.Error))
+				}
 			}
 		}
 	}()
-
-	kcc := &Keycloak{handlerId: keycloakHandlerId}
 
 	response, err := kcc.SendCommand(SetKeycloakTokenKeycloakCommand, KeycloakRequest{
 		UserSub: "worker",
