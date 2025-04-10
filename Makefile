@@ -264,6 +264,14 @@ landing_dev: build
 .PHONY: go_test
 go_test: go_test_bench go_test_integration_long
 
+.PHONY: go_test_gen
+go_test_gen:
+	gotests -i -w -all $(GO_SRC)
+	gotests -i -w -all $(GO_API_DIR)
+	gotests -i -w -all $(GO_CLIENTS_DIR)
+	gotests -i -w -all $(GO_HANDLERS_DIR)
+	gotests -i -w -all $(GO_UTIL_DIR)
+
 .PHONY: go_test_ui
 go_test_ui: build $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
