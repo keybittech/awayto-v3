@@ -17,7 +17,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func validateToken(token, timezone, anonIp string) (*types.UserSession, error) {
+func ValidateToken(token, timezone, anonIp string) (*types.UserSession, error) {
 	if strings.Contains(token, "Bearer") {
 		token = strings.Split(token, " ")[1]
 	}

@@ -1,21 +1,12 @@
 package main
 
 import (
-	"bufio"
 	"bytes"
 	"context"
-	"crypto/rand"
-	"crypto/tls"
-	"encoding/base64"
 	"encoding/json"
-	"fmt"
 	"io"
-	"log"
-	"net"
-	"net/http"
-	"net/url"
 	"strconv"
-	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -38,42 +29,19 @@ var subscriptions [][]byte
 var unsubscribe []byte
 var socketEvents *SocketEvents
 
-var topic, targets, socketId, exchangeId, userSub, groupId, roles string
-var session *types.UserSession
-
 func setupSockServer() {
-	ticket, connId, err := getSocketTicket()
-	if err != nil {
-		log.Fatal("failed to get socket ticket in setup", err.Error())
-		return
-	}
 
-	subscriberRequest, err := api.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-		UserSub: "worker",
-		Ticket:  ticket,
-	})
+	// userSub = subscriberRequest.UserSub
+	// groupId = subscriberRequest.GroupId
+	// roles = subscriberRequest.Roles
+	//
+	exchangeId := "0195ec07-e989-71ac-a0c4-f6a08d1f93f6"
+	// topic = "exchange/0:" + exchangeId
+	//
+	// targets = connId
+	// socketId = util.GetColonJoined(userSub, connId)
 
-	if err = clients.ChannelError(err, subscriberRequest.Error); err != nil {
-		log.Fatal("failed to get subscriber socket command in setup", err.Error())
-		return
-	}
-
-	userSub = subscriberRequest.UserSub
-	groupId = subscriberRequest.GroupId
-	roles = subscriberRequest.Roles
-
-	session = &types.UserSession{
-		UserSub:                 userSub,
-		GroupId:                 "group-id",
-		AvailableUserGroupRoles: []string{"role1"},
-	}
-
-	exchangeId = "0195ec07-e989-71ac-a0c4-f6a08d1f93f6"
-	topic = "exchange/0:" + exchangeId
-
-	targets = connId
-	socketId = util.GetColonJoined(userSub, connId)
-
+	connId := "test-id"
 	subscriptions = [][]byte{
 		[]byte("00001800001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId),
 		[]byte("00001800001f00001f0000000047exchange/1:" + exchangeId + "00036" + connId),
@@ -101,169 +69,107 @@ func setupSockServer() {
 		pongMessage,
 	}
 
-	time.Sleep(time.Second)
 	println("did setup sock")
-}
-
-func getSocketTicket() (string, string, error) {
-	// Get authentication token first
-	token, err := getKeycloakToken(0)
-	if err != nil {
-		return "", "", fmt.Errorf("error getting auth token: %v", err)
-	}
-
-	req, err := http.NewRequest("GET", "https://localhost:7443/api/v1/sock/ticket", nil)
-	if err != nil {
-		return "", "", err
-	}
-
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", "", err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		return "", "", err
-	}
-
-	// Debug the response if it's not JSON
-	if len(body) > 0 && body[0] != '{' {
-		return "", "", fmt.Errorf("unexpected ticket response: %s", string(body))
-	}
-
-	var result map[string]interface{}
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", "", fmt.Errorf("ticket JSON parse error: %v, body: %s", err, string(body))
-	}
-
-	ticket, ok := result["ticket"].(string)
-	if !ok {
-		return "", "", fmt.Errorf("ticket not found in response")
-	}
-
-	ticketParts := strings.Split(ticket, ":")
-	_, connId := ticketParts[0], ticketParts[1]
-
-	return ticket, connId, nil
 }
 
 // Socket Events
 
 func BenchmarkSocketSubscribe(b *testing.B) {
-	_, connId, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
-
+	params, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
+	exchangeId := "socket-subscribe-topic"
+	subscribe := []byte("00001800001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId)
+	unsubscribe := []byte("00001900001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(subscriptions[0], connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(subscribe, connId, socketId, params.UserSub, params.GroupId, params.Roles)
 		b.StopTimer()
-		api.SocketRequest(unsubscribe, connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(unsubscribe, connId, socketId, params.UserSub, params.GroupId, params.Roles)
 		b.StartTimer()
 	}
 }
 
 func BenchmarkSocketUnsubscribe(b *testing.B) {
-	_, connId, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
-
+	params, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(unsubscribe, connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(unsubscribe, connId, socketId, params.UserSub, params.GroupId, params.Roles)
 		b.StopTimer()
-		api.SocketRequest(subscriptions[0], connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(subscriptions[0], connId, socketId, params.UserSub, params.GroupId, params.Roles)
 		b.StartTimer()
 	}
 }
 
 func BenchmarkSocketLoadSubscribers(b *testing.B) {
-	_, connId, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
+	params, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(socketEvents.loadSubscribersEvent, connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(socketEvents.loadSubscribersEvent, connId, socketId, params.UserSub, params.GroupId, params.Roles)
 	}
 }
 
 func BenchmarkSocketLoadMessages(b *testing.B) {
-	_, connId, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
+	params, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(socketEvents.loadMessagesEvent, connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(socketEvents.loadMessagesEvent, connId, socketId, params.UserSub, params.GroupId, params.Roles)
 	}
 }
 
 func BenchmarkSocketDefault(b *testing.B) {
-	_, connId, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
+	params, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(socketEvents.changeSettingEvent, connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(socketEvents.changeSettingEvent, connId, socketId, params.UserSub, params.GroupId, params.Roles)
 	}
 }
 
 func BenchmarkSocketDefaultStore(b *testing.B) {
-	_, connId, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
+	params, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketRequest(socketEvents.moveBoxEvent, connId, socketId, userSub, groupId, roles)
+		mainApi.SocketRequest(socketEvents.moveBoxEvent, connId, socketId, params.UserSub, params.GroupId, params.Roles)
 	}
 }
 
 func BenchmarkSocketMessageReceiverBasicMessage(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketMessageReceiver(userSub, socketEvents.loadSubscribersEvent)
+		mainApi.SocketMessageReceiver(session.UserSub, socketEvents.loadSubscribersEvent)
 	}
 }
 
 func BenchmarkSocketMessageReceiverComplexMessage(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.SocketMessageReceiver(userSub, socketEvents.moveBoxEvent)
+		mainApi.SocketMessageReceiver(session.UserSub, socketEvents.moveBoxEvent)
 	}
 }
 
 // Socket Handling
 
 func BenchmarkSocketRoleCall(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.RoleCall(userSub)
+		mainApi.Handlers.Socket.RoleCall(session.UserSub)
 	}
 }
 
 func BenchmarkSocketSendMessage(b *testing.B) {
-	_, connId, err := getSocketTicket()
-	if err != nil {
-		b.Fatal(err)
-	}
+	_, session, _, connId := getUserSocketSession(0)
 	mergedParticipants := make(map[string]*types.SocketParticipant, 1)
 	participant := &types.SocketParticipant{
 		Name:   "name",
 		Scid:   "scid",
-		Cids:   []string{targets},
+		Cids:   []string{connId},
 		Role:   "role",
 		Color:  "color",
 		Exists: true,
@@ -279,86 +185,172 @@ func BenchmarkSocketSendMessage(b *testing.B) {
 
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendMessage(userSub, targets, &types.SocketMessage{
+		mainApi.Handlers.Socket.SendMessage(session.UserSub, connId, &types.SocketMessage{
 			Action:  6,
 			Sender:  connId,
-			Topic:   topic,
+			Topic:   "test-topic",
 			Payload: string(mergedParticipantsBytes),
 		})
 	}
 }
 func BenchmarkSocketGetSocketTicket(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		b.StopTimer()
 		session.UserSub = session.UserSub + strconv.Itoa(c)
 		b.StartTimer()
 
-		api.Handlers.Socket.GetSocketTicket(session)
+		mainApi.Handlers.Socket.GetSocketTicket(session)
 	}
 }
 
 func BenchmarkSocketInitConnection(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
 	mockConn := &interfaces.NullConn{}
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		b.StopTimer()
-		ticket, _ := api.Handlers.Socket.GetSocketTicket(session)
+		ticket, _ := mainApi.Handlers.Socket.GetSocketTicket(session)
 		b.StartTimer()
-		api.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+		mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+			UserSub: session.UserSub,
 			Ticket:  ticket,
 		}, mockConn)
 	}
 }
 
-func BenchmarkSocketSendMessageBytes(b *testing.B) {
+// This
+func doSendMessageBytesBench(clientCount, messagesPerClient int, b *testing.B) {
+	time.Sleep(5 * time.Second)
+	subscribers, connections := getSubscribers(clientCount)
+	if subscribers == nil || len(subscribers) == 0 {
+		b.Fatal("couldn't get subscribers for send message bytes")
+	}
+
+	testExchangeId := "test-multi-user-send-message-exchange-id"
+	var targets string
+	messages := make(map[int][]byte, clientCount)
+	for sid, subscriber := range subscribers {
+		targets += subscriber.ConnectionId
+		messages[sid] = []byte("00001600001f00001f0000000047exchange/2:" + testExchangeId + "00036" + subscriber.ConnectionId + `00032{"settings":{"highlight":false}}`)
+		subscriptionMessage := []byte("00001800001f00001f0000000047exchange/0:" + testExchangeId + "00036" + subscriber.ConnectionId)
+		err := util.WriteSocketConnectionMessage(subscriptionMessage, connections[subscriber.UserSub])
+		if err != nil {
+			b.Fatal("could not subscribe ", err)
+			continue
+		}
+	}
+
 	reset(b)
-	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendMessageBytes(userSub, targets, socketEvents.changeSettingEvent)
+	for i := 0; i < b.N/(clientCount*messagesPerClient); i++ {
+		var wg sync.WaitGroup
+
+		for c := 0; c < clientCount; c++ {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				subscriber := subscribers[c]
+				connection := connections[subscriber.UserSub]
+				message := messages[c]
+
+				for j := 0; j < messagesPerClient; j++ {
+					util.WriteSocketConnectionMessage(message, connection)
+				}
+			}()
+		}
+
+		wg.Wait()
 	}
 }
 
+//
+// errChan := make(chan error, 1)
+//
+// for {
+// 	if time.Now().After(endTime) {
+// 		break
+// 	}
+//
+// 	message, err := util.ReadSocketConnectionMessage(sockConn)
+// 	if err != nil {
+// 		errChan <- err
+// 		continue
+// 	}
+//
+// 	sockConn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+// 	tt.Log("Recieved Ping <-")
+//
+// 	if bytes.Equal(message, socketEvents.pingMessage) && time.Now().Before(endTime) {
+// 		tt.Log("Sent Pong ->")
+
+// 	}
+// }
+
+func BenchmarkSocketSendMessageBytes1Client1Message(b *testing.B) {
+	doSendMessageBytesBench(1, 1, b)
+}
+
+func BenchmarkSocketSendMessageBytes1Client10Messages(b *testing.B) {
+	doSendMessageBytesBench(1, 10, b)
+}
+
+func BenchmarkSocketSendMessageBytes10Clients1Message(b *testing.B) {
+	doSendMessageBytesBench(10, 1, b)
+}
+
+func BenchmarkSocketSendMessageBytes10Clients10Messages(b *testing.B) {
+	doSendMessageBytesBench(10, 10, b)
+}
+
 func BenchmarkSocketAddSubscribedTopic(b *testing.B) {
+	_, session, _, connId := getUserSocketSession(0)
+	topic := "test-topic"
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+		mainApi.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: session.UserSub,
 			Topic:   topic,
-			Targets: targets,
+			Targets: connId,
 		})
 	}
 }
 
 func BenchmarkSocketHasTopicSubscription(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
+	topic := "test-topic"
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+		mainApi.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: session.UserSub,
 			Topic:   topic,
 		})
 	}
 }
 
 func BenchmarkSocketDeleteSubscribedTopic(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
+	topic := "test-topic"
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+		mainApi.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: session.UserSub,
 			Topic:   topic,
 		})
 	}
 }
 
 func BenchmarkSocketAddAndDeleteSubscribedTopic(b *testing.B) {
+	_, session, _, _ := getUserSocketSession(0)
+	topic := "test-topic"
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+		mainApi.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: session.UserSub,
 			Topic:   topic,
 		})
-		api.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+		mainApi.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
+			UserSub: session.UserSub,
 			Topic:   topic,
 		})
 	}
@@ -366,109 +358,86 @@ func BenchmarkSocketAddAndDeleteSubscribedTopic(b *testing.B) {
 
 // Socket Redis Functions
 func BenchmarkSocketInitRedisSocketConnection(b *testing.B) {
+	_, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.InitRedisSocketConnection(socketId)
+		mainApi.Handlers.Redis.InitRedisSocketConnection(socketId)
 	}
 }
 
 func BenchmarkSocketTrackTopicParticipant(b *testing.B) {
+	_, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
+	topic := "test-topic"
 	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.TrackTopicParticipant(ctx, topic, socketId)
+		mainApi.Handlers.Redis.TrackTopicParticipant(ctx, topic, socketId)
 	}
 }
 
 func BenchmarkSocketGetCachedParticipants(b *testing.B) {
+	topic := "test-topic"
 	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.GetCachedParticipants(ctx, topic, false)
+		mainApi.Handlers.Redis.GetCachedParticipants(ctx, topic, false)
 	}
 }
 
 func BenchmarkSocketGetCachedParticipantsTargetsOnly(b *testing.B) {
+	topic := "test-topic"
 	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.GetCachedParticipants(ctx, topic, true)
+		mainApi.Handlers.Redis.GetCachedParticipants(ctx, topic, true)
 	}
 }
 
 func BenchmarkSocketRemoveTopicFromConnection(b *testing.B) {
+	_, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
+	topic := "test-topic"
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.RemoveTopicFromConnection(socketId, topic)
+		mainApi.Handlers.Redis.RemoveTopicFromConnection(socketId, topic)
 	}
 }
 
 func BenchmarkSocketHandleUnsub(b *testing.B) {
+	_, session, _, connId := getUserSocketSession(0)
+	socketId := util.GetColonJoined(session.UserSub, connId)
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Redis.HandleUnsub(socketId)
+		mainApi.Handlers.Redis.HandleUnsub(socketId)
 	}
-}
-
-func getMockClientSocket(t *testing.T) net.Conn {
-	ticket, _, err := getSocketTicket()
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	u, err := url.Parse("wss://localhost:7443/sock?ticket=" + ticket)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	sockConn, err := tls.Dial("tcp", u.Host, &tls.Config{InsecureSkipVerify: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Generate WebSocket key
-	keyBytes := make([]byte, 16)
-	rand.Read(keyBytes)
-	secWebSocketKey := base64.StdEncoding.EncodeToString(keyBytes)
-
-	// Send HTTP Upgrade request
-	fmt.Fprintf(sockConn, "GET %s HTTP/1.1\r\n", u.RequestURI())
-	fmt.Fprintf(sockConn, "Host: %s\r\n", u.Host)
-	fmt.Fprintf(sockConn, "Upgrade: websocket\r\n")
-	fmt.Fprintf(sockConn, "Connection: Upgrade\r\n")
-	fmt.Fprintf(sockConn, "Sec-WebSocket-Key: %s\r\n", secWebSocketKey)
-	fmt.Fprintf(sockConn, "Sec-WebSocket-Version: 13\r\n")
-	fmt.Fprintf(sockConn, "\r\n")
-
-	reader := bufio.NewReader(sockConn)
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			t.Fatal(err)
-		}
-		if line == "\r\n" {
-			break
-		}
-	}
-
-	return sockConn
 }
 
 func TestHandleSocketConnection(t *testing.T) {
 	if testing.Short() {
 		t.Skip("skipping socket ping/pong test")
 	}
-	time.Sleep(2 * time.Second)
-	mockConn := getMockClientSocket(t)
-	defer mockConn.Close()
+	time.Sleep(10 * time.Second)
 
-	t.Log("starting 1 minute ping/pong test")
+	_, ticket, _, err := getSocketTicket(int(time.Now().UnixNano()))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sockConn := getClientSocketConnection(ticket)
+	if sockConn != nil {
+		t.Fatal("failed to get mock connection in handle sock connection")
+	}
+	defer sockConn.Close()
+
+	t.Log("starting 3 minute ping/pong test")
 
 	t.Run("periodically pings clients", func(tt *testing.T) {
 		startTime := time.Now()
 		endTime := startTime.Add(time.Minute)
 
-		mockConn.SetReadDeadline(time.Now().Add(70 * time.Second))
+		sockConn.SetReadDeadline(time.Now().Add(70 * time.Second))
 
 		errChan := make(chan error, 1)
 
@@ -477,18 +446,18 @@ func TestHandleSocketConnection(t *testing.T) {
 				break
 			}
 
-			message, err := util.ReadSocketConnectionMessage(mockConn)
+			message, err := util.ReadSocketConnectionMessage(sockConn)
 			if err != nil {
 				errChan <- err
 				continue
 			}
 
-			mockConn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+			sockConn.SetWriteDeadline(time.Now().Add(5 * time.Second))
 			tt.Log("Recieved Ping <-")
 
 			if bytes.Equal(message, socketEvents.pingMessage) && time.Now().Before(endTime) {
 				tt.Log("Sent Pong ->")
-				err = util.WriteSocketConnectionMessage(socketEvents.pongMessage, mockConn)
+				err = util.WriteSocketConnectionMessage(socketEvents.pongMessage, sockConn)
 				if err != nil {
 					t.Fatal(err)
 					continue
@@ -498,14 +467,14 @@ func TestHandleSocketConnection(t *testing.T) {
 	})
 
 	t.Run("closes the socket after a period of inactivity", func(tt *testing.T) {
-		mockConn.SetReadDeadline(time.Now().Add(1 * time.Minute))
+		sockConn.SetReadDeadline(time.Now().Add(2 * time.Minute))
 
 		timeoutStart := time.Now()
 		var timeoutErr error
 
 		buffer := make([]byte, 1024)
 		for {
-			_, err := mockConn.Read(buffer)
+			_, err := sockConn.Read(buffer)
 			if err != nil {
 				timeoutErr = err
 				break
@@ -515,7 +484,7 @@ func TestHandleSocketConnection(t *testing.T) {
 		timeoutDuration := time.Since(timeoutStart)
 
 		if timeoutErr == io.EOF {
-			if timeoutDuration >= 30*time.Second && timeoutDuration <= 60*time.Second {
+			if timeoutDuration >= 80*time.Second && timeoutDuration <= 100*time.Second {
 				tt.Log("socket closed after a period of inactivity")
 			} else {
 				tt.Fatal("socket closed not within 30-60 seconds of EOF")

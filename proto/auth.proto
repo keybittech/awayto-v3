@@ -1,7 +1,33 @@
 syntax = "proto3";
 package types;
 
+import "session.proto";
+
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+message AuthRequestParams {
+  string method = 1;
+  string resource = 2;
+  string userSub = 3;
+  string userId = 4;
+  string groupId = 5;
+  string groupName = 6;
+  string firstName = 7;
+  string lastName = 8;
+  string token = 9;
+  repeated KeycloakRole roles = 10;
+}
+
+message AuthResponseParams {
+  KeycloakUser user = 1;
+  UserSession userSession = 2;
+  repeated KeycloakUser users = 3;
+  KeycloakGroup group = 4;
+  repeated KeycloakGroup groups = 5;
+  repeated KeycloakRole roles = 6;
+  repeated ClientRoleMappingRole mappings = 7;
+  bool valid = 8;
+}
 
 message AuthEventDetails {
   string authMethod = 1;

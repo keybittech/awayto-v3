@@ -1,0 +1,9 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+message WorkerCommandParams {
+  int32 ty = 1;
+  string clientId = 2;
+}

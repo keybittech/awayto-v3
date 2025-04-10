@@ -246,7 +246,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 			}
 
 			if len(deletions) > 0 {
-				response, err := h.Keycloak.SendCommand(clients.DeleteRolesFromGroupKeycloakCommand, clients.KeycloakRequest{
+				response, err := h.Keycloak.SendCommand(clients.DeleteRolesFromGroupKeycloakCommand, &types.AuthRequestParams{
 					GroupId: sgRoleActions.Id,
 					Roles:   deletions,
 				})

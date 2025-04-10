@@ -15,9 +15,17 @@ import (
 	"github.com/redis/go-redis/v9"
 )
 
+var defaultTrackDuration, _ = time.ParseDuration("86400s")
+
+const socketServerConnectionsKey = "socket_server_connections"
+
 type Redis struct {
 	interfaces.IRedis
 	RedisClient interfaces.IRedisClient
+}
+
+func (r *Redis) Client() interfaces.IRedisClient {
+	return r.RedisClient
 }
 
 func InitRedis() *Redis {
@@ -34,6 +42,10 @@ func InitRedis() *Redis {
 		Protocol: 3,
 	})
 
+	r := &Redis{
+		RedisClient: &RedisWrapper{redisClient},
+	}
+
 	connLen := 0
 
 	ticker := time.NewTicker(5 * time.Minute)
@@ -43,7 +55,7 @@ func InitRedis() *Redis {
 			case <-ticker.C:
 				ctx := context.Background()
 				defer ctx.Done()
-				socketConnections, err := redisClient.SMembers(ctx, "socket_server_connections").Result()
+				socketConnections, err := r.RedisClient.SMembers(ctx, "socket_server_connections").Result()
 				sockLen := len(socketConnections)
 				if err != nil {
 					println("reading socket connection err", err.Error())
@@ -56,16 +68,11 @@ func InitRedis() *Redis {
 		}
 	}()
 
-	r := &Redis{
-		RedisClient: redisClient,
-	}
 	r.InitKeys()
 
 	println("Redis Init")
 	return r
 }
-
-var socketServerConnectionsKey = "socket_server_connections"
 
 func ParticipantTopicsKey(topic string) (string, error) {
 	if topic == "" {
@@ -79,10 +86,6 @@ func SocketIdTopicsKey(socketId string) (string, error) {
 		return "", util.ErrCheck(errors.New("malformed topic"))
 	}
 	return "socket_id:" + socketId + ":topics", nil
-}
-
-func (r *Redis) Client() interfaces.IRedisClient {
-	return r.RedisClient
 }
 
 func (r *Redis) InitKeys() {
@@ -227,8 +230,6 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targets
 
 	return sps, participantTargets.String(), nil
 }
-
-var defaultTrackDuration, _ = time.ParseDuration("86400s")
 
 func (r *Redis) TrackTopicParticipant(ctx context.Context, topic, socketId string) error {
 	participantTopicsKey, err := ParticipantTopicsKey(topic)

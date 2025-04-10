@@ -9,9 +9,9 @@ import (
 	"time"
 
 	"github.com/joho/godotenv"
-	a "github.com/keybittech/awayto-v3/go/pkg/api"
-	c "github.com/keybittech/awayto-v3/go/pkg/clients"
-	h "github.com/keybittech/awayto-v3/go/pkg/handlers"
+	"github.com/keybittech/awayto-v3/go/pkg/api"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 )
 
 var (
@@ -30,7 +30,7 @@ var (
 	unixPathFlag         = flag.String("unixPath", unixPath, "Unix socket path")
 )
 
-var api *a.API
+var mainApi *api.API
 
 func init() {
 	httpPort = *httpPortFlag
@@ -70,42 +70,42 @@ func init() {
 func main() {
 	// flag.Parse()
 
-	api = &a.API{
+	mainApi = &api.API{
 		Server: &http.Server{
 			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
 			ReadTimeout:  time.Minute,
 			WriteTimeout: time.Minute,
 			IdleTimeout:  time.Minute,
 		},
-		Handlers: &h.Handlers{
-			Ai:       c.InitAi(),
-			Database: c.InitDatabase(),
-			Redis:    c.InitRedis(),
-			Keycloak: c.InitKeycloak(),
-			Socket:   c.InitSocket(),
+		Handlers: &handlers.Handlers{
+			Ai:       clients.InitAi(),
+			Database: clients.InitDatabase(),
+			Redis:    clients.InitRedis(),
+			Keycloak: clients.InitKeycloak(),
+			Socket:   clients.InitSocket(),
 		},
 	}
 
-	go api.InitUnixServer(unixPath)
+	go mainApi.InitUnixServer(unixPath)
 
-	mux := api.InitMux()
+	mux := mainApi.InitMux()
 
-	api.InitAuthProxy(mux)
+	mainApi.InitAuthProxy(mux)
 
-	api.InitSockServer(mux)
+	mainApi.InitSockServer(mux)
 
-	api.InitStatic(mux)
+	mainApi.InitStatic(mux)
 
-	go api.RedirectHTTP(httpPort)
+	go mainApi.RedirectHTTP(httpPort)
 
-	defer api.Server.Close()
+	defer mainApi.Server.Close()
 
 	go func() {
 		for {
 			time.Sleep(time.Minute)
 
-			a.RateLimiters.Range(func(_, value interface{}) bool {
-				limiter := value.(*a.RateLimiter)
+			api.RateLimiters.Range(func(_, value interface{}) bool {
+				limiter := value.(*api.RateLimiter)
 
 				limiter.Mu.Lock()
 				i := 0
@@ -127,7 +127,7 @@ func main() {
 
 	println("listening on ", httpsPort, "Cert Locations:", certLoc, keyLoc)
 
-	err := api.Server.ListenAndServeTLS(certLoc, keyLoc)
+	err := mainApi.Server.ListenAndServeTLS(certLoc, keyLoc)
 	if err != nil {
 		fmt.Printf("LISTEN AND SERVE ERROR: %s", err.Error())
 		return

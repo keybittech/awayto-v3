@@ -96,11 +96,6 @@ message SocketResponseParams {
   string roles = 6;
 }
 
-message SocketCommandParams {
-  int32 ty = 1;
-  string clientId = 2;
-}
-
 message GetSocketTicketRequest {}
 
 message GetSocketTicketResponse {

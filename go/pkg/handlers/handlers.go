@@ -1,13 +1,13 @@
 package handlers
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 )
 
 type Handlers struct {
-	Ai       *clients.Ai
-	Database *clients.Database
-	Redis    *clients.Redis
-	Keycloak *clients.Keycloak
-	Socket   *clients.Socket
+	Ai       interfaces.IAi
+	Database interfaces.IDatabase
+	Redis    interfaces.IRedis
+	Keycloak interfaces.IKeycloak
+	Socket   interfaces.ISocket
 }

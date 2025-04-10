@@ -101,33 +101,6 @@ func TestDatabase_BuildInserts(t *testing.T) {
 	}
 }
 
-func TestDBWrapper_Conn(t *testing.T) {
-	type args struct {
-		ctx context.Context
-	}
-	tests := []struct {
-		name    string
-		db      *DBWrapper
-		args    args
-		want    *sql.Conn
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// got, err := tt.db.Conn(tt.args.ctx)
-			// if (err != nil) != tt.wantErr {
-			// 	t.Errorf("DBWrapper.Conn(%v) error = %v, wantErr %v", tt.args.ctx, err, tt.wantErr)
-			// 	return
-			// }
-			// if !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("DBWrapper.Conn(%v) = %v, want %v", tt.args.ctx, got, tt.want)
-			// }
-		})
-	}
-}
-
 func TestDBWrapper_Begin(t *testing.T) {
 	tests := []struct {
 		name    string
@@ -837,6 +810,89 @@ func Test_extractValue(t *testing.T) {
 			if err := extractValue(tt.args.dst, tt.args.src); (err != nil) != tt.wantErr {
 				t.Errorf("extractValue(%v, %v) error = %v, wantErr %v", tt.args.dst, tt.args.src, err, tt.wantErr)
 			}
+		})
+	}
+}
+
+func TestDBWrapper_PrepareContext(t *testing.T) {
+	type args struct {
+		ctx   context.Context
+		query string
+	}
+	tests := []struct {
+		name    string
+		db      *DBWrapper
+		args    args
+		want    *sql.Stmt
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// got, err := tt.db.PrepareContext(tt.args.ctx, tt.args.query)
+			// if (err != nil) != tt.wantErr {
+			// 	t.Errorf("DBWrapper.PrepareContext(%v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.query, err, tt.wantErr)
+			// 	return
+			// }
+			// if !reflect.DeepEqual(got, tt.want) {
+			// 	t.Errorf("DBWrapper.PrepareContext(%v, %v) = %v, want %v", tt.args.ctx, tt.args.query, got, tt.want)
+			// }
+		})
+	}
+}
+
+func TestTxWrapper_Prepare(t *testing.T) {
+	type args struct {
+		stmt string
+	}
+	tests := []struct {
+		name    string
+		tx      *TxWrapper
+		args    args
+		want    *sql.Stmt
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// got, err := tt.tx.Prepare(tt.args.stmt)
+			// if (err != nil) != tt.wantErr {
+			// 	t.Errorf("TxWrapper.Prepare(%v) error = %v, wantErr %v", tt.args.stmt, err, tt.wantErr)
+			// 	return
+			// }
+			// if !reflect.DeepEqual(got, tt.want) {
+			// 	t.Errorf("TxWrapper.Prepare(%v) = %v, want %v", tt.args.stmt, got, tt.want)
+			// }
+		})
+	}
+}
+
+func TestTxWrapper_PrepareContext(t *testing.T) {
+	type args struct {
+		ctx   context.Context
+		query string
+	}
+	tests := []struct {
+		name    string
+		tx      *TxWrapper
+		args    args
+		want    *sql.Stmt
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// got, err := tt.tx.PrepareContext(tt.args.ctx, tt.args.query)
+			// if (err != nil) != tt.wantErr {
+			// 	t.Errorf("TxWrapper.PrepareContext(%v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.query, err, tt.wantErr)
+			// 	return
+			// }
+			// if !reflect.DeepEqual(got, tt.want) {
+			// 	t.Errorf("TxWrapper.PrepareContext(%v, %v) = %v, want %v", tt.args.ctx, tt.args.query, got, tt.want)
+			// }
 		})
 	}
 }

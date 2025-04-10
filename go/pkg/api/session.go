@@ -58,7 +58,7 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 		}
 
 		// validate provided token to return a user struct
-		session, err := validateToken(token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+		session, err := ValidateToken(token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 		if err != nil {
 			deferredErr = util.ErrCheck(err)
 			return

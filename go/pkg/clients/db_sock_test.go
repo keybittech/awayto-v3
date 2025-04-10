@@ -173,3 +173,48 @@ func TestDatabase_GetTopicMessages(t *testing.T) {
 		})
 	}
 }
+
+func TestDatabase_InitDbSocketConnection(t *testing.T) {
+	type args struct {
+		connId  string
+		userSub string
+		groupId string
+		roles   string
+	}
+	tests := []struct {
+		name    string
+		db      *Database
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.db.InitDbSocketConnection(tt.args.connId, tt.args.userSub, tt.args.groupId, tt.args.roles); (err != nil) != tt.wantErr {
+				t.Errorf("Database.InitDbSocketConnection(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.connId, tt.args.userSub, tt.args.groupId, tt.args.roles, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDatabase_RemoveDbSocketConnection(t *testing.T) {
+	type args struct {
+		connId string
+	}
+	tests := []struct {
+		name    string
+		db      *Database
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := tt.db.RemoveDbSocketConnection(tt.args.connId); (err != nil) != tt.wantErr {
+				t.Errorf("Database.RemoveDbSocketConnection(%v) error = %v, wantErr %v", tt.args.connId, err, tt.wantErr)
+			}
+		})
+	}
+}

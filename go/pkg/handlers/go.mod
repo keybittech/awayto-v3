@@ -20,7 +20,7 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/redis/go-redis/v9 v9.7.1 // indirect
 	github.com/sashabaranov/go-openai v1.38.0 // indirect
-	golang.org/x/text v0.22.0 // indirect
+	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 )

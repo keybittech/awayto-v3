@@ -10,8 +10,6 @@ import (
 
 	gomock "github.com/golang/mock/gomock"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
-
-	redis "github.com/redis/go-redis/v9"
 )
 
 type IAi interface {
@@ -22,8 +20,8 @@ type IDatabase interface {
 	Client() IDatabaseClient
 	AdminSub() string
 	AdminRoleId() string
-	InitDbSocketConnection(tx IDatabaseTx, userSub string, connId string) error
-	RemoveDbSocketConnection(tx IDatabaseTx, userSub string, connId string) error
+	InitDbSocketConnection(connId, userSub, groupId, roles string) error
+	RemoveDbSocketConnection(connId string) error
 	GetSocketAllowances(tx IDatabaseTx, userSub, description, handle string) (bool, error)
 	GetTopicMessageParticipants(tx IDatabaseTx, topic string, participants map[string]*types.SocketParticipant) error
 	GetSocketParticipantDetails(tx IDatabaseTx, participants map[string]*types.SocketParticipant) error
@@ -35,7 +33,6 @@ type IDatabase interface {
 }
 
 type IDatabaseClient interface {
-	Conn(ctx context.Context) (*sql.Conn, error)
 	PrepareContext(ctx context.Context, query string) (*sql.Stmt, error)
 	ExecContext(ctx context.Context, query string, args ...interface{}) (sql.Result, error)
 	Exec(query string, args ...any) (sql.Result, error)
@@ -87,20 +84,72 @@ type IRedis interface {
 	DeleteSession(ctx context.Context, userSub string) error
 }
 
+type IRedisStatusCmd interface {
+	Err() error
+}
+
+type IRedisBoolCmd interface {
+	Result() (bool, error)
+	Err() error
+}
+
+type IRedisStringCmd interface {
+	Bytes() ([]byte, error)
+	Int64() (int64, error)
+	Err() error
+}
+
+type IRedisIntCmd interface {
+	Result() (int64, error)
+	Err() error
+}
+
+type IRedisStringSliceCmd interface {
+	Result() ([]string, error)
+	Err() error
+}
+
+// type IRedisScanCmd interface {
+// }
+
 type IRedisClient interface {
-	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
-	SetEx(ctx context.Context, key string, value interface{}, expiration time.Duration) *redis.StatusCmd
-	Expire(ctx context.Context, key string, expiration time.Duration) *redis.BoolCmd
-	Get(ctx context.Context, key string) *redis.StringCmd
-	Del(ctx context.Context, keys ...string) *redis.IntCmd
-	SAdd(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
-	SMembers(ctx context.Context, key string) *redis.StringSliceCmd
-	SIsMember(ctx context.Context, key string, member interface{}) *redis.BoolCmd
-	SRem(ctx context.Context, key string, members ...interface{}) *redis.IntCmd
-	Scan(ctx context.Context, cursor uint64, match string, count int64) *redis.ScanCmd
+	Set(ctx context.Context, key string, value interface{}, expiration time.Duration) IRedisStatusCmd
+	SetEx(ctx context.Context, key string, value interface{}, expiration time.Duration) IRedisStatusCmd
+	Expire(ctx context.Context, key string, expiration time.Duration) IRedisBoolCmd
+	SIsMember(ctx context.Context, key string, member interface{}) IRedisBoolCmd
+	Get(ctx context.Context, key string) IRedisStringCmd
+	Del(ctx context.Context, keys ...string) IRedisIntCmd
+	SAdd(ctx context.Context, key string, members ...interface{}) IRedisIntCmd
+	SRem(ctx context.Context, key string, members ...interface{}) IRedisIntCmd
+	SMembers(ctx context.Context, key string) IRedisStringSliceCmd
+	// Scan(ctx context.Context, cursor uint64, match string, count int64) IRedisScanCmd
+}
+
+type AuthRequest struct {
+	*types.AuthRequestParams
+}
+
+type AuthResponse struct {
+	*types.AuthResponseParams
+	Error error
+}
+
+type AuthCommand struct {
+	*types.WorkerCommandParams
+	Request   AuthRequest
+	ReplyChan chan AuthResponse
+}
+
+func (cmd AuthCommand) GetClientId() string {
+	return cmd.ClientId
+}
+
+func (cmd AuthCommand) GetReplyChannel() interface{} {
+	return cmd.ReplyChan
 }
 
 type IKeycloak interface {
+	SendCommand(commandType int32, request *types.AuthRequestParams) (AuthResponse, error)
 	UpdateUser(userSub, id, firstName, lastName string) error
 	GetGroupAdminRoles(userSub string) ([]*types.KeycloakRole, error)
 	GetGroupSiteRoles(userSub, groupId string) ([]*types.ClientRoleMappingRole, error)
@@ -128,7 +177,7 @@ type SocketResponse struct {
 }
 
 type SocketCommand struct {
-	*types.SocketCommandParams
+	*types.WorkerCommandParams
 	Request   SocketRequest
 	ReplyChan chan SocketResponse
 }
@@ -142,7 +191,7 @@ func (cmd SocketCommand) GetReplyChannel() interface{} {
 }
 
 type ISocket interface {
-	SendCommand(commandType int32, request SocketRequest) (SocketResponse, error)
+	SendCommand(cmdType int32, request *types.SocketRequestParams, conn ...net.Conn) (SocketResponse, error)
 	GetSocketTicket(session *types.UserSession) (string, error)
 	SendMessageBytes(userSub, targets string, messageBytes []byte) error
 	SendMessage(userSub, targets string, message *types.SocketMessage) error

@@ -18,7 +18,7 @@ var selectAdminRoleIdSQL = `SELECT id FROM dbtable_schema.roles WHERE name = 'Ad
 func BenchmarkDbDefaultExec(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		api.Handlers.Database.Client().Exec(selectAdminRoleIdSQL)
+		mainApi.Handlers.Database.Client().Exec(selectAdminRoleIdSQL)
 	}
 }
 
@@ -26,7 +26,7 @@ func BenchmarkDbDefaultQuery(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		var adminRoleId string
-		api.Handlers.Database.Client().QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+		mainApi.Handlers.Database.Client().QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
 	}
 }
 
@@ -34,7 +34,7 @@ func BenchmarkDbDefaultTx(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		var adminRoleId string
-		tx, _ := api.Handlers.Database.Client().Begin()
+		tx, _ := mainApi.Handlers.Database.Client().Begin()
 		defer tx.Rollback()
 		tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
 		tx.Commit()
@@ -45,7 +45,7 @@ func BenchmarkDbTxExec(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		var adminRoleId string
-		api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		mainApi.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 			var txErr error
 			txErr = tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
 			if txErr != nil {
@@ -59,10 +59,11 @@ func BenchmarkDbTxExec(b *testing.B) {
 
 func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 	participants := make(map[string]*types.SocketParticipant)
-	err := api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+	topic := "test-topic"
+	err := mainApi.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 		reset(b)
 		for c := 0; c < b.N; c++ {
-			api.Handlers.Database.GetTopicMessageParticipants(tx, topic, participants)
+			mainApi.Handlers.Database.GetTopicMessageParticipants(tx, topic, participants)
 		}
 		return nil
 	}, "", "", "")
@@ -72,11 +73,12 @@ func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 }
 
 func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
-	err := api.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+	topic := "test-topic"
+	err := mainApi.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
 		description, handle, _ := util.SplitColonJoined(topic)
 		reset(b)
 		for c := 0; c < b.N; c++ {
-			api.Handlers.Database.GetSocketAllowances(tx, session.UserSub, description, handle)
+			mainApi.Handlers.Database.GetSocketAllowances(tx, "", description, handle)
 		}
 		return nil
 	}, "", "", "")

@@ -28,13 +28,13 @@ func (r *Redis) GetGroupSessionVersion(ctx context.Context, groupId string) (int
 }
 
 func (r *Redis) GetSession(ctx context.Context, userSub string) (*types.UserSession, error) {
-	sessionBytes, err := r.Client().Get(ctx, "user_session:"+userSub).Result()
+	sessionBytes, err := r.Client().Get(ctx, "user_session:"+userSub).Bytes()
 	if err != nil {
 		return nil, err
 	}
 
 	var userSession types.UserSession
-	err = json.Unmarshal([]byte(sessionBytes), &userSession)
+	err = json.Unmarshal(sessionBytes, &userSession)
 	if err != nil {
 		return nil, err
 	}

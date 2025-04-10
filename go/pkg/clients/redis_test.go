@@ -233,3 +233,32 @@ func TestRedis_TrackTopicParticipant(t *testing.T) {
 		})
 	}
 }
+
+func TestRedis_HasTracking(t *testing.T) {
+	type args struct {
+		ctx      context.Context
+		topic    string
+		socketId string
+	}
+	tests := []struct {
+		name    string
+		r       *Redis
+		args    args
+		want    bool
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.r.HasTracking(tt.args.ctx, tt.args.topic, tt.args.socketId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Redis.HasTracking(%v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.topic, tt.args.socketId, err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Redis.HasTracking(%v, %v, %v) = %v, want %v", tt.args.ctx, tt.args.topic, tt.args.socketId, got, tt.want)
+			}
+		})
+	}
+}
