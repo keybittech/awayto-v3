@@ -11,12 +11,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/go-redis/redis"
 	"github.com/golang/mock/gomock"
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/redis/go-redis/v9"
 	"golang.org/x/time/rate"
 )
 

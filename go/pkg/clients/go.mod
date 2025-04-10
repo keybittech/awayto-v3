@@ -9,7 +9,7 @@ require (
 	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.9
-	github.com/redis/go-redis/v9 v9.7.1
+	github.com/redis/go-redis/v9 v9.7.3
 	github.com/sashabaranov/go-openai v1.38.0
 	google.golang.org/protobuf v1.36.5
 )
