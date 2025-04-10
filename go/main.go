@@ -75,6 +75,7 @@ func main() {
 			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
 			ReadTimeout:  time.Minute,
 			WriteTimeout: time.Minute,
+			IdleTimeout:  time.Minute,
 		},
 		Handlers: &h.Handlers{
 			Ai:       c.InitAi(),

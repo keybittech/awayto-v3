@@ -84,7 +84,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
 
-  const [socket, setSocket] = useState<WebSocket | undefined>();
+  const socket = useRef<WebSocket | null>(null);
   const [connectionId, setConnectionId] = useState('');
   const reconnectSnackShown = useRef(false);
   const initialConnectionMade = useRef(false);
@@ -106,11 +106,21 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
           reconnectSnackShown.current = false;
         }
         setConnectionId(connId);
-        setSocket(ws);
+        socket.current = ws;
         initialConnectionMade.current = true;
+        localStorage.setItem('oncall', 'true');
       };
 
       ws.onclose = () => {
+        if (!localStorage.getItem('oncall')) {
+          return
+        }
+        if ('blurred' == localStorage.getItem('oncall')) {
+          setSnack({ snackOn: 'closing a blurred socket', snackType: 'warning' });
+          localStorage.removeItem('oncall');
+          connect();
+          return
+        }
         setTimeout(() => {
           console.log('socket closed. reconnecting...');
           if (!reconnectSnackShown.current) {
@@ -122,12 +132,17 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       };
 
       ws.onerror = (error) => {
-        console.error("socket error:", error);
-        ws.close();
+        if (socket.current?.readyState == socket.current?.CLOSED) {
+          setSnack({ snackOn: 'trying to reconnect an already closed socket', snackType: 'warning' });
+          localStorage.removeItem('oncall');
+          connect();
+        } else {
+          console.error("socket error:", error);
+          ws.close();
+        }
       };
 
       ws.onmessage = async (event) => {
-
         const socketResponse = parseMessage(event.data);
 
         if (!socketResponse) {
@@ -161,15 +176,25 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
     });
   }
   useEffect(() => {
+    window.onblur = () => {
+      if ('true' == localStorage.getItem('oncall')) {
+        localStorage.setItem('oncall', 'blurred');
+      }
+    }
+    window.onfocus = () => {
+      if (socket.current && socket.current.readyState != socket.current.CLOSED && 'blurred' == localStorage.getItem('oncall')) {
+        localStorage.setItem('oncall', 'true');
+      }
+    }
     connect();
   }, []);
 
   const webSocketContext: WebSocketContextType = {
     connectionId,
-    connected: socket?.readyState === WebSocket.OPEN,
+    connected: socket.current?.readyState === WebSocket.OPEN,
     transmit(store, action, topic, payload) {
-      if (socket && socket.readyState === WebSocket.OPEN) {
-        socket.send(
+      if (socket.current && socket.current.readyState === WebSocket.OPEN) {
+        socket.current.send(
           generateMessage(action, store, false, "", topic, connectionId, JSON.stringify(payload) || '')
         );
       }

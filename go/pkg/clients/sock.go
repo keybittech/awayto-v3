@@ -7,6 +7,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -238,6 +239,12 @@ func InitSocket() *Socket {
 				if strings.Index(attemptedTargets, connId) == -1 {
 					println("attempting to check", connId, "with current ids being", connectionIds)
 					if conn, ok := socketMaps.connections[connId]; ok {
+						println("setting deadline")
+						if err := conn.SetWriteDeadline(time.Now().Add(5 * time.Second)); err != nil {
+							sendErr = err
+							continue
+						}
+
 						println("did match connection")
 						sendErr = util.WriteSocketConnectionMessage(cmd.Request.MessageBytes, conn)
 						if sendErr != nil {
