@@ -451,34 +451,97 @@ func TestIntegrationUserSchedule(t *testing.T) {
 func TestIntegrationJoinGroup(t *testing.T) {
 	existingUsers := 1
 	t.Run("users can join a group with a code after log in", func(t *testing.T) {
-		for c := existingUsers; c < existingUsers+3; c++ {
+		for c := existingUsers; c < existingUsers+6; c++ {
+			joinViaRegister := c%2 == 0
 			userId := int(time.Now().UnixNano())
 
-			registerKeycloakUserViaForm(userId)
+			t.Logf("\n\nRegistering #%d", userId)
+			if joinViaRegister {
+				// This takes care of attach user to group and activate profile on the backend
+				registerKeycloakUserViaForm(userId, integrationTest.Group.Code)
+			} else {
+				registerKeycloakUserViaForm(userId)
+			}
+			time.Sleep(time.Second)
 
 			session, connection, token, ticket, connId := getUser(userId)
+			t.Logf("got connections %v %s %s", session, ticket, connId)
 
 			if !util.IsUUID(session.UserSub) {
 				t.Errorf("user sub is not a uuid: %s", session.UserSub)
 			}
 
 			if integrationTest.Group.Code == "" {
-				t.Error("no group id to join with")
+				t.Errorf("no group id to join with %v", integrationTest.Group)
 			}
 
-			joinGroupRequest := &types.JoinGroupRequest{
-				Code: integrationTest.Group.Code,
+			if !joinViaRegister {
+				// Join Group -- puts the user in the app db
+				joinGroupRequest := &types.JoinGroupRequest{
+					Code: integrationTest.Group.Code,
+				}
+
+				joinGroupRequestBytes, err := protojson.Marshal(joinGroupRequest)
+				if err != nil {
+					t.Errorf("error marshalling join group request, user: %d error: %v", c, err)
+				}
+
+				joinGroupResponse := &types.JoinGroupResponse{}
+				err = apiRequest(token, http.MethodPost, "/api/v1/group/join", joinGroupRequestBytes, nil, joinGroupResponse)
+				if err != nil {
+					t.Errorf("error posting join group request, user: %d error: %v", c, err)
+				}
+				if !joinGroupResponse.Success {
+					t.Errorf("join group internal was unsuccessful %v", joinGroupResponse)
+				}
+				time.Sleep(time.Second)
+
+				// Attach User to Group -- adds the user to keycloak records
+				attachUserRequest := &types.AttachUserRequest{
+					Code: integrationTest.Group.Code,
+				}
+
+				attachUserRequestBytes, err := protojson.Marshal(attachUserRequest)
+				if err != nil {
+					t.Errorf("error marshalling attach user request, user: %d error: %v", c, err)
+				}
+
+				attachUserResponse := &types.AttachUserResponse{}
+				err = apiRequest(token, http.MethodPost, "/api/v1/group/attach/user", attachUserRequestBytes, nil, attachUserResponse)
+				if err != nil {
+					t.Errorf("error posting attach user request, user: %d error: %v", c, err)
+				}
+				if !attachUserResponse.Success {
+					t.Errorf("attach user internal was unsuccessful %v", attachUserResponse)
+				}
+				time.Sleep(time.Second)
+
+				// Activate Profile -- lets the user view the internal login pages
+				activateProfileResponse := &types.ActivateProfileResponse{}
+				err = apiRequest(token, http.MethodPatch, "/api/v1/profile/activate", nil, nil, activateProfileResponse)
+				if err != nil {
+					t.Errorf("error patch activate profile group request, user: %d error: %v", c, err)
+				}
+				if !activateProfileResponse.Success {
+					t.Errorf("activate profile internal was unsuccessful %v", activateProfileResponse)
+				}
+				time.Sleep(time.Second)
+
+				// Get new token after group setup to check group membersip
+				token, err = getKeycloakToken(userId)
+				if err != nil {
+					t.Errorf("failed to get new token after joining group %v", err)
+				}
+
+				session, err = api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
+				if err != nil {
+					t.Errorf("error validating auth token: %v", err)
+				}
+				t.Logf("new session %v", session)
 			}
 
-			joinGroupRequestBytes, err := protojson.Marshal(joinGroupRequest)
-			if err != nil {
-				t.Errorf("error marshalling join group request, user: %d error: %v", c, err)
-			}
-
-			joinGroupResponse := &types.JoinGroupResponse{}
-			err = apiRequest(token, http.MethodPost, "/api/v1/group/join", joinGroupRequestBytes, nil, joinGroupResponse)
-			if err != nil {
-				t.Errorf("error posting join group request, user: %d error: %v", c, err)
+			if len(session.SubGroups) == 0 {
+				t.Errorf("no group id after getting new token %v", session)
 			}
 
 			testUser := &TestUser{
@@ -497,9 +560,6 @@ func TestIntegrationJoinGroup(t *testing.T) {
 			t.Logf("user %d has sub %s", c, integrationTest.TestUsers[c].UserSession.UserSub)
 		}
 	})
-
-	t.Run("users can register with a group code to join", func(t *testing.T) {})
-
 }
 
 func TestIntegrationQuotes(t *testing.T) {

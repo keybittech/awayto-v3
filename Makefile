@@ -448,7 +448,7 @@ host_status:
 
 .PHONY: host_errors
 host_errors:
-	$(SSH) tail -f "$(H_REM_DIR)/errors.log"
+	$(SSH) tail -n 100 -f "$(H_REM_DIR)/errors.log"
 
 .PHONY: host_db
 host_db:

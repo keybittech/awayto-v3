@@ -133,7 +133,7 @@ func getKeycloakToken(userId int) (string, error) {
 	return token, nil
 }
 
-func registerKeycloakUserViaForm(userId int) (bool, error) {
+func registerKeycloakUserViaForm(userId int, code ...string) (bool, error) {
 	// Setup client with cookie jar and TLS skip
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{
@@ -176,6 +176,11 @@ func registerKeycloakUserViaForm(userId int) (bool, error) {
 
 	// Prepare and submit form data
 	formData := url.Values{}
+
+	if len(code) > 0 {
+		formData.Set("groupCode", code[0])
+	}
+
 	formData.Set("email", "1@"+strconv.Itoa(userId+1))
 	formData.Set("firstName", "first-name")
 	formData.Set("lastName", "last-name")

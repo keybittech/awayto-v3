@@ -32,7 +32,6 @@ func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent *types.Auth
 		if err != nil {
 			return "", util.ErrCheck(err)
 		}
-
 	}
 
 	return `{ "success": true }`, nil
