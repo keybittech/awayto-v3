@@ -58,6 +58,7 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
+	req.Header.Add("X-TZ", "America/Los_Angeles")
 
 	req.Header.Add("Authorization", "Bearer "+token)
 
@@ -228,21 +229,21 @@ func generateCodeChallenge() string {
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
 
-func getSocketTicket(userId int) (*types.UserSession, string, string, error) {
+func getSocketTicket(userId int) (*types.UserSession, string, string, string) {
 	// Get authentication token first
 	token, err := getKeycloakToken(userId)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("error getting auth token: %v", err)
+		log.Fatalf("error getting auth token: %v", err)
 	}
 
 	session, err := api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
 	if err != nil {
-		return nil, "", "", fmt.Errorf("error validating auth token: %v", err)
+		log.Fatalf("error validating auth token: %v", err)
 	}
 
 	req, err := http.NewRequest("GET", "https://localhost:7443/api/v1/sock/ticket", nil)
 	if err != nil {
-		return nil, "", "", fmt.Errorf("could not make ticket request %v", err)
+		log.Fatalf("could not make ticket request %v", err)
 	}
 
 	req.Header.Add("Authorization", "Bearer "+token)
@@ -253,41 +254,38 @@ func getSocketTicket(userId int) (*types.UserSession, string, string, error) {
 	client := &http.Client{Transport: tr}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, "", "", err
+		log.Fatalf("failed ticket transport %v", err)
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, "", "", err
+		log.Fatalf("failed ticket body read %v", err)
 	}
 
 	// Debug the response if it's not JSON
 	if len(body) > 0 && body[0] != '{' {
-		return nil, "", "", fmt.Errorf("unexpected ticket response: %s", string(body))
+		log.Fatalf("unexpected ticket response: %s", string(body))
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, "", "", fmt.Errorf("ticket JSON parse error: %v, body: %s", err, string(body))
+		log.Fatalf("ticket JSON parse error: %v, body: %s", err, string(body))
 	}
 
 	ticket, ok := result["ticket"].(string)
 	if !ok {
-		return nil, "", "", fmt.Errorf("ticket not found in response")
+		log.Fatal("ticket not found in response")
 	}
 
 	ticketParts := strings.Split(ticket, ":")
 	_, connId := ticketParts[0], ticketParts[1]
 
-	return session, ticket, connId, nil
+	return session, token, ticket, connId
 }
 
 func getUserSocketSession(userId int) (*types.SocketResponseParams, *types.UserSession, string, string) {
-	userSession, ticket, connId, err := getSocketTicket(userId)
-	if err != nil {
-		log.Fatal("failed to get socket ticket in setup", err.Error())
-	}
+	userSession, _, ticket, connId := getSocketTicket(userId)
 
 	subscriberSocketResponse, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
 		UserSub: userSession.UserSub,
@@ -343,12 +341,9 @@ func getClientSocketConnection(ticket string) net.Conn {
 	return sockConn
 }
 
-func getUser(userId int) (*types.UserSession, net.Conn) {
+func getUser(userId int) (*types.UserSession, net.Conn, string, string, string) {
 
-	userSession, ticket, connId, err := getSocketTicket(userId)
-	if err != nil {
-		log.Fatal(err)
-	}
+	userSession, token, ticket, connId := getSocketTicket(userId)
 
 	connection := getClientSocketConnection(ticket)
 	if connection == nil {
@@ -356,15 +351,7 @@ func getUser(userId int) (*types.UserSession, net.Conn) {
 	}
 	connection.SetReadDeadline(time.Now().Add(120 * time.Second))
 
-	// subscriberResponseParams, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-	// 	UserSub: userSession.UserSub,
-	// 	Ticket:  ticket,
-	// }, connection)
-	// if subscriberResponseParams.Error != nil {
-	// 	log.Fatal(subscriberResponseParams.Error)
-	// }
-
-	return userSession, connection
+	return userSession, connection, token, ticket, connId
 }
 
 func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Conn) {
@@ -374,11 +361,7 @@ func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Con
 	for c := 0; c < numUsers; c++ {
 		registerKeycloakUserViaForm(c)
 
-		userSession, ticket, connId, err := getSocketTicket(c)
-		if err != nil {
-			println(err.Error())
-			return nil, nil
-		}
+		userSession, _, ticket, connId := getSocketTicket(c)
 
 		connection := getClientSocketConnection(ticket)
 		if connection == nil {
@@ -392,6 +375,9 @@ func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Con
 			UserSub: userSession.UserSub,
 			Ticket:  ticket,
 		}, connection)
+		if err != nil {
+			log.Fatalf("failed subscriber request %v", err)
+		}
 
 		subscribers[c] = &types.Subscriber{
 			UserSub:      subscriberRequest.UserSub,

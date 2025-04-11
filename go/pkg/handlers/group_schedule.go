@@ -36,12 +36,12 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 		return nil, util.ErrCheck(err)
 	}
 
-	scheduleId := scheduleResp.GetId()
-
-	_, err = tx.Exec(`
+	var groupScheduleId string
+	err = tx.QueryRow(`
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
-	`, session.GroupId, scheduleId, session.GroupSub)
+		RETURNING id
+	`, session.GroupId, scheduleResp.Id, session.GroupSub).Scan(&groupScheduleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -55,7 +55,7 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
 
-	return &types.PostGroupScheduleResponse{Id: scheduleId}, nil
+	return &types.PostGroupScheduleResponse{Id: groupScheduleId, ScheduleId: scheduleResp.Id}, nil
 }
 
 func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupScheduleResponse, error) {

@@ -11,11 +11,13 @@ import (
 )
 
 func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupServiceResponse, error) {
-	_, err := tx.Exec(`
+	var groupServiceId string
+	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.group_services (group_id, service_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		ON CONFLICT (group_id, service_id) DO NOTHING
-	`, session.GroupId, data.GetServiceId(), session.UserSub)
+		RETURNING id
+	`, session.GroupId, data.GetServiceId(), session.UserSub).Scan(&groupServiceId)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -23,7 +25,7 @@ func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, da
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/services")
 
-	return &types.PostGroupServiceResponse{}, nil
+	return &types.PostGroupServiceResponse{Id: groupServiceId}, nil
 }
 
 func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, data *types.GetGroupServicesRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupServicesResponse, error) {

@@ -156,9 +156,12 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 		return nil, util.ErrCheck(err)
 	}
 
-	service.Id = postServiceRes.GetId()
+	postGroupServiceRes, err := h.PostGroupService(w, req, &types.PostGroupServiceRequest{ServiceId: postServiceRes.Id}, session, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	_, err = h.PostGroupSchedule(w, req, &types.PostGroupScheduleRequest{GroupSchedule: &types.IGroupSchedule{Schedule: schedule}}, session, tx)
+	postGroupScheduleRes, err := h.PostGroupSchedule(w, req, &types.PostGroupScheduleRequest{GroupSchedule: &types.IGroupSchedule{Schedule: schedule}}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -168,5 +171,10 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.CompleteOnboardingResponse{Success: true}, nil
+	return &types.CompleteOnboardingResponse{
+		ServiceId:       postServiceRes.Id,
+		GroupServiceId:  postGroupServiceRes.Id,
+		ScheduleId:      postGroupScheduleRes.ScheduleId,
+		GroupScheduleId: postGroupScheduleRes.Id,
+	}, nil
 }

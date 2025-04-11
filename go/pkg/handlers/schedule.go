@@ -546,9 +546,9 @@ func (h *Handlers) InsertNewBrackets(scheduleId string, newBrackets map[string]*
 		}
 
 		var servicesLen int
-		for serviceId := range bracket.Services {
+		for _, service := range bracket.Services {
 			h.Database.BuildInserts(&servicesQuery, 4, servicesLen)
-			servicesValues = append(servicesValues, bracket.Id, serviceId, session.UserSub, session.GroupId)
+			servicesValues = append(servicesValues, bracket.Id, service.Id, session.UserSub, session.GroupId)
 			servicesLen += 4
 		}
 	}

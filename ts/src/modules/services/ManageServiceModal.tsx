@@ -87,6 +87,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   const [deleteGroupServiceAddon] = siteApi.useGroupServiceAddonsServiceDeleteGroupServiceAddonMutation();
   const [patchService] = siteApi.useServiceServicePatchServiceMutation();
   const [postService] = siteApi.useServiceServicePostServiceMutation();
+  const [postGroupService] = siteApi.useGroupServiceServicePostGroupServiceMutation();
 
   const serviceTiers = useMemo(() => Object.values(newService.tiers || {}), [newService.tiers]);
 
@@ -108,6 +109,11 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
         const { id } = await postService({
           postServiceRequest: {
             service: newService
+          }
+        }).unwrap();
+        await postGroupService({
+          postGroupServiceRequest: {
+            serviceId: id
           }
         }).unwrap();
         setNewService({ ...newService, id });

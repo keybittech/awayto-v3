@@ -420,10 +420,7 @@ func TestHandleSocketConnection(t *testing.T) {
 	}
 	time.Sleep(10 * time.Second)
 
-	_, ticket, _, err := getSocketTicket(int(time.Now().UnixNano()))
-	if err != nil {
-		t.Fatal(err)
-	}
+	_, ticket, _, _ := getSocketTicket(int(time.Now().UnixNano()))
 
 	sockConn := getClientSocketConnection(ticket)
 	if sockConn != nil {

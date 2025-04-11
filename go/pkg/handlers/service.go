@@ -32,11 +32,6 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = h.PostGroupService(w, req, &types.PostGroupServiceRequest{ServiceId: service.Id}, session, tx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	return &types.PostServiceResponse{Id: service.Id}, nil
 }
 

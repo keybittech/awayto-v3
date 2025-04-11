@@ -109,6 +109,9 @@ message CompleteOnboardingRequest {
 }
 
 message CompleteOnboardingResponse {
-  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+  string serviceId = 1 [(google.api.field_behavior) = REQUIRED];
+  string groupServiceId = 2 [(google.api.field_behavior) = REQUIRED];
+  string scheduleId = 3 [(google.api.field_behavior) = REQUIRED];
+  string groupScheduleId = 4 [(google.api.field_behavior) = REQUIRED];
 }
 

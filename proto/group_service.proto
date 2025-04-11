@@ -42,7 +42,7 @@ message PostGroupServiceRequest {
 }
 
 message PostGroupServiceResponse {
-  IGroupService groupService = 1 [(google.api.field_behavior) = REQUIRED];
+  string id = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetGroupServicesRequest {}

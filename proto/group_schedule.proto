@@ -79,6 +79,7 @@ message PostGroupScheduleRequest {
 
 message PostGroupScheduleResponse {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string scheduleId = 2; // post group schedule calls post schedule internally, so return scheduleId for convenience
 }
 
 message PatchGroupScheduleRequest {
