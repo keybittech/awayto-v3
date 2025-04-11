@@ -66,7 +66,7 @@ function GroupedMessages({ topicMessages: messages }: IComponent): React.JSX.Ele
             </Grid>
           </Grid>
           {group.messages.map((message, j) => (
-            <Typography color="primary" style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }} key={`${group.scid}_msg_${j}`}>
+            <Typography style={{ overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }} key={`${group.scid}_msg_${j}`}>
               {message}
             </Typography>
           ))}

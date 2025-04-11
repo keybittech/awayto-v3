@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { useColorScheme } from '@mui/material';
@@ -101,6 +101,10 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
     });
   }, [location, profileRequest?.userProfile.availableUserGroupRoles]);
 
+  const isSelected = (opt: string) => {
+    return { color: location.pathname === opt ? 'secondary.main' : 'primary.main' }
+  };
+
   return <Grid size={12} sx={{ height: '60px' }} container>
     <Grid sx={{ display: { xs: 'flex', md: true ? 'flex' : !props.forceSiteMenu ? 'none' : 'flex' } }}>
       <Tooltip title="Menu">
@@ -145,7 +149,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           {...targets(`main menu go home`, `go to the home page`)}
           onClick={e => handleNavAndClose(e, '/')}
         >
-          <ListItemIcon><HomeIcon color={location.pathname === '/' ? "secondary" : "primary"} /></ListItemIcon>
+          <ListItemIcon><HomeIcon sx={isSelected('/')} /></ListItemIcon>
           <ListItemText>Home</ListItemText>
         </MenuItem>
 
@@ -153,7 +157,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           {...targets(`main menu profile`, `go to your profile page`)}
           onClick={e => handleNavAndClose(e, '/profile')}
         >
-          <ListItemIcon><AccountCircleIcon color={location.pathname === '/profile' ? "secondary" : "primary"} /></ListItemIcon>
+          <ListItemIcon><AccountCircleIcon sx={isSelected('/profile')} /></ListItemIcon>
           <ListItemText>Profile</ListItemText>
         </MenuItem>
 
@@ -193,6 +197,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
         <Button
           {...targets(`exchange summary navigate`, `go to exchange summary`)}
           color="success"
+          sx={{ backgroundColor: '#203040' }}
           onClick={() => {
             openConfirm({
               isConfirming: true,
@@ -224,7 +229,6 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
                 {...targets(`topbar pending toggle`, `show ${pendingQuotes.length} pending exchange requests`)}
                 disabled={!pendingQuotes.length}
                 disableRipple
-                color="primary"
                 aria-controls={isPendingQuotesOpen ? pendingQuotesMenuId : undefined}
                 aria-haspopup="true"
                 aria-expanded={isPendingQuotesOpen ? 'true' : undefined}
@@ -254,7 +258,6 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
                 {...targets(`topbar exchange toggle`, `view ${upcomingBookings.length} exchanges`)}
                 disabled={!upcomingBookings.length}
                 disableRipple
-                color="primary"
                 aria-controls={isUpcomingBookingsOpen ? upcomingBookingsMenuId : undefined}
                 aria-haspopup="true"
                 aria-expanded={isUpcomingBookingsOpen ? 'true' : undefined}

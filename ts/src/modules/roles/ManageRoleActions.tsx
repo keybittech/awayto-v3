@@ -2,20 +2,22 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 
 import Card from '@mui/material/Card';
 import Box from '@mui/material/Box';
+import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import Grid from '@mui/material/Grid';
-import CardActionArea from '@mui/material/CardActionArea';
 import Checkbox from '@mui/material/Checkbox';
 
 import { DataGrid, GridColDef } from '@mui/x-data-grid';
 
-import { useGrid, siteApi, useUtil, SiteRoles, SiteRoleDetails, targets } from 'awayto/hooks';
+import { useGrid, siteApi, SiteRoles, SiteRoleDetails, targets, useStyles } from 'awayto/hooks';
 import { Tooltip } from '@mui/material';
 
 export function ManageRoleActions(_: IComponent): React.JSX.Element {
 
-  const { setSnack } = useUtil();
-  const [patchAssignments] = siteApi.useGroupServicePatchGroupAssignmentsMutation();
+  const classes = useStyles();
+
+  // const { setSnack } = useUtil();
+  const [patchAssignments, { isLoading }] = siteApi.useGroupServicePatchGroupAssignmentsMutation();
 
   const { data: availableGroupAssignmentsRequest } = siteApi.useGroupServiceGetGroupAssignmentsQuery();
 
@@ -38,9 +40,8 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
     const group = groupsValues.find(g => g.active);
     if (group) {
       delete patchedAssignments[`/${group.name}/Admin`]
-      patchAssignments({ patchGroupAssignmentsRequest: { assignments: patchedAssignments } }).unwrap().then(() => {
-        setSnack({ snackType: 'success', snackOn: 'Assignments can be updated again in 1 minute.' });
-      }).catch(console.error);
+      patchAssignments({ patchGroupAssignmentsRequest: { assignments: patchedAssignments } });
+      // setSnack({ snackType: 'success', snackOn: 'Assignments can be updated again in 1 minute.' });
     }
   }, [assignments]);
 
@@ -103,24 +104,29 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
 
     <Grid container>
       <Grid mb={2} size={12}>
-        <Card>
-          <CardActionArea
-            {...targets(`manage role actions update assignments`, `update the group's role permissions mappings`)}
-            onClick={handleSubmit}
-          >
-            <Grid container direction="row" justifyContent="space-between">
-              <Grid>
-                <Box m={2}>
-                  <Typography color="secondary" variant="button">Update Assignments</Typography>
-                </Box>
-              </Grid>
-              <Grid>
-                <Box m={2}>
-                  <Typography color="GrayText" variant="button">Changes will persist within 1 minute</Typography>
-                </Box>
-              </Grid>
+        <Card variant="outlined">
+          {/* <CardActionArea> */}
+          <Grid container direction="row" justifyContent="space-between">
+            <Grid>
+              <Box m={2}>
+                <Button
+                  {...targets(`manage role actions update assignments`, `update the group's role permissions mappings`)}
+                  disabled={isLoading}
+                  variant="underline"
+                  color="info"
+                  sx={{
+                    ...classes.variableText,
+                    cursor: 'pointer'
+                  }}
+                  onClick={handleSubmit}
+                >
+                  Update Permissions
+                </Button>
+                {/* <Typography color="GrayText" variant="button">Changes will persist within 1 minute</Typography> */}
+              </Box>
             </Grid>
-          </CardActionArea>
+          </Grid>
+          {/* </CardActionArea> */}
         </Card>
       </Grid>
     </Grid>

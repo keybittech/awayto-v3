@@ -46,7 +46,6 @@ export function FeedbackMenu(_: IComponent): React.JSX.Element {
       <IconButton
         {...targets(`topbar feedback toggle`, `submit group or site feedback`)}
         disableRipple
-        color="primary"
         onClick={() => setDialog('feedback')}
       >
         <CampaignIcon sx={classes.mdHide} />

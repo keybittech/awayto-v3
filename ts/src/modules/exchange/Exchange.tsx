@@ -104,6 +104,7 @@ export function Exchange(_: IComponent): React.JSX.Element {
             <IconButton
               {...targets(`exchange start video call`, `start a video call`)}
               disabled={'start' !== canStartStop}
+
               onClick={() => setLocalStreamAndBroadcast(true)}
             >
               <VideocamIcon fontSize="small" />
@@ -121,7 +122,6 @@ export function Exchange(_: IComponent): React.JSX.Element {
           <Tooltip title="Hide/Show Messages" children={
             <IconButton
               {...targets(`exchange toggle chat`, `toggle the chat visbility`)}
-              color="primary"
               onClick={() => setChatOpen(!chatOpen)}
             >
               <ChatBubbleIcon fontSize="small" />
@@ -130,7 +130,6 @@ export function Exchange(_: IComponent): React.JSX.Element {
           <Tooltip title="Open File" children={
             <IconButton
               {...targets(`exchange select file`, `select a file to view and share`)}
-              color="primary"
               onClick={() => setDialog('file_selection')}
             >
               <FileCopyIcon fontSize="small" />

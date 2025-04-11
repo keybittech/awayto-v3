@@ -65,11 +65,18 @@ export function UpcomingBookingsMenu({ handleMenuClose, upcomingBookingsAnchorEl
             navigate(`/exchange/${booking.id}`);
           }}
         >
-          <ListItemIcon><JoinFullIcon /></ListItemIcon>
+          <ListItemIcon><JoinFullIcon color="primary" /></ListItemIcon>
           <ListItemText
-            primary={`${booking.scheduleName} ${booking.service.name} ${booking.serviceTier.name}`}
+            primary={
+              <>
+                <div>{booking.scheduleName}</div>
+                {booking.service.name} {booking.serviceTier.name}
+              </>
+            }
             secondary={`${bookingFormat(booking.slotDate, booking.scheduleBracketSlot.startTime)}`}
-          />
+          >
+            Test
+          </ListItemText>
         </MenuItem>
       } else {
         return <span key={`appt_placeholder${i}`} />;

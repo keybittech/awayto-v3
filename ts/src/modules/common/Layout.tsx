@@ -48,7 +48,7 @@ const Layout = (props: IComponent): React.JSX.Element => {
         </Route>
         <Route element={
           <Grid size={12} container>
-            <Grid size={12} px={1} sx={{ bgcolor: 'primary.dark' }}>
+            <Grid size={12} px={1} sx={{ bgcolor: 'secondary.dark' }}>
               <Topbar forceSiteMenu={true} {...props} />
             </Grid>
             <Grid sx={{ display: 'flex', height: 'calc(100vh - 60px)', width: '100%' }}>

@@ -19,17 +19,20 @@ const paletteTheme = createTheme({
   colorSchemes: {
     light: {
       palette: {
+        text: {
+          primary: '#000'
+        },
         background: {
           default: '#ddeeff'
         },
         primary: {
-          main: '#121f31',
+          main: '#333',
           dark: 'rgba(0, 0, 0, .2)',
           light: '#009cc822',
           contrastText: '#333',
         },
         secondary: {
-          main: '#000',
+          main: '#009cc8',
           dark: '#009cc8',
           light: '#009cc822',
           contrastText: 'rgb(190, 222, 255)'
@@ -38,6 +41,9 @@ const paletteTheme = createTheme({
     },
     dark: {
       palette: {
+        text: {
+          primary: '#fff'
+        },
         background: {
           default: '#17222a'
         },

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useState } from 'react';
 
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -96,8 +96,14 @@ export function WhiteboardOptionsMenu({
     });
   };
 
+  const isSelected = (opt: string) => {
+    return {
+      color: canvasInput == opt ? 'secondary.main' : 'default'
+    }
+  };
+
   return <>
-    <AppBar position="static">
+    <AppBar color="default" position="static">
       <Toolbar>
 
         <Grid container size="grow" sx={{ py: { xs: 2, sm: 0 } }}>
@@ -111,7 +117,7 @@ export function WhiteboardOptionsMenu({
                 {...targets(`whiteboard pan`, `set the mouse to pan mode in order to drag the whiteboard around`)}
                 onClick={() => inputChanged('panning')}
               >
-                <PanToolIcon color={canvasInput == 'panning' ? 'info' : 'primary'} />
+                <PanToolIcon sx={isSelected('panning')} />
               </IconButton>
             </Tooltip>
 
@@ -122,7 +128,7 @@ export function WhiteboardOptionsMenu({
                   setDialog('box_edit');
                 }}
               >
-                <TextFieldsIcon color={canvasInput == 'addingText' ? 'info' : 'primary'} />
+                <TextFieldsIcon sx={isSelected('addingText')} />
               </IconButton>
             </Tooltip>
 
@@ -131,7 +137,7 @@ export function WhiteboardOptionsMenu({
                 {...targets(`whiteboard pen`, `set the mouse to pen drawing mode`)}
                 onClick={() => inputChanged('penning')}
               >
-                <EditIcon color={canvasInput == 'penning' ? 'info' : 'primary'} />
+                <EditIcon sx={isSelected('penning')} />
               </IconButton>
             </Tooltip>
 
@@ -140,7 +146,7 @@ export function WhiteboardOptionsMenu({
                 {...targets(`whiteboard brush`, `set the mouse to brush drawing mode`)}
                 onClick={() => inputChanged('brushing')}
               >
-                <BrushIcon color={canvasInput == 'brushing' ? 'info' : 'primary'} />
+                <BrushIcon sx={isSelected('brushing')} />
               </IconButton>
             </Tooltip>
 
