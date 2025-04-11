@@ -116,10 +116,16 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 		pings.Store(connId, time.Now())
 
 		pingTimer := time.NewTicker(30 * time.Second)
+		errorFlag := false
 
 		for {
 			select {
 			case <-pingTimer.C:
+				// let errors log again
+				if errorFlag {
+					errorFlag = false
+				}
+
 				// Close connections not responding to pings
 				pingVal, _ := pings.Load(connId)
 				if lastSeen, ok := pingVal.(time.Time); ok && time.Since(lastSeen) > 90*time.Second {
@@ -149,8 +155,14 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 					go a.SocketRequest(data, connId, socketId, userConnection.UserSub, userConnection.GroupId, userConnection.Roles)
 				}
 			case err := <-errs:
-				println("read error " + err.Error())
+				// normally shouldn't error, but if it does it could potentially be heavy load
+				// so only err log once every ping timer
+				if errorFlag {
+					continue
+				}
+				println("sock read error " + connId + err.Error())
 				util.ErrorLog.Println(util.ErrCheck(err))
+				errorFlag = true
 			}
 		}
 	}

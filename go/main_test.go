@@ -77,6 +77,10 @@ func Test_main(t *testing.T) {
 }
 
 func TestIntegrationUser(t *testing.T) {
+
+	integrationTest.TestUsers = make(map[int]*TestUser, 10)
+	integrationTest.Connections = make(map[string]net.Conn, 10)
+
 	t.Run("user can register and connect", func(t *testing.T) {
 		userId := int(time.Now().UnixNano())
 		registerKeycloakUserViaForm(userId)
@@ -84,7 +88,7 @@ func TestIntegrationUser(t *testing.T) {
 		session, connection, token, ticket, connId := getUser(userId)
 
 		if !util.IsUUID(session.UserSub) {
-			t.Error("user sub is not a uuid")
+			t.Errorf("user sub is not a uuid: %s", session.UserSub)
 		}
 
 		testUser := &TestUser{
@@ -95,9 +99,11 @@ func TestIntegrationUser(t *testing.T) {
 			UserSession: session,
 		}
 
-		integrationTest.TestUsers = make(map[int]*TestUser, 10)
 		integrationTest.TestUsers[0] = testUser
-		integrationTest.Connections = map[string]net.Conn{session.UserSub: connection}
+		integrationTest.Connections[session.UserSub] = connection
+
+		t.Logf("created user #%d with sub %s connId %s", 1, session.UserSub, connId)
+
 	})
 
 	t.Logf("Integration Test: %+v", integrationTest)
@@ -125,11 +131,16 @@ func TestIntegrationGroup(t *testing.T) {
 		}
 
 		if !util.IsUUID(postGroupResponse.Id) {
-			t.Error("group id is not a uuid")
+			t.Errorf("group id is not a uuid: %s", postGroupResponse.Id)
+		}
+
+		if len(postGroupResponse.Code) != 8 {
+			t.Errorf("group id is not 8 length: %s", postGroupResponse.Code)
 		}
 
 		integrationTest.Group = &types.IGroup{
 			Id:             postGroupResponse.Id,
+			Code:           postGroupResponse.Code,
 			Name:           groupRequest.Name,
 			DisplayName:    groupRequest.DisplayName,
 			Ai:             groupRequest.Ai,
@@ -175,7 +186,7 @@ func TestIntegrationRoles(t *testing.T) {
 		}
 
 		if !util.IsUUID(staffRoleResponse.Id) {
-			t.Error("staff role id is not a uuid")
+			t.Errorf("staff role id is not a uuid: %s", staffRoleResponse.Id)
 		}
 
 		memberRoleRequest := &types.PostRoleRequest{Name: "Member"}
@@ -191,7 +202,7 @@ func TestIntegrationRoles(t *testing.T) {
 		}
 
 		if !util.IsUUID(memberRoleResponse.Id) {
-			t.Error("member role id is not a uuid")
+			t.Errorf("member role id is not a uuid: %s", memberRoleResponse.Id)
 		}
 
 		roles := make(map[string]*types.IRole, 2)
@@ -244,7 +255,7 @@ func TestIntegrationService(t *testing.T) {
 		}
 
 		if !util.IsUUID(postServiceAddon1Response.Id) {
-			t.Error("addon 1 id is not a uuid")
+			t.Errorf("addon 1 id is not a uuid: %s", postServiceAddon1Response.Id)
 		}
 
 		postServiceAddon2Request := &types.PostServiceAddonRequest{Name: "test addon 2"}
@@ -260,7 +271,7 @@ func TestIntegrationService(t *testing.T) {
 		}
 
 		if !util.IsUUID(postServiceAddon2Response.Id) {
-			t.Error("addon 2 id is not a uuid")
+			t.Errorf("addon 2 id is not a uuid: %s", postServiceAddon2Response.Id)
 		}
 
 		serviceAddons := make(map[string]*types.IServiceAddon, 2)
@@ -344,19 +355,19 @@ func TestIntegrationOnboarding(t *testing.T) {
 		}
 
 		if !util.IsUUID(onboardingResponse.ServiceId) {
-			t.Error("service id is not a uuid")
+			t.Errorf("service id is not a uuid: %s", onboardingResponse.ServiceId)
 		}
 
 		if !util.IsUUID(onboardingResponse.GroupServiceId) {
-			t.Error("group service 2 id is not a uuid")
+			t.Errorf("group service 2 id is not a uuid: %s", onboardingResponse.GroupServiceId)
 		}
 
 		if !util.IsUUID(onboardingResponse.ScheduleId) {
-			t.Error("schedule 2 id is not a uuid")
+			t.Errorf("schedule 2 id is not a uuid: %s", onboardingResponse.ScheduleId)
 		}
 
 		if !util.IsUUID(onboardingResponse.GroupScheduleId) {
-			t.Error("group schedule 2 id is not a uuid")
+			t.Errorf("group schedule 2 id is not a uuid: %s", onboardingResponse.GroupScheduleId)
 		}
 
 		integrationTest.OnboardingService.Id = onboardingResponse.ServiceId
@@ -435,6 +446,60 @@ func TestIntegrationUserSchedule(t *testing.T) {
 		integrationTest.UserSchedule.Id = userScheduleResponse.Id
 	})
 	t.Logf("Integration Test: %+v", integrationTest)
+}
+
+func TestIntegrationJoinGroup(t *testing.T) {
+	existingUsers := 1
+	t.Run("users can join a group with a code after log in", func(t *testing.T) {
+		for c := existingUsers; c < existingUsers+3; c++ {
+			userId := int(time.Now().UnixNano())
+
+			registerKeycloakUserViaForm(userId)
+
+			session, connection, token, ticket, connId := getUser(userId)
+
+			if !util.IsUUID(session.UserSub) {
+				t.Errorf("user sub is not a uuid: %s", session.UserSub)
+			}
+
+			if integrationTest.Group.Code == "" {
+				t.Error("no group id to join with")
+			}
+
+			joinGroupRequest := &types.JoinGroupRequest{
+				Code: integrationTest.Group.Code,
+			}
+
+			joinGroupRequestBytes, err := protojson.Marshal(joinGroupRequest)
+			if err != nil {
+				t.Errorf("error marshalling join group request, user: %d error: %v", c, err)
+			}
+
+			joinGroupResponse := &types.JoinGroupResponse{}
+			err = apiRequest(token, http.MethodPost, "/api/v1/group/join", joinGroupRequestBytes, nil, joinGroupResponse)
+			if err != nil {
+				t.Errorf("error posting join group request, user: %d error: %v", c, err)
+			}
+
+			testUser := &TestUser{
+				TestUserId:  userId,
+				TestToken:   token,
+				TestTicket:  ticket,
+				TestConnId:  connId,
+				UserSession: session,
+			}
+
+			t.Logf("created user #%d with sub %s connId %s", c, session.UserSub, connId)
+
+			integrationTest.TestUsers[c] = testUser
+			integrationTest.Connections[session.UserSub] = connection
+
+			t.Logf("user %d has sub %s", c, integrationTest.TestUsers[c].UserSession.UserSub)
+		}
+	})
+
+	t.Run("users can register with a group code to join", func(t *testing.T) {})
+
 }
 
 func TestIntegrationQuotes(t *testing.T) {

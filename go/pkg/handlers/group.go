@@ -66,6 +66,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	// Create group in application db
 	// All the repeated $1 (UserSub) at the start are just placeholders until later in the method
+	// group "code" is generated via TRIGGER set_group_code
 	err = tx.QueryRow(`
 		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
 		VALUES ($1::uuid, $1, $1::uuid, $2, $3, $4, $1::uuid, $5, $6, $7)
@@ -129,12 +130,14 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	// Update the group with the keycloak reference id
-	_, err = tx.Exec(`
+	// Update the group with the keycloak reference id and get the group code
+	var groupCode string
+	err = tx.QueryRow(`
 		UPDATE dbtable_schema.groups 
 		SET external_id = $2, admin_role_external_id = $3, purpose = $4
 		WHERE id = $1
-	`, groupId, kcGroupExternalId, kcAdminSubgroupExternalId, data.GetPurpose())
+		RETURNING code
+	`, groupId, kcGroupExternalId, kcAdminSubgroupExternalId, data.GetPurpose()).Scan(&groupCode)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -162,7 +165,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	h.Socket.RoleCall(session.UserSub)
 
 	undos = nil
-	return &types.PostGroupResponse{Id: groupId}, nil
+	return &types.PostGroupResponse{Id: groupId, Code: groupCode}, nil
 }
 
 func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupResponse, error) {

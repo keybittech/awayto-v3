@@ -109,6 +109,7 @@ message PostGroupRequest {
 
 message PostGroupResponse {
   string id = 1 [(google.api.field_behavior) = REQUIRED];
+  string code = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchGroupRequest {
