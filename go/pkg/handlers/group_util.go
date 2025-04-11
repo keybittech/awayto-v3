@@ -151,17 +151,42 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 	service := data.GetService()
 	schedule := data.GetSchedule()
 
-	postServiceRes, err := h.PostService(w, req, &types.PostServiceRequest{Service: service}, session, tx)
+	postServiceReq := &types.PostServiceRequest{
+		Service: service,
+	}
+	postServiceRes, err := h.PostService(w, req, postServiceReq, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	postGroupServiceRes, err := h.PostGroupService(w, req, &types.PostGroupServiceRequest{ServiceId: postServiceRes.Id}, session, tx)
+	postGroupServiceReq := &types.PostGroupServiceRequest{
+		ServiceId: postServiceRes.Id,
+	}
+	postGroupServiceRes, err := h.PostGroupService(w, req, postGroupServiceReq, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	postGroupScheduleRes, err := h.PostGroupSchedule(w, req, &types.PostGroupScheduleRequest{GroupSchedule: &types.IGroupSchedule{Schedule: schedule}}, session, tx)
+	postScheduleReq := &types.PostScheduleRequest{
+		AsGroup:            true,
+		Name:               schedule.Name,
+		StartTime:          schedule.StartTime,
+		EndTime:            schedule.EndTime,
+		ScheduleTimeUnitId: schedule.ScheduleTimeUnitId,
+		BracketTimeUnitId:  schedule.BracketTimeUnitId,
+		SlotTimeUnitId:     schedule.SlotTimeUnitId,
+		SlotDuration:       schedule.SlotDuration,
+		Brackets:           map[string]*types.IScheduleBracket{},
+	}
+	postScheduleRes, err := h.PostSchedule(w, req, postScheduleReq, session, tx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	postGroupScheduleReq := &types.PostGroupScheduleRequest{
+		ScheduleId: postScheduleRes.Id,
+	}
+	postGroupScheduleRes, err := h.PostGroupSchedule(w, req, postGroupScheduleReq, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -174,7 +199,7 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 	return &types.CompleteOnboardingResponse{
 		ServiceId:       postServiceRes.Id,
 		GroupServiceId:  postGroupServiceRes.Id,
-		ScheduleId:      postGroupScheduleRes.ScheduleId,
+		ScheduleId:      postScheduleRes.Id,
 		GroupScheduleId: postGroupScheduleRes.Id,
 	}, nil
 }

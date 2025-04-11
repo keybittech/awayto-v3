@@ -168,9 +168,14 @@ message PostScheduleRequest {
   string slotTimeUnitId = 6 [(buf.validate.field).string.uuid = true];
   int32 slotDuration = 7 [(buf.validate.field).int32.gt = 0];
   map<string, IScheduleBracket> brackets = 8 [
-    (buf.validate.field).map.min_pairs = 1
+    (buf.validate.field).map.min_pairs = 1,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string groupScheduleId = 9 [(buf.validate.field).string.uuid = true];
+  string groupScheduleId = 9 [
+    (buf.validate.field).string.uuid = true,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
+  bool asGroup = 10;
 
   option (buf.validate.message).cel = {
     id: "PostScheduleRequest.endTime",

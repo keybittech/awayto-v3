@@ -2,17 +2,19 @@ package main
 
 import (
 	"flag"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"slices"
 	"strconv"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/keybittech/awayto-v3/go/pkg/api"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -75,303 +77,364 @@ func Test_main(t *testing.T) {
 }
 
 func TestIntegrationUser(t *testing.T) {
-	userId := int(time.Now().UnixNano())
+	t.Run("user can register and connect", func(t *testing.T) {
+		userId := int(time.Now().UnixNano())
+		registerKeycloakUserViaForm(userId)
 
-	registerKeycloakUserViaForm(userId)
+		session, connection, token, ticket, connId := getUser(userId)
 
-	session, connection, token, ticket, connId := getUser(userId)
+		if !util.IsUUID(session.UserSub) {
+			t.Error("user sub is not a uuid")
+		}
 
-	testUser := &TestUser{
-		TestUserId:  userId,
-		TestToken:   token,
-		TestTicket:  ticket,
-		TestConnId:  connId,
-		UserSession: session,
-	}
+		testUser := &TestUser{
+			TestUserId:  userId,
+			TestToken:   token,
+			TestTicket:  ticket,
+			TestConnId:  connId,
+			UserSession: session,
+		}
 
-	integrationTest.TestUsers = make(map[int]*TestUser, 10)
-	integrationTest.TestUsers[0] = testUser
-	integrationTest.Connections = map[string]net.Conn{session.UserSub: connection}
+		integrationTest.TestUsers = make(map[int]*TestUser, 10)
+		integrationTest.TestUsers[0] = testUser
+		integrationTest.Connections = map[string]net.Conn{session.UserSub: connection}
+	})
 
-	println(fmt.Sprintf("Integration Test: %+v", integrationTest))
+	t.Logf("Integration Test: %+v", integrationTest)
 }
 
 func TestIntegrationGroup(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
-	groupRequest := &types.PostGroupRequest{
-		Name:           "the_test_group_" + strconv.Itoa(admin.TestUserId),
-		DisplayName:    "The Test Group #" + strconv.Itoa(admin.TestUserId),
-		Ai:             true,
-		Purpose:        "integration testing group",
-		AllowedDomains: "",
-	}
-	requestBytes, err := protojson.Marshal(groupRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+	t.Run("admin can create a group", func(t *testing.T) {
+		admin := integrationTest.TestUsers[0]
+		groupRequest := &types.PostGroupRequest{
+			Name:           "the_test_group_" + strconv.Itoa(admin.TestUserId),
+			DisplayName:    "The Test Group #" + strconv.Itoa(admin.TestUserId),
+			Ai:             true,
+			Purpose:        "integration testing group",
+			AllowedDomains: "",
+		}
+		requestBytes, err := protojson.Marshal(groupRequest)
+		if err != nil {
+			t.Errorf("error marshalling group request: %v", err)
+		}
 
-	postGroupResponse := &types.PostGroupResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group", requestBytes, nil, postGroupResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
+		postGroupResponse := &types.PostGroupResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group", requestBytes, nil, postGroupResponse)
+		if err != nil {
+			t.Errorf("error posting group: %v", err)
+		}
 
-	if postGroupResponse.Id == "" {
-		t.Fatal("integration failed to make group")
-	}
+		if !util.IsUUID(postGroupResponse.Id) {
+			t.Error("group id is not a uuid")
+		}
 
-	integrationTest.Group = &types.IGroup{
-		Id:             postGroupResponse.Id,
-		Name:           groupRequest.Name,
-		DisplayName:    groupRequest.DisplayName,
-		Ai:             groupRequest.Ai,
-		Purpose:        groupRequest.Purpose,
-		AllowedDomains: groupRequest.AllowedDomains,
-	}
+		integrationTest.Group = &types.IGroup{
+			Id:             postGroupResponse.Id,
+			Name:           groupRequest.Name,
+			DisplayName:    groupRequest.DisplayName,
+			Ai:             groupRequest.Ai,
+			Purpose:        groupRequest.Purpose,
+			AllowedDomains: groupRequest.AllowedDomains,
+		}
 
-	token, err := getKeycloakToken(admin.TestUserId)
-	if err != nil {
-		t.Fatal(err)
-	}
-	admin.TestToken = token
+		token, err := getKeycloakToken(admin.TestUserId)
+		if err != nil {
+			t.Error(err)
+		}
 
-	println(fmt.Sprintf("Integration Test: %+v", integrationTest))
+		session, err := api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
+		if err != nil {
+			t.Errorf("error validating auth token: %v", err)
+		}
+
+		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_ADMIN.String()) {
+			t.Error("admin doesn't have admin role")
+		}
+
+		admin.TestToken = token
+		admin.UserSession = session
+
+	})
+	t.Logf("Integration Test: %+v", integrationTest)
 }
 
 func TestIntegrationRoles(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
+	t.Run("admin can create roles", func(t *testing.T) {
+		admin := integrationTest.TestUsers[0]
 
-	staffRoleRequest := &types.PostRoleRequest{Name: "Staff"}
-	staffRoleRequestBytes, err := protojson.Marshal(staffRoleRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+		staffRoleRequest := &types.PostRoleRequest{Name: "Staff"}
+		staffRoleRequestBytes, err := protojson.Marshal(staffRoleRequest)
+		if err != nil {
+			t.Errorf("error marshalling staff role request: %v", err)
+		}
 
-	staffRoleResponse := &types.PostRoleResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/roles", staffRoleRequestBytes, nil, staffRoleResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
+		staffRoleResponse := &types.PostRoleResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/roles", staffRoleRequestBytes, nil, staffRoleResponse)
+		if err != nil {
+			t.Errorf("error posting staff role request: %v", err)
+		}
 
-	memberRoleRequest := &types.PostRoleRequest{Name: "Member"}
-	memberRoleRequestBytes, err := protojson.Marshal(memberRoleRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+		if !util.IsUUID(staffRoleResponse.Id) {
+			t.Error("staff role id is not a uuid")
+		}
 
-	memberRoleResponse := &types.PostRoleResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/roles", memberRoleRequestBytes, nil, memberRoleResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
+		memberRoleRequest := &types.PostRoleRequest{Name: "Member"}
+		memberRoleRequestBytes, err := protojson.Marshal(memberRoleRequest)
+		if err != nil {
+			t.Errorf("error marshalling member role request: %v", err)
+		}
 
-	roles := make(map[string]*types.IRole, 2)
-	roles[staffRoleResponse.Id] = &types.IRole{
-		Id:   staffRoleResponse.Id,
-		Name: staffRoleRequest.Name,
-	}
-	roles[memberRoleResponse.Id] = &types.IRole{
-		Id:   memberRoleResponse.Id,
-		Name: memberRoleRequest.Name,
-	}
+		memberRoleResponse := &types.PostRoleResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/roles", memberRoleRequestBytes, nil, memberRoleResponse)
+		if err != nil {
+			t.Errorf("error posting member role request: %v", err)
+		}
 
-	patchGroupRolesRequest := &types.PatchGroupRolesRequest{
-		Roles:         roles,
-		DefaultRoleId: memberRoleResponse.Id,
-	}
-	patchGroupRolesRequestBytes, err := protojson.Marshal(patchGroupRolesRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+		if !util.IsUUID(memberRoleResponse.Id) {
+			t.Error("member role id is not a uuid")
+		}
 
-	patchGroupRolesResponse := &types.PatchGroupRolesResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPatch, "/api/v1/group/roles", patchGroupRolesRequestBytes, nil, patchGroupRolesResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
+		roles := make(map[string]*types.IRole, 2)
+		roles[staffRoleResponse.Id] = &types.IRole{
+			Id:   staffRoleResponse.Id,
+			Name: staffRoleRequest.Name,
+		}
+		roles[memberRoleResponse.Id] = &types.IRole{
+			Id:   memberRoleResponse.Id,
+			Name: memberRoleRequest.Name,
+		}
 
-	integrationTest.Roles = roles
-	integrationTest.DefaultRole = roles[staffRoleResponse.Id]
+		patchGroupRolesRequest := &types.PatchGroupRolesRequest{
+			Roles:         roles,
+			DefaultRoleId: memberRoleResponse.Id,
+		}
+		patchGroupRolesRequestBytes, err := protojson.Marshal(patchGroupRolesRequest)
+		if err != nil {
+			t.Errorf("error marshalling group roles request: %v", err)
+		}
 
-	println(fmt.Sprintf("Integration Test: %+v", integrationTest))
+		patchGroupRolesResponse := &types.PatchGroupRolesResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPatch, "/api/v1/group/roles", patchGroupRolesRequestBytes, nil, patchGroupRolesResponse)
+		if err != nil {
+			t.Errorf("error patching group roles request: %v", err)
+		}
+
+		integrationTest.Roles = roles
+		integrationTest.DefaultRole = roles[staffRoleResponse.Id]
+	})
+
+	t.Logf("Integration Test: %+v", integrationTest)
 }
 
 func TestIntegrationService(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
+	t.Run("admin can create service addons and generate a schedule", func(t *testing.T) {
 
-	postServiceAddon1Request := &types.PostServiceAddonRequest{Name: "test addon 1"}
-	postServiceAddon1RequestBytes, err := protojson.Marshal(postServiceAddon1Request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	postServiceAddon1Response := &types.PostServiceAddonResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon1RequestBytes, nil, postServiceAddon1Response)
-	if err != nil {
-		t.Fatal(err)
-	}
+		admin := integrationTest.TestUsers[0]
 
-	postServiceAddon2Request := &types.PostServiceAddonRequest{Name: "test addon 2"}
-	postServiceAddon2RequestBytes, err := protojson.Marshal(postServiceAddon2Request)
-	if err != nil {
-		t.Fatal(err)
-	}
-	postServiceAddon2Response := &types.PostServiceAddonResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon2RequestBytes, nil, postServiceAddon2Response)
-	if err != nil {
-		t.Fatal(err)
-	}
+		postServiceAddon1Request := &types.PostServiceAddonRequest{Name: "test addon 1"}
+		postServiceAddon1RequestBytes, err := protojson.Marshal(postServiceAddon1Request)
+		if err != nil {
+			t.Errorf("error marshalling addon 1 request: %v", err)
+		}
 
-	serviceAddons := make(map[string]*types.IServiceAddon, 2)
-	serviceAddons[postServiceAddon1Response.Id] = &types.IServiceAddon{
-		Id:   postServiceAddon1Response.Id,
-		Name: postServiceAddon1Request.Name,
-	}
-	serviceAddons[postServiceAddon2Response.Id] = &types.IServiceAddon{
-		Id:   postServiceAddon2Response.Id,
-		Name: postServiceAddon2Request.Name,
-	}
+		postServiceAddon1Response := &types.PostServiceAddonResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon1RequestBytes, nil, postServiceAddon1Response)
+		if err != nil {
+			t.Errorf("error requesting addon 1 request: %v", err)
+		}
 
-	tiers := make(map[string]*types.IServiceTier, 1)
-	tiers[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IServiceTier{
-		Name:   "test tier",
-		Addons: serviceAddons,
-	}
+		if !util.IsUUID(postServiceAddon1Response.Id) {
+			t.Error("addon 1 id is not a uuid")
+		}
 
-	integrationTest.OnboardingService = &types.IService{
-		Name:  "test service",
-		Tiers: tiers,
-	}
+		postServiceAddon2Request := &types.PostServiceAddonRequest{Name: "test addon 2"}
+		postServiceAddon2RequestBytes, err := protojson.Marshal(postServiceAddon2Request)
+		if err != nil {
+			t.Errorf("error marshalling addon 2 request: %v", err)
+		}
 
-	println(fmt.Sprintf("Integration Test: %+v", integrationTest))
+		postServiceAddon2Response := &types.PostServiceAddonResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon2RequestBytes, nil, postServiceAddon2Response)
+		if err != nil {
+			t.Errorf("error posting addon 2 request: %v", err)
+		}
+
+		if !util.IsUUID(postServiceAddon2Response.Id) {
+			t.Error("addon 2 id is not a uuid")
+		}
+
+		serviceAddons := make(map[string]*types.IServiceAddon, 2)
+		serviceAddons[postServiceAddon1Response.Id] = &types.IServiceAddon{
+			Id:   postServiceAddon1Response.Id,
+			Name: postServiceAddon1Request.Name,
+		}
+		serviceAddons[postServiceAddon2Response.Id] = &types.IServiceAddon{
+			Id:   postServiceAddon2Response.Id,
+			Name: postServiceAddon2Request.Name,
+		}
+
+		tiers := make(map[string]*types.IServiceTier, 1)
+		tiers[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IServiceTier{
+			Name:   "test tier",
+			Addons: serviceAddons,
+		}
+
+		integrationTest.OnboardingService = &types.IService{
+			Name:  "test service",
+			Tiers: tiers,
+		}
+	})
+	t.Logf("Integration Test: %+v", integrationTest)
 }
 
 func TestIntegrationSchedule(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
+	t.Run("admin can get lookups and generate a schedule", func(t *testing.T) {
+		admin := integrationTest.TestUsers[0]
 
-	startTime := time.Date(2023, time.March, 03, 0, 0, 0, 0, time.UTC).Unix()
-	endTime := time.Date(2033, time.March, 03, 0, 0, 0, 0, time.UTC).Unix()
+		startTime := time.Date(2023, time.March, 03, 0, 0, 0, 0, time.UTC).Unix()
+		endTime := time.Date(2033, time.March, 03, 0, 0, 0, 0, time.UTC).Unix()
 
-	integrationTest.OnboardingSchedule = &types.ISchedule{
-		Name:         "test schedule",
-		SlotDuration: 30,
-		StartTime:    &timestamppb.Timestamp{Seconds: startTime},
-		EndTime:      &timestamppb.Timestamp{Seconds: endTime},
-	}
-
-	lookupsResponse := &types.GetLookupsResponse{}
-	err := apiRequest(admin.TestToken, http.MethodGet, "/api/v1/lookup", nil, nil, lookupsResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if lookupsResponse.TimeUnits == nil {
-		t.Fatal("did not get integration time units")
-	}
-
-	for _, tu := range lookupsResponse.TimeUnits {
-		if tu.Name == "week" {
-			integrationTest.OnboardingSchedule.ScheduleTimeUnitId = tu.Id
-		} else if tu.Name == "hour" {
-			integrationTest.OnboardingSchedule.BracketTimeUnitId = tu.Id
-		} else if tu.Name == "minute" {
-			integrationTest.OnboardingSchedule.SlotTimeUnitId = tu.Id
+		integrationTest.OnboardingSchedule = &types.ISchedule{
+			Name:         "test schedule",
+			SlotDuration: 30,
+			StartTime:    &timestamppb.Timestamp{Seconds: startTime},
+			EndTime:      &timestamppb.Timestamp{Seconds: endTime},
 		}
-	}
 
-	println(fmt.Sprintf("Integration Test: %+v", integrationTest))
+		lookupsResponse := &types.GetLookupsResponse{}
+		err := apiRequest(admin.TestToken, http.MethodGet, "/api/v1/lookup", nil, nil, lookupsResponse)
+		if err != nil {
+			t.Errorf("error getting lookups request: %v", err)
+		}
+
+		if lookupsResponse.TimeUnits == nil {
+			t.Error("did not get integration time units")
+		}
+
+		for _, tu := range lookupsResponse.TimeUnits {
+			if tu.Name == "week" {
+				integrationTest.OnboardingSchedule.ScheduleTimeUnitId = tu.Id
+			} else if tu.Name == "hour" {
+				integrationTest.OnboardingSchedule.BracketTimeUnitId = tu.Id
+			} else if tu.Name == "minute" {
+				integrationTest.OnboardingSchedule.SlotTimeUnitId = tu.Id
+			}
+		}
+	})
+	t.Logf("Integration Test: %+v", integrationTest)
 }
 
 func TestIntegrationOnboarding(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
+	t.Run("admin can complete onboarding with group, roles, service, schedule", func(t *testing.T) {
+		admin := integrationTest.TestUsers[0]
 
-	onboardingRequest := &types.CompleteOnboardingRequest{
-		Service:  integrationTest.OnboardingService,
-		Schedule: integrationTest.OnboardingSchedule,
-	}
-	onboardingRequestBytes, err := protojson.Marshal(onboardingRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+		onboardingRequest := &types.CompleteOnboardingRequest{
+			Service:  integrationTest.OnboardingService,
+			Schedule: integrationTest.OnboardingSchedule,
+		}
+		onboardingRequestBytes, err := protojson.Marshal(onboardingRequest)
+		if err != nil {
+			t.Errorf("error marshalling onboarding request: %v", err)
+		}
 
-	onboardingResponse := &types.CompleteOnboardingResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/onboard", onboardingRequestBytes, nil, onboardingResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
+		onboardingResponse := &types.CompleteOnboardingResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/onboard", onboardingRequestBytes, nil, onboardingResponse)
+		if err != nil {
+			t.Errorf("error posting onboarding request: %v", err)
+		}
 
-	integrationTest.OnboardingService.Id = onboardingResponse.ServiceId
-	integrationTest.OnboardingSchedule.Id = onboardingResponse.ScheduleId
+		if !util.IsUUID(onboardingResponse.ServiceId) {
+			t.Error("service id is not a uuid")
+		}
 
-	integrationTest.GroupService = &types.IGroupService{
-		Id:      onboardingResponse.GroupServiceId,
-		GroupId: integrationTest.Group.Id,
-		Service: integrationTest.OnboardingService,
-	}
+		if !util.IsUUID(onboardingResponse.GroupServiceId) {
+			t.Error("group service 2 id is not a uuid")
+		}
 
-	integrationTest.GroupSchedule = &types.IGroupSchedule{
-		Id:       onboardingResponse.GroupScheduleId,
-		GroupId:  integrationTest.Group.Id,
-		Schedule: integrationTest.OnboardingSchedule,
-	}
+		if !util.IsUUID(onboardingResponse.ScheduleId) {
+			t.Error("schedule 2 id is not a uuid")
+		}
 
-	println(fmt.Sprintf("Integration Test: %+v", integrationTest))
+		if !util.IsUUID(onboardingResponse.GroupScheduleId) {
+			t.Error("group schedule 2 id is not a uuid")
+		}
+
+		integrationTest.OnboardingService.Id = onboardingResponse.ServiceId
+		integrationTest.OnboardingSchedule.Id = onboardingResponse.ScheduleId
+
+		integrationTest.GroupService = &types.IGroupService{
+			Id:      onboardingResponse.GroupServiceId,
+			GroupId: integrationTest.Group.Id,
+			Service: integrationTest.OnboardingService,
+		}
+
+		integrationTest.GroupSchedule = &types.IGroupSchedule{
+			Id:       onboardingResponse.GroupScheduleId,
+			GroupId:  integrationTest.Group.Id,
+			Schedule: integrationTest.OnboardingSchedule,
+		}
+	})
+	t.Logf("Integration Test: %+v", integrationTest)
 }
 
 func TestIntegrationUserSchedule(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
+	t.Run("user can create a personal schedule using a group schedule id", func(t *testing.T) {
+		admin := integrationTest.TestUsers[0]
 
-	brackets := make(map[string]*types.IScheduleBracket, 1)
+		brackets := make(map[string]*types.IScheduleBracket, 1)
+		services := make(map[string]*types.IService, 1)
+		slots := make(map[string]*types.IScheduleBracketSlot, 2)
 
-	services := make(map[string]*types.IService, 1)
-	services[strconv.Itoa(int(time.Now().UnixNano()))] = integrationTest.GroupService.Service
+		bracketId := uuid.NewString()
 
-	bracketId := uuid.NewString()
+		services[strconv.Itoa(int(time.Now().UnixNano()))] = integrationTest.GroupService.Service
 
-	slots := make(map[string]*types.IScheduleBracketSlot, 2)
-	slots[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IScheduleBracketSlot{
-		ScheduleBracketId: bracketId,
-		StartTime:         "P2DT1H",
-	}
-	slots[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IScheduleBracketSlot{
-		ScheduleBracketId: bracketId,
-		StartTime:         "P3DT4H",
-	}
+		slots[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IScheduleBracketSlot{
+			ScheduleBracketId: bracketId,
+			StartTime:         "P2DT1H",
+		}
 
-	brackets[bracketId] = &types.IScheduleBracket{
-		Id:         bracketId,
-		Automatic:  false,
-		Duration:   13,
-		Multiplier: 100,
-		Services:   services,
-		Slots:      slots,
-	}
+		slots[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IScheduleBracketSlot{
+			ScheduleBracketId: bracketId,
+			StartTime:         "P3DT4H",
+		}
 
-	userScheduleRequest := &types.PostScheduleRequest{
-		GroupScheduleId:    integrationTest.GroupSchedule.Schedule.Id,
-		Brackets:           brackets,
-		Name:               integrationTest.OnboardingSchedule.Name,
-		StartTime:          integrationTest.OnboardingSchedule.StartTime,
-		EndTime:            integrationTest.OnboardingSchedule.EndTime,
-		ScheduleTimeUnitId: integrationTest.OnboardingSchedule.ScheduleTimeUnitId,
-		BracketTimeUnitId:  integrationTest.OnboardingSchedule.BracketTimeUnitId,
-		SlotTimeUnitId:     integrationTest.OnboardingSchedule.SlotTimeUnitId,
-		SlotDuration:       integrationTest.OnboardingSchedule.SlotDuration,
-	}
-	userScheduleRequestBytes, err := protojson.Marshal(userScheduleRequest)
-	if err != nil {
-		t.Fatal(err)
-	}
+		brackets[bracketId] = &types.IScheduleBracket{
+			Id:         bracketId,
+			Automatic:  false,
+			Duration:   13,
+			Multiplier: 100,
+			Services:   services,
+			Slots:      slots,
+		}
 
-	userScheduleResponse := &types.PostScheduleResponse{}
-	err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/schedules", userScheduleRequestBytes, nil, userScheduleResponse)
-	if err != nil {
-		t.Fatal(err)
-	}
+		userScheduleRequest := &types.PostScheduleRequest{
+			GroupScheduleId:    integrationTest.GroupSchedule.Schedule.Id,
+			Brackets:           brackets,
+			Name:               integrationTest.OnboardingSchedule.Name,
+			StartTime:          integrationTest.OnboardingSchedule.StartTime,
+			EndTime:            integrationTest.OnboardingSchedule.EndTime,
+			ScheduleTimeUnitId: integrationTest.OnboardingSchedule.ScheduleTimeUnitId,
+			BracketTimeUnitId:  integrationTest.OnboardingSchedule.BracketTimeUnitId,
+			SlotTimeUnitId:     integrationTest.OnboardingSchedule.SlotTimeUnitId,
+			SlotDuration:       integrationTest.OnboardingSchedule.SlotDuration,
+		}
 
-	integrationTest.UserSchedule = integrationTest.OnboardingSchedule
-	integrationTest.UserSchedule.Id = userScheduleResponse.Id
+		userScheduleRequestBytes, err := protojson.Marshal(userScheduleRequest)
+		if err != nil {
+			t.Errorf("error marshalling user schedule request: %v", err)
+		}
 
-	println(fmt.Sprintf("Integration Test: %+v", integrationTest))
+		userScheduleResponse := &types.PostScheduleResponse{}
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/schedules", userScheduleRequestBytes, nil, userScheduleResponse)
+		if err != nil {
+			t.Errorf("error posting user schedule request: %v", err)
+		}
+
+		integrationTest.UserSchedule = integrationTest.OnboardingSchedule
+		integrationTest.UserSchedule.Id = userScheduleResponse.Id
+	})
+	t.Logf("Integration Test: %+v", integrationTest)
 }
 
 func TestIntegrationQuotes(t *testing.T) {

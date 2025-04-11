@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"time"
 
@@ -58,7 +59,25 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 		endTime = &et
 	}
 
-	err := tx.QueryRow(`
+	var err error
+	var userSub string
+	if data.AsGroup {
+		// check to see APP_GROUP_SCHEDULE role is on session.Roles
+		if !slices.Contains(session.AvailableUserGroupRoles, "APP_GROUP_SCHEDULES") {
+			return nil, util.ErrCheck(errors.New("does not have APP_GROUP_SCHEDULES role"))
+		}
+
+		userSub = session.UserSub
+		session.UserSub = session.GroupSub
+
+		// The group db user owns master schedule records
+		err = tx.SetDbVar("user_sub", session.GroupSub)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
+
+	err = tx.QueryRow(`
 		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_time, end_time, timezone)
 		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9)
 		RETURNING id
@@ -71,6 +90,15 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 		return nil, util.ErrCheck(err)
 	}
 
+	if data.AsGroup {
+		session.UserSub = userSub
+		err = tx.SetDbVar("user_sub", session.UserSub)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
+
+	// Runs when users post their brackets to an existing master schedule
 	if len(data.Brackets) > 0 && data.GroupScheduleId != "" {
 		err := h.InsertNewBrackets(scheduleId, data.Brackets, tx, session)
 		if err != nil {

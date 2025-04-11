@@ -13,49 +13,19 @@ import (
 
 func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupScheduleResponse, error) {
 
-	// The group db user owns master schedule records
-	err := tx.SetDbVar("user_sub", session.GroupSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	userSub := session.UserSub
-	session.UserSub = session.GroupSub
-
-	scheduleResp, err := h.PostSchedule(w, req, &types.PostScheduleRequest{
-		Name:               data.GroupSchedule.Schedule.Name,
-		StartTime:          data.GroupSchedule.Schedule.StartTime,
-		EndTime:            data.GroupSchedule.Schedule.EndTime,
-		ScheduleTimeUnitId: data.GroupSchedule.Schedule.ScheduleTimeUnitId,
-		BracketTimeUnitId:  data.GroupSchedule.Schedule.BracketTimeUnitId,
-		SlotTimeUnitId:     data.GroupSchedule.Schedule.SlotTimeUnitId,
-		SlotDuration:       data.GroupSchedule.Schedule.SlotDuration,
-		Brackets:           map[string]*types.IScheduleBracket{},
-	}, session, tx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	var groupScheduleId string
-	err = tx.QueryRow(`
+	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
-	`, session.GroupId, scheduleResp.Id, session.GroupSub).Scan(&groupScheduleId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	session.UserSub = userSub
-
-	err = tx.SetDbVar("user_sub", session.UserSub)
+	`, session.GroupId, data.ScheduleId, session.GroupSub).Scan(&groupScheduleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
 
-	return &types.PostGroupScheduleResponse{Id: groupScheduleId, ScheduleId: scheduleResp.Id}, nil
+	return &types.PostGroupScheduleResponse{Id: groupScheduleId}, nil
 }
 
 func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupScheduleResponse, error) {

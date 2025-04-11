@@ -46,6 +46,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
   const { setValid } = useValid();
 
   const [patchGroupSchedule] = siteApi.useGroupScheduleServicePatchGroupScheduleMutation();
+  const [postSchedule] = siteApi.useScheduleServicePostScheduleMutation();
   const [postGroupSchedule] = siteApi.useGroupScheduleServicePostGroupScheduleMutation();
   const [getGroupScheduleMasterById] = siteApi.useLazyGroupScheduleServiceGetGroupScheduleMasterByIdQuery();
 
@@ -148,13 +149,19 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
           newSchedule.bracketTimeUnitId = s.bracketTimeUnitId
           newSchedule.slotTimeUnitId = s.slotTimeUnitId
           newSchedule.slotDuration = s.slotDuration
+
+          const { id: scheduleId } = await postSchedule({
+            postScheduleRequest: {
+              ...newSchedule,
+              asGroup: true
+            },
+          }).unwrap();
           await postGroupSchedule({
             postGroupScheduleRequest: {
-              groupSchedule: {
-                schedule: newSchedule
-              }
+              scheduleId,
             }
           }).unwrap();
+          newSchedule.id = scheduleId;
         }
       }
     }
