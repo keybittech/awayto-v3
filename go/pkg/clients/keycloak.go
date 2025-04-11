@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	_ "github.com/lib/pq"
@@ -41,22 +40,40 @@ const (
 )
 
 var (
-	KeycloakPublicKey *rsa.PublicKey
+	KeycloakPublicKey      *rsa.PublicKey
+	emptyAuthResponse      = AuthResponse{}
+	authCommandMustHaveSub = errors.New("auth command request must contain a user sub")
 )
-
-type Keycloak struct {
-	interfaces.IKeycloak
-	C         *KeycloakClient
-	handlerId string
-}
 
 const keycloakHandlerId = "keycloak"
 
-var emptyAuthResponse = interfaces.AuthResponse{}
+type AuthRequest struct {
+	*types.AuthRequestParams
+}
 
-var (
-	authCommandMustHaveSub = errors.New("auth command request must contain a user sub")
-)
+type AuthResponse struct {
+	*types.AuthResponseParams
+	Error error
+}
+
+type AuthCommand struct {
+	*types.WorkerCommandParams
+	Request   AuthRequest
+	ReplyChan chan AuthResponse
+}
+
+func (cmd AuthCommand) GetClientId() string {
+	return cmd.ClientId
+}
+
+func (cmd AuthCommand) GetReplyChannel() interface{} {
+	return cmd.ReplyChan
+}
+
+type Keycloak struct {
+	Client    *KeycloakClient
+	handlerId string
+}
 
 func InitKeycloak() *Keycloak {
 
@@ -69,15 +86,15 @@ func InitKeycloak() *Keycloak {
 
 	GetGlobalWorkerPool().RegisterProcessFunction(keycloakHandlerId, func(keycloakCmd CombinedCommand) bool {
 
-		cmd, ok := keycloakCmd.(interfaces.AuthCommand)
+		cmd, ok := keycloakCmd.(AuthCommand)
 		if !ok {
 			return false
 		}
 
-		defer func(replyChan chan interfaces.AuthResponse) {
+		defer func(replyChan chan AuthResponse) {
 			if r := recover(); r != nil {
 				err := errors.New(fmt.Sprintf("Did recover from %+v", r))
-				replyChan <- interfaces.AuthResponse{Error: err}
+				replyChan <- AuthResponse{Error: err}
 			}
 			close(replyChan)
 		}(cmd.ReplyChan)
@@ -86,15 +103,15 @@ func InitKeycloak() *Keycloak {
 		case SetKeycloakTokenKeycloakCommand:
 			oidcToken, err := kc.DirectGrantAuthentication()
 			if err != nil {
-				cmd.ReplyChan <- interfaces.AuthResponse{Error: err}
+				cmd.ReplyChan <- AuthResponse{Error: err}
 			} else {
 				kc.Token = oidcToken
-				cmd.ReplyChan <- interfaces.AuthResponse{}
+				cmd.ReplyChan <- AuthResponse{}
 			}
 		case SetKeycloakRealmClientsKeycloakCommand:
 			realmClients, err := kc.GetRealmClients()
 			if err != nil {
-				cmd.ReplyChan <- interfaces.AuthResponse{Error: err}
+				cmd.ReplyChan <- AuthResponse{Error: err}
 			} else {
 				for _, realmClient := range realmClients {
 					if realmClient.ClientId == string(os.Getenv("KC_CLIENT")) {
@@ -104,13 +121,13 @@ func InitKeycloak() *Keycloak {
 						kc.ApiClient = realmClient
 					}
 				}
-				cmd.ReplyChan <- interfaces.AuthResponse{}
+				cmd.ReplyChan <- AuthResponse{}
 			}
 		case SetKeycloakRolesKeycloakCommand:
 			var groupAdminRoles []*types.KeycloakRole
 			roles, err := kc.GetAppClientRoles()
 			if err != nil {
-				cmd.ReplyChan <- interfaces.AuthResponse{Error: err}
+				cmd.ReplyChan <- AuthResponse{Error: err}
 			} else {
 				for _, role := range roles {
 					if role.Name == "APP_ROLE_CALL" {
@@ -120,17 +137,17 @@ func InitKeycloak() *Keycloak {
 					}
 				}
 				kc.GroupAdminRoles = groupAdminRoles
-				cmd.ReplyChan <- interfaces.AuthResponse{}
+				cmd.ReplyChan <- AuthResponse{}
 			}
 		case GetGroupAdminRolesKeycloakCommand:
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Roles: kc.GroupAdminRoles,
 				},
 			}
 		case GetUserListKeycloakCommand:
 			users, err := kc.GetUserListInRealm()
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Users: users,
 				},
@@ -138,12 +155,12 @@ func InitKeycloak() *Keycloak {
 			}
 		case UpdateUserKeycloakCommand:
 			err := kc.UpdateUser(cmd.Request.UserId, cmd.Request.FirstName, cmd.Request.LastName)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: err,
 			}
 		case CreateGroupKeycloakCommand:
 			groupId, err := kc.CreateGroup(cmd.Request.GroupName)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Group: &types.KeycloakGroup{Id: groupId},
 				},
@@ -151,17 +168,17 @@ func InitKeycloak() *Keycloak {
 			}
 		case DeleteGroupKeycloakCommand:
 			err := kc.DeleteGroup(cmd.Request.GroupId)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: err,
 			}
 		case UpdateGroupKeycloakCommand:
 			err := kc.UpdateGroup(cmd.Request.GroupId, cmd.Request.GroupName)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: err,
 			}
 		case GetGroupKeycloakCommand:
 			group, err := kc.GetGroup(cmd.Request.GroupId)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Group: group,
 				},
@@ -169,7 +186,7 @@ func InitKeycloak() *Keycloak {
 			}
 		case CreateSubgroupKeycloakCommand:
 			subgroup, err := kc.CreateSubgroup(cmd.Request.GroupId, cmd.Request.GroupName)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Group: subgroup,
 				},
@@ -177,29 +194,29 @@ func InitKeycloak() *Keycloak {
 			}
 		case AddUserToGroupKeycloakCommand:
 			err := kc.MutateUserGroupMembership(http.MethodPut, cmd.Request.UserId, cmd.Request.GroupId)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: err,
 			}
 		case DeleteUserFromGroupKeycloakCommand:
 			err := kc.MutateUserGroupMembership(http.MethodDelete, cmd.Request.UserId, cmd.Request.GroupId)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: err,
 			}
 		case AddRolesToGroupKeycloakCommand:
 			err := kc.MutateGroupRoles(http.MethodPost, cmd.Request.GroupId, cmd.Request.Roles)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: err,
 			}
 		case DeleteRolesFromGroupKeycloakCommand:
 			err := kc.MutateGroupRoles(http.MethodDelete, cmd.Request.GroupId, cmd.Request.Roles)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: err,
 			}
 		case GetGroupByNameKeycloakCommand:
 			var groups []*types.KeycloakGroup
 			findBytes, err := kc.FindResource("groups", cmd.Request.GroupName)
 			json.Unmarshal(findBytes, &groups)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Groups: groups,
 				},
@@ -207,7 +224,7 @@ func InitKeycloak() *Keycloak {
 			}
 		case GetGroupSubgroupsKeycloakCommand:
 			subgroups, err := kc.GetGroupSubgroups(cmd.Request.GroupId)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Groups: subgroups,
 				},
@@ -215,14 +232,14 @@ func InitKeycloak() *Keycloak {
 			}
 		case GetGroupRoleMappingsKeycloakCommand:
 			mappings, err := kc.GetGroupRoleMappings(cmd.Request.GroupId)
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
 					Mappings: mappings,
 				},
 				Error: err,
 			}
 		default:
-			cmd.ReplyChan <- interfaces.AuthResponse{
+			cmd.ReplyChan <- AuthResponse{
 				Error: errors.New("unknown command type"),
 			}
 			util.ErrorLog.Println("unknown command type", cmd.Ty)
@@ -276,13 +293,13 @@ func InitKeycloak() *Keycloak {
 	kc.PublicKey = pk
 	KeycloakPublicKey = pk
 
-	kcc.C = kc
+	kcc.Client = kc
 
 	println("Keycloak Init")
 	return kcc
 }
 
-func (s *Keycloak) RouteCommand(cmd interfaces.AuthCommand) error {
+func (s *Keycloak) RouteCommand(cmd AuthCommand) error {
 	return GetGlobalWorkerPool().RouteCommand(cmd)
 }
 
@@ -290,17 +307,17 @@ func (s *Keycloak) Close() {
 	GetGlobalWorkerPool().UnregisterProcessFunction(s.handlerId)
 }
 
-func (k *Keycloak) SendCommand(cmdType int32, request *types.AuthRequestParams) (interfaces.AuthResponse, error) {
+func (k *Keycloak) SendCommand(cmdType int32, request *types.AuthRequestParams) (AuthResponse, error) {
 	if request.UserSub == "" {
 		return emptyAuthResponse, authCommandMustHaveSub
 	}
-	createCmd := func(replyChan chan interfaces.AuthResponse) interfaces.AuthCommand {
-		return interfaces.AuthCommand{
+	createCmd := func(replyChan chan AuthResponse) AuthCommand {
+		return AuthCommand{
 			WorkerCommandParams: &types.WorkerCommandParams{
 				Ty:       cmdType,
 				ClientId: request.UserSub,
 			},
-			Request: interfaces.AuthRequest{
+			Request: AuthRequest{
 				AuthRequestParams: request,
 			},
 			ReplyChan: replyChan,

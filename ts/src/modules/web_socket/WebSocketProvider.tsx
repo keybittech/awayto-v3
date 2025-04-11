@@ -116,7 +116,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
           return
         }
         if ('blurred' == localStorage.getItem('oncall')) {
-          setSnack({ snackOn: 'closing a blurred socket', snackType: 'warning' });
+          // setSnack({ snackOn: 'closing a blurred socket', snackType: 'warning' });
           localStorage.removeItem('oncall');
           connect();
           return
@@ -133,7 +133,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
 
       ws.onerror = (error) => {
         if (socket.current?.readyState == socket.current?.CLOSED) {
-          setSnack({ snackOn: 'trying to reconnect an already closed socket', snackType: 'warning' });
+          // setSnack({ snackOn: 'trying to reconnect an already closed socket', snackType: 'warning' });
           localStorage.removeItem('oncall');
           connect();
         } else {

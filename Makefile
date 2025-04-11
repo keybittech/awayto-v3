@@ -36,7 +36,7 @@ GO_GEN_DIR=go/pkg/types
 GO_API_DIR=go/pkg/api
 GO_CLIENTS_DIR=go/pkg/clients
 GO_HANDLERS_DIR=go/pkg/handlers
-GO_INTERFACES_DIR=go/pkg/interfaces
+# GO_INTERFACES_DIR=go/pkg/interfaces
 GO_UTIL_DIR=go/pkg/util
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
 DEMOS_DIR=demos/final
@@ -47,8 +47,8 @@ JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_TARGET=${PWD}/go/$(BINARY_NAME)
-GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
-GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
+# GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
+# GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
 PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
 
 # host locations
@@ -133,7 +133,7 @@ build: ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_P
 clean:
 	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(MOCK_TARGET)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) # $(MOCK_TARGET)
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
 ifeq ($(DEPLOYING),true)
@@ -208,13 +208,13 @@ working/proto-stamp: $(wildcard proto/*.proto)
 	fi
 	touch $@
 
-$(GO_TARGET): go_tidy $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) $(GO_MOCK_TARGET)
+$(GO_TARGET): go_tidy $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) # $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
-$(GO_MOCK_TARGET): $(GO_INTERFACES_FILE)
-	@mkdir -p $(@D)
-	mockgen -source=$(GO_INTERFACES_FILE) -destination=$(GO_MOCK_TARGET) -package=interfaces
+# $(GO_MOCK_TARGET): $(GO_INTERFACES_FILE)
+# 	@mkdir -p $(@D)
+# 	mockgen -source=$(GO_INTERFACES_FILE) -destination=$(GO_MOCK_TARGET) -package=interfaces
 
 #################################
 #           DEVELOP             #
@@ -231,8 +231,9 @@ go_tidy:
 	cd $(GO_API_DIR) && go mod tidy
 	cd $(GO_CLIENTS_DIR) && go mod tidy
 	cd $(GO_HANDLERS_DIR) && go mod tidy
-	cd $(GO_INTERFACES_DIR) && go mod tidy
 	cd $(GO_UTIL_DIR) && go mod tidy
+
+# cd $(GO_INTERFACES_DIR) && go mod tidy
 
 .PHONY: go_watch
 go_watch:
@@ -278,7 +279,7 @@ go_test_ui: build $(GO_TARGET)
 	go test -C $(GO_SRC) -v -tags=integration -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
 .PHONY: go_test_unit
-go_test_unit: $(GO_TARGET) $(GO_MOCK_TARGET)
+go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go test -C $(GO_API_DIR) $(GO_TEST_FLAGS) ./...
 	go test -C $(GO_CLIENTS_DIR) $(GO_TEST_FLAGS) ./...
@@ -301,7 +302,7 @@ go_test_bench: $(GO_TARGET)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_UTIL_DIR)
 
 .PHONY: go_coverage
-go_coverage: $(GO_MOCK_TARGET)
+go_coverage: # $(GO_MOCK_TARGET)
 	go test -C $(GO_SRC) -coverpkg=./... ./...
 
 .PHONY: test_clean
@@ -398,8 +399,9 @@ host_install:
 		echo "clear && cd $(H_REM_DIR)" >> $(H_OP)/.bashrc; \
 	fi
 	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
-	go install github.com/golang/mock/mockgen@v1.6.0
 	sudo tailscale up
+
+# 	go install github.com/golang/mock/mockgen@v1.6.0
 
 .PHONY: host_reboot
 host_reboot:

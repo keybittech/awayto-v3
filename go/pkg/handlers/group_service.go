@@ -1,16 +1,16 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupServiceResponse, error) {
+func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupServiceResponse, error) {
 	var groupServiceId string
 	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.group_services (group_id, service_id, created_sub)
@@ -28,10 +28,10 @@ func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, da
 	return &types.PostGroupServiceResponse{Id: groupServiceId}, nil
 }
 
-func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, data *types.GetGroupServicesRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupServicesResponse, error) {
+func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, data *types.GetGroupServicesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupServicesResponse, error) {
 	var groupServices []*types.IGroupService
 
-	err := tx.QueryRows(&groupServices, `
+	err := h.Database.QueryRows(tx, &groupServices, `
 		SELECT TO_JSONB(es) as service, egs.id, egs."groupId", egs."serviceId"
 		FROM dbview_schema.enabled_group_services egs
 		LEFT JOIN dbview_schema.enabled_services es ON es.id = egs."serviceId"
@@ -45,7 +45,7 @@ func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupServicesResponse{GroupServices: groupServices}, nil
 }
 
-func (h *Handlers) DeleteGroupService(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteGroupServiceResponse, error) {
+func (h *Handlers) DeleteGroupService(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupServiceResponse, error) {
 
 	serviceIds := strings.Split(data.Ids, ",")
 	_, err := tx.Exec(`

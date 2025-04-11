@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_GetSocketTicket(t *testing.T) {
 		req     *http.Request
 		data    *types.GetSocketTicketRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string

@@ -1,19 +1,19 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, data *types.PostManageGroupsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostManageGroupsResponse, error) {
+func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, data *types.PostManageGroupsRequest, session *types.UserSession, tx *sql.Tx) (*types.PostManageGroupsResponse, error) {
 	var group types.IGroup
 
 	err := tx.QueryRow(`
@@ -43,7 +43,7 @@ func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, da
 	return &types.PostManageGroupsResponse{Id: group.GetId(), Name: group.GetName(), Roles: data.GetRoles()}, nil
 }
 
-func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, data *types.PatchManageGroupsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchManageGroupsResponse, error) {
+func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, data *types.PatchManageGroupsRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchManageGroupsResponse, error) {
 	var group types.IGroup
 
 	// Perform the update operation
@@ -61,7 +61,7 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	existingRoleIDs := make(map[string]struct{})
 	dbRoles := []*types.IGroupRole{}
 
-	err = tx.QueryRows(&dbRoles, `
+	err = h.Database.QueryRows(tx, &dbRoles, `
 		SELECT id, role_id as "roleId" FROM uuid_roles WHERE parent_uuid = $1
 	`, group.GetId())
 	if err != nil {
@@ -99,10 +99,10 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	return &types.PatchManageGroupsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, data *types.GetManageGroupsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetManageGroupsResponse, error) {
+func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, data *types.GetManageGroupsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetManageGroupsResponse, error) {
 	groups := []*types.IGroup{}
 
-	err := tx.QueryRows(&groups, `
+	err := h.Database.QueryRows(tx, &groups, `
 		SELECT * FROM dbview_schema.enabled_groups_ext
 	`)
 	if err != nil {
@@ -112,7 +112,7 @@ func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, dat
 	return &types.GetManageGroupsResponse{Groups: groups}, nil
 }
 
-func (h *Handlers) DeleteManageGroups(w http.ResponseWriter, req *http.Request, data *types.DeleteManageGroupsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteManageGroupsResponse, error) {
+func (h *Handlers) DeleteManageGroups(w http.ResponseWriter, req *http.Request, data *types.DeleteManageGroupsRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteManageGroupsResponse, error) {
 	for _, id := range strings.Split(data.GetIds(), ",") {
 		_, err := tx.Exec(`
 			DELETE FROM dbtable_schema.groups

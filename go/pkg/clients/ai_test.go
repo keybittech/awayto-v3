@@ -6,25 +6,8 @@ import (
 	"regexp"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
-
-func TestInitAi(t *testing.T) {
-	tests := []struct {
-		name string
-		want interfaces.IAi
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := InitAi(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("InitAi() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestAi_GetPromptResponse(t *testing.T) {
 	type args struct {
@@ -112,6 +95,22 @@ func TestHasSimilarKey(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := HasSimilarKey(tt.args.obj, tt.args.regex); got != tt.want {
 				t.Errorf("HasSimilarKey(%v, %v) = %v, want %v", tt.args.obj, tt.args.regex, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInitAi(t *testing.T) {
+	tests := []struct {
+		name string
+		want *Ai
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := InitAi(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("InitAi() = %v, want %v", got, tt.want)
 			}
 		})
 	}

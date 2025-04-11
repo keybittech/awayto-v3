@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"net/http"
@@ -8,14 +9,13 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/google/uuid"
 )
 
-func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *types.PostGroupRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupResponse, error) {
+func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *types.PostGroupRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupResponse, error) {
 	var undos []func()
 
 	defer func() {
@@ -46,7 +46,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	session.GroupSub = groupSub.String()
 
-	err = tx.SetDbVar("user_sub", session.GroupSub)
+	err = h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -59,7 +59,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetDbVar("user_sub", session.UserSub)
+	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -168,7 +168,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.PostGroupResponse{Id: groupId, Code: groupCode}, nil
 }
 
-func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupResponse, error) {
+func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupResponse, error) {
 
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.groups
@@ -179,7 +179,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetDbVar("user_sub", session.GroupSub)
+	err = h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -193,7 +193,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetDbVar("user_sub", session.UserSub)
+	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -208,7 +208,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PatchGroupResponse{Success: true}, nil
 }
 
-func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.PatchGroupAssignmentsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupAssignmentsResponse, error) {
+func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.PatchGroupAssignmentsRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupAssignmentsResponse, error) {
 	assignmentsBytes, err := h.Redis.Client().Get(req.Context(), "group_role_assignments:"+session.GroupId).Bytes()
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -292,7 +292,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 	return &types.PatchGroupAssignmentsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.GetGroupAssignmentsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupAssignmentsResponse, error) {
+func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.GetGroupAssignmentsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupAssignmentsResponse, error) {
 	kcGroup, err := h.Keycloak.GetGroup(session.UserSub, session.GroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -346,7 +346,7 @@ func (h *Handlers) GetGroupAssignments(w http.ResponseWriter, req *http.Request,
 	return &types.GetGroupAssignmentsResponse{Assignments: assignmentsWithoutId}, nil
 }
 
-func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteGroupResponse, error) {
+func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupResponse, error) {
 	for _, id := range data.GetIds() {
 		var groupExternalId string
 

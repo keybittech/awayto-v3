@@ -23,5 +23,3 @@ replace github.com/keybittech/awayto-v3/go/pkg/api => ../api
 replace github.com/keybittech/awayto-v3/go/pkg/handlers => ../handlers
 
 replace github.com/keybittech/awayto-v3/go/pkg/clients => ../clients
-
-replace github.com/keybittech/awayto-v3/go/pkg/interfaces => ../interfaces

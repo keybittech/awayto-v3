@@ -8,7 +8,6 @@ require (
 	github.com/keybittech/awayto-v3/go/pkg/api v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/clients v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/handlers v0.0.0-00010101000000-000000000000
-	github.com/keybittech/awayto-v3/go/pkg/interfaces v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000
 	github.com/playwright-community/playwright-go v0.4902.0
@@ -28,7 +27,6 @@ require (
 	github.com/go-jose/go-jose/v3 v3.0.4 // indirect
 	github.com/go-stack/stack v1.8.1 // indirect
 	github.com/golang-jwt/jwt v3.2.2+incompatible // indirect
-	github.com/golang/mock v1.6.0 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/cel-go v0.23.2 // indirect
 	github.com/lib/pq v1.10.9 // indirect
@@ -51,5 +49,3 @@ replace github.com/keybittech/awayto-v3/go/pkg/handlers => ./pkg/handlers
 replace github.com/keybittech/awayto-v3/go/pkg/util => ./pkg/util
 
 replace github.com/keybittech/awayto-v3/go/pkg/types => ./pkg/types
-
-replace github.com/keybittech/awayto-v3/go/pkg/interfaces => ./pkg/interfaces

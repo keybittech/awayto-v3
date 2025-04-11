@@ -12,7 +12,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"database/sql"
@@ -39,13 +38,12 @@ var emptyString string
 var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)`
 
 type Database struct {
-	interfaces.IDatabase
-	DatabaseClient      interfaces.IDatabaseClient
+	DatabaseClient      *sql.DB
 	DatabaseAdminSub    string
 	DatabaseAdminRoleId string
 }
 
-func (db *Database) Client() interfaces.IDatabaseClient {
+func (db *Database) Client() *sql.DB {
 	return db.DatabaseClient
 }
 
@@ -79,7 +77,7 @@ func InitDatabase() *Database {
 	}
 
 	dbc := &Database{
-		DatabaseClient: &DBWrapper{db},
+		DatabaseClient: db,
 	}
 
 	colTypes = &ColTypes{
@@ -94,7 +92,7 @@ func InitDatabase() *Database {
 
 	var adminRoleId, adminSub string
 
-	err = dbc.TxExec(func(tx interfaces.IDatabaseTx) error {
+	err = dbc.TxExec(func(tx *sql.Tx) error {
 		var txErr error
 		txErr = tx.QueryRow(`
 			SELECT u.sub, r.id FROM dbtable_schema.users u
@@ -105,7 +103,7 @@ func InitDatabase() *Database {
 			return util.ErrCheck(txErr)
 		}
 
-		txErr = tx.SetDbVar("sock_topic", "")
+		txErr = dbc.SetDbVar(tx, "sock_topic", "")
 		if txErr != nil {
 			return util.ErrCheck(txErr)
 		}
@@ -133,6 +131,15 @@ func InitDatabase() *Database {
 	println(fmt.Sprintf("Database Initialized\nAdmin Sub: %s\nAdmin Role Id: %s", dbc.AdminSub(), dbc.AdminRoleId()))
 
 	return dbc
+}
+
+func (db *Database) SetDbVar(tx *sql.Tx, prop, value string) error {
+	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.%s = '%s'", prop, value))
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	return nil
 }
 
 // Go code
@@ -170,7 +177,7 @@ func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
 	return nil
 }
 
-func (db *Database) TxExec(doFunc func(interfaces.IDatabaseTx) error, ids ...string) error {
+func (db *Database) TxExec(doFunc func(*sql.Tx) error, ids ...string) error {
 	if ids == nil || len(ids) != 3 {
 		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
 	}
@@ -204,76 +211,76 @@ func (db *Database) TxExec(doFunc func(interfaces.IDatabaseTx) error, ids ...str
 	return nil
 }
 
-func (db *Database) QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error {
+// func (db *Database) QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error {
+//
+// 	protoValue := reflect.ValueOf(protoStructSlice)
+// 	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
+// 		return errors.New("must provide a pointer to a slice")
+// 	}
+//
+// 	protoType := protoValue.Elem().Type().Elem()
+//
+// 	rows, err := db.Client().Query(query, args...)
+// 	if err != nil {
+// 		return err
+// 	}
+//
+// 	defer rows.Close()
+//
+// 	columns, err := rows.Columns()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+//
+// 	columnTypes, err := rows.ColumnTypes()
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+//
+// 	for rows.Next() {
+// 		newElem := reflect.New(protoType.Elem())
+// 		values := make([]interface{}, len(columns))
+// 		deferrals := make([]func(), 0)
+//
+// 		for i, col := range columnTypes {
+//
+// 			colType := col.DatabaseTypeName()
+//
+// 			for k := 0; k < protoType.Elem().NumField(); k++ {
+// 				fName := strings.Split(protoType.Elem().Field(k).Tag.Get("json"), ",")[0]
+//
+// 				if fName != columns[i] {
+// 					continue
+// 				}
+//
+// 				fVal := newElem.Elem().Field(k)
+//
+// 				safeVal := reflect.New(mapTypeToNullType(colType))
+// 				values[i] = safeVal.Interface()
+//
+// 				deferrals = append(deferrals, func() {
+// 					extractValue(fVal, safeVal)
+// 				})
+//
+// 				break
+// 			}
+// 		}
+//
+// 		if err := rows.Scan(values...); err != nil {
+// 			return err
+// 		}
+//
+// 		for _, d := range deferrals {
+// 			d()
+// 		}
+//
+// 		protoValue.Elem().Set(reflect.Append(protoValue.Elem(), newElem.Elem().Addr()))
+// 	}
+//
+// 	return nil
+// }
 
-	protoValue := reflect.ValueOf(protoStructSlice)
-	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
-		return errors.New("must provide a pointer to a slice")
-	}
-
-	protoType := protoValue.Elem().Type().Elem()
-
-	rows, err := db.Client().Query(query, args...)
-	if err != nil {
-		return err
-	}
-
-	defer rows.Close()
-
-	columns, err := rows.Columns()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	for rows.Next() {
-		newElem := reflect.New(protoType.Elem())
-		values := make([]interface{}, len(columns))
-		deferrals := make([]func(), 0)
-
-		for i, col := range columnTypes {
-
-			colType := col.DatabaseTypeName()
-
-			for k := 0; k < protoType.Elem().NumField(); k++ {
-				fName := strings.Split(protoType.Elem().Field(k).Tag.Get("json"), ",")[0]
-
-				if fName != columns[i] {
-					continue
-				}
-
-				fVal := newElem.Elem().Field(k)
-
-				safeVal := reflect.New(mapTypeToNullType(colType))
-				values[i] = safeVal.Interface()
-
-				deferrals = append(deferrals, func() {
-					extractValue(fVal, safeVal)
-				})
-
-				break
-			}
-		}
-
-		if err := rows.Scan(values...); err != nil {
-			return err
-		}
-
-		for _, d := range deferrals {
-			d()
-		}
-
-		protoValue.Elem().Set(reflect.Append(protoValue.Elem(), newElem.Elem().Addr()))
-	}
-
-	return nil
-}
-
-func (tx *TxWrapper) QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error {
+func (db *Database) QueryRows(tx *sql.Tx, protoStructSlice interface{}, query string, args ...interface{}) error {
 
 	protoValue := reflect.ValueOf(protoStructSlice)
 	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {

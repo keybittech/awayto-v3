@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostFileContents(t *testing.T) {
 		req     *http.Request
 		data    *types.PostFileContentsRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PatchFileContents(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchFileContentsRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetFileContents(t *testing.T) {
 		req     *http.Request
 		data    *types.GetFileContentsRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_PostFile(t *testing.T) {
 		req     *http.Request
 		data    *types.PostFileRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_PatchFile(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchFileRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_GetFiles(t *testing.T) {
 		req     *http.Request
 		data    *types.GetFilesRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -201,7 +201,7 @@ func TestHandlers_GetFileById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetFileByIdRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -232,7 +232,7 @@ func TestHandlers_DeleteFile(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteFileRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -263,7 +263,7 @@ func TestHandlers_DisableFile(t *testing.T) {
 		req     *http.Request
 		data    *types.DisableFileRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string

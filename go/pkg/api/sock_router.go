@@ -2,13 +2,13 @@ package api
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"strconv"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -102,7 +102,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			return
 		}
 
-		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 			var txErr error
 			subscribed, txErr := a.Handlers.Database.GetSocketAllowances(tx, userSub, description, handle)
 			if txErr != nil {
@@ -186,7 +186,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			return
 		}
 
-		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 			var txErr error
 
 			txErr = a.Handlers.Database.GetTopicMessageParticipants(tx, sm.Topic, participants)
@@ -226,7 +226,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 		}
 		messages := [][]byte{}
 
-		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 			var txErr error
 			messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, pageInfo["page"], 100) // int(pageInfo["pageSize"])
 			if txErr != nil {
@@ -269,7 +269,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 	}
 
 	if sm.Store {
-		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 			var txErr error
 
 			txErr = a.Handlers.Database.StoreTopicMessage(tx, connId, sm)

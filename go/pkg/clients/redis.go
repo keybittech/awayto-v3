@@ -3,12 +3,10 @@ package clients
 import (
 	"context"
 	"errors"
-	"fmt"
 	"os"
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -20,11 +18,10 @@ var defaultTrackDuration, _ = time.ParseDuration("86400s")
 const socketServerConnectionsKey = "socket_server_connections"
 
 type Redis struct {
-	interfaces.IRedis
-	RedisClient interfaces.IRedisClient
+	RedisClient *redis.Client
 }
 
-func (r *Redis) Client() interfaces.IRedisClient {
+func (r *Redis) Client() *redis.Client {
 	return r.RedisClient
 }
 
@@ -35,7 +32,7 @@ func InitRedis() *Redis {
 		util.ErrorLog.Println(util.ErrCheck(err))
 	}
 
-	redisClient := redis.NewClient(&redis.Options{
+	rc := redis.NewClient(&redis.Options{
 		Addr:     os.Getenv("REDIS_URL"),
 		Password: redisPass,
 		DB:       0,
@@ -43,30 +40,8 @@ func InitRedis() *Redis {
 	})
 
 	r := &Redis{
-		RedisClient: &RedisWrapper{redisClient},
+		RedisClient: rc,
 	}
-
-	connLen := 0
-
-	ticker := time.NewTicker(5 * time.Minute)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				ctx := context.Background()
-				defer ctx.Done()
-				socketConnections, err := r.RedisClient.SMembers(ctx, "socket_server_connections").Result()
-				sockLen := len(socketConnections)
-				if err != nil {
-					println("reading socket connection err", err.Error())
-				}
-				if connLen != sockLen {
-					connLen = sockLen
-					fmt.Printf("got socket connection list new count :%d %+v\n", len(socketConnections), socketConnections)
-				}
-			}
-		}
-	}()
 
 	r.InitKeys()
 

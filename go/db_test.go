@@ -1,9 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -45,7 +45,7 @@ func BenchmarkDbTxExec(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		var adminRoleId string
-		mainApi.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		mainApi.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 			var txErr error
 			txErr = tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
 			if txErr != nil {
@@ -60,7 +60,7 @@ func BenchmarkDbTxExec(b *testing.B) {
 func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 	participants := make(map[string]*types.SocketParticipant)
 	topic := "test-topic"
-	err := mainApi.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+	err := mainApi.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 		reset(b)
 		for c := 0; c < b.N; c++ {
 			mainApi.Handlers.Database.GetTopicMessageParticipants(tx, topic, participants)
@@ -74,7 +74,7 @@ func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 
 func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	topic := "test-topic"
-	err := mainApi.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+	err := mainApi.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 		description, handle, _ := util.SplitColonJoined(topic)
 		reset(b)
 		for c := 0; c < b.N; c++ {

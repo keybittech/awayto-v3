@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostRole(t *testing.T) {
 		req     *http.Request
 		data    *types.PostRoleRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_GetRoles(t *testing.T) {
 		req     *http.Request
 		data    *types.GetRolesRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetRoleById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetRoleByIdRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_DeleteRole(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteRoleRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string

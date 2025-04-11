@@ -1,11 +1,11 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostGroupForm(t *testing.T) {
 		req     *http.Request
 		data    *types.PostGroupFormRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PostGroupFormVersion(t *testing.T) {
 		req     *http.Request
 		data    *types.PostGroupFormVersionRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_PatchGroupForm(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchGroupFormRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetGroupForms(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupFormsRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_GetGroupFormById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupFormByIdRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_DeleteGroupForm(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteGroupFormRequest
 		session *types.UserSession
-		tx      interfaces.IDatabaseTx
+		tx      *sql.Tx
 	}
 	tests := []struct {
 		name    string

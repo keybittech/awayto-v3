@@ -1,15 +1,15 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostRoleResponse, error) {
+func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest, session *types.UserSession, tx *sql.Tx) (*types.PostRoleResponse, error) {
 	var role types.IRole
 	err := tx.QueryRow(`
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
@@ -51,9 +51,9 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 	return &types.PostRoleResponse{Id: role.Id}, nil
 }
 
-func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetRolesResponse, error) {
+func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetRolesResponse, error) {
 	var roles []*types.IRole
-	err := tx.QueryRows(&roles, `
+	err := h.Database.QueryRows(tx, &roles, `
 		SELECT eur.id, er.name, eur."createdOn" 
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
@@ -67,7 +67,7 @@ func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *type
 	return &types.GetRolesResponse{Roles: roles}, nil
 }
 
-func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetRoleByIdResponse, error) {
+func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetRoleByIdResponse, error) {
 	var role types.IRole
 	err := tx.QueryRow(`
 		SELECT * FROM dbview_schema.enabled_roles
@@ -80,7 +80,7 @@ func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetRoleByIdResponse{Role: &role}, nil
 }
 
-func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteRoleResponse, error) {
+func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteRoleResponse, error) {
 	var userId string
 	err := tx.QueryRow(`
 		SELECT id FROM dbtable_schema.users WHERE sub = $1

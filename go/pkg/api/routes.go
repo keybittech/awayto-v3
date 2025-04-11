@@ -1,6 +1,7 @@
 package api
 
 import (
+	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -10,7 +11,6 @@ import (
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -89,7 +89,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		results := []reflect.Value{}
 
-		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 			results = handlerFunc.Call([]reflect.Value{
 				reflect.ValueOf(w),
 				reflect.ValueOf(req),

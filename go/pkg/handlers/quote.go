@@ -1,17 +1,17 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
 	"net/http"
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostQuoteResponse, error) {
+func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *types.UserSession, tx *sql.Tx) (*types.PostQuoteResponse, error) {
 
 	var slotTaken bool
 	err := tx.QueryRow(`
@@ -100,7 +100,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 	}}, nil
 }
 
-func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *types.PatchQuoteRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchQuoteResponse, error) {
+func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *types.PatchQuoteRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchQuoteResponse, error) {
 	_, err := tx.Exec(`
       UPDATE dbtable_schema.quotes
       SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
@@ -113,9 +113,9 @@ func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PatchQuoteResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *types.GetQuotesRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetQuotesResponse, error) {
+func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *types.GetQuotesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetQuotesResponse, error) {
 	var quotes []*types.IQuote
-	err := tx.QueryRows(&quotes, `
+	err := h.Database.QueryRows(tx, &quotes, `
 		SELECT q.*
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q.schedule_bracket_slot_id
@@ -128,10 +128,10 @@ func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.GetQuotesResponse{Quotes: quotes}, nil
 }
 
-func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *types.GetQuoteByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetQuoteByIdResponse, error) {
+func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *types.GetQuoteByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetQuoteByIdResponse, error) {
 	var quotes []*types.IQuote
 
-	err := tx.QueryRows(&quotes, `
+	err := h.Database.QueryRows(tx, &quotes, `
 		SELECT * FROM dbview_schema.enabled_quotes_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -142,7 +142,7 @@ func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *
 	return &types.GetQuoteByIdResponse{Quote: quotes[0]}, nil
 }
 
-func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *types.DeleteQuoteRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteQuoteResponse, error) {
+func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *types.DeleteQuoteRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteQuoteResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.quotes
 		WHERE id = $1
@@ -154,7 +154,7 @@ func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *t
 	return &types.DeleteQuoteResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableQuote(w http.ResponseWriter, req *http.Request, data *types.DisableQuoteRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DisableQuoteResponse, error) {
+func (h *Handlers) DisableQuote(w http.ResponseWriter, req *http.Request, data *types.DisableQuoteRequest, session *types.UserSession, tx *sql.Tx) (*types.DisableQuoteResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {

@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -207,7 +206,7 @@ func BenchmarkSocketGetSocketTicket(b *testing.B) {
 
 func BenchmarkSocketInitConnection(b *testing.B) {
 	_, session, _, _ := getUserSocketSession(0)
-	mockConn := &interfaces.NullConn{}
+	mockConn := &util.NullConn{}
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		b.StopTimer()

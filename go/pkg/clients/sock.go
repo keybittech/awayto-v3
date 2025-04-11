@@ -8,7 +8,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -51,7 +50,6 @@ var (
 )
 
 type Socket struct {
-	interfaces.ISocket
 	handlerId string
 }
 
@@ -62,7 +60,7 @@ type ConnectedSocket struct {
 
 const sockHandlerId = "sock"
 
-var emptySocketResponse = interfaces.SocketResponse{}
+var emptySocketResponse = SocketResponse{}
 
 var (
 	socketCommandMustHaveSub  = errors.New("socket command request must contain a user sub")
@@ -85,15 +83,15 @@ func InitSocket() *Socket {
 
 	GetGlobalWorkerPool().RegisterProcessFunction(sockHandlerId, func(sockCmd CombinedCommand) bool {
 
-		cmd, ok := sockCmd.(interfaces.SocketCommand)
+		cmd, ok := sockCmd.(SocketCommand)
 		if !ok {
 			return false
 		}
 
-		defer func(replyChan chan interfaces.SocketResponse) {
+		defer func(replyChan chan SocketResponse) {
 			if r := recover(); r != nil {
 				err := errors.New("socket channel recovery: " + fmt.Sprint(r))
-				replyChan <- interfaces.SocketResponse{Error: err}
+				replyChan <- SocketResponse{Error: err}
 			}
 			close(replyChan)
 		}(cmd.ReplyChan)
@@ -125,7 +123,7 @@ func InitSocket() *Socket {
 			}
 			socketMaps.subscribers[cmd.Request.UserSub] = subscriber
 
-			cmd.ReplyChan <- interfaces.SocketResponse{
+			cmd.ReplyChan <- SocketResponse{
 				SocketResponseParams: &types.SocketResponseParams{
 					Ticket: ticket,
 				},
@@ -134,13 +132,13 @@ func InitSocket() *Socket {
 		case CreateSocketConnectionSocketCommand:
 			auth, _, err := util.SplitColonJoined(cmd.Request.Ticket)
 			if err != nil {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: err}
+				cmd.ReplyChan <- SocketResponse{Error: err}
 				break
 			}
 
 			userSub, ok := socketMaps.authSubscribers[auth]
 			if !ok {
-				cmd.ReplyChan <- interfaces.SocketResponse{Error: authSubscriberNotFound}
+				cmd.ReplyChan <- SocketResponse{Error: authSubscriberNotFound}
 				break
 			}
 
@@ -148,14 +146,14 @@ func InitSocket() *Socket {
 			if ok {
 				auth, connId, err := util.SplitColonJoined(cmd.Request.Ticket)
 				if err != nil {
-					cmd.ReplyChan <- interfaces.SocketResponse{
+					cmd.ReplyChan <- SocketResponse{
 						Error: err,
 					}
 					break
 				}
 
 				if _, ok := subscriber.Tickets[auth]; !ok {
-					cmd.ReplyChan <- interfaces.SocketResponse{
+					cmd.ReplyChan <- SocketResponse{
 						Error: invalidTicket,
 					}
 					break
@@ -165,7 +163,7 @@ func InitSocket() *Socket {
 				delete(socketMaps.authSubscribers, auth)
 
 				if subscriber.ConnectionId != connId {
-					cmd.ReplyChan <- interfaces.SocketResponse{
+					cmd.ReplyChan <- SocketResponse{
 						Error: invalidTicketConnectionId,
 					}
 					break
@@ -175,7 +173,7 @@ func InitSocket() *Socket {
 
 				socketMaps.connections[connId] = cmd.Request.Conn
 
-				cmd.ReplyChan <- interfaces.SocketResponse{
+				cmd.ReplyChan <- SocketResponse{
 					SocketResponseParams: &types.SocketResponseParams{
 						UserSub: subscriber.UserSub,
 						GroupId: subscriber.GroupId,
@@ -183,7 +181,7 @@ func InitSocket() *Socket {
 					},
 				}
 			} else {
-				cmd.ReplyChan <- interfaces.SocketResponse{
+				cmd.ReplyChan <- SocketResponse{
 					Error: noSubFoundInSock,
 				}
 			}
@@ -197,7 +195,7 @@ func InitSocket() *Socket {
 				connIdStartIdx := strings.Index(subscriber.ConnectionIds, cmd.Request.ConnId)
 				connIdEndIdx := connIdStartIdx + CID_LENGTH // uuid length
 				if connIdStartIdx == -1 || len(subscriber.ConnectionIds) < connIdEndIdx {
-					cmd.ReplyChan <- interfaces.SocketResponse{
+					cmd.ReplyChan <- SocketResponse{
 						Error: noDeletionConnectionId,
 					}
 					break
@@ -219,7 +217,7 @@ func InitSocket() *Socket {
 
 			// _, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			// if !ok {
-			// 	cmd.ReplyChan <- interfaces.SocketResponse{
+			// 	cmd.ReplyChan <- SocketResponse{
 			// 		Error: errors.New("bad subscriber during logging send message"),
 			// 	}
 			// 	break
@@ -262,7 +260,7 @@ func InitSocket() *Socket {
 				// println("FAILED WITH SEND ONE ")
 				sendErr = noTargetsToSend
 			}
-			cmd.ReplyChan <- interfaces.SocketResponse{
+			cmd.ReplyChan <- SocketResponse{
 				Error: sendErr,
 			}
 			// println("============== End Send event ================\n")
@@ -270,7 +268,7 @@ func InitSocket() *Socket {
 		case AddSubscribedTopicSocketCommand:
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			if !ok {
-				cmd.ReplyChan <- interfaces.SocketResponse{
+				cmd.ReplyChan <- SocketResponse{
 					Error: noSubscriberToAddTopic,
 				}
 				break
@@ -287,12 +285,12 @@ func InitSocket() *Socket {
 		case GetSubscribedTargetsSocketCommand:
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]
 			if !ok {
-				cmd.ReplyChan <- interfaces.SocketResponse{
+				cmd.ReplyChan <- SocketResponse{
 					Error: noSubscriberTargets,
 				}
 			}
 
-			cmd.ReplyChan <- interfaces.SocketResponse{
+			cmd.ReplyChan <- SocketResponse{
 				SocketResponseParams: &types.SocketResponseParams{
 					Targets: subscriber.ConnectionIds,
 				},
@@ -313,7 +311,7 @@ func InitSocket() *Socket {
 					hasSub = true
 				}
 			}
-			cmd.ReplyChan <- interfaces.SocketResponse{
+			cmd.ReplyChan <- SocketResponse{
 				SocketResponseParams: &types.SocketResponseParams{
 					HasSub: hasSub,
 				},
@@ -329,7 +327,31 @@ func InitSocket() *Socket {
 	return &Socket{handlerId: sockHandlerId}
 }
 
-func (s *Socket) RouteCommand(cmd interfaces.SocketCommand) error {
+type SocketRequest struct {
+	*types.SocketRequestParams
+	Conn net.Conn
+}
+
+type SocketResponse struct {
+	*types.SocketResponseParams
+	Error error
+}
+
+type SocketCommand struct {
+	*types.WorkerCommandParams
+	Request   SocketRequest
+	ReplyChan chan SocketResponse
+}
+
+func (cmd SocketCommand) GetClientId() string {
+	return cmd.ClientId
+}
+
+func (cmd SocketCommand) GetReplyChannel() interface{} {
+	return cmd.ReplyChan
+}
+
+func (s *Socket) RouteCommand(cmd SocketCommand) error {
 	return GetGlobalWorkerPool().RouteCommand(cmd)
 }
 
@@ -337,7 +359,7 @@ func (s *Socket) Close() {
 	GetGlobalWorkerPool().UnregisterProcessFunction(s.handlerId)
 }
 
-func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, conn ...net.Conn) (interfaces.SocketResponse, error) {
+func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, conn ...net.Conn) (SocketResponse, error) {
 	if request.UserSub == "" {
 		return emptySocketResponse, socketCommandMustHaveSub
 	}
@@ -345,13 +367,13 @@ func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, 
 	if len(conn) > 0 {
 		userConn = conn[0]
 	}
-	createCmd := func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
-		return interfaces.SocketCommand{
+	createCmd := func(replyChan chan SocketResponse) SocketCommand {
+		return SocketCommand{
 			WorkerCommandParams: &types.WorkerCommandParams{
 				Ty:       cmdType,
 				ClientId: request.UserSub,
 			},
-			Request: interfaces.SocketRequest{
+			Request: SocketRequest{
 				SocketRequestParams: request,
 				Conn:                userConn,
 			},

@@ -9,7 +9,6 @@ import (
 	"regexp"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -19,7 +18,6 @@ import (
 type AiPrompts map[types.IPrompts]interface{}
 
 type Ai struct {
-	interfaces.IAi
 	Client  *openai.Client
 	Model   string
 	Prompts AiPrompts

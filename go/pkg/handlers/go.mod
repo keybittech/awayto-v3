@@ -3,10 +3,8 @@ module github.com/keybittech/awayto-v3/go/pkg/handlers
 go 1.24.0
 
 require (
-	github.com/golang/mock v1.6.0
 	github.com/google/uuid v1.6.0
 	github.com/keybittech/awayto-v3/go/pkg/clients v0.0.0-00010101000000-000000000000
-	github.com/keybittech/awayto-v3/go/pkg/interfaces v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.9
@@ -24,8 +22,6 @@ require (
 	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
 	google.golang.org/protobuf v1.36.5 // indirect
 )
-
-replace github.com/keybittech/awayto-v3/go/pkg/interfaces => ../interfaces
 
 replace github.com/keybittech/awayto-v3/go/pkg/types => ../types
 

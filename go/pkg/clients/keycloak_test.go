@@ -4,26 +4,9 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	_ "github.com/lib/pq"
 )
-
-func TestInitKeycloak(t *testing.T) {
-	tests := []struct {
-		name string
-		want interfaces.IKeycloak
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := InitKeycloak(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("InitKeycloak() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
 
 func TestKeycloak_UpdateUser(t *testing.T) {
 	type args struct {
@@ -287,28 +270,6 @@ func TestKeycloak_AddRolesToGroup(t *testing.T) {
 	}
 }
 
-func TestKeycloak_DeleteRolesFromGroup(t *testing.T) {
-	type args struct {
-		id    string
-		roles []*types.KeycloakRole
-	}
-	tests := []struct {
-		name    string
-		k       *Keycloak
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.k.DeleteRolesFromGroup("test", tt.args.id, tt.args.roles); (err != nil) != tt.wantErr {
-				t.Errorf("Keycloak.DeleteRolesFromGroup(%v, %v) error = %v, wantErr %v", tt.args.id, tt.args.roles, err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestKeycloak_AddUserToGroup(t *testing.T) {
 	type args struct {
 		userId  string
@@ -389,10 +350,10 @@ func TestKeycloak_DeleteUserFromGroup(t *testing.T) {
 // 	}
 // }
 
-func TestKeycloakCommand_GetClientId(t *testing.T) {
+func TestAuthCommand_GetClientId(t *testing.T) {
 	tests := []struct {
 		name string
-		cmd  interfaces.AuthCommand
+		cmd  AuthCommand
 		want string
 	}{
 		// TODO: Add test cases.
@@ -400,16 +361,16 @@ func TestKeycloakCommand_GetClientId(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.cmd.GetClientId(); got != tt.want {
-				t.Errorf("KeycloakCommand.GetClientId() = %v, want %v", got, tt.want)
+				t.Errorf("AuthCommand.GetClientId() = %v, want %v", got, tt.want)
 			}
 		})
 	}
 }
 
-func TestKeycloakCommand_GetReplyChannel(t *testing.T) {
+func TestAuthCommand_GetReplyChannel(t *testing.T) {
 	tests := []struct {
 		name string
-		cmd  interfaces.AuthCommand
+		cmd  AuthCommand
 		want interface{}
 	}{
 		// TODO: Add test cases.
@@ -417,7 +378,23 @@ func TestKeycloakCommand_GetReplyChannel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.cmd.GetReplyChannel(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("KeycloakCommand.GetReplyChannel() = %v, want %v", got, tt.want)
+				t.Errorf("AuthCommand.GetReplyChannel() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestInitKeycloak(t *testing.T) {
+	tests := []struct {
+		name string
+		want *Keycloak
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := InitKeycloak(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("InitKeycloak() = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -425,7 +402,7 @@ func TestKeycloakCommand_GetReplyChannel(t *testing.T) {
 
 func TestKeycloak_RouteCommand(t *testing.T) {
 	type args struct {
-		cmd interfaces.AuthCommand
+		cmd AuthCommand
 	}
 	tests := []struct {
 		name    string
@@ -461,27 +438,27 @@ func TestKeycloak_Close(t *testing.T) {
 func TestKeycloak_SendCommand(t *testing.T) {
 	type args struct {
 		cmdType int32
-		params  *types.AuthRequestParams
+		request *types.AuthRequestParams
 	}
 	tests := []struct {
 		name    string
 		k       *Keycloak
 		args    args
-		want    interfaces.AuthResponse
+		want    AuthResponse
 		wantErr bool
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// got, err := tt.k.SendCommand(tt.args.cmdType, tt.args.params)
-			// if (err != nil) != tt.wantErr {
-			// 	t.Errorf("Keycloak.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.params, err, tt.wantErr)
-			// 	return
-			// }
-			// if !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("Keycloak.SendCommand(%v, %v) = %v, want %v", tt.args.cmdType, tt.args.params, got, tt.want)
-			// }
+			got, err := tt.k.SendCommand(tt.args.cmdType, tt.args.request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Keycloak.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.request, err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Keycloak.SendCommand(%v, %v) = %v, want %v", tt.args.cmdType, tt.args.request, got, tt.want)
+			}
 		})
 	}
 }

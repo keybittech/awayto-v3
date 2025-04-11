@@ -9,7 +9,6 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -61,19 +60,19 @@ func TestInitSocket(t *testing.T) {
 	}
 }
 
-func getClientData(numClients int, commandType int32, requestParams *types.SocketRequestParams, conn ...bool) ([]string, map[string]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand) {
+func getClientData(numClients int, commandType int32, requestParams *types.SocketRequestParams, conn ...bool) ([]string, map[string]func(replyChan chan SocketResponse) SocketCommand) {
 	clientIds := make([]string, numClients)
-	clientCommands := make(map[string]func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand)
+	clientCommands := make(map[string]func(replyChan chan SocketResponse) SocketCommand)
 	for i := 0; i < numClients; i++ {
 		clientId := "client-" + strconv.Itoa(numClients) + "-" + strconv.Itoa(i)
 		clientIds[i] = clientId
-		clientCommands[clientId] = func(replyChan chan interfaces.SocketResponse) interfaces.SocketCommand {
+		clientCommands[clientId] = func(replyChan chan SocketResponse) SocketCommand {
 			requestParams.UserSub = clientId
-			request := interfaces.SocketRequest{SocketRequestParams: requestParams}
+			request := SocketRequest{SocketRequestParams: requestParams}
 			if conn != nil {
-				request.Conn = &interfaces.NullConn{}
+				request.Conn = &util.NullConn{}
 			}
-			return interfaces.SocketCommand{
+			return SocketCommand{
 				WorkerCommandParams: &types.WorkerCommandParams{
 					Ty:       commandType,
 					ClientId: clientId,
@@ -240,11 +239,11 @@ func TestSocket_InitConnection(t *testing.T) {
 		want    func()
 		wantErr bool
 	}{
-		{name: "use ticket to make connection", args: args{interfaces.NewNullConn(), initSession.UserSub, ticket}, wantErr: false},
+		{name: "use ticket to make connection", args: args{util.NewNullConn(), initSession.UserSub, ticket}, wantErr: false},
 		{name: "requires a connection object", args: args{nil, "test-user", "a:b"}, wantErr: true},
-		{name: "prevents connection with no ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, ""}, wantErr: true},
-		{name: "prevents connection with malformed ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, "a:"}, wantErr: true},
-		{name: "prevents connection with wrong ticket", args: args{interfaces.NewNullConn(), initSession.UserSub, "a:b"}, wantErr: true},
+		{name: "prevents connection with no ticket", args: args{util.NewNullConn(), initSession.UserSub, ""}, wantErr: true},
+		{name: "prevents connection with malformed ticket", args: args{util.NewNullConn(), initSession.UserSub, "a:"}, wantErr: true},
+		{name: "prevents connection with wrong ticket", args: args{util.NewNullConn(), initSession.UserSub, "a:b"}, wantErr: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -272,7 +271,7 @@ func TestSocket_TicketRemovalBehavior(t *testing.T) {
 		response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
 			UserSub: testSocketUserSession.UserSub,
 			Ticket:  ticket,
-		}, interfaces.NullConn{})
+		}, util.NullConn{})
 
 		err = ChannelError(err, response.Error)
 		if err != nil {
@@ -282,7 +281,7 @@ func TestSocket_TicketRemovalBehavior(t *testing.T) {
 		response, err = testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
 			UserSub: testSocketUserSession.UserSub,
 			Ticket:  ticket,
-		}, interfaces.NullConn{})
+		}, util.NullConn{})
 
 		err = ChannelError(err, response.Error)
 		if err == nil {
@@ -301,7 +300,7 @@ func getNewConnection(t *testing.T, userSub string) (*types.UserSession, string,
 	response, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
 		UserSub: testSocketUserSession.UserSub,
 		Ticket:  ticket,
-	}, interfaces.NullConn{})
+	}, util.NullConn{})
 
 	err = ChannelError(err, response.Error)
 	if err != nil {
@@ -413,7 +412,7 @@ func TestSocket_RoleCall(t *testing.T) {
 //	}
 func TestSocket_SendCommand(t *testing.T) {
 	type args struct {
-		cmd     interfaces.SocketCommand
+		cmd     SocketCommand
 		request *types.SocketRequestParams
 	}
 
@@ -430,14 +429,14 @@ func TestSocket_SendCommand(t *testing.T) {
 	tests := []struct {
 		name     string
 		args     args
-		want     interfaces.SocketResponse
+		want     SocketResponse
 		wantErr  bool
-		validate func(t *testing.T, got interfaces.SocketResponse) bool
+		validate func(t *testing.T, got SocketResponse) bool
 	}{
 		{
 			name: "Create ticket success",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: CreateSocketTicketSocketCommand,
 					},
@@ -450,7 +449,7 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 			want:    emptySocketResponse,
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				if got.SocketResponseParams == nil || got.SocketResponseParams.Ticket == "" {
 					t.Errorf("Expected ticket in response, got none")
 					return false
@@ -472,7 +471,7 @@ func TestSocket_SendCommand(t *testing.T) {
 		{
 			name: "Create connection success",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: CreateSocketConnectionSocketCommand,
 					},
@@ -483,7 +482,7 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 			want:    emptySocketResponse,
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				if got.Error != nil {
 					t.Errorf("Unexpected error: %v", got.Error)
 					return false
@@ -515,7 +514,7 @@ func TestSocket_SendCommand(t *testing.T) {
 		{
 			name: "Add subscribed topic",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: AddSubscribedTopicSocketCommand,
 					},
@@ -527,14 +526,14 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 			want:    emptySocketResponse,
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				return got.Error == nil
 			},
 		},
 		{
 			name: "Has subscribed topic success",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: HasSubscribedTopicSocketCommand,
 					},
@@ -544,13 +543,13 @@ func TestSocket_SendCommand(t *testing.T) {
 					Topic:   "notifications",
 				},
 			},
-			want: interfaces.SocketResponse{
+			want: SocketResponse{
 				SocketResponseParams: &types.SocketResponseParams{
 					HasSub: true,
 				},
 			},
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				if got.Error != nil {
 					t.Errorf("Unexpected error: %v", got.Error)
 					return false
@@ -567,7 +566,7 @@ func TestSocket_SendCommand(t *testing.T) {
 		{
 			name: "Send socket message success",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: SendSocketMessageSocketCommand,
 					},
@@ -579,14 +578,14 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 			want:    emptySocketResponse,
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				return got.Error == nil
 			},
 		},
 		{
 			name: "Get subscribed targets success",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: GetSubscribedTargetsSocketCommand,
 					},
@@ -597,7 +596,7 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 			want:    emptySocketResponse,
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				if got.Error != nil {
 					t.Errorf("Unexpected error: %v", got.Error)
 					return false
@@ -619,7 +618,7 @@ func TestSocket_SendCommand(t *testing.T) {
 		{
 			name: "Delete subscribed topic",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: DeleteSubscribedTopicSocketCommand,
 					},
@@ -631,14 +630,14 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 			want:    emptySocketResponse,
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				return got.Error == nil
 			},
 		},
 		{
 			name: "Delete connection success",
 			args: args{
-				cmd: interfaces.SocketCommand{
+				cmd: SocketCommand{
 					WorkerCommandParams: &types.WorkerCommandParams{
 						Ty: DeleteSocketConnectionSocketCommand,
 					},
@@ -649,7 +648,7 @@ func TestSocket_SendCommand(t *testing.T) {
 			},
 			want:    emptySocketResponse,
 			wantErr: false,
-			validate: func(t *testing.T, got interfaces.SocketResponse) bool {
+			validate: func(t *testing.T, got SocketResponse) bool {
 				return got.Error == nil
 			},
 		},
@@ -670,7 +669,7 @@ func TestSocket_SendCommand(t *testing.T) {
 
 			}
 
-			got, err := testSocket.SendCommand(tt.args.cmd.Ty, tt.args.request, &interfaces.NullConn{})
+			got, err := testSocket.SendCommand(tt.args.cmd.Ty, tt.args.request, &util.NullConn{})
 
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Socket.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmd, tt.args.request, err, tt.wantErr)
@@ -704,7 +703,7 @@ func TestNewSocketMaps(t *testing.T) {
 
 func TestSocket_RouteCommand(t *testing.T) {
 	type args struct {
-		cmd interfaces.SocketCommand
+		cmd SocketCommand
 	}
 	tests := []struct {
 		name    string
@@ -733,6 +732,40 @@ func TestSocket_Close(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.s.Close()
+		})
+	}
+}
+
+func TestSocketCommand_GetClientId(t *testing.T) {
+	tests := []struct {
+		name string
+		cmd  SocketCommand
+		want string
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cmd.GetClientId(); got != tt.want {
+				t.Errorf("SocketCommand.GetClientId() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSocketCommand_GetReplyChannel(t *testing.T) {
+	tests := []struct {
+		name string
+		cmd  SocketCommand
+		want interface{}
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.cmd.GetReplyChannel(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("SocketCommand.GetReplyChannel() = %v, want %v", got, tt.want)
+			}
 		})
 	}
 }

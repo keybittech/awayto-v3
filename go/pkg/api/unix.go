@@ -2,6 +2,7 @@ package api
 
 import (
 	"bufio"
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,7 +13,6 @@ import (
 	"reflect"
 	"sync"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -84,7 +84,7 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 		}()
 
 		results := []reflect.Value{}
-		err = a.Handlers.Database.TxExec(func(tx interfaces.IDatabaseTx) error {
+		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
 			results = handler.Call([]reflect.Value{
 				reflect.ValueOf(fakeReq),
 				reflect.ValueOf(authEvent),

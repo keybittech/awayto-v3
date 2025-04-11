@@ -6,12 +6,11 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupScheduleResponse, error) {
+func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupScheduleResponse, error) {
 
 	var groupScheduleId string
 	err := tx.QueryRow(`
@@ -28,7 +27,7 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 	return &types.PostGroupScheduleResponse{Id: groupScheduleId}, nil
 }
 
-func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupScheduleResponse, error) {
+func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupScheduleResponse, error) {
 	scheduleResp, err := h.PatchSchedule(w, req, &types.PatchScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -40,9 +39,9 @@ func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, 
 	return &types.PatchGroupScheduleResponse{Success: scheduleResp.Success}, nil
 }
 
-func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupSchedulesResponse, error) {
+func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupSchedulesResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
-	err := tx.QueryRows(&groupSchedules, `
+	err := h.Database.QueryRows(tx, &groupSchedules, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbview_schema.enabled_group_schedules egs ON egs."scheduleId" = es.id
@@ -56,10 +55,10 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 	return &types.GetGroupSchedulesResponse{GroupSchedules: groupSchedules}, nil
 }
 
-func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupScheduleMasterByIdResponse, error) {
+func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
 
-	err := tx.QueryRows(&groupSchedules, `
+	err := h.Database.QueryRows(tx, &groupSchedules, `
 		SELECT TO_JSONB(ese) as schedule, ese.name, true as master, ese.id as "scheduleId"
 		FROM dbview_schema.enabled_schedules_ext ese
 		WHERE ese.id = $1
@@ -75,7 +74,7 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: groupSchedules[0]}, nil
 }
 
-func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupScheduleByDateResponse, error) {
+func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupScheduleByDateResponse, error) {
 
 	var scheduleTimeUnitName string
 	err := tx.QueryRow(`
@@ -88,7 +87,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	var groupScheduleDateSlots []*types.IGroupScheduleDateSlots
 
 	if "week" == scheduleTimeUnitName {
-		err = tx.QueryRows(&groupScheduleDateSlots, `
+		err = h.Database.QueryRows(tx, &groupScheduleDateSlots, `
 			SELECT
         DISTINCT slot."startTime"::INTERVAL,
         slot.id as "scheduleBracketSlotId",
@@ -111,7 +110,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
       ORDER BY "startDate", "startTime"
 		`, data.Date, data.GroupScheduleId, session.Timezone)
 	} else {
-		err = tx.QueryRows(&groupScheduleDateSlots, `
+		err = h.Database.QueryRows(tx, &groupScheduleDateSlots, `
 			SELECT
 				DISTINCT slot."startTime"::INTERVAL,
 				slot.id as "scheduleBracketSlotId",
@@ -156,9 +155,9 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: groupScheduleDateSlots}, nil
 }
 
-func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteGroupScheduleResponse, error) {
+func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupScheduleResponse, error) {
 
-	err := tx.SetDbVar("user_sub", session.GroupSub)
+	err := h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -221,7 +220,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	err = tx.SetDbVar("user_sub", session.UserSub)
+	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

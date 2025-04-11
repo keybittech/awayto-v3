@@ -1,16 +1,16 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupFormResponse, error) {
+func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupFormResponse, error) {
 	var groupFormExists string
 
 	err := tx.QueryRow(`
@@ -25,7 +25,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
 	}
 
-	err = tx.SetDbVar("user_sub", session.GroupSub)
+	err = h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -35,7 +35,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.SetDbVar("user_sub", session.UserSub)
+	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -67,7 +67,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 	return &types.PostGroupFormResponse{Id: groupFormId}, nil
 }
 
-func (h *Handlers) PostGroupFormVersion(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormVersionRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PostGroupFormVersionResponse, error) {
+func (h *Handlers) PostGroupFormVersion(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormVersionRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupFormVersionResponse, error) {
 	formVersionResp, err := h.PostFormVersion(w, req, &types.PostFormVersionRequest{Name: data.GetName(), Version: data.GetGroupFormVersion()}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -79,7 +79,7 @@ func (h *Handlers) PostGroupFormVersion(w http.ResponseWriter, req *http.Request
 	return &types.PostGroupFormVersionResponse{Id: formVersionResp.GetId()}, nil
 }
 
-func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFormRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupFormResponse, error) {
+func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFormRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupFormResponse, error) {
 	_, err := h.PatchForm(w, req, &types.PatchFormRequest{Form: data.GetGroupForm().GetForm()}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -91,10 +91,10 @@ func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupFormResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupFormsResponse, error) {
+func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupFormsResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := tx.QueryRows(&forms, `
+	err := h.Database.QueryRows(tx, &forms, `
 		SELECT es.*
 		FROM dbview_schema.enabled_group_forms eus
 		LEFT JOIN dbview_schema.enabled_forms es ON es.id = eus."formId"
@@ -112,10 +112,10 @@ func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupFormsResponse{GroupForms: groupForms}, nil
 }
 
-func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupFormByIdResponse, error) {
+func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupFormByIdResponse, error) {
 	var groupForms []*types.IGroupForm
 
-	err := tx.QueryRows(&groupForms, `
+	err := h.Database.QueryRows(tx, &groupForms, `
 		SELECT egfe.*
 		FROM dbview_schema.enabled_group_forms_ext egfe
 		WHERE egfe."groupId" = $1 and egfe."formId" = $2
@@ -131,7 +131,7 @@ func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupFormByIdResponse{GroupForm: groupForms[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteGroupFormResponse, error) {
+func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupFormResponse, error) {
 
 	for _, formId := range strings.Split(data.GetIds(), ",") {
 		_, err := tx.Exec(`DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)

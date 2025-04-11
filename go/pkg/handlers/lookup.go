@@ -1,33 +1,33 @@
 package handlers
 
 import (
+	"database/sql"
 	"net/http"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetLookupsResponse, error) {
+func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetLookupsResponse, error) {
 	var budgets []*types.ILookup
 	var timelines []*types.ILookup
 	var timeUnits []*types.ITimeUnit
 
-	err := tx.QueryRows(&budgets, `
+	err := h.Database.QueryRows(tx, &budgets, `
 		SELECT id, name FROM dbtable_schema.budgets
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.QueryRows(&timelines, `
+	err = h.Database.QueryRows(tx, &timelines, `
 		SELECT id, name FROM dbtable_schema.timelines
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.QueryRows(&timeUnits, `
+	err = h.Database.QueryRows(tx, &timeUnits, `
 		SELECT id, name FROM dbtable_schema.time_units
 	`)
 	if err != nil {

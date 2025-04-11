@@ -1,22 +1,22 @@
 package handlers
 
 import (
+	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.PatchGroupUserResponse, error) {
+func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupUserResponse, error) {
 	userId := data.GetUserId()
 	roleId := data.GetRoleId()
 
 	var groupUsers []*types.IGroupUser
 
-	err := tx.QueryRows(&groupUsers, `
+	err := h.Database.QueryRows(tx, &groupUsers, `
 		SELECT g.external_id as "groupExternalId", gu.external_id as "externalId", u.sub as "userSub"
 		FROM dbtable_schema.group_users gu
 		JOIN dbtable_schema.users u ON u.id = gu.user_id
@@ -34,7 +34,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 
 	var groupRoles []*types.IGroupRole
 
-	err = tx.QueryRows(&groupRoles, `
+	err = h.Database.QueryRows(tx, &groupRoles, `
 		SELECT external_id as "externalId"
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
@@ -89,10 +89,10 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupUsersResponse, error) {
+func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupUsersResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := tx.QueryRows(&groupUsers, `
+	err := h.Database.QueryRows(tx, &groupUsers, `
 		SELECT TO_JSONB(eu) as "userProfile", egu.id, r.id as "roleId", r.name as "roleName"
 		FROM dbview_schema.enabled_group_users egu
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = egu."userId"
@@ -108,10 +108,10 @@ func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupUsersResponse{GroupUsers: groupUsers}, nil
 }
 
-func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.GetGroupUserByIdResponse, error) {
+func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupUserByIdResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := tx.QueryRows(&groupUsers, `
+	err := h.Database.QueryRows(tx, &groupUsers, `
 		SELECT
 			eu.id,
 			egu.groupId,
@@ -141,7 +141,7 @@ func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupUserByIdResponse{GroupUser: groupUsers[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.DeleteGroupUserResponse, error) {
+func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupUserRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
@@ -157,7 +157,7 @@ func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, dat
 	return &types.DeleteGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data *types.LockGroupUserRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.LockGroupUserResponse, error) {
+func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data *types.LockGroupUserRequest, session *types.UserSession, tx *sql.Tx) (*types.LockGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
@@ -176,7 +176,7 @@ func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data 
 	return &types.LockGroupUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) UnlockGroupUser(w http.ResponseWriter, req *http.Request, data *types.UnlockGroupUserRequest, session *types.UserSession, tx interfaces.IDatabaseTx) (*types.UnlockGroupUserResponse, error) {
+func (h *Handlers) UnlockGroupUser(w http.ResponseWriter, req *http.Request, data *types.UnlockGroupUserRequest, session *types.UserSession, tx *sql.Tx) (*types.UnlockGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {

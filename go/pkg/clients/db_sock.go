@@ -1,18 +1,18 @@
 package clients
 
 import (
+	"database/sql"
 	"fmt"
 	"slices"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/lib/pq"
 )
 
 func (db *Database) InitDbSocketConnection(connId, userSub, groupId, roles string) error {
-	err := db.TxExec(func(tx interfaces.IDatabaseTx) error {
+	err := db.TxExec(func(tx *sql.Tx) error {
 		_, err := tx.Exec(`
 			INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
 			VALUES ($1::uuid, $2)
@@ -30,7 +30,7 @@ func (db *Database) InitDbSocketConnection(connId, userSub, groupId, roles strin
 }
 
 func (db *Database) RemoveDbSocketConnection(connId string) error {
-	err := db.TxExec(func(itx interfaces.IDatabaseTx) error {
+	err := db.TxExec(func(itx *sql.Tx) error {
 		_, txErr := itx.Exec(`
 			DELETE FROM dbtable_schema.sock_connections
 			USING dbtable_schema.sock_connections sc
@@ -55,7 +55,7 @@ var (
 	exchangeWhiteboardNumCheck = "exchange/" + fmt.Sprint(types.ExchangeActions_EXCHANGE_WHITEBOARD.Number())
 )
 
-func (db *Database) GetSocketAllowances(tx interfaces.IDatabaseTx, userSub, description, handle string) (bool, error) {
+func (db *Database) GetSocketAllowances(tx *sql.Tx, userSub, description, handle string) (bool, error) {
 
 	var subscribed bool
 	err := tx.QueryRow(`
@@ -94,9 +94,9 @@ func (db *Database) GetSocketAllowances(tx interfaces.IDatabaseTx, userSub, desc
 	return subscribed, nil
 }
 
-func (db *Database) GetTopicMessageParticipants(tx interfaces.IDatabaseTx, topic string, participants map[string]*types.SocketParticipant) error {
+func (db *Database) GetTopicMessageParticipants(tx *sql.Tx, topic string, participants map[string]*types.SocketParticipant) error {
 
-	err := tx.SetDbVar("sock_topic", topic)
+	err := db.SetDbVar(tx, "sock_topic", topic)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -134,7 +134,7 @@ func (db *Database) GetTopicMessageParticipants(tx interfaces.IDatabaseTx, topic
 		}
 	}
 
-	err = tx.SetDbVar("sock_topic", "")
+	err = db.SetDbVar(tx, "sock_topic", "")
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -142,7 +142,7 @@ func (db *Database) GetTopicMessageParticipants(tx interfaces.IDatabaseTx, topic
 	return nil
 }
 
-func (db *Database) GetSocketParticipantDetails(tx interfaces.IDatabaseTx, participants map[string]*types.SocketParticipant) error {
+func (db *Database) GetSocketParticipantDetails(tx *sql.Tx, participants map[string]*types.SocketParticipant) error {
 	for userSub, details := range participants {
 		// Get user anon info
 		err := tx.QueryRow(`
@@ -163,7 +163,7 @@ func (db *Database) GetSocketParticipantDetails(tx interfaces.IDatabaseTx, parti
 	return nil
 }
 
-func (db *Database) StoreTopicMessage(tx interfaces.IDatabaseTx, connId string, message *types.SocketMessage) error {
+func (db *Database) StoreTopicMessage(tx *sql.Tx, connId string, message *types.SocketMessage) error {
 
 	message.Store = false
 	message.Historical = true
@@ -183,7 +183,7 @@ func (db *Database) StoreTopicMessage(tx interfaces.IDatabaseTx, connId string, 
 	return nil
 }
 
-func (db *Database) GetTopicMessages(tx interfaces.IDatabaseTx, topic string, page, pageSize int) ([][]byte, error) {
+func (db *Database) GetTopicMessages(tx *sql.Tx, topic string, page, pageSize int) ([][]byte, error) {
 
 	messages := make([][]byte, pageSize)
 
@@ -193,7 +193,7 @@ func (db *Database) GetTopicMessages(tx interfaces.IDatabaseTx, topic string, pa
 		ORDER BY created_on DESC
 	`, page, pageSize)
 
-	err := tx.SetDbVar("sock_topic", topic)
+	err := db.SetDbVar(tx, "sock_topic", topic)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -214,7 +214,7 @@ func (db *Database) GetTopicMessages(tx interfaces.IDatabaseTx, topic string, pa
 		i++
 	}
 
-	err = tx.SetDbVar("sock_topic", "")
+	err = db.SetDbVar(tx, "sock_topic", "")
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

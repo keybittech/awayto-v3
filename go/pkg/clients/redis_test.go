@@ -5,14 +5,31 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/interfaces"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/redis/go-redis/v9"
 )
+
+func TestRedis_Client(t *testing.T) {
+	tests := []struct {
+		name string
+		r    *Redis
+		want *redis.Client
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.r.Client(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Redis.Client() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
 
 func TestInitRedis(t *testing.T) {
 	tests := []struct {
 		name string
-		want interfaces.IRedis
+		want *Redis
 	}{
 		// TODO: Add test cases.
 	}
@@ -72,23 +89,6 @@ func TestSocketIdTopicsKey(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("SocketIdTopicsKey(%v) = %v, want %v", tt.args.socketId, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestRedis_Client(t *testing.T) {
-	tests := []struct {
-		name string
-		r    *Redis
-		want interfaces.IRedisClient
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.r.Client(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Redis.Client() = %v, want %v", got, tt.want)
 			}
 		})
 	}
