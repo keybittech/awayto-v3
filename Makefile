@@ -79,12 +79,13 @@ DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 #################################
 
 DEPLOY_SCRIPTS=deploy/scripts
-DEV_SCRIPTS=deploy/scripts/dev
-DOCKER_SCRIPTS=deploy/scripts/docker
-DEPLOY_HOST_SCRIPTS=deploy/scripts/host
-CRON_DIR=deploy/scripts/cron
-DEPLOY_SCRIPT=deploy/scripts/host/deploy.sh
-AUTH_INSTALL_SCRIPT=deploy/scripts/auth/install.sh
+DEV_SCRIPTS=$(DEPLOY_SCRIPTS)/dev
+DOCKER_SCRIPTS=$(DEPLOY_SCRIPTS)/docker
+DEPLOY_HOST_SCRIPTS=$(DEPLOY_SCRIPTS)/host
+CRON_SCRIPTS=$(DEPLOY_SCRIPTS)/cron
+DEPLOY_SCRIPT=$(DEPLOY_SCRIPTS)/host/deploy.sh
+AUTH_SCRIPTS=$(DEPLOY_SCRIPTS)/auth
+AUTH_INSTALL_SCRIPT=$(AUTH_SCRIPTS)/install.sh
 
 H_OP=/home/${HOST_OPERATOR}
 H_DOCK=$(H_OP)/bin/docker
@@ -186,6 +187,8 @@ ${OAI_KEY_FILE}:
 
 $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
+	mkdir $(@D)
+	cp $(AUTH_SCRIPTS)/junixsocket-selftest-2.10.1-jar-with-dependencies.jar $(JAVA_SRC)/target/
 	mvn -f $(JAVA_SRC) install
 
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
@@ -440,7 +443,7 @@ host_down:
 .PHONY: host_sync_env
 host_sync_env:
 	mkdir -p $(HOST_LOCAL_DIR)/cron/daily
-	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&project-prefix&${PROJECT_PREFIX}&g;' "$(CRON_DIR)/whitelist-ips" > "$(HOST_LOCAL_DIR)/cron/daily/whitelist-ips"
+	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&project-prefix&${PROJECT_PREFIX}&g;' "$(CRON_SCRIPTS)/whitelist-ips" > "$(HOST_LOCAL_DIR)/cron/daily/whitelist-ips"
 	rsync ${RSYNC_FLAGS} --chown root:root --chmod 755 --rsync-path="sudo rsync" "$(HOST_LOCAL_DIR)/cron/daily/" "$(H_SIGN):/etc/cron.daily/"
 	rsync ${RSYNC_FLAGS} "$(DEMOS_DIR)/" "$(H_SIGN):$(H_REM_DIR)/$(DEMOS_DIR)/"
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(H_SIGN):$(H_REM_DIR)"
