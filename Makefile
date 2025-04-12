@@ -110,7 +110,7 @@ endef
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
 CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
-CURRENT_GO_LOG_DIR=$(call if_deploying,$(H_ETC_DIR),${PWD}/$(GO_SRC))
+CURRENT_GO_LOG_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR),${PWD}/$(GO_SRC))
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;" $(ENVFILE))
