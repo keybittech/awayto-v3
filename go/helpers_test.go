@@ -28,7 +28,7 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func apiRequest(token, method, path string, body []byte, queryParams map[string]string, response proto.Message) error {
+func apiRequest(token, method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 	client := &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -79,9 +79,9 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 		return fmt.Errorf("error reading response body: %w", err)
 	}
 
-	if len(respBody) > 0 {
-		if err := protojson.Unmarshal(respBody, response); err != nil {
-			return fmt.Errorf("error unmarshaling response: %w", err)
+	if len(respBody) > 0 && responseObj != nil {
+		if err := protojson.Unmarshal(respBody, responseObj); err != nil {
+			return fmt.Errorf("error unmarshaling into responseObj: %w", err)
 		}
 	}
 

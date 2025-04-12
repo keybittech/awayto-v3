@@ -8,6 +8,7 @@ import (
 	"os"
 	"slices"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
@@ -549,13 +550,20 @@ func TestIntegrationJoinGroup(t *testing.T) {
 func TestIntegrationPromoteUser(t *testing.T) {
 	admin := integrationTest.TestUsers[0]
 	staff1 := integrationTest.TestUsers[1]
+	staff2 := integrationTest.TestUsers[2]
 	member1 := integrationTest.TestUsers[4]
 
 	staffRoleFullName := "/" + integrationTest.Group.Name + "/" + integrationTest.StaffRole.Name
 	memberRoleFullName := "/" + integrationTest.Group.Name + "/" + integrationTest.MemberRole.Name
 
+	t.Log("initialize group assignments cache")
+	err := apiRequest(admin.TestToken, http.MethodGet, "/api/v1/group/assignments", nil, nil, nil)
+	if err != nil {
+		t.Errorf("error get group assignments request: %v", err)
+	}
+
 	t.Run("user cannot update role permissions", func(t *testing.T) {
-		t.Logf("add admin ability to member role %s", memberRoleFullName)
+		t.Logf("user add admin ability to member role %s", memberRoleFullName)
 		err := patchGroupAssignments(member1.TestToken, memberRoleFullName, types.SiteRoles_APP_GROUP_ADMIN.String())
 		if err == nil {
 			t.Errorf("user was able to add admin to their own role %v", err)
@@ -565,48 +573,102 @@ func TestIntegrationPromoteUser(t *testing.T) {
 	})
 
 	t.Run("admin can update role permissions", func(t *testing.T) {
-		t.Logf("with roles %s %s", staffRoleFullName, memberRoleFullName)
-
-		t.Logf("add scheduling ability to staff role %s", staffRoleFullName)
+		t.Logf("admin add scheduling ability to staff role %s", staffRoleFullName)
 		err := patchGroupAssignments(admin.TestToken, staffRoleFullName, types.SiteRoles_APP_GROUP_SCHEDULES.String())
 		if err != nil {
-			t.Errorf("add scheduling ability to staff err %v", err)
+			t.Errorf("admin add scheduling ability to staff err %v", err)
 		}
 
-		t.Logf("add user editing ability to staff role %s", staffRoleFullName)
-		err = patchGroupAssignments(admin.TestToken, staffRoleFullName, types.SiteRoles_APP_GROUP_USERS.String())
-		if err != nil {
-			t.Errorf("add user editing ability to staff err %v", err)
-		}
-
-		t.Logf("add booking ability to member role %s", memberRoleFullName)
+		t.Logf("admin add booking ability to member role %s", memberRoleFullName)
 		err = patchGroupAssignments(admin.TestToken, memberRoleFullName, types.SiteRoles_APP_GROUP_BOOKINGS.String())
 		if err != nil {
-			t.Errorf("add booking ability to member err %v", err)
+			t.Errorf("admin add booking ability to member err %v", err)
 		}
 	})
 
 	t.Run("user cannot change their own role", func(t *testing.T) {
+		t.Log("user attempt to modify their own role to staff")
 		err := patchGroupUser(member1.TestToken, member1.UserSession.UserSub, integrationTest.StaffRole.Id)
-		if err != nil {
+		if err != nil && !strings.Contains(err.Error(), "Forbidden") {
 			t.Errorf("user patches self err %v", err)
 		}
 
-		_, session, err := getKeycloakToken(staff1.TestUserId)
+		_, session, err := getKeycloakToken(member1.TestUserId)
 		if err != nil {
 			t.Errorf("failed to get new token after user patches self %v", err)
 		}
 
 		if slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_ADMIN.String()) {
-			t.Error("admin doesn't have admin role")
+			t.Error("user has admin role after trying to add admin role to themselves")
 		}
-		t.Logf("%+v", session)
-
 		time.Sleep(time.Second)
 	})
 
-	t.Run("admin change a user's role", func(t *testing.T) {
+	t.Run("admin can promote users to staff", func(t *testing.T) {
+		t.Log("admin attempt to modify user to staff")
+		err := patchGroupUser(admin.TestToken, staff1.UserSession.UserSub, integrationTest.StaffRole.Id)
+		if err != nil {
+			t.Errorf("admin promotes staff err %v", err)
+		}
 
+		_, session, err := getKeycloakToken(staff1.TestUserId)
+		if err != nil {
+			t.Errorf("failed to get new token after admin promotes staff %v", err)
+		}
+
+		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
+			t.Error("staff does not have APP_GROUP_SCHEDULES after admin promotion")
+		}
+		time.Sleep(time.Second)
+	})
+
+	t.Run("APP_GROUP_USERS permission allows user role changes", func(t *testing.T) {
+		t.Log("staff attempt promote staff without permissions")
+		err := patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
+		if err != nil && !strings.Contains(err.Error(), "Forbidden") {
+			t.Errorf("staff promotes staff without permissions err %v", err)
+		}
+
+		_, session, err := getKeycloakToken(staff2.TestUserId)
+		if err != nil {
+			t.Errorf("failed to get new token after staff modify staff role without permissions %v", err)
+		}
+
+		if slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
+			t.Error("staff modified staff role without having APP_GROUP_USERS permissions")
+		}
+
+		t.Logf("admin add APP_GROUP_USERS to staff role %s", staffRoleFullName)
+		err = patchGroupAssignments(admin.TestToken, staffRoleFullName, types.SiteRoles_APP_GROUP_USERS.String())
+		if err != nil {
+			t.Errorf("admin add user editing ability to staff err %v", err)
+		}
+
+		token, session, err := getKeycloakToken(staff1.TestUserId)
+		if err != nil {
+			t.Errorf("failed to get new token after staff modify user role without permissions %v", err)
+		}
+
+		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_USERS.String()) {
+			t.Error("staff does not have APP_GROUP_USERS permissions after admin add")
+		}
+
+		staff1.TestToken = token
+
+		t.Log("staff attempt promote user with permissions")
+		err = patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
+		if err != nil {
+			t.Errorf("staff promotes user with permissions err %v", err)
+		}
+
+		_, session, err = getKeycloakToken(staff2.TestUserId)
+		if err != nil {
+			t.Errorf("failed to get new token after staff modify user role with permissions %v", err)
+		}
+
+		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
+			t.Error("staff failed modify user role having APP_GROUP_USERS permissions")
+		}
 	})
 }
 

@@ -14,6 +14,7 @@ service GroupUsersService {
       patch: "/v1/group/users"
       body: "*"
     };
+    option (site_role) = APP_GROUP_USERS;
   }
   rpc GetGroupUsers(GetGroupUsersRequest) returns (GetGroupUsersResponse) {
     option (google.api.http) = {
