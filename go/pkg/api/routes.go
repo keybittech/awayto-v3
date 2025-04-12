@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"reflect"
 	"slices"
-	"strconv"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -60,8 +59,6 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		var deferredError error
 		var pbVal reflect.Value
 
-		exeTimeDefer := util.ExeTime(handlerOpts.Pattern)
-
 		defer func(us string) {
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
 			if p := recover(); p != nil {
@@ -107,19 +104,17 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			}
 
 			return nil
-		}, session.UserSub, session.GroupId, strings.Join(session.AvailableUserGroupRoles, " "))
+		}, session.UserSub, session.GroupId, session.Roles)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
 
-		resLen, err := responseHandler(w, results)
+		_, err = responseHandler(w, results)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
-
-		exeTimeDefer("response len " + strconv.Itoa(resLen))
 	}
 }
 

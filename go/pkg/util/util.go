@@ -153,11 +153,9 @@ func StringOut(s string, ss []string) []string {
 	return ns
 }
 
-func ExeTime(name string) func(info string) {
-	ErrorLog.Println("beginning execution for " + name)
-	start := time.Now()
-	return func(info string) {
-		ErrorLog.Println(name + " execution time: " + time.Since(start).String() + " " + info)
+func ExeTime(name string) (time.Time, func(start time.Time, info string)) {
+	return time.Now(), func(start time.Time, info string) {
+		AccessLog.Println(name + " " + time.Since(start).String() + " " + info)
 	}
 }
 

@@ -18,6 +18,7 @@ message UserSession {
   string roleName = 12;
   string anonIp = 13;
   repeated string availableUserGroupRoles = 14;
-  string timezone = 15;
-  int64 expiresAt = 16;
+  string roles = 15;
+  string timezone = 16;
+  int64 expiresAt = 17;
 }

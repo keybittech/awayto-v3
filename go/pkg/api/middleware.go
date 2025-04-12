@@ -244,14 +244,15 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 			}
 		} else {
 			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-				hasSiteRole := slices.Contains(session.AvailableUserGroupRoles, opts.SiteRole)
+				attempt := opts.Pattern + " sub:" + session.UserSub + " role:" + opts.SiteRole
 
-				fmt.Println(fmt.Sprintf("access of %s, request allowed: %v", req.URL, hasSiteRole))
-
-				if !hasSiteRole {
-					http.Error(w, util.ForbiddenResponse, http.StatusForbidden)
+				if strings.Index(session.Roles, opts.SiteRole) == -1 {
+					util.AuthLog.Println(attempt + " FAIL")
+					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 					return
 				}
+
+				util.AuthLog.Println(attempt + " PASS")
 
 				next(w, req, session)
 			}

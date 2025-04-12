@@ -30,8 +30,13 @@ func (db *Database) InitDbSocketConnection(connId, userSub, groupId, roles strin
 }
 
 func (db *Database) RemoveDbSocketConnection(connId string) error {
-	err := db.TxExec(func(itx *sql.Tx) error {
-		_, txErr := itx.Exec(`
+	err := db.TxExec(func(tx *sql.Tx) error {
+		txErr := db.SetDbVar(tx, "sock_topic", "")
+		if txErr != nil {
+			return util.ErrCheck(txErr)
+		}
+
+		_, txErr = tx.Exec(`
 			DELETE FROM dbtable_schema.sock_connections
 			USING dbtable_schema.sock_connections sc
 			LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id

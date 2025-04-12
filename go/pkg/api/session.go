@@ -28,28 +28,36 @@ var sessionHandlerBurst = 20
 func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		var deferredErr error
+		var didLimit bool
+		userSub := "unknown client"
 
-		// if deferred, auth token is bad so return unauth
+		startTime, exeTimeDefer := util.ExeTime(pattern)
+
 		defer func() {
+			// if deferredErr, auth token is bad so return unauth
 			if deferredErr != nil {
 				util.ErrorLog.Println(deferredErr)
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
+			}
+
+			if !didLimit {
+				exeTimeDefer(startTime, "sub:"+userSub)
 			}
 		}()
 
 		token, ok := req.Header["Authorization"]
 		if !ok {
-
 			// If we can't get auth token from header, use ip to rate limit
 			ip, _, err := net.SplitHostPort(req.RemoteAddr)
 			if err != nil {
 				w.WriteHeader(http.StatusInternalServerError)
-				util.ErrorLog.Println(util.ErrCheck(err))
 				return
 			}
 
 			limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, ip)
 			if limited {
+				didLimit = true
 				WriteLimit(w)
 				return
 			}
@@ -64,9 +72,12 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 			return
 		}
 
+		userSub = session.UserSub
+
 		// rate limit authenticated user
 		limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, session.UserSub)
 		if limited {
+			didLimit = true
 			WriteLimit(w)
 			return
 		}

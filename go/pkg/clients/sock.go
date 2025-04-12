@@ -388,7 +388,7 @@ func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 	response, err := s.SendCommand(CreateSocketTicketSocketCommand, &types.SocketRequestParams{
 		UserSub: session.UserSub,
 		GroupId: session.GroupId,
-		Roles:   strings.Join(session.AvailableUserGroupRoles, " "),
+		Roles:   session.Roles,
 	})
 
 	if err = ChannelError(err, response.Error); err != nil {

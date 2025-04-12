@@ -322,25 +322,18 @@ func BenchmarkStringOut(b *testing.B) {
 
 func TestExeTime(t *testing.T) {
 	var buf bytes.Buffer
-	originalLogger := ErrorLog
-	ErrorLog = &CustomLogger{log.New(&buf, "", 0)}
-	defer func() { ErrorLog = originalLogger }()
+	originalLogger := AccessLog
+	AccessLog = &CustomLogger{log.New(&buf, "", 0)}
+	defer func() { AccessLog = originalLogger }()
 
 	t.Run("standard logging", func(t *testing.T) {
 		testName := "testFunction"
-		endFunc := ExeTime(testName)
-
-		if !strings.Contains(buf.String(), "beginning execution for "+testName) {
-			t.Errorf("Expected log to contain 'beginning execution for %s', got: %s", testName, buf.String())
-		}
-
-		buf.Reset()
-
+		start, endFunc := ExeTime(testName)
 		testInfo := "test completed"
-		endFunc(testInfo)
+		endFunc(start, testInfo)
 
 		logMsg := buf.String()
-		if !strings.Contains(logMsg, testName+" execution time:") {
+		if !strings.Contains(logMsg, testName) {
 			t.Errorf("Log doesn't contain function name and execution time text, got: %s", logMsg)
 		}
 		if !strings.Contains(logMsg, testInfo) {
@@ -356,7 +349,7 @@ func BenchmarkExeTime(b *testing.B) {
 	defer func() { ErrorLog = originalLogger }()
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_ = ExeTime("testFunction")
+		_, _ = ExeTime("testFunction")
 	}
 }
 
@@ -365,10 +358,12 @@ func BenchmarkExeTimeDeferFunc(b *testing.B) {
 	originalLogger := ErrorLog
 	ErrorLog = &CustomLogger{log.New(&buf, "", 0)}
 	defer func() { ErrorLog = originalLogger }()
-	deferFunc := ExeTime("testFunction")
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		deferFunc("test")
+		b.StopTimer()
+		start, deferFunc := ExeTime("testFunction")
+		b.StartTimer()
+		deferFunc(start, "test")
 	}
 }
 

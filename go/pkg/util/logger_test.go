@@ -62,7 +62,6 @@ func BenchmarkCustomLogger_Println(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	defer file.Close()
 	logger := log.New(file, "", log.Ldate|log.Ltime)
 	errLogger := &CustomLogger{logger}
 
@@ -71,4 +70,7 @@ func BenchmarkCustomLogger_Println(b *testing.B) {
 	for i := 0; i < b.N; i++ {
 		errLogger.Println("test")
 	}
+	b.StopTimer()
+	file.Close()
+	os.Remove(filePath)
 }

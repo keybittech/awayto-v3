@@ -18,49 +18,46 @@ export $(shell sed 's/=.*//' $(ENVFILE))
 BINARY_TEST=$(BINARY_NAME).test
 BINARY_SERVICE=$(BINARY_NAME).service
 
-# source files
 
-JAVA_SRC=./java
-TS_SRC=./ts
-GO_SRC=./go
-LANDING_SRC=./landing
+#################################
+#          SOURCE DIRS          #
+#################################
 
-# local directories
+JAVA_SRC=java
+TS_SRC=ts
+GO_SRC=go
+LANDING_SRC=landing
+
+#################################
+#           LOCAL DIRS          #
+#################################
 
 JAVA_TARGET_DIR=java/target
 JAVA_THEMES_DIR=java/themes
 LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
 HOST_LOCAL_DIR=sites/${PROJECT_PREFIX}
-GO_GEN_DIR=go/pkg/types
-GO_API_DIR=go/pkg/api
-GO_CLIENTS_DIR=go/pkg/clients
-GO_HANDLERS_DIR=go/pkg/handlers
-# GO_INTERFACES_DIR=go/pkg/interfaces
-GO_UTIL_DIR=go/pkg/util
+GO_GEN_DIR=$(GO_SRC)/pkg/types
+GO_API_DIR=$(GO_SRC)/pkg/api
+GO_CLIENTS_DIR=$(GO_SRC)/pkg/clients
+GO_HANDLERS_DIR=$(GO_SRC)/pkg/handlers
+# GO_INTERFACES_DIR=$(GO_SRC)/pkg/interfaces
+GO_UTIL_DIR=$(GO_SRC)/pkg/util
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
 DEMOS_DIR=demos/final
 
-# build targets
+
+#################################
+#            TARGETS            #
+#################################
 
 JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
-GO_TARGET=${PWD}/go/$(BINARY_NAME)
+GO_TARGET=${PWD}/$(GO_SRC)/$(BINARY_NAME)
 # GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
 # GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
 PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
-
-# host locations
-
-H_OP=/home/${HOST_OPERATOR}
-H_DOCK=$(H_OP)/bin/docker
-H_REM_DIR=$(H_OP)/${PROJECT_PREFIX}
-H_ETC_DIR=/etc/${PROJECT_PREFIX}
-
-H_SIGN=${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
-
-# build artifacts
 
 PROTO_FILES=$(wildcard proto/*.proto)
 
@@ -68,11 +65,18 @@ TS_API_YAML=ts/openapi.yaml
 TS_API_BUILD=ts/src/hooks/api.ts
 TS_CONFIG_API=ts/openapi-config.json
 
-CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
+#################################
+#            BACKUPS            #
+#################################
+DB_BACKUP_DIR=backups/db
+DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
+DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
+DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
 
-# deploy properties
-RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
-DOCKER_COMPOSE:=compose -f deploy/scripts/docker/docker-compose.yml --env-file $(ENVFILE)
+
+#################################
+#          DEPLOY PROPS         #
+#################################
 
 DEPLOY_SCRIPTS=deploy/scripts
 DEV_SCRIPTS=deploy/scripts/dev
@@ -82,20 +86,14 @@ CRON_DIR=deploy/scripts/cron
 DEPLOY_SCRIPT=deploy/scripts/host/deploy.sh
 AUTH_INSTALL_SCRIPT=deploy/scripts/auth/install.sh
 
-# backup related
-DB_BACKUP_DIR=backups/db
-DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
-DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
-DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
+H_OP=/home/${HOST_OPERATOR}
+H_DOCK=$(H_OP)/bin/docker
+H_REM_DIR=$(H_OP)/${PROJECT_PREFIX}
+H_ETC_DIR=/etc/${PROJECT_PREFIX}
 
+H_SIGN=${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
 
-# flags
-SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
-
-LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
-define set_local_unix_sock_dir
-	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
-endef
+# CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
 
 CURRENT_USER:=$(shell whoami)
 DEPLOYING:=$(if $(filter ${HOST_OPERATOR},${CURRENT_USER}),true,)
@@ -104,13 +102,20 @@ define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
 endef
 
+LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
+define set_local_unix_sock_dir
+	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
+endef
+
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
 CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
+CURRENT_GO_LOG_DIR=$(call if_deploying,$(H_ETC_DIR),${PWD}/$(GO_SRC))
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)PROJECT_DIR=/s&^.*$$&PROJECT_DIR=$(CURRENT_PROJECT_DIR)&;" $(ENVFILE))
+$(shell sed -i -e "/^\(#\|\)GO_LOG_DIR=/s&^.*$$&GO_LOG_DIR=$(CURRENT_GO_LOG_DIR)&;" $(ENVFILE))
 
 $(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
@@ -118,9 +123,17 @@ $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 
 AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 
-GO_DEV_FLAGS=GO_ENVFILE_LOC=$(PROJECT_DIR)/.env GO_ERROR_LOG=$(PROJECT_DIR)/${GO_ERROR_LOG} LOG_LEVEL=debug
+#################################
+#             FLAGS             #
+#################################
+
+DOCKER_COMPOSE:=compose -f deploy/scripts/docker/docker-compose.yml --env-file $(ENVFILE)
+RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
+GO_DEV_FLAGS=GO_ENVFILE_LOC=${PROJECT_DIR}/.env LOG_LEVEL=debug
 GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1} $${V:-}
 GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} # -cpuprofile=cpu.prof
+
+SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 
 #################################
 #           TARGETS             #
@@ -133,7 +146,7 @@ build: ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_P
 clean:
 	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) # $(MOCK_TARGET)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_LOG_DIR)/*.log # $(MOCK_TARGET)
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
 ifeq ($(DEPLOYING),true)
@@ -222,6 +235,7 @@ $(GO_TARGET): go_tidy $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_
 
 .PHONY: go_dev
 go_dev:
+	rm $(GO_LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) .
 
@@ -237,16 +251,19 @@ go_tidy:
 
 .PHONY: go_watch
 go_watch:
+	rm $(GO_LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod build -C $(GO_SRC) -o $(GO_TARGET) .
 
 .PHONY: go_debug
 go_debug:
+	rm $(GO_LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	cd go && $(GO_DEV_FLAGS) dlv debug --wd ${PWD}
 
 .PHONY: go_debug_exec
 go_debug_exec:
+	rm $(GO_LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) dlv exec --wd ${PWD} $(GO_TARGET)
 
@@ -280,22 +297,26 @@ go_test_ui: build $(GO_TARGET)
 
 .PHONY: go_test_unit
 go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
+	rm $(GO_LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
-	go test -C $(GO_API_DIR) $(GO_TEST_FLAGS) ./...
-	go test -C $(GO_CLIENTS_DIR) $(GO_TEST_FLAGS) ./...
-	go test -C $(GO_HANDLERS_DIR) $(GO_TEST_FLAGS) ./...
-	go test -C $(GO_UTIL_DIR) $(GO_TEST_FLAGS) ./...
+	$(GO_DEV_FLAGS) go test -C $(GO_API_DIR) $(GO_TEST_FLAGS) ./...
+	$(GO_DEV_FLAGS) go test -C $(GO_CLIENTS_DIR) $(GO_TEST_FLAGS) ./...
+	$(GO_DEV_FLAGS) go test -C $(GO_HANDLERS_DIR) $(GO_TEST_FLAGS) ./...
+	$(GO_DEV_FLAGS) go test -C $(GO_UTIL_DIR) $(GO_TEST_FLAGS) ./...
 
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
+	rm $(GO_LOG_DIR)/*.log || true
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ${PROJECT_REPO}/go
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
+	rm $(GO_LOG_DIR)/*.log || true
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ${PROJECT_REPO}/go
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
+	rm $(GO_LOG_DIR)/*.log || true
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)

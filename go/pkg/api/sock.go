@@ -1,8 +1,8 @@
 package api
 
 import (
+	"errors"
 	"io"
-	"net"
 	"net/http"
 	"strings"
 	"sync"
@@ -79,6 +79,12 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 			return
 		}
 
+		var exitReason string
+		util.SockLog.Println("JOIN /sock sub:" + userConnection.UserSub + " cid:" + connId)
+		defer func() {
+			util.SockLog.Println("PART /sock sub:" + userConnection.UserSub + " cid:" + connId + " reason:" + exitReason)
+		}()
+
 		socketId := util.GetColonJoined(userConnection.UserSub, connId)
 
 		defer a.TearDownSocketConnection(socketId, connId, userConnection.UserSub)
@@ -98,20 +104,19 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 		messages := make(chan []byte)
 		errs := make(chan error)
 
-		go func(c net.Conn, e chan error, m chan []byte) {
+		go func() {
 			for {
-				data, err := util.ReadSocketConnectionMessage(c)
-				pings.Store(connId, time.Now())
+				data, err := util.ReadSocketConnectionMessage(conn)
 				if err != nil {
 					if io.EOF == err {
 						return
 					}
-					e <- err
+					errs <- err
 				} else {
-					m <- data
+					messages <- data
 				}
 			}
-		}(conn, errs, messages)
+		}()
 
 		pings.Store(connId, time.Now())
 
@@ -129,7 +134,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				// Close connections not responding to pings
 				pingVal, _ := pings.Load(connId)
 				if lastSeen, ok := pingVal.(time.Time); ok && time.Since(lastSeen) > 90*time.Second {
-					println("returned due to ping timeout")
+					exitReason = "returned due to ping timeout"
 					return
 				}
 
@@ -138,13 +143,13 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 					Payload: PING,
 				})
 				if err != nil {
-					println("returned due to ping error ", err.Error())
+					exitReason = "returned due to ping error " + err.Error()
 					return
 				}
 			case data := <-messages:
 				if len(data) == 2 {
 					// EOF
-					println("returned due to messages EOF")
+					exitReason = "returned due to messages EOF"
 					return
 				} else {
 
@@ -160,8 +165,8 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				if errorFlag {
 					continue
 				}
-				println("sock read error " + connId + err.Error())
-				util.ErrorLog.Println(util.ErrCheck(err))
+				sockErr := errors.New("sock read error " + connId + err.Error())
+				util.ErrorLog.Println(util.ErrCheck(sockErr))
 				errorFlag = true
 			}
 		}
@@ -172,35 +177,30 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 	)
 }
 
-func (a *API) TearDownSocketConnection(socketId, connId, userSub string) bool {
+func (a *API) TearDownSocketConnection(socketId, connId, userSub string) {
+	var tearDownFailures string
+	// Log errors but attempt to tear down everything
 	topics, err := a.Handlers.Redis.HandleUnsub(socketId)
 	if err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
-		return false
+		tearDownFailures += "handle_unsub "
 	}
 
 	for topic, targets := range topics {
-		err = a.Handlers.Socket.SendMessage(userSub, targets, &types.SocketMessage{
+		a.Handlers.Socket.SendMessage(userSub, targets, &types.SocketMessage{
 			Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 			Topic:   topic,
 			Payload: socketId,
 		})
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			return false
-		}
 
 		err = a.Handlers.Redis.RemoveTopicFromConnection(socketId, topic)
 		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			return false
+			tearDownFailures += "rem_conn_topic "
 		}
 	}
 
 	err = a.Handlers.Database.RemoveDbSocketConnection(connId)
 	if err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
-		return false
+		tearDownFailures += "rem_sock_conn "
 	}
 
 	_, err = a.Handlers.Socket.SendCommand(clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
@@ -208,18 +208,25 @@ func (a *API) TearDownSocketConnection(socketId, connId, userSub string) bool {
 		ConnId:  connId,
 	})
 	if err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
-		return false
+		tearDownFailures += "del_cmd "
+	}
+
+	if tearDownFailures != "" {
+		util.ErrorLog.Println("TEARDOWN /sock sub:" + userSub + " socketid:" + socketId + " connid:" + connId + " " + tearDownFailures)
 	}
 
 	clients.GetGlobalWorkerPool().CleanUpClientMapping(userSub)
-	return true
 }
 
 func (a *API) SocketRequest(data []byte, connId, socketId, userSub, groupId, roles string) bool {
 	socketMessage := a.SocketMessageReceiver(userSub, data)
 	if socketMessage == nil {
 		return false
+	}
+
+	if socketMessage.Action == types.SocketActions_PING_PONG {
+		pings.Store(connId, time.Now())
+		return true
 	}
 
 	a.SocketMessageRouter(socketMessage, connId, socketId, userSub, groupId, roles)
