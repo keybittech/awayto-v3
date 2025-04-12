@@ -23,6 +23,20 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
+
+		var quoteUserSub string
+		err = tx.QueryRow(`
+			SELECT created_sub
+			FROM dbtable_schema.quotes
+			WHERE id = $1
+		`, booking.Quote.Id).Scan(&quoteUserSub)
+
+		h.Redis.Client().Del(req.Context(), quoteUserSub+"profile/details")
+
+		if err := h.Socket.RoleCall(quoteUserSub); err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
 		newBookings = append(newBookings, &newBooking)
 	}
 

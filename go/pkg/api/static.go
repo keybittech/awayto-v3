@@ -12,10 +12,19 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+)
+
+const maxAge = 60 * 60 * 24 * 30
+
+var (
+	maxAgeStr = strconv.Itoa(maxAge)
+	maxAgeDur = time.Duration(maxAge) * time.Second
 )
 
 type StaticGzip struct {
@@ -63,6 +72,8 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 	mux.Handle("/", http.StripPrefix("/",
 		a.LimitMiddleware(10, 10)(
 			func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+				w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
 				landingFiles.ServeHTTP(w, r)
 			},
 		),
@@ -86,6 +97,8 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 					return
 				}
+				w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+				w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
 
 				demoFiles.ServeHTTP(w, req)
 			},
@@ -106,6 +119,8 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 					redirect := &StaticRedirect{ResponseWriter: w}
 
 					if strings.HasSuffix(req.URL.Path, ".js") || strings.HasSuffix(req.URL.Path, ".css") || strings.HasSuffix(req.URL.Path, ".mjs") {
+						w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+						w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
 						w.Header().Set("Content-Encoding", "gzip")
 						gz := gzip.NewWriter(w)
 						defer gz.Close()

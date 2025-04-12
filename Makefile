@@ -146,7 +146,7 @@ build: ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_P
 clean:
 	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_LOG_DIR)/*.log # $(MOCK_TARGET)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_LOG_DIR)/*.log working/proto-stamp # $(MOCK_TARGET)
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
 ifeq ($(DEPLOYING),true)
@@ -221,7 +221,7 @@ working/proto-stamp: $(wildcard proto/*.proto)
 	fi
 	touch $@
 
-$(GO_TARGET): go_tidy $(shell find $(GO_SRC)/{main.go,pkg} -type f) $(PROTO_MOD_TARGET) # $(GO_MOCK_TARGET)
+$(GO_TARGET): $(PROTO_MOD_TARGET) go_tidy $(shell find $(GO_SRC)/{main.go,pkg} -type f) # $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
@@ -339,7 +339,7 @@ test_gen:
 #################################
 
 .PHONY: docker_up
-docker_up:
+docker_up: build
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA) || true
 	${SUDO} docker volume create $(REDIS_DATA) || true

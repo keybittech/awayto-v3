@@ -15,7 +15,7 @@ import Slide from '@mui/material/Slide';
 import Divider from '@mui/material/Divider';
 import { TransitionProps } from '@mui/material/transitions';
 
-import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat, nid } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat, nid, SiteRoles, useSecure } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -35,6 +35,7 @@ const Transition = React.forwardRef(function Transition(
 
 export function RequestQuote(_: IComponent): React.JSX.Element {
 
+  const hasRole = useSecure();
   const classes = useStyles();
   const navigate = useNavigate();
 
@@ -139,7 +140,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         <Alert
           severity="info"
           action={
-            !groupUserSchedulesRequest?.groupUserSchedules && <Button
+            hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && !groupUserSchedulesRequest?.groupUserSchedules && <Button
               {...targets(`request quote create personal schedule`, `go to the personal schedule page to create a personal schedule`)}
               variant="text"
               color="info"

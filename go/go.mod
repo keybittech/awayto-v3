@@ -12,11 +12,11 @@ require (
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000
 	github.com/playwright-community/playwright-go v0.4902.0
 	golang.org/x/exp v0.0.0-20240325151524-a685a6edb6d8
-	google.golang.org/protobuf v1.36.5
+	google.golang.org/protobuf v1.36.6
 )
 
 require (
-	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.5-20250219170025-d39267d9df8f.1 // indirect
+	buf.build/gen/go/bufbuild/protovalidate/protocolbuffers/go v1.36.6-20250307204501-0409229c3780.1 // indirect
 	cel.dev/expr v0.19.1 // indirect
 	github.com/antlr4-go/antlr/v4 v4.13.0 // indirect
 	github.com/bufbuild/protovalidate-go v0.9.2 // indirect
@@ -36,8 +36,8 @@ require (
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	golang.org/x/time v0.11.0 // indirect
-	google.golang.org/genproto/googleapis/api v0.0.0-20250303144028-a0af3efb3deb // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20250227231956-55c901821b1e // indirect
+	google.golang.org/genproto/googleapis/api v0.0.0-20250409194420-de1ac958c67a // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20250404141209-ee84b53bf3d0 // indirect
 )
 
 replace github.com/keybittech/awayto-v3/go/pkg/api => ./pkg/api

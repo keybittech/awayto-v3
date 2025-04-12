@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { useLocation, useNavigate, useParams } from 'react-router-dom';
 
 import { useColorScheme } from '@mui/material';
@@ -85,7 +85,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
 
   const roleActions = useMemo(() => {
     const augr = profileRequest?.userProfile.availableUserGroupRoles?.filter(x => ![SiteRoles.APP_GROUP_BOOKINGS].includes(x as SiteRoles));
-    if (!augr) return <></>;
+    if (!augr) return [<></>];
     return Object.values(SiteRoles).filter(r => augr.includes(r)).map((r, i) => {
       const rd = SiteRoleDetails[r];
       const ActionIcon = rd.icon;
@@ -175,9 +175,11 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           Light
         </MenuItem>
 
-        <Divider />
 
-        {roleActions}
+        {!!roleActions.length && <>
+          <Divider />
+          {roleActions}
+        </>}
 
         <Divider />
 

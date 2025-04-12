@@ -50,7 +50,8 @@ var (
 )
 
 type Socket struct {
-	handlerId string
+	handlerId  string
+	SocketMaps *SocketMaps
 }
 
 type ConnectedSocket struct {
@@ -324,7 +325,10 @@ func InitSocket() *Socket {
 		return true
 	})
 
-	return &Socket{handlerId: sockHandlerId}
+	return &Socket{
+		handlerId:  sockHandlerId,
+		SocketMaps: socketMaps,
+	}
 }
 
 type SocketRequest struct {
@@ -357,6 +361,16 @@ func (s *Socket) RouteCommand(cmd SocketCommand) error {
 
 func (s *Socket) Close() {
 	GetGlobalWorkerPool().UnregisterProcessFunction(s.handlerId)
+}
+
+func (s *Socket) Connected(userSub string) bool {
+	s.SocketMaps.mu.RLock()
+	defer s.SocketMaps.mu.RUnlock()
+	if subscriber, ok := s.SocketMaps.subscribers[userSub]; ok {
+		_, ok := s.SocketMaps.connections[subscriber.ConnectionId]
+		return ok
+	}
+	return false
 }
 
 func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, conn ...net.Conn) (SocketResponse, error) {
@@ -427,6 +441,10 @@ func (s *Socket) SendMessage(userSub, targets string, message *types.SocketMessa
 }
 
 func (s *Socket) RoleCall(userSub string) error {
+	if connected := s.Connected(userSub); !connected {
+		return nil
+	}
+
 	response, err := s.SendCommand(GetSubscribedTargetsSocketCommand, &types.SocketRequestParams{
 		UserSub: userSub,
 	})
