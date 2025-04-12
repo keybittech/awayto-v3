@@ -11,6 +11,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/redis/go-redis/v9"
 
 	"github.com/google/uuid"
 )
@@ -210,7 +211,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 
 func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Request, data *types.PatchGroupAssignmentsRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupAssignmentsResponse, error) {
 	assignmentsBytes, err := h.Redis.Client().Get(req.Context(), "group_role_assignments:"+session.GroupId).Bytes()
-	if err != nil {
+	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -250,6 +251,7 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 
 			if len(deletions) > 0 {
 				response, err := h.Keycloak.SendCommand(clients.DeleteRolesFromGroupKeycloakCommand, &types.AuthRequestParams{
+					UserSub: session.UserSub,
 					GroupId: sgRoleActions.Id,
 					Roles:   deletions,
 				})

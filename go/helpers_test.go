@@ -7,6 +7,7 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -87,7 +88,7 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 	return nil
 }
 
-func getKeycloakToken(userId int) (string, error) {
+func getKeycloakToken(userId int) (string, *types.UserSession, error) {
 	data := url.Values{}
 	data.Set("client_id", os.Getenv("KC_CLIENT"))
 	data.Set("username", "1@"+strconv.Itoa(userId+1))
@@ -100,7 +101,7 @@ func getKeycloakToken(userId int) (string, error) {
 		strings.NewReader(data.Encode()),
 	)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
@@ -111,26 +112,31 @@ func getKeycloakToken(userId int) (string, error) {
 	client := &http.Client{Transport: tr}
 	resp, err := client.Do(req)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 	defer resp.Body.Close()
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
-		return "", err
+		return "", nil, err
 	}
 
 	token, ok := result["access_token"].(string)
 	if !ok {
-		return "", fmt.Errorf("access token not found in response")
+		return "", nil, fmt.Errorf("access token not found in response")
 	}
 
-	return token, nil
+	session, err := api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
+	if err != nil {
+		log.Fatalf("error validating auth token: %v", err)
+	}
+
+	return token, session, nil
 }
 
 func registerKeycloakUserViaForm(userId int, code ...string) (bool, error) {
@@ -236,14 +242,9 @@ func generateCodeChallenge() string {
 
 func getSocketTicket(userId int) (*types.UserSession, string, string, string) {
 	// Get authentication token first
-	token, err := getKeycloakToken(userId)
+	token, session, err := getKeycloakToken(userId)
 	if err != nil {
 		log.Fatalf("error getting auth token: %v", err)
-	}
-
-	session, err := api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
-	if err != nil {
-		log.Fatalf("error validating auth token: %v", err)
 	}
 
 	req, err := http.NewRequest("GET", "https://localhost:7443/api/v1/sock/ticket", nil)
@@ -395,4 +396,53 @@ func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Con
 	}
 
 	return subscribers, connections
+}
+
+func patchGroupUser(token, userSub, roleId string) error {
+	patchGroupUserRequestBytes, err := protojson.Marshal(&types.PatchGroupUserRequest{
+		UserSub: userSub,
+		RoleId:  roleId,
+	})
+	if err != nil {
+		return errors.New(fmt.Sprintf("error marshalling patch group user %s %s %v", userSub, roleId, err))
+	}
+
+	patchGroupUserResponse := &types.PatchGroupUserResponse{}
+	err = apiRequest(token, http.MethodPatch, "/api/v1/group/users", patchGroupUserRequestBytes, nil, patchGroupUserResponse)
+	if err != nil {
+		return errors.New(fmt.Sprintf("error patch group user request, sub: %s error: %v", userSub, err))
+	}
+	if !patchGroupUserResponse.Success {
+		return errors.New("attach user internal was unsuccessful")
+	}
+
+	return nil
+}
+
+func patchGroupAssignments(token, roleFullName, actionName string) error {
+	actions := make([]*types.IAssignmentAction, 1)
+	actions[0] = &types.IAssignmentAction{
+		Name: actionName,
+	}
+	assignmentActions := make(map[string]*types.IAssignmentActions)
+	assignmentActions[roleFullName] = &types.IAssignmentActions{
+		Actions: actions,
+	}
+
+	patchGroupAssignmentsBytes, err := protojson.Marshal(&types.PatchGroupAssignmentsRequest{
+		Assignments: assignmentActions,
+	})
+	if err != nil {
+		return errors.New(fmt.Sprintf("error marshalling patch group assignments %v %v", err, assignmentActions))
+	}
+	patchGroupAssignmentsResponse := &types.PatchGroupAssignmentsResponse{}
+	err = apiRequest(token, http.MethodPatch, "/api/v1/group/assignments", patchGroupAssignmentsBytes, nil, patchGroupAssignmentsResponse)
+	if err != nil {
+		return errors.New(fmt.Sprintf("error patch group assignments request: %v", err))
+	}
+	if !patchGroupAssignmentsResponse.Success {
+		return errors.New(fmt.Sprintf("patch group assignments  was unsuccessful %v", patchGroupAssignmentsResponse))
+	}
+
+	return nil
 }

@@ -15,6 +15,7 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/redis/go-redis/v9"
 
 	"golang.org/x/time/rate"
 )
@@ -115,7 +116,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 		}()
 
 		existingSession, err := a.Handlers.Redis.GetSession(req.Context(), session.UserSub)
-		if err != nil && err.Error() != "redis: nil" {
+		if err != nil && !errors.Is(err, redis.Nil) {
 			deferredErr = util.ErrCheck(err)
 			return
 		}

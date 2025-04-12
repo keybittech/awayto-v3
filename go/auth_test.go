@@ -59,7 +59,7 @@ func BenchmarkKeycloakAuthentication(b *testing.B) {
 		go func(cid int) {
 			defer wg.Done()
 
-			token, err := getKeycloakToken(cid)
+			token, _, err := getKeycloakToken(cid)
 			if err != nil {
 				return
 			}

@@ -12,7 +12,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/keybittech/awayto-v3/go/pkg/api"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -31,7 +30,8 @@ type IntegrationTest struct {
 	TestUsers          map[int]*TestUser
 	Connections        map[string]net.Conn
 	Roles              map[string]*types.IRole
-	DefaultRole        *types.IRole
+	MemberRole         *types.IRole
+	StaffRole          *types.IRole
 	Group              *types.IGroup
 	OnboardingService  *types.IService
 	GroupService       *types.IGroupService
@@ -148,14 +148,9 @@ func TestIntegrationGroup(t *testing.T) {
 			AllowedDomains: groupRequest.AllowedDomains,
 		}
 
-		token, err := getKeycloakToken(admin.TestUserId)
+		token, session, err := getKeycloakToken(admin.TestUserId)
 		if err != nil {
 			t.Error(err)
-		}
-
-		session, err := api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
-		if err != nil {
-			t.Errorf("error validating auth token: %v", err)
 		}
 
 		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_ADMIN.String()) {
@@ -231,7 +226,8 @@ func TestIntegrationRoles(t *testing.T) {
 		}
 
 		integrationTest.Roles = roles
-		integrationTest.DefaultRole = roles[staffRoleResponse.Id]
+		integrationTest.MemberRole = roles[memberRoleResponse.Id]
+		integrationTest.StaffRole = roles[staffRoleResponse.Id]
 	})
 
 	t.Logf("Integration Test: %+v", integrationTest)
@@ -419,7 +415,7 @@ func TestIntegrationUserSchedule(t *testing.T) {
 			Slots:      slots,
 		}
 
-		userScheduleRequest := &types.PostScheduleRequest{
+		userScheduleRequestBytes, err := protojson.Marshal(&types.PostScheduleRequest{
 			GroupScheduleId:    integrationTest.GroupSchedule.Schedule.Id,
 			Brackets:           brackets,
 			Name:               integrationTest.OnboardingSchedule.Name,
@@ -429,9 +425,7 @@ func TestIntegrationUserSchedule(t *testing.T) {
 			BracketTimeUnitId:  integrationTest.OnboardingSchedule.BracketTimeUnitId,
 			SlotTimeUnitId:     integrationTest.OnboardingSchedule.SlotTimeUnitId,
 			SlotDuration:       integrationTest.OnboardingSchedule.SlotDuration,
-		}
-
-		userScheduleRequestBytes, err := protojson.Marshal(userScheduleRequest)
+		})
 		if err != nil {
 			t.Errorf("error marshalling user schedule request: %v", err)
 		}
@@ -455,7 +449,7 @@ func TestIntegrationJoinGroup(t *testing.T) {
 			joinViaRegister := c%2 == 0
 			userId := int(time.Now().UnixNano())
 
-			t.Logf("\n\nRegistering #%d", userId)
+			t.Logf("Registering #%d", userId)
 			if joinViaRegister {
 				// This takes care of attach user to group and activate profile on the backend
 				registerKeycloakUserViaForm(userId, integrationTest.Group.Code)
@@ -477,11 +471,9 @@ func TestIntegrationJoinGroup(t *testing.T) {
 
 			if !joinViaRegister {
 				// Join Group -- puts the user in the app db
-				joinGroupRequest := &types.JoinGroupRequest{
+				joinGroupRequestBytes, err := protojson.Marshal(&types.JoinGroupRequest{
 					Code: integrationTest.Group.Code,
-				}
-
-				joinGroupRequestBytes, err := protojson.Marshal(joinGroupRequest)
+				})
 				if err != nil {
 					t.Errorf("error marshalling join group request, user: %d error: %v", c, err)
 				}
@@ -497,11 +489,9 @@ func TestIntegrationJoinGroup(t *testing.T) {
 				time.Sleep(time.Second)
 
 				// Attach User to Group -- adds the user to keycloak records
-				attachUserRequest := &types.AttachUserRequest{
+				attachUserRequestBytes, err := protojson.Marshal(&types.AttachUserRequest{
 					Code: integrationTest.Group.Code,
-				}
-
-				attachUserRequestBytes, err := protojson.Marshal(attachUserRequest)
+				})
 				if err != nil {
 					t.Errorf("error marshalling attach user request, user: %d error: %v", c, err)
 				}
@@ -528,16 +518,10 @@ func TestIntegrationJoinGroup(t *testing.T) {
 				time.Sleep(time.Second)
 
 				// Get new token after group setup to check group membersip
-				token, err = getKeycloakToken(userId)
+				token, session, err = getKeycloakToken(userId)
 				if err != nil {
 					t.Errorf("failed to get new token after joining group %v", err)
 				}
-
-				session, err = api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
-				if err != nil {
-					t.Errorf("error validating auth token: %v", err)
-				}
-				t.Logf("new session %v", session)
 			}
 
 			if len(session.SubGroups) == 0 {
@@ -562,6 +546,71 @@ func TestIntegrationJoinGroup(t *testing.T) {
 	})
 }
 
+func TestIntegrationPromoteUser(t *testing.T) {
+	admin := integrationTest.TestUsers[0]
+	staff1 := integrationTest.TestUsers[1]
+	member1 := integrationTest.TestUsers[4]
+
+	staffRoleFullName := "/" + integrationTest.Group.Name + "/" + integrationTest.StaffRole.Name
+	memberRoleFullName := "/" + integrationTest.Group.Name + "/" + integrationTest.MemberRole.Name
+
+	t.Run("user cannot update role permissions", func(t *testing.T) {
+		t.Logf("add admin ability to member role %s", memberRoleFullName)
+		err := patchGroupAssignments(member1.TestToken, memberRoleFullName, types.SiteRoles_APP_GROUP_ADMIN.String())
+		if err == nil {
+			t.Errorf("user was able to add admin to their own role %v", err)
+		} else {
+			t.Logf("failed to patch admin to member as member %v", err)
+		}
+	})
+
+	t.Run("admin can update role permissions", func(t *testing.T) {
+		t.Logf("with roles %s %s", staffRoleFullName, memberRoleFullName)
+
+		t.Logf("add scheduling ability to staff role %s", staffRoleFullName)
+		err := patchGroupAssignments(admin.TestToken, staffRoleFullName, types.SiteRoles_APP_GROUP_SCHEDULES.String())
+		if err != nil {
+			t.Errorf("add scheduling ability to staff err %v", err)
+		}
+
+		t.Logf("add user editing ability to staff role %s", staffRoleFullName)
+		err = patchGroupAssignments(admin.TestToken, staffRoleFullName, types.SiteRoles_APP_GROUP_USERS.String())
+		if err != nil {
+			t.Errorf("add user editing ability to staff err %v", err)
+		}
+
+		t.Logf("add booking ability to member role %s", memberRoleFullName)
+		err = patchGroupAssignments(admin.TestToken, memberRoleFullName, types.SiteRoles_APP_GROUP_BOOKINGS.String())
+		if err != nil {
+			t.Errorf("add booking ability to member err %v", err)
+		}
+	})
+
+	t.Run("user cannot change their own role", func(t *testing.T) {
+		err := patchGroupUser(member1.TestToken, member1.UserSession.UserSub, integrationTest.StaffRole.Id)
+		if err != nil {
+			t.Errorf("user patches self err %v", err)
+		}
+
+		_, session, err := getKeycloakToken(staff1.TestUserId)
+		if err != nil {
+			t.Errorf("failed to get new token after user patches self %v", err)
+		}
+
+		if slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_ADMIN.String()) {
+			t.Error("admin doesn't have admin role")
+		}
+		t.Logf("%+v", session)
+
+		time.Sleep(time.Second)
+	})
+
+	t.Run("admin change a user's role", func(t *testing.T) {
+
+	})
+}
+
+// await patchGroupUser({ patchGroupUserRequest: { userId: id, roleId, roleName: name } }).unwrap();
 func TestIntegrationQuotes(t *testing.T) {
 
 }

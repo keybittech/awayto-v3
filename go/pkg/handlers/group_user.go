@@ -11,54 +11,37 @@ import (
 )
 
 func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data *types.PatchGroupUserRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupUserResponse, error) {
-	userId := data.GetUserId()
+	userSub := data.GetUserSub()
 	roleId := data.GetRoleId()
 
-	var groupUsers []*types.IGroupUser
-
-	err := h.Database.QueryRows(tx, &groupUsers, `
-		SELECT g.external_id as "groupExternalId", gu.external_id as "externalId", u.sub as "userSub"
+	var userId, oldSubgroupExternalId string
+	err := tx.QueryRow(`
+		SELECT gu.external_id as "externalId", gu.user_id as "userId"
 		FROM dbtable_schema.group_users gu
 		JOIN dbtable_schema.users u ON u.id = gu.user_id
 		JOIN dbtable_schema.groups g ON g.id = gu.group_id
-		WHERE g.id = $1 AND gu.user_id = $2
-	`, session.GroupId, userId)
+		WHERE g.id = $1 AND u.sub = $2
+	`, session.GroupId, userSub).Scan(&oldSubgroupExternalId, &userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if len(groupUsers) == 0 {
-		return nil, util.ErrCheck(errors.New("group user not found"))
-	}
-	groupUser := groupUsers[0]
-
-	var groupRoles []*types.IGroupRole
-
-	err = h.Database.QueryRows(tx, &groupRoles, `
+	var newSubgroupExternalId string
+	err = tx.QueryRow(`
 		SELECT external_id as "externalId"
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
-	`, session.GroupId, roleId)
+	`, session.GroupId, roleId).Scan(&newSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if len(groupRoles) == 0 {
-		return nil, util.ErrCheck(errors.New("group role not found"))
-	}
-
-	newSubgroupExternalId := groupRoles[0].GetExternalId()
-
-	kcOldSubgroupExternalId := groupUser.GetExternalId()
-
-	groupUserSub := groupUser.GetUserSub()
-
-	err = h.Keycloak.DeleteUserFromGroup(session.UserSub, groupUserSub, kcOldSubgroupExternalId)
+	err = h.Keycloak.DeleteUserFromGroup(session.UserSub, userSub, oldSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(session.UserSub, groupUserSub, newSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(session.UserSub, userSub, newSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -77,7 +60,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 	h.Redis.Client().Del(req.Context(), session.UserSub+"group/users/"+userId)
 
 	// Target user will see their roles persisted through cache with this
-	h.Redis.Client().Del(req.Context(), groupUserSub+"profile/details")
+	h.Redis.Client().Del(req.Context(), userSub+"profile/details")
 	h.Redis.DeleteSession(req.Context(), session.UserSub)
 	// response := make([]*types.UserRolePair, 1)
 	// response[0] = &types.UserRolePair{

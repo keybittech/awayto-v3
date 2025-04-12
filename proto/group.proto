@@ -31,6 +31,7 @@ service GroupService {
       patch: "/v1/group/assignments"
       body: "*"
     };
+    option (site_role) = APP_GROUP_PERMISSIONS;
     option (throttle) = 60;
   }
 

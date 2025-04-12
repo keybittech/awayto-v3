@@ -39,10 +39,8 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: ManageUser
   const handleSubmit = useCallback(() => {
     async function go() {
       if (editUser?.id && groupRolesRequest?.groupRoles) {
-        const { id } = profile;
-        const { name } = groupRolesRequest.groupRoles?.find(gr => gr.roleId === roleId)?.role || {};
-        if (id && roleId && name) {
-          await patchGroupUser({ patchGroupUserRequest: { userId: id, roleId, roleName: name } }).unwrap();
+        if (profile.sub && roleId) {
+          await patchGroupUser({ patchGroupUserRequest: { userSub: profile.sub, roleId } }).unwrap();
           if (closeModal)
             closeModal();
         }

@@ -77,9 +77,8 @@ message IGroupUsers {
 }
 
 message PatchGroupUserRequest {
-  string userId = 1 [(google.api.field_behavior) = REQUIRED];
-  string roleName = 2 [(google.api.field_behavior) = REQUIRED];
-  string roleId = 3 [(google.api.field_behavior) = REQUIRED];
+  string userSub = 1 [(google.api.field_behavior) = REQUIRED];
+  string roleId = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchGroupUserResponse {
