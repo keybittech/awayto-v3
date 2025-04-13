@@ -1,4 +1,4 @@
-package integrations
+package main
 
 import "testing"
 

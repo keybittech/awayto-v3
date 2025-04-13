@@ -43,10 +43,6 @@ func Test_main(t *testing.T) {
 	}
 }
 
-func TestIntegrationExchange(t *testing.T) {
-
-}
-
 // func BenchmarkBoolFormat(b *testing.B) {
 // 	b.ReportAllocs()
 // 	reset(b)

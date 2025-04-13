@@ -1,7 +1,7 @@
-//go:build integration
-// +build integration
+//go:build ui
+// +build ui
 
-package integrations
+package main
 
 import (
 	"fmt"

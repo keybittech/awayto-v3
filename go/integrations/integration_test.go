@@ -1,8 +1,12 @@
-package integrations
+package main
 
 import (
+	"io"
 	"net"
+	"os"
+	"os/exec"
 	"testing"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
@@ -40,9 +44,41 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
-func TestIntegrations(t *testing.T) {
+func TestMain(m *testing.M) {
+	// Create command to run the main server
+	cmd := exec.Command("go", "run", "../main.go")
+
+	// Set up pipes to capture stdout and stderr
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		panic(err)
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		panic(err)
+	}
+
+	// Start the command
+	if err := cmd.Start(); err != nil {
+		panic(err)
+	}
+
+	// Copy command output to the test process output in separate goroutines
+	go io.Copy(os.Stdout, stdout)
+	go io.Copy(os.Stderr, stderr)
+
 	setupSockServer()
 
+	time.Sleep(5 * time.Second)
+
+	code := m.Run()
+
+	cmd.Process.Kill()
+
+	os.Exit(code)
+}
+
+func TestIntegrations(t *testing.T) {
 	testIntegrationUser(t)
 	testIntegrationGroup(t)
 	testIntegrationRoles(t)

@@ -298,7 +298,7 @@ go_test_gen:
 .PHONY: go_test_ui
 go_test_ui: build $(GO_TARGET)
 	$(call set_local_unix_sock_dir)
-	go test -C $(GO_SRC) -v -tags=integration -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
+	go test -C $(GO_SRC) -v -tags=ui -c -o ../$(BINARY_TEST) && exec ./$(BINARY_TEST)
 
 .PHONY: go_test_unit
 go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
@@ -312,17 +312,17 @@ go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_INTEGRATIONS_DIR) $(GO_TEST_FLAGS) -short ${PROJECT_REPO}/go/integrations
+	go test -C go $(GO_TEST_FLAGS) -short ./...
 
 .PHONY: go_test_integration_bench
 go_test_integration_bench: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_INTEGRATIONS_DIR) $(GO_BENCH_FLAGS) -short ${PROJECT_REPO}/go/integrations
+	go test -C $(GO_INTEGRATIONS_DIR) $(GO_BENCH_FLAGS) -short ./...
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_INTEGRATIONS_DIR) $(GO_BENCH_FLAGS) -v ${PROJECT_REPO}/go/integrations
+	go test -C $(GO_INTEGRATIONS_DIR) $(GO_BENCH_FLAGS) -v ./.../....
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
