@@ -1,76 +1,342 @@
 package api
 
 import (
+	"fmt"
 	"net/http"
-	"reflect"
+	"net/http/httptest"
 	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	"golang.org/x/time/rate"
 )
 
 func TestNewRateLimit(t *testing.T) {
 	type args struct {
-		name string
+		name           string
+		limit          rate.Limit
+		burst          int
+		expiryDuration time.Duration
 	}
 	tests := []struct {
-		name  string
-		args  args
-		want  *sync.Mutex
-		want1 map[string]*LimitedClient
+		name string
+		args args
+		want *RateLimiter
 	}{
-		// TODO: Add test cases.
+		{
+			name: "Create API rate limiter",
+			args: args{
+				name:           "api",
+				limit:          5,
+				burst:          10,
+				expiryDuration: time.Duration(5 * time.Minute),
+			},
+			want: &RateLimiter{
+				Name:           "api",
+				Mu:             &sync.Mutex{},
+				LimitedClients: make(map[string]*LimitedClient),
+				ExpiryDuration: time.Duration(5 * time.Minute),
+				LimitNum:       5,
+				Burst:          10,
+			},
+		},
+		{
+			name: "Create DB rate limiter",
+			args: args{
+				name:           "db",
+				limit:          10,
+				burst:          20,
+				expiryDuration: time.Duration(10 * time.Minute),
+			},
+			want: &RateLimiter{
+				Name:           "db",
+				Mu:             &sync.Mutex{},
+				LimitedClients: make(map[string]*LimitedClient),
+				ExpiryDuration: time.Duration(10 * time.Minute),
+				LimitNum:       10,
+				Burst:          20,
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, got1 := NewRateLimit(tt.args.name)
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewRateLimit(%v) got = %v, want %v", tt.args.name, got, tt.want)
+			got := NewRateLimit(tt.args.name, tt.args.limit, tt.args.burst, tt.args.expiryDuration)
+
+			// Custom comparison since we can't compare the mutex directly
+			if got.Name != tt.want.Name {
+				t.Errorf("NewRateLimit() Name = %v, want %v", got.Name, tt.want.Name)
 			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("NewRateLimit(%v) got1 = %v, want %v", tt.args.name, got1, tt.want1)
+			if got.ExpiryDuration != tt.want.ExpiryDuration {
+				t.Errorf("NewRateLimit() ExpiryDuration = %v, want %v", got.ExpiryDuration, tt.want.ExpiryDuration)
+			}
+			if got.LimitNum != tt.want.LimitNum {
+				t.Errorf("NewRateLimit() LimitNum = %v, want %v", got.LimitNum, tt.want.LimitNum)
+			}
+			if got.Burst != tt.want.Burst {
+				t.Errorf("NewRateLimit() Burst = %v, want %v", got.Burst, tt.want.Burst)
+			}
+
+			// Verify it's stored in RateLimiters map
+			storedRL, ok := RateLimiters.Load(tt.args.name)
+			if !ok {
+				t.Errorf("NewRateLimit() did not store rate limiter with name %v in RateLimiters map", tt.args.name)
+			}
+			if storedRL != got {
+				t.Errorf("NewRateLimit() stored rate limiter %v is not the same as returned %v", storedRL, got)
 			}
 		})
 	}
 }
 
-func TestLimiter(t *testing.T) {
+func TestRateLimiter_Limit(t *testing.T) {
 	type args struct {
-		mu             *sync.Mutex
-		limitedClients map[string]*LimitedClient
-		limit          rate.Limit
-		burst          int
-		identifier     string
+		identifier string
 	}
+
+	rl := NewRateLimit("test", 2, 2, time.Minute)
+
 	tests := []struct {
 		name string
+		rl   *RateLimiter
 		args args
 		want bool
 	}{
-		// TODO: Add test cases.
+		{
+			name: "First request not limited",
+			rl:   rl,
+			args: args{identifier: "client1"},
+			want: false, // Allow() returns true, so Limit() returns !Allow()
+		},
+		{
+			name: "Second request not limited",
+			rl:   rl,
+			args: args{identifier: "client1"},
+			want: false,
+		},
+		{
+			name: "Third request limited",
+			rl:   rl,
+			args: args{identifier: "client1"},
+			want: true, // Should be limited now as we exceeded burst
+		},
+		{
+			name: "Different client not limited",
+			rl:   rl,
+			args: args{identifier: "client2"},
+			want: false, // New client should not be limited
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := Limiter(tt.args.mu, tt.args.limitedClients, tt.args.limit, tt.args.burst, tt.args.identifier); got != tt.want {
-				t.Errorf("Limiter(%v, %v, %v, %v, %v) = %v, want %v", tt.args.mu, tt.args.limitedClients, tt.args.limit, tt.args.burst, tt.args.identifier, got, tt.want)
+			if got := tt.rl.Limit(tt.args.identifier); got != tt.want {
+				t.Errorf("RateLimiter.Limit(%v) = %v, want %v", tt.args.identifier, got, tt.want)
 			}
+		})
+	}
+}
+
+func TestRateLimiter_Cleanup(t *testing.T) {
+	rl := NewRateLimit("cleanup-test", 5, 5, 10*time.Millisecond)
+
+	// Add a client
+	rl.Limit("client1")
+
+	// Verify client exists
+	rl.Mu.Lock()
+	if _, exists := rl.LimitedClients["client1"]; !exists {
+		t.Errorf("Client should exist before cleanup")
+	}
+	rl.Mu.Unlock()
+
+	// Wait for expiry
+	time.Sleep(20 * time.Millisecond)
+
+	// Run cleanup
+	rl.Cleanup()
+
+	// Verify client was removed
+	rl.Mu.Lock()
+	if _, exists := rl.LimitedClients["client1"]; exists {
+		t.Errorf("Client should have been removed during cleanup")
+	}
+	rl.Mu.Unlock()
+
+	tests := []struct {
+		name string
+		rl   *RateLimiter
+	}{
+		{
+			name: "Cleanup expired clients",
+			rl:   rl,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rl.Cleanup()
 		})
 	}
 }
 
 func TestWriteLimit(t *testing.T) {
+	// Create a test ResponseWriter
+	rec := httptest.NewRecorder()
+
 	type args struct {
 		w http.ResponseWriter
 	}
 	tests := []struct {
-		name string
-		args args
+		name           string
+		args           args
+		wantStatus     int
+		wantBody       string
+		wantBodyLength int
 	}{
-		// TODO: Add test cases.
+		{
+			name:           "Write 429 response",
+			args:           args{w: rec},
+			wantStatus:     http.StatusTooManyRequests,
+			wantBody:       http.StatusText(http.StatusTooManyRequests),
+			wantBodyLength: len(http.StatusText(http.StatusTooManyRequests)),
+		},
 	}
+
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			WriteLimit(tt.args.w)
+
+			// Check status code
+			if rec.Code != tt.wantStatus {
+				t.Errorf("WriteLimit() status = %v, want %v", rec.Code, tt.wantStatus)
+			}
+
+			// Check response body
+			if rec.Body.String() != tt.wantBody {
+				t.Errorf("WriteLimit() body = %v, want %v", rec.Body.String(), tt.wantBody)
+			}
+
+			// Check content length
+			if rec.Body.Len() != tt.wantBodyLength {
+				t.Errorf("WriteLimit() body length = %v, want %v", rec.Body.Len(), tt.wantBodyLength)
+			}
 		})
 	}
+}
+
+// TestParallelRateLimiters tests multiple rate limiters running in parallel
+func TestParallelRateLimiters(t *testing.T) {
+	apiRl := NewRateLimit("api-parallel", 2, 2, time.Minute)
+	dbRl := NewRateLimit("db-parallel", 3, 3, time.Minute)
+	cacheRl := NewRateLimit("cache-parallel", 5, 5, time.Minute)
+
+	var wg sync.WaitGroup
+
+	numClients := 5
+	requestsPerClient := 10
+
+	apiLimited := int32(0)
+	dbLimited := int32(0)
+	cacheLimited := int32(0)
+
+	for i := 0; i < numClients; i++ {
+		clientID := fmt.Sprintf("client-%d", i)
+		wg.Add(1)
+
+		go func(clientID string) {
+			defer wg.Done()
+
+			for j := 0; j < requestsPerClient; j++ {
+				if apiRl.Limit(clientID) {
+					atomic.AddInt32(&apiLimited, 1)
+				}
+
+				if dbRl.Limit(clientID) {
+					atomic.AddInt32(&dbLimited, 1)
+				}
+
+				if cacheRl.Limit(clientID) {
+					atomic.AddInt32(&cacheLimited, 1)
+				}
+
+				time.Sleep(time.Millisecond)
+			}
+		}(clientID)
+	}
+
+	wg.Wait()
+
+	t.Logf("API limited requests: %d", apiLimited)
+	t.Logf("DB limited requests: %d", dbLimited)
+	t.Logf("Cache limited requests: %d", cacheLimited)
+
+	if apiLimited <= dbLimited {
+		t.Errorf("Expected API limiter (%d) to limit more requests than DB limiter (%d)", apiLimited, dbLimited)
+	}
+
+	if dbLimited <= cacheLimited {
+		t.Errorf("Expected DB limiter (%d) to limit more requests than Cache limiter (%d)", dbLimited, cacheLimited)
+	}
+
+	if cacheLimited == 0 {
+		t.Errorf("Expected Cache limiter to limit some requests, but it limited 0")
+	}
+}
+
+func runLimit(i int, rl *RateLimiter, wg *sync.WaitGroup) {
+	wg.Add(2)
+
+	go func(id int) {
+		defer wg.Done()
+		rl.Limit(fmt.Sprintf("client-%d", id%10))
+	}(i)
+
+	go func() {
+		defer wg.Done()
+		rl.Cleanup()
+	}()
+
+}
+
+func TestRateLimiterRace(t *testing.T) {
+	rl := NewRateLimit("race-test", 10, 10, time.Minute)
+
+	concurrency := 100
+	var wg sync.WaitGroup
+
+	for i := 0; i < 5; i++ {
+		rl.Limit(fmt.Sprintf("client-%d", i))
+	}
+
+	for i := 0; i < concurrency; i++ {
+		runLimit(i, rl, &wg)
+	}
+
+	wg.Wait()
+
+	rl.Mu.Lock()
+	defer rl.Mu.Unlock()
+
+	if len(rl.LimitedClients) > 10 {
+		t.Errorf("Expected at most 10 clients, got %d", len(rl.LimitedClients))
+	}
+}
+
+func BenchmarkRateLimiterRace(b *testing.B) {
+	rl := NewRateLimit("race-benchmark", 10, 10, time.Minute)
+
+	concurrency := 100
+	var wg sync.WaitGroup
+
+	for i := 0; i < 5; i++ {
+		rl.Limit(fmt.Sprintf("client-%d", i))
+	}
+
+	reset(b)
+	for i := 0; i < concurrency; i++ {
+		runLimit(i, rl, &wg)
+	}
+
+	wg.Wait()
 }

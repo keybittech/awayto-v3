@@ -11,21 +11,18 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"golang.org/x/time/rate"
 )
 
 const (
-	PING             = "PING"
-	PONG             = "PONG"
-	sockHandlerLimit = rate.Limit(30)
-	sockHandlerBurst = 10
+	PING = "PING"
+	PONG = "PONG"
 )
 
 var (
-	socketPingTicker         *time.Ticker
-	pings                    sync.Map // map[string]time.Time
-	sockLimitMu, sockLimited = NewRateLimit("sock")
-	pingBytes                = util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
+	socketPingTicker *time.Ticker
+	pings            sync.Map // map[string]time.Time
+	sockRl           = NewRateLimit("sock", 30, 10, time.Duration(time.Minute))
+	pingBytes        = util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{Payload: PING})
 )
 
 func (a *API) InitSockServer(mux *http.ServeMux) {
@@ -152,11 +149,10 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 					exitReason = "returned due to messages EOF"
 					return
 				} else {
-
-					limited := Limiter(sockLimitMu, sockLimited, sockHandlerLimit, sockHandlerBurst, userConnection.UserSub)
-					if limited {
+					if sockRl.Limit(userConnection.UserSub) {
 						continue
 					}
+
 					go a.SocketRequest(data, connId, socketId, userConnection.UserSub, userConnection.GroupId, userConnection.Roles)
 				}
 			case err := <-errs:

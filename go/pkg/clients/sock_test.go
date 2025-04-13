@@ -775,3 +775,24 @@ func TestSocketCommand_GetReplyChannel(t *testing.T) {
 		})
 	}
 }
+
+func TestSocket_Connected(t *testing.T) {
+	type args struct {
+		userSub string
+	}
+	tests := []struct {
+		name string
+		s    *Socket
+		args args
+		want bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.s.Connected(tt.args.userSub); got != tt.want {
+				t.Errorf("Socket.Connected(%v) = %v, want %v", tt.args.userSub, got, tt.want)
+			}
+		})
+	}
+}

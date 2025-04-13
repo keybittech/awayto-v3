@@ -2,6 +2,7 @@ package api
 
 import (
 	"net/http"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -16,7 +17,7 @@ type API struct {
 }
 
 var (
-	apiLimitMu, apiLimited = NewRateLimit("api")
+	apiRl = NewRateLimit("api", 5, 20, time.Duration(5*time.Minute))
 )
 
 func (a *API) InitMux() *http.ServeMux {

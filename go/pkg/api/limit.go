@@ -10,10 +10,19 @@ import (
 
 // Adapted from https://blog.logrocket.com/rate-limiting-go-application
 
+var limitedClientPool = &sync.Pool{
+	New: func() interface{} {
+		return &LimitedClient{}
+	},
+}
+
 type RateLimiter struct {
 	Name           string
 	Mu             *sync.Mutex
 	LimitedClients map[string]*LimitedClient
+	ExpiryDuration time.Duration
+	LimitNum       rate.Limit
+	Burst          int
 }
 
 var RateLimiters sync.Map
@@ -23,29 +32,62 @@ type LimitedClient struct {
 	LastSeen time.Time
 }
 
-func NewRateLimit(name string) (*sync.Mutex, map[string]*LimitedClient) {
+func NewRateLimit(name string, limit rate.Limit, burst int, expiryDuration time.Duration) *RateLimiter {
 	var (
 		mu             sync.Mutex
 		limitedClients = make(map[string]*LimitedClient)
 	)
 
-	RateLimiters.Store(name, &RateLimiter{name, &mu, limitedClients})
+	rateLimiter := &RateLimiter{
+		Name:           name,
+		Mu:             &mu,
+		LimitedClients: limitedClients,
+		ExpiryDuration: expiryDuration,
+		LimitNum:       limit,
+		Burst:          burst,
+	}
 
-	return &mu, limitedClients
+	RateLimiters.Store(name, rateLimiter)
+
+	return rateLimiter
 }
 
-func Limiter(mu *sync.Mutex, limitedClients map[string]*LimitedClient, limit rate.Limit, burst int, identifier string) bool {
-	mu.Lock()
-	if _, found := limitedClients[identifier]; !found {
-		limitedClients[identifier] = &LimitedClient{Limiter: rate.NewLimiter(limit, burst)}
+func (rl *RateLimiter) Limit(identifier string) bool {
+	rl.Mu.Lock()
+	defer rl.Mu.Unlock()
+
+	var client *LimitedClient
+	if existingClient, found := rl.LimitedClients[identifier]; found {
+		client = existingClient
+	} else {
+		client = limitedClientPool.Get().(*LimitedClient)
+
+		if client.Limiter == nil {
+			client.Limiter = rate.NewLimiter(rl.LimitNum, rl.Burst)
+		} else {
+			client.Limiter.SetLimit(rl.LimitNum)
+			client.Limiter.SetBurst(rl.Burst)
+		}
+
+		rl.LimitedClients[identifier] = client
 	}
-	limitedClients[identifier].LastSeen = time.Now()
-	if !limitedClients[identifier].Limiter.Allow() {
-		mu.Unlock()
-		return true
+
+	client.LastSeen = time.Now()
+	return !client.Limiter.Allow()
+}
+
+func (rl *RateLimiter) Cleanup() {
+	rl.Mu.Lock()
+	defer rl.Mu.Unlock()
+
+	now := time.Now()
+	for id, client := range rl.LimitedClients {
+		if now.Sub(client.LastSeen) > rl.ExpiryDuration {
+			client.LastSeen = time.Time{}
+			limitedClientPool.Put(client)
+			delete(rl.LimitedClients, id)
+		}
 	}
-	mu.Unlock()
-	return false
 }
 
 func WriteLimit(w http.ResponseWriter) {

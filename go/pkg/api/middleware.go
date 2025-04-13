@@ -22,7 +22,7 @@ import (
 
 func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.HandlerFunc) http.HandlerFunc {
 
-	mu, limitedClients := NewRateLimit("limit-middleware")
+	rl := NewRateLimit("limit-middleware", limit, burst, time.Duration(5*time.Minute))
 
 	return func(next http.HandlerFunc) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -33,8 +33,7 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 				return
 			}
 
-			limited := Limiter(mu, limitedClients, limit, burst, ip)
-			if limited {
+			if rl.Limit(ip) {
 				WriteLimit(w)
 				return
 			}
@@ -54,7 +53,7 @@ func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.Handle
 }
 
 func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
-	mu, limitedClients := NewRateLimit("validate-token")
+	rl := NewRateLimit("validate-token", limit, burst, time.Duration(5*time.Minute))
 
 	return func(next SessionHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
@@ -68,8 +67,7 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 						util.ErrorLog.Println(util.ErrCheck(err))
 					}
 
-					limited := Limiter(mu, limitedClients, limit, burst, ip)
-					if limited {
+					if rl.Limit(ip) {
 						WriteLimit(w)
 						return
 					}
@@ -91,8 +89,7 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 				return
 			}
 
-			limited := Limiter(mu, limitedClients, limit, burst, session.UserSub)
-			if limited {
+			if rl.Limit(session.UserSub) {
 				WriteLimit(w)
 				return
 			}

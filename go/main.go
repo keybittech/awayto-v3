@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"fmt"
 	"net/http"
@@ -101,49 +100,7 @@ func main() {
 
 	defer mainApi.Server.Close()
 
-	// can be removed when no longer needed
-	ticker := time.NewTicker(5 * time.Minute)
-	go func() {
-		connLen := 0
-		for {
-			select {
-			case <-ticker.C:
-				ctx := context.Background()
-				defer ctx.Done()
-				socketConnections, err := mainApi.Handlers.Redis.RedisClient.SMembers(ctx, "socket_server_connections").Result()
-				sockLen := len(socketConnections)
-				if err != nil {
-					println("reading socket connection err", err.Error())
-				}
-				if connLen != sockLen {
-					connLen = sockLen
-					fmt.Printf("got socket connection list new count :%d %+v\n", len(socketConnections), socketConnections)
-				}
-			}
-		}
-	}()
-
-	go func() {
-		for {
-			time.Sleep(time.Minute)
-
-			api.RateLimiters.Range(func(_, value interface{}) bool {
-				limiter := value.(*api.RateLimiter)
-
-				limiter.Mu.Lock()
-				i := 0
-				for ip, lc := range limiter.LimitedClients {
-					if time.Since(lc.LastSeen) > time.Minute {
-						i++
-						delete(limiter.LimitedClients, ip)
-					}
-				}
-				limiter.Mu.Unlock()
-
-				return true
-			})
-		}
-	}()
+	setupGc()
 
 	certLoc := os.Getenv("CERT_LOC")
 	keyLoc := os.Getenv("CERT_KEY_LOC")

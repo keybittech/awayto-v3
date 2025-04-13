@@ -6,6 +6,11 @@ import (
 	"testing"
 )
 
+func reset(b *testing.B) {
+	b.ReportAllocs()
+	b.ResetTimer()
+}
+
 func TestAPI_InitMux(t *testing.T) {
 	tests := []struct {
 		name string

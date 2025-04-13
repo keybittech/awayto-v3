@@ -7,7 +7,6 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"golang.org/x/time/rate"
 )
 
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.UserSession)
@@ -21,9 +20,6 @@ func NewSessionMux() *SessionMux {
 		mux: http.NewServeMux(),
 	}
 }
-
-var sessionHandlerLimit = 2
-var sessionHandlerBurst = 20
 
 func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -55,8 +51,7 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 				return
 			}
 
-			limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, ip)
-			if limited {
+			if apiRl.Limit(ip) {
 				didLimit = true
 				WriteLimit(w)
 				return
@@ -75,8 +70,7 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 		userSub = session.UserSub
 
 		// rate limit authenticated user
-		limited := Limiter(apiLimitMu, apiLimited, rate.Limit(sessionHandlerLimit), sessionHandlerBurst, session.UserSub)
-		if limited {
+		if apiRl.Limit(session.UserSub) {
 			didLimit = true
 			WriteLimit(w)
 			return
