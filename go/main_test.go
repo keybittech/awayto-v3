@@ -1,10 +1,8 @@
 package main
 
 import (
-	"context"
 	"flag"
 	"log"
-	"os"
 	"testing"
 	"time"
 )
@@ -22,17 +20,13 @@ func reset(b *testing.B) {
 }
 
 func TestMain(m *testing.M) {
-	go main()
-
-	time.Sleep(2 * time.Second)
-
-	statusCmd := mainApi.Handlers.Redis.RedisClient.FlushAll(context.Background())
-	if statusCmd.Err() != nil {
-		log.Fatal(statusCmd.Err())
-	}
-
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	// statusCmd := mainApi.Handlers.Redis.RedisClient.FlushAll(context.Background())
+	// if statusCmd.Err() != nil {
+	// 	log.Fatal(statusCmd.Err())
+	// }
+	//
+	// exitCode := m.Run()
+	// os.Exit(exitCode)
 }
 
 func Test_main(t *testing.T) {

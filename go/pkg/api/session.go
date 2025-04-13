@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/rsa"
 	"errors"
 	"net"
 	"net/http"
@@ -12,12 +13,14 @@ import (
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.UserSession)
 
 type SessionMux struct {
-	mux *http.ServeMux
+	publicKey *rsa.PublicKey
+	mux       *http.ServeMux
 }
 
-func NewSessionMux() *SessionMux {
+func NewSessionMux(pk *rsa.PublicKey) *SessionMux {
 	return &SessionMux{
-		mux: http.NewServeMux(),
+		publicKey: pk,
+		mux:       http.NewServeMux(),
 	}
 }
 
@@ -61,7 +64,7 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 		}
 
 		// validate provided token to return a user struct
-		session, err := ValidateToken(token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+		session, err := ValidateToken(sm.publicKey, token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 		if err != nil {
 			deferredErr = util.ErrCheck(err)
 			return

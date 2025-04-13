@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -24,10 +25,35 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
+
+var publicKey *rsa.PublicKey
+
+func init() {
+
+	kc := &clients.KeycloakClient{
+		Server: os.Getenv("KC_INTERNAL"),
+		Realm:  os.Getenv("KC_REALM"),
+	}
+
+	oidcToken, err := kc.DirectGrantAuthentication()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	kc.Token = oidcToken
+
+	pk, err := kc.FetchPublicKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	publicKey = pk
+}
 
 func failCheck(t *testing.T) {
 	if t.Failed() {
@@ -138,7 +164,7 @@ func getKeycloakToken(userId int) (string, *types.UserSession, error) {
 		return "", nil, fmt.Errorf("access token not found in response")
 	}
 
-	session, err := api.ValidateToken(token, "America/Los_Angeles", "0.0.0.0")
+	session, err := api.ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
 	if err != nil {
 		log.Fatalf("error validating auth token: %v", err)
 	}

@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"crypto/rsa"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -40,7 +39,6 @@ const (
 )
 
 var (
-	KeycloakPublicKey      *rsa.PublicKey
 	emptyAuthResponse      = AuthResponse{}
 	authCommandMustHaveSub = errors.New("auth command request must contain a user sub")
 )
@@ -248,14 +246,14 @@ func InitKeycloak() *Keycloak {
 		return true
 	})
 
-	kcc := &Keycloak{handlerId: keycloakHandlerId}
+	k := &Keycloak{handlerId: keycloakHandlerId}
 
 	ticker := time.NewTicker(30 * time.Second)
 	go func() {
 		for {
 			select {
 			case _ = <-ticker.C:
-				response, err := kcc.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
+				response, err := k.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
 					UserSub: "worker",
 				})
 				if err = ChannelError(err, response.Error); err != nil {
@@ -265,21 +263,21 @@ func InitKeycloak() *Keycloak {
 		}
 	}()
 
-	response, err := kcc.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
+	response, err := k.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
 		UserSub: "worker",
 	})
 	if err = ChannelError(err, response.Error); err != nil {
 		log.Fatal(util.ErrCheck(response.Error))
 	}
 
-	response, err = kcc.SendCommand(SetKeycloakRealmClientsKeycloakCommand, &types.AuthRequestParams{
+	response, err = k.SendCommand(SetKeycloakRealmClientsKeycloakCommand, &types.AuthRequestParams{
 		UserSub: "worker",
 	})
 	if err = ChannelError(err, response.Error); err != nil {
 		log.Fatal(util.ErrCheck(response.Error))
 	}
 
-	response, err = kcc.SendCommand(SetKeycloakRolesKeycloakCommand, &types.AuthRequestParams{
+	response, err = k.SendCommand(SetKeycloakRolesKeycloakCommand, &types.AuthRequestParams{
 		UserSub: "worker",
 	})
 	if err = ChannelError(err, response.Error); err != nil {
@@ -290,13 +288,13 @@ func InitKeycloak() *Keycloak {
 	if err != nil {
 		log.Fatal(err)
 	}
-	kc.PublicKey = pk
-	KeycloakPublicKey = pk
 
-	kcc.Client = kc
+	kc.PublicKey = pk
+
+	k.Client = kc
 
 	println("Keycloak Init")
-	return kcc
+	return k
 }
 
 func (s *Keycloak) RouteCommand(cmd AuthCommand) error {

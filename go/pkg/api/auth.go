@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/rsa"
 	"errors"
 	"fmt"
 	"log"
@@ -17,7 +18,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func ValidateToken(token, timezone, anonIp string) (*types.UserSession, error) {
+func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*types.UserSession, error) {
 	if strings.Contains(token, "Bearer") {
 		token = strings.Split(token, " ")[1]
 	}
@@ -26,7 +27,7 @@ func ValidateToken(token, timezone, anonIp string) (*types.UserSession, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, errors.New("bad signing method")
 		}
-		return clients.KeycloakPublicKey, nil
+		return publicKey, nil
 	})
 	if err != nil {
 		return nil, util.ErrCheck(err)

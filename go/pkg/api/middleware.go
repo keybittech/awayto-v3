@@ -83,7 +83,7 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 				return
 			}
 
-			session, err := ValidateToken(token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+			session, err := ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 			if err != nil {
 				deferredErr = util.ErrCheck(err)
 				return
