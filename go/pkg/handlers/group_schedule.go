@@ -2,12 +2,12 @@ package handlers
 
 import (
 	"database/sql"
-	"errors"
 	"net/http"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupScheduleResponse, error) {
@@ -56,22 +56,28 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 }
 
 func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupScheduleMasterByIdResponse, error) {
-	var groupSchedules []*types.IGroupSchedule
-
-	err := h.Database.QueryRows(tx, &groupSchedules, `
-		SELECT TO_JSONB(ese) as schedule, ese.name, true as master, ese.id as "scheduleId"
+	groupSchedule := &types.IGroupSchedule{}
+	var scheduleBytes []byte
+	err := tx.QueryRow(`
+		SELECT TO_JSONB(ese), ese.name
 		FROM dbview_schema.enabled_schedules_ext ese
 		WHERE ese.id = $1
-	`, data.GetGroupScheduleId())
+	`, data.GetGroupScheduleId()).Scan(&scheduleBytes, &groupSchedule.Name)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if len(groupSchedules) == 0 {
-		return nil, util.ErrCheck(errors.New("schedule not found"))
+	schedule := &types.ISchedule{}
+	err = protojson.Unmarshal(scheduleBytes, schedule)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: groupSchedules[0]}, nil
+	groupSchedule.Master = true
+	groupSchedule.ScheduleId = schedule.Id
+	groupSchedule.Schedule = schedule
+
+	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: groupSchedule}, nil
 }
 
 func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupScheduleByDateResponse, error) {

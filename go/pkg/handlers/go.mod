@@ -9,6 +9,7 @@ require (
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-00010101000000-000000000000
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.7.3
+	google.golang.org/protobuf v1.36.6
 )
 
 require (
@@ -20,7 +21,6 @@ require (
 	github.com/sashabaranov/go-openai v1.38.0 // indirect
 	golang.org/x/text v0.23.0 // indirect
 	google.golang.org/genproto/googleapis/api v0.0.0-20250409194420-de1ac958c67a // indirect
-	google.golang.org/protobuf v1.36.6 // indirect
 )
 
 replace github.com/keybittech/awayto-v3/go/pkg/types => ../types

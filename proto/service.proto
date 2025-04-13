@@ -12,39 +12,39 @@ option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 service ServiceService {
   rpc PostService(PostServiceRequest) returns (PostServiceResponse) {
     option (google.api.http) = {
-      post: "/v1/service"
+      post: "/v1/services"
       body: "*"
     };
   }
 
   rpc PatchService(PatchServiceRequest) returns (PatchServiceResponse) {
     option (google.api.http) = {
-      patch: "/v1/service"
+      patch: "/v1/services"
       body: "*"
     };
   }
 
   rpc GetServices(GetServicesRequest) returns (GetServicesResponse) {
     option (google.api.http) = {
-      get: "/v1/service"
+      get: "/v1/services"
     };
   }
 
   rpc GetServiceById(GetServiceByIdRequest) returns (GetServiceByIdResponse) {
     option (google.api.http) = {
-      get: "/v1/service/{id}"
+      get: "/v1/services/{id}"
     };
   }
 
   rpc DeleteService(DeleteServiceRequest) returns (DeleteServiceResponse) {
     option (google.api.http) = {
-      delete: "/v1/service/{id}"
+      delete: "/v1/services/{id}"
     };
   }
 
   rpc DisableService(DisableServiceRequest) returns (DisableServiceResponse) {
     option (google.api.http) = {
-      patch: "/v1/service/{ids}/disable"
+      patch: "/v1/services/{ids}/disable"
     };
   }
 }

@@ -63,7 +63,7 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 	var userSub string
 	if data.AsGroup {
 		// check to see APP_GROUP_SCHEDULE role is on session.Roles
-		if !slices.Contains(session.AvailableUserGroupRoles, "APP_GROUP_SCHEDULES") {
+		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
 			return nil, util.ErrCheck(errors.New("does not have APP_GROUP_SCHEDULES role"))
 		}
 

@@ -18,6 +18,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
@@ -27,6 +28,12 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
+
+func failCheck(t *testing.T) {
+	if t.Failed() {
+		t.Logf("Integration Test: %+v", integrationTest)
+	}
+}
 
 func apiRequest(token, method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 	client := &http.Client{
@@ -396,6 +403,58 @@ func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Con
 	}
 
 	return subscribers, connections
+}
+
+func getUserProfileDetails(token string) (*types.IUserProfile, error) {
+	getUserProfileDetailsResponse := &types.GetUserProfileDetailsResponse{}
+	err := apiRequest(token, http.MethodPatch, "/api/v1/profile/details", nil, nil, getUserProfileDetailsResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error get user profile details error: %v", err))
+	}
+	if getUserProfileDetailsResponse.UserProfile.Id == "" {
+		return nil, errors.New("get user profile details response has no id")
+	}
+
+	return getUserProfileDetailsResponse.UserProfile, nil
+}
+
+func getServiceById(token, serviceId string) (*types.IService, error) {
+	getServiceByIdResponse := &types.GetServiceByIdResponse{}
+	err := apiRequest(token, http.MethodGet, "/api/v1/services/"+serviceId, nil, nil, getServiceByIdResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error get service by id error: %v", err))
+	}
+	if getServiceByIdResponse.Service.Id == "" {
+		return nil, errors.New("get service by id response has no id")
+	}
+
+	return getServiceByIdResponse.Service, nil
+}
+
+func getScheduleById(token, scheduleId string) (*types.ISchedule, error) {
+	getScheduleByIdResponse := &types.GetScheduleByIdResponse{}
+	err := apiRequest(token, http.MethodGet, "/api/v1/schedules/"+scheduleId, nil, nil, getScheduleByIdResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error get schedule by id error: %v", err))
+	}
+	if getScheduleByIdResponse.Schedule.Id == "" {
+		return nil, errors.New("get schedule by id response has no id")
+	}
+
+	return getScheduleByIdResponse.Schedule, nil
+}
+
+func getMasterScheduleById(token, groupScheduleId string) (*types.IGroupSchedule, error) {
+	getMasterScheduleByIdResponse := &types.GetGroupScheduleMasterByIdResponse{}
+	err := apiRequest(token, http.MethodGet, "/api/v1/group/schedules/master/"+groupScheduleId, nil, nil, getMasterScheduleByIdResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error get master schedule by id error: %v", err))
+	}
+	if getMasterScheduleByIdResponse.GroupSchedule.ScheduleId == "" {
+		return nil, errors.New("get master schedule by id response has no schedule id")
+	}
+
+	return getMasterScheduleByIdResponse.GroupSchedule, nil
 }
 
 func patchGroupUser(token, userSub, roleId string) error {

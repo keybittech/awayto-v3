@@ -12,7 +12,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -28,19 +27,19 @@ type TestUser struct {
 }
 
 type IntegrationTest struct {
-	TestUsers          map[int]*TestUser
-	Connections        map[string]net.Conn
-	Roles              map[string]*types.IRole
-	MemberRole         *types.IRole
-	StaffRole          *types.IRole
-	Group              *types.IGroup
-	OnboardingService  *types.IService
-	GroupService       *types.IGroupService
-	OnboardingSchedule *types.ISchedule
-	GroupSchedule      *types.IGroupSchedule
-	UserSchedule       *types.ISchedule
-	Quote              *types.IQuote
-	Booking            *types.IBooking
+	TestUsers      map[int]*TestUser
+	Connections    map[string]net.Conn
+	Roles          map[string]*types.IRole
+	MemberRole     *types.IRole
+	StaffRole      *types.IRole
+	Group          *types.IGroup
+	MasterService  *types.IService
+	GroupService   *types.IGroupService
+	MasterSchedule *types.ISchedule
+	GroupSchedule  *types.IGroupSchedule
+	UserSchedule   *types.ISchedule
+	Quote          *types.IQuote
+	Booking        *types.IBooking
 }
 
 var integrationTest *IntegrationTest
@@ -104,10 +103,9 @@ func TestIntegrationUser(t *testing.T) {
 		integrationTest.Connections[session.UserSub] = connection
 
 		t.Logf("created user #%d with sub %s connId %s", 1, session.UserSub, connId)
-
 	})
 
-	t.Logf("Integration Test: %+v", integrationTest)
+	failCheck(t)
 }
 
 func TestIntegrationGroup(t *testing.T) {
@@ -160,9 +158,9 @@ func TestIntegrationGroup(t *testing.T) {
 
 		admin.TestToken = token
 		admin.UserSession = session
-
 	})
-	t.Logf("Integration Test: %+v", integrationTest)
+
+	failCheck(t)
 }
 
 func TestIntegrationRoles(t *testing.T) {
@@ -231,7 +229,7 @@ func TestIntegrationRoles(t *testing.T) {
 		integrationTest.StaffRole = roles[staffRoleResponse.Id]
 	})
 
-	t.Logf("Integration Test: %+v", integrationTest)
+	failCheck(t)
 }
 
 func TestIntegrationService(t *testing.T) {
@@ -273,26 +271,35 @@ func TestIntegrationService(t *testing.T) {
 
 		serviceAddons := make(map[string]*types.IServiceAddon, 2)
 		serviceAddons[postServiceAddon1Response.Id] = &types.IServiceAddon{
-			Id:   postServiceAddon1Response.Id,
-			Name: postServiceAddon1Request.Name,
+			Id:    postServiceAddon1Response.Id,
+			Name:  postServiceAddon1Request.Name,
+			Order: 1,
 		}
 		serviceAddons[postServiceAddon2Response.Id] = &types.IServiceAddon{
-			Id:   postServiceAddon2Response.Id,
-			Name: postServiceAddon2Request.Name,
+			Id:    postServiceAddon2Response.Id,
+			Name:  postServiceAddon2Request.Name,
+			Order: 2,
 		}
 
 		tiers := make(map[string]*types.IServiceTier, 1)
-		tiers[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IServiceTier{
-			Name:   "test tier",
-			Addons: serviceAddons,
+		tierId := strconv.Itoa(int(time.Now().UnixMilli()))
+		time.Sleep(time.Millisecond)
+
+		tiers[tierId] = &types.IServiceTier{
+			Id:        tierId,
+			CreatedOn: tierId,
+			Name:      "test tier",
+			Addons:    serviceAddons,
+			Order:     1,
 		}
 
-		integrationTest.OnboardingService = &types.IService{
+		integrationTest.MasterService = &types.IService{
 			Name:  "test service",
 			Tiers: tiers,
 		}
 	})
-	t.Logf("Integration Test: %+v", integrationTest)
+
+	failCheck(t)
 }
 
 func TestIntegrationSchedule(t *testing.T) {
@@ -302,8 +309,9 @@ func TestIntegrationSchedule(t *testing.T) {
 		startTime := time.Date(2023, time.March, 03, 0, 0, 0, 0, time.UTC).Unix()
 		endTime := time.Date(2033, time.March, 03, 0, 0, 0, 0, time.UTC).Unix()
 
-		integrationTest.OnboardingSchedule = &types.ISchedule{
+		integrationTest.MasterSchedule = &types.ISchedule{
 			Name:         "test schedule",
+			Timezone:     "America/Los_Angeles",
 			SlotDuration: 30,
 			StartTime:    &timestamppb.Timestamp{Seconds: startTime},
 			EndTime:      &timestamppb.Timestamp{Seconds: endTime},
@@ -321,15 +329,16 @@ func TestIntegrationSchedule(t *testing.T) {
 
 		for _, tu := range lookupsResponse.TimeUnits {
 			if tu.Name == "week" {
-				integrationTest.OnboardingSchedule.ScheduleTimeUnitId = tu.Id
+				integrationTest.MasterSchedule.ScheduleTimeUnitId = tu.Id
 			} else if tu.Name == "hour" {
-				integrationTest.OnboardingSchedule.BracketTimeUnitId = tu.Id
+				integrationTest.MasterSchedule.BracketTimeUnitId = tu.Id
 			} else if tu.Name == "minute" {
-				integrationTest.OnboardingSchedule.SlotTimeUnitId = tu.Id
+				integrationTest.MasterSchedule.SlotTimeUnitId = tu.Id
 			}
 		}
 	})
-	t.Logf("Integration Test: %+v", integrationTest)
+
+	failCheck(t)
 }
 
 func TestIntegrationOnboarding(t *testing.T) {
@@ -337,8 +346,8 @@ func TestIntegrationOnboarding(t *testing.T) {
 		admin := integrationTest.TestUsers[0]
 
 		onboardingRequest := &types.CompleteOnboardingRequest{
-			Service:  integrationTest.OnboardingService,
-			Schedule: integrationTest.OnboardingSchedule,
+			Service:  integrationTest.MasterService,
+			Schedule: integrationTest.MasterSchedule,
 		}
 		onboardingRequestBytes, err := protojson.Marshal(onboardingRequest)
 		if err != nil {
@@ -367,22 +376,29 @@ func TestIntegrationOnboarding(t *testing.T) {
 			t.Errorf("group schedule 2 id is not a uuid: %s", onboardingResponse.GroupScheduleId)
 		}
 
-		integrationTest.OnboardingService.Id = onboardingResponse.ServiceId
-		integrationTest.OnboardingSchedule.Id = onboardingResponse.ScheduleId
+		masterService, err := getServiceById(admin.TestToken, onboardingResponse.ServiceId)
+		if err != nil {
+			t.Errorf("service by id err: %v", err)
+		}
+
+		masterGroupSchedule, err := getMasterScheduleById(admin.TestToken, onboardingResponse.ScheduleId)
+		if err != nil {
+			t.Errorf("master schedule by id err: %v", err)
+		}
+
+		integrationTest.MasterService = masterService
+		integrationTest.MasterSchedule = masterGroupSchedule.Schedule
 
 		integrationTest.GroupService = &types.IGroupService{
 			Id:      onboardingResponse.GroupServiceId,
 			GroupId: integrationTest.Group.Id,
-			Service: integrationTest.OnboardingService,
+			Service: integrationTest.MasterService,
 		}
 
-		integrationTest.GroupSchedule = &types.IGroupSchedule{
-			Id:       onboardingResponse.GroupScheduleId,
-			GroupId:  integrationTest.Group.Id,
-			Schedule: integrationTest.OnboardingSchedule,
-		}
+		integrationTest.GroupSchedule = masterGroupSchedule
 	})
-	t.Logf("Integration Test: %+v", integrationTest)
+
+	failCheck(t)
 }
 
 func TestIntegrationUserSchedule(t *testing.T) {
@@ -393,39 +409,49 @@ func TestIntegrationUserSchedule(t *testing.T) {
 		services := make(map[string]*types.IService, 1)
 		slots := make(map[string]*types.IScheduleBracketSlot, 2)
 
-		bracketId := uuid.NewString()
+		bracketId := strconv.Itoa(int(time.Now().UnixMilli()))
+		time.Sleep(time.Millisecond)
 
-		services[strconv.Itoa(int(time.Now().UnixNano()))] = integrationTest.GroupService.Service
+		serviceId := integrationTest.MasterService.Id
+		services[serviceId] = integrationTest.MasterService
 
-		slots[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IScheduleBracketSlot{
-			ScheduleBracketId: bracketId,
+		slot1Id := strconv.Itoa(int(time.Now().UnixMilli()))
+		time.Sleep(time.Millisecond)
+
+		slots[slot1Id] = &types.IScheduleBracketSlot{
+			Id:                slot1Id,
 			StartTime:         "P2DT1H",
+			ScheduleBracketId: bracketId,
 		}
 
-		slots[strconv.Itoa(int(time.Now().UnixNano()))] = &types.IScheduleBracketSlot{
-			ScheduleBracketId: bracketId,
+		slot2Id := strconv.Itoa(int(time.Now().UnixMilli()))
+		time.Sleep(time.Millisecond)
+
+		slots[slot2Id] = &types.IScheduleBracketSlot{
+			Id:                slot2Id,
 			StartTime:         "P3DT4H",
+			ScheduleBracketId: bracketId,
 		}
 
 		brackets[bracketId] = &types.IScheduleBracket{
 			Id:         bracketId,
 			Automatic:  false,
-			Duration:   13,
+			Duration:   15,
 			Multiplier: 100,
 			Services:   services,
 			Slots:      slots,
 		}
 
 		userScheduleRequestBytes, err := protojson.Marshal(&types.PostScheduleRequest{
-			GroupScheduleId:    integrationTest.GroupSchedule.Schedule.Id,
 			Brackets:           brackets,
-			Name:               integrationTest.OnboardingSchedule.Name,
-			StartTime:          integrationTest.OnboardingSchedule.StartTime,
-			EndTime:            integrationTest.OnboardingSchedule.EndTime,
-			ScheduleTimeUnitId: integrationTest.OnboardingSchedule.ScheduleTimeUnitId,
-			BracketTimeUnitId:  integrationTest.OnboardingSchedule.BracketTimeUnitId,
-			SlotTimeUnitId:     integrationTest.OnboardingSchedule.SlotTimeUnitId,
-			SlotDuration:       integrationTest.OnboardingSchedule.SlotDuration,
+			GroupScheduleId:    integrationTest.MasterSchedule.Id,
+			Name:               integrationTest.MasterSchedule.Name,
+			StartTime:          integrationTest.MasterSchedule.StartTime,
+			EndTime:            integrationTest.MasterSchedule.EndTime,
+			ScheduleTimeUnitId: integrationTest.MasterSchedule.ScheduleTimeUnitId,
+			BracketTimeUnitId:  integrationTest.MasterSchedule.BracketTimeUnitId,
+			SlotTimeUnitId:     integrationTest.MasterSchedule.SlotTimeUnitId,
+			SlotDuration:       integrationTest.MasterSchedule.SlotDuration,
 		})
 		if err != nil {
 			t.Errorf("error marshalling user schedule request: %v", err)
@@ -437,16 +463,22 @@ func TestIntegrationUserSchedule(t *testing.T) {
 			t.Errorf("error posting user schedule request: %v", err)
 		}
 
-		integrationTest.UserSchedule = integrationTest.OnboardingSchedule
-		integrationTest.UserSchedule.Id = userScheduleResponse.Id
+		schedule, err := getScheduleById(admin.TestToken, userScheduleResponse.Id)
+		if err != nil {
+			t.Errorf("schedule by id err: %v", err)
+		}
+		integrationTest.UserSchedule = schedule
+
 	})
-	t.Logf("Integration Test: %+v", integrationTest)
+
+	failCheck(t)
 }
 
 func TestIntegrationJoinGroup(t *testing.T) {
 	existingUsers := 1
 	t.Run("users can join a group with a code after log in", func(t *testing.T) {
 		for c := existingUsers; c < existingUsers+6; c++ {
+			time.Sleep(500 * time.Millisecond)
 			joinViaRegister := c%2 == 0
 			userId := int(time.Now().UnixNano())
 
@@ -457,13 +489,15 @@ func TestIntegrationJoinGroup(t *testing.T) {
 			} else {
 				registerKeycloakUserViaForm(userId)
 			}
-			time.Sleep(time.Second)
 
 			session, connection, token, ticket, connId := getUser(userId)
-			t.Logf("got connections %v %s %s", session, ticket, connId)
+
+			if len(ticket) != 73 {
+				t.Errorf("bad ticket: got ticket (auth:connid) %s %d", ticket, len(ticket))
+			}
 
 			if !util.IsUUID(session.UserSub) {
-				t.Errorf("user sub is not a uuid: %s", session.UserSub)
+				t.Errorf("user sub is not a uuid: %v", session)
 			}
 
 			if integrationTest.Group.Code == "" {
@@ -487,7 +521,6 @@ func TestIntegrationJoinGroup(t *testing.T) {
 				if !joinGroupResponse.Success {
 					t.Errorf("join group internal was unsuccessful %v", joinGroupResponse)
 				}
-				time.Sleep(time.Second)
 
 				// Attach User to Group -- adds the user to keycloak records
 				attachUserRequestBytes, err := protojson.Marshal(&types.AttachUserRequest{
@@ -505,7 +538,6 @@ func TestIntegrationJoinGroup(t *testing.T) {
 				if !attachUserResponse.Success {
 					t.Errorf("attach user internal was unsuccessful %v", attachUserResponse)
 				}
-				time.Sleep(time.Second)
 
 				// Activate Profile -- lets the user view the internal login pages
 				activateProfileResponse := &types.ActivateProfileResponse{}
@@ -516,7 +548,6 @@ func TestIntegrationJoinGroup(t *testing.T) {
 				if !activateProfileResponse.Success {
 					t.Errorf("activate profile internal was unsuccessful %v", activateProfileResponse)
 				}
-				time.Sleep(time.Second)
 
 				// Get new token after group setup to check group membersip
 				token, session, err = getKeycloakToken(userId)
@@ -545,12 +576,15 @@ func TestIntegrationJoinGroup(t *testing.T) {
 			t.Logf("user %d has sub %s", c, integrationTest.TestUsers[c].UserSession.UserSub)
 		}
 	})
+
+	failCheck(t)
 }
 
 func TestIntegrationPromoteUser(t *testing.T) {
 	admin := integrationTest.TestUsers[0]
 	staff1 := integrationTest.TestUsers[1]
 	staff2 := integrationTest.TestUsers[2]
+	staff3 := integrationTest.TestUsers[3]
 	member1 := integrationTest.TestUsers[4]
 
 	staffRoleFullName := "/" + integrationTest.Group.Name + "/" + integrationTest.StaffRole.Name
@@ -601,7 +635,6 @@ func TestIntegrationPromoteUser(t *testing.T) {
 		if slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_ADMIN.String()) {
 			t.Error("user has admin role after trying to add admin role to themselves")
 		}
-		time.Sleep(time.Second)
 	})
 
 	t.Run("admin can promote users to staff", func(t *testing.T) {
@@ -619,11 +652,9 @@ func TestIntegrationPromoteUser(t *testing.T) {
 		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
 			t.Error("staff does not have APP_GROUP_SCHEDULES after admin promotion")
 		}
-		time.Sleep(time.Second)
 	})
 
 	t.Run("APP_GROUP_USERS permission allows user role changes", func(t *testing.T) {
-		t.Log("staff attempt promote staff without permissions")
 		err := patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
 		if err != nil && !strings.Contains(err.Error(), "Forbidden") {
 			t.Errorf("staff promotes staff without permissions err %v", err)
@@ -638,7 +669,6 @@ func TestIntegrationPromoteUser(t *testing.T) {
 			t.Error("staff modified staff role without having APP_GROUP_USERS permissions")
 		}
 
-		t.Logf("admin add APP_GROUP_USERS to staff role %s", staffRoleFullName)
 		err = patchGroupAssignments(admin.TestToken, staffRoleFullName, types.SiteRoles_APP_GROUP_USERS.String())
 		if err != nil {
 			t.Errorf("admin add user editing ability to staff err %v", err)
@@ -655,13 +685,17 @@ func TestIntegrationPromoteUser(t *testing.T) {
 
 		staff1.TestToken = token
 
-		t.Log("staff attempt promote user with permissions")
 		err = patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
 		if err != nil {
 			t.Errorf("staff promotes user with permissions err %v", err)
 		}
 
-		_, session, err = getKeycloakToken(staff2.TestUserId)
+		err = patchGroupUser(admin.TestToken, staff3.UserSession.UserSub, integrationTest.StaffRole.Id)
+		if err != nil {
+			t.Errorf("staff promotes other user with permissions err %v", err)
+		}
+
+		token, session, err = getKeycloakToken(staff2.TestUserId)
 		if err != nil {
 			t.Errorf("failed to get new token after staff modify user role with permissions %v", err)
 		}
@@ -669,12 +703,99 @@ func TestIntegrationPromoteUser(t *testing.T) {
 		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
 			t.Error("staff failed modify user role having APP_GROUP_USERS permissions")
 		}
+
+		staff2.TestToken = token
 	})
+
+	t.Run("new roles have been assigned", func(t *testing.T) {
+		// Update TestUser states
+		staffs := make([]*TestUser, 3)
+		staffs[0] = integrationTest.TestUsers[1]
+		staffs[1] = integrationTest.TestUsers[2]
+		staffs[2] = integrationTest.TestUsers[3]
+		for i, staff := range staffs {
+			token, session, err := getKeycloakToken(staff.TestUserId)
+			if err != nil {
+				t.Errorf("failed to get new staff token after role update staffid:%d %v", staff.TestUserId, err)
+			}
+			if strings.Index(session.Roles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) == -1 {
+				t.Errorf("staff %d does not have APP_GROUP_SCHEDULES permissions, %s", staff.TestUserId, session.Roles)
+			}
+			if strings.Index(session.Roles, types.SiteRoles_APP_GROUP_USERS.String()) == -1 {
+				t.Errorf("staff %d does not have APP_GROUP_USERS permissions, %s", staff.TestUserId, session.Roles)
+			}
+			integrationTest.TestUsers[i+1].TestToken = token
+			integrationTest.TestUsers[i+1].UserSession = session
+		}
+
+		members := make([]*TestUser, 3)
+		members[0] = integrationTest.TestUsers[4]
+		members[1] = integrationTest.TestUsers[5]
+		members[2] = integrationTest.TestUsers[6]
+		for i, member := range members {
+			token, session, err := getKeycloakToken(member.TestUserId)
+			if err != nil {
+				t.Errorf("failed to get new member token after role update memberid:%d %v", member.TestUserId, err)
+			}
+			if strings.Index(session.Roles, types.SiteRoles_APP_GROUP_BOOKINGS.String()) == -1 {
+				t.Errorf("member %d does not have APP_GROUP_BOOKINGS permissions, %s", member.TestUserId, session.Roles)
+			}
+			integrationTest.TestUsers[i+4].TestToken = token
+			integrationTest.TestUsers[i+4].UserSession = session
+		}
+	})
+
+	failCheck(t)
 }
 
 // await patchGroupUser({ patchGroupUserRequest: { userId: id, roleId, roleName: name } }).unwrap();
 func TestIntegrationQuotes(t *testing.T) {
+	admin := integrationTest.TestUsers[0]
+	member1 := integrationTest.TestUsers[4]
 
+	t.Run("user can request quote", func(t *testing.T) {
+		now := time.Now()
+		firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Format("2006-01-02")
+		dateSlotsUrl := "/api/v1/group/schedules/" + integrationTest.MasterSchedule.Id + "/date/" + firstOfMonth
+		dateSlotsResponse := &types.GetGroupScheduleByDateResponse{}
+		err := apiRequest(admin.TestToken, http.MethodGet, dateSlotsUrl, nil, nil, dateSlotsResponse)
+		if err != nil {
+			t.Errorf("error get group date slots request, error: %v", err)
+		}
+
+		if len(dateSlotsResponse.GroupScheduleDateSlots) == 0 {
+			t.Errorf("no date slots available to schedule %v", dateSlotsResponse)
+		}
+
+		var serviceTierId string
+		for _, tier := range integrationTest.GroupService.Service.Tiers {
+			serviceTierId = tier.Id
+			break
+		}
+
+		firstAvailable := dateSlotsResponse.GroupScheduleDateSlots[0]
+
+		postQuoteBytes, err := protojson.Marshal(&types.PostQuoteRequest{
+			ScheduleBracketSlotId: firstAvailable.ScheduleBracketSlotId,
+			SlotDate:              firstAvailable.StartDate,
+			ServiceTierId:         serviceTierId,
+		})
+		if err != nil {
+			t.Errorf("error marshalling post quote request %v", err)
+		}
+
+		postQuoteResponse := &types.PostQuoteResponse{}
+		err = apiRequest(member1.TestToken, http.MethodPost, "/api/v1/quotes", postQuoteBytes, nil, postQuoteResponse)
+		if err != nil {
+			t.Errorf("error post quote request error: %v", err)
+		}
+		if postQuoteResponse.Quote.Id == "" {
+			t.Error("no post quote id")
+		}
+
+	})
+
+	failCheck(t)
 }
 
 func TestIntegrationBookings(t *testing.T) {
