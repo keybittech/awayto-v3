@@ -65,21 +65,23 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
       <ListItemText primary="Select All" />
     </MenuItem>
 
-    {hasSelections && <MenuItem
+    <MenuItem
       {...targets(`pending requests menu approve`, `approve selected pending requests`)}
+      disabled={!hasSelections}
       onClick={approvePendingQuotes}
     >
       <ListItemIcon><ApprovalIcon /></ListItemIcon>
       <ListItemText primary="Approve" />
-    </MenuItem>}
+    </MenuItem>
 
-    {hasSelections && <MenuItem
+    <MenuItem
       {...targets(`pending requests menu deny`, `deny selected pending requests`)}
+      disabled={!hasSelections}
       onClick={denyPendingQuotes}
     >
       <ListItemIcon><DoNotDisturbIcon /></ListItemIcon>
       <ListItemText primary="Deny" />
-    </MenuItem>}
+    </MenuItem>
 
     <Divider />
 

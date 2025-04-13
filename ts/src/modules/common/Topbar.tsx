@@ -86,7 +86,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
   const roleActions = useMemo(() => {
     const augr = profileRequest?.userProfile.availableUserGroupRoles?.filter(x => ![SiteRoles.APP_GROUP_BOOKINGS].includes(x as SiteRoles));
     if (!augr) return [<></>];
-    return Object.values(SiteRoles).filter(r => augr.includes(r)).map((r, i) => {
+    const actions = Object.values(SiteRoles).filter(r => augr.includes(r)).map((r, i) => {
       const rd = SiteRoleDetails[r];
       const ActionIcon = rd.icon;
 
@@ -99,6 +99,10 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
         <ListItemText>{rd.name}</ListItemText>
       </MenuItem>;
     });
+    if (actions.length) {
+      actions.unshift(<Divider key={"action-divider"} />);
+    }
+    return actions;
   }, [location, profileRequest?.userProfile.availableUserGroupRoles]);
 
   const isSelected = (opt: string) => {
@@ -175,11 +179,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           Light
         </MenuItem>
 
-
-        {!!roleActions.length && <>
-          <Divider />
-          {roleActions}
-        </>}
+        {roleActions}
 
         <Divider />
 

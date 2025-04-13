@@ -1,6 +1,7 @@
 import React, { useMemo } from 'react';
 import { useNavigate } from 'react-router';
 
+import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
@@ -41,28 +42,31 @@ export function Home(props: IComponent): React.JSX.Element {
     });
   }, [profileRequest?.userProfile.availableUserGroupRoles]);
 
-  return <Grid container size="grow">
+  return <Grid container size="grow" spacing={1}>
+    <Grid size={{ sm: 12, md: 9 }}>
+      <Card variant="outlined">
+        <CardHeader
+          title={
+            <>
+              <Chip variant="outlined" label={profileRequest?.userProfile.roleName} /> &nbsp;
+              {profileRequest?.userProfile.firstName} {profileRequest?.userProfile.lastName}
+            </>
+          }
+          subheader={group?.name}
+        />
+      </Card>
+    </Grid>
     <Grid container spacing={2}>
-      <Grid size={{ md: 3, xl: 2 }}>
-        <Card variant="outlined">
-          <CardHeader
-            title={`${profileRequest?.userProfile.firstName} ${profileRequest?.userProfile.lastName}`}
-            subheader={`${group?.name} ${profileRequest?.userProfile.roleName}`}
-          />
-        </Card>
-        <Grid sx={{ display: { xs: 'none', md: 'block' } }}>
-          {roleActions}
-        </Grid>
+      <Grid size={{ md: 3, xl: 2 }} sx={{ display: { xs: 'none', md: 'block' } }}>
+        {roleActions}
       </Grid>
 
-      <Grid container size={{ xs: 12, md: 9, lg: 8, xl: 6 }} direction="column" spacing={2}>
-        {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <Grid size="grow">
-          <RequestQuote {...props} />
-        </Grid>}
+      <Grid container size={{ sm: 12, md: 9 }} direction="column" spacing={2}>
+        <Grid size="grow">
+          {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <RequestQuote {...props} />}
+          {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <BookingHome {...props} />}
+        </Grid>
       </Grid>
-    </Grid>
-    <Grid size="grow">
-      <BookingHome {...props} />
     </Grid>
   </Grid>;
 }
