@@ -506,6 +506,68 @@ func patchGroupAssignments(token, roleFullName, actionName string) error {
 	return nil
 }
 
+func postSchedule(token string) (*types.ISchedule, error) {
+	brackets := make(map[string]*types.IScheduleBracket, 1)
+	services := make(map[string]*types.IService, 1)
+	slots := make(map[string]*types.IScheduleBracketSlot, 2)
+
+	bracketId := strconv.Itoa(int(time.Now().UnixMilli()))
+	time.Sleep(time.Millisecond)
+
+	serviceId := integrationTest.MasterService.Id
+	services[serviceId] = integrationTest.MasterService
+
+	slot1Id := strconv.Itoa(int(time.Now().UnixMilli()))
+	time.Sleep(time.Millisecond)
+
+	slots[slot1Id] = &types.IScheduleBracketSlot{
+		Id:                slot1Id,
+		StartTime:         "P2DT1H",
+		ScheduleBracketId: bracketId,
+	}
+
+	slot2Id := strconv.Itoa(int(time.Now().UnixMilli()))
+	time.Sleep(time.Millisecond)
+
+	slots[slot2Id] = &types.IScheduleBracketSlot{
+		Id:                slot2Id,
+		StartTime:         "P3DT4H",
+		ScheduleBracketId: bracketId,
+	}
+
+	brackets[bracketId] = &types.IScheduleBracket{
+		Id:         bracketId,
+		Automatic:  false,
+		Duration:   15,
+		Multiplier: 100,
+		Services:   services,
+		Slots:      slots,
+	}
+
+	userScheduleRequestBytes, err := protojson.Marshal(&types.PostScheduleRequest{
+		Brackets:           brackets,
+		GroupScheduleId:    integrationTest.MasterSchedule.Id,
+		Name:               integrationTest.MasterSchedule.Name,
+		StartTime:          integrationTest.MasterSchedule.StartTime,
+		EndTime:            integrationTest.MasterSchedule.EndTime,
+		ScheduleTimeUnitId: integrationTest.MasterSchedule.ScheduleTimeUnitId,
+		BracketTimeUnitId:  integrationTest.MasterSchedule.BracketTimeUnitId,
+		SlotTimeUnitId:     integrationTest.MasterSchedule.SlotTimeUnitId,
+		SlotDuration:       integrationTest.MasterSchedule.SlotDuration,
+	})
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error marshalling user schedule request: %v", err))
+	}
+
+	userScheduleResponse := &types.PostScheduleResponse{}
+	err = apiRequest(token, http.MethodPost, "/api/v1/schedules", userScheduleRequestBytes, nil, userScheduleResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error post schedule request error: %v", err))
+	}
+
+	return getScheduleById(token, userScheduleResponse.Id)
+}
+
 func postQuote(token, serviceTierId string, slot *types.IGroupScheduleDateSlots, serviceForm, tierForm *types.IProtoFormVersionSubmission) (*types.IQuote, error) {
 	if serviceForm == nil {
 		serviceForm = &types.IProtoFormVersionSubmission{}

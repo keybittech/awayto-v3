@@ -3,6 +3,7 @@ package types;
 
 import "quote.proto";
 import "service.proto";
+import "util.proto";
 
 import "validate/validate.proto";
 import "google/protobuf/timestamp.proto";
@@ -17,6 +18,7 @@ service ScheduleService {
       post: "/v1/schedules"
       body: "*"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc PostScheduleBrackets(PostScheduleBracketsRequest) returns (PostScheduleBracketsResponse) {
@@ -24,6 +26,7 @@ service ScheduleService {
       post: "/v1/schedules/brackets"
       body: "*"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc PatchSchedule(PatchScheduleRequest) returns (PatchScheduleResponse) {
@@ -31,30 +34,35 @@ service ScheduleService {
       patch: "/v1/schedules/{id}"
       body: "*"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc GetSchedules(GetSchedulesRequest) returns (GetSchedulesResponse) {
     option (google.api.http) = {
       get: "/v1/schedules"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc GetScheduleById(GetScheduleByIdRequest) returns (GetScheduleByIdResponse) {
     option (google.api.http) = {
       get: "/v1/schedules/{id}"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc DeleteSchedule(DeleteScheduleRequest) returns (DeleteScheduleResponse) {
     option (google.api.http) = {
       delete: "/v1/schedules/{ids}"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc DisableSchedule(DisableScheduleRequest) returns (DisableScheduleResponse) {
     option (google.api.http) = {
       patch: "/v1/schedules/{id}/disable"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 }
 

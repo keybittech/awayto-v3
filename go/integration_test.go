@@ -68,7 +68,7 @@ func TestIntegrationUser(t *testing.T) {
 		integrationTest.TestUsers[0] = testUser
 		integrationTest.Connections[session.UserSub] = connection
 
-		t.Logf("created user #%d with sub %s connId %s", 1, session.UserSub, connId)
+		t.Logf("created user #%d with email %s sub %s connId %s", 1, session.UserEmail, session.UserSub, connId)
 	})
 
 	failCheck(t)
@@ -367,79 +367,6 @@ func TestIntegrationOnboarding(t *testing.T) {
 	failCheck(t)
 }
 
-func TestIntegrationUserSchedule(t *testing.T) {
-	t.Run("user can create a personal schedule using a group schedule id", func(t *testing.T) {
-		admin := integrationTest.TestUsers[0]
-
-		brackets := make(map[string]*types.IScheduleBracket, 1)
-		services := make(map[string]*types.IService, 1)
-		slots := make(map[string]*types.IScheduleBracketSlot, 2)
-
-		bracketId := strconv.Itoa(int(time.Now().UnixMilli()))
-		time.Sleep(time.Millisecond)
-
-		serviceId := integrationTest.MasterService.Id
-		services[serviceId] = integrationTest.MasterService
-
-		slot1Id := strconv.Itoa(int(time.Now().UnixMilli()))
-		time.Sleep(time.Millisecond)
-
-		slots[slot1Id] = &types.IScheduleBracketSlot{
-			Id:                slot1Id,
-			StartTime:         "P2DT1H",
-			ScheduleBracketId: bracketId,
-		}
-
-		slot2Id := strconv.Itoa(int(time.Now().UnixMilli()))
-		time.Sleep(time.Millisecond)
-
-		slots[slot2Id] = &types.IScheduleBracketSlot{
-			Id:                slot2Id,
-			StartTime:         "P3DT4H",
-			ScheduleBracketId: bracketId,
-		}
-
-		brackets[bracketId] = &types.IScheduleBracket{
-			Id:         bracketId,
-			Automatic:  false,
-			Duration:   15,
-			Multiplier: 100,
-			Services:   services,
-			Slots:      slots,
-		}
-
-		userScheduleRequestBytes, err := protojson.Marshal(&types.PostScheduleRequest{
-			Brackets:           brackets,
-			GroupScheduleId:    integrationTest.MasterSchedule.Id,
-			Name:               integrationTest.MasterSchedule.Name,
-			StartTime:          integrationTest.MasterSchedule.StartTime,
-			EndTime:            integrationTest.MasterSchedule.EndTime,
-			ScheduleTimeUnitId: integrationTest.MasterSchedule.ScheduleTimeUnitId,
-			BracketTimeUnitId:  integrationTest.MasterSchedule.BracketTimeUnitId,
-			SlotTimeUnitId:     integrationTest.MasterSchedule.SlotTimeUnitId,
-			SlotDuration:       integrationTest.MasterSchedule.SlotDuration,
-		})
-		if err != nil {
-			t.Errorf("error marshalling user schedule request: %v", err)
-		}
-
-		userScheduleResponse := &types.PostScheduleResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/schedules", userScheduleRequestBytes, nil, userScheduleResponse)
-		if err != nil {
-			t.Errorf("error posting user schedule request: %v", err)
-		}
-
-		schedule, err := getScheduleById(admin.TestToken, userScheduleResponse.Id)
-		if err != nil {
-			t.Errorf("schedule by id err: %v", err)
-		}
-		integrationTest.UserSchedule = schedule
-
-	})
-
-	failCheck(t)
-}
-
 func TestIntegrationJoinGroup(t *testing.T) {
 	existingUsers := 1
 	t.Run("users can join a group with a code after log in", func(t *testing.T) {
@@ -539,7 +466,7 @@ func TestIntegrationJoinGroup(t *testing.T) {
 			integrationTest.TestUsers[c] = testUser
 			integrationTest.Connections[session.UserSub] = connection
 
-			t.Logf("user %d has sub %s", c, integrationTest.TestUsers[c].UserSession.UserSub)
+			t.Logf("user %d has email %s sub %s", c, testUser.UserSession.UserEmail, testUser.UserSession.UserSub)
 		}
 	})
 
@@ -709,6 +636,29 @@ func TestIntegrationPromoteUser(t *testing.T) {
 			integrationTest.TestUsers[i+4].TestToken = token
 			integrationTest.TestUsers[i+4].UserSession = session
 		}
+	})
+
+	failCheck(t)
+}
+
+func TestIntegrationUserSchedule(t *testing.T) {
+	staff1 := integrationTest.TestUsers[1]
+	member1 := integrationTest.TestUsers[4]
+
+	t.Run("APP_GROUP_SCHEDULE permission is required to create a personal schedule", func(t *testing.T) {
+		_, err := postSchedule(member1.TestToken)
+		if err == nil {
+			t.Error("user was able to create schedule without APP_GROUP_SCHEDULE permissions")
+		}
+	})
+
+	t.Run("user can create a personal schedule using a group schedule id", func(t *testing.T) {
+		schedule, err := postSchedule(staff1.TestToken)
+		if err != nil {
+			t.Errorf("staff post schedule err %v", err)
+		}
+
+		integrationTest.UserSchedule = schedule
 	})
 
 	failCheck(t)
