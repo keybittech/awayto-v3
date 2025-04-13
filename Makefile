@@ -310,6 +310,11 @@ go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
+	go test -C $(GO_SRC) $(GO_TEST_FLAGS) -short ${PROJECT_REPO}/go
+
+.PHONY: go_test_integration_bench
+go_test_integration_bench: $(GO_TARGET)
+	rm $(GO_LOG_DIR)/*.log || true
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ${PROJECT_REPO}/go
 
 .PHONY: go_test_integration_long

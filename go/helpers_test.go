@@ -505,3 +505,36 @@ func patchGroupAssignments(token, roleFullName, actionName string) error {
 
 	return nil
 }
+
+func postQuote(token, serviceTierId string, slot *types.IGroupScheduleDateSlots, serviceForm, tierForm *types.IProtoFormVersionSubmission) (*types.IQuote, error) {
+	if serviceForm == nil {
+		serviceForm = &types.IProtoFormVersionSubmission{}
+	}
+	if tierForm == nil {
+		tierForm = &types.IProtoFormVersionSubmission{}
+	}
+
+	postQuoteRequest := &types.PostQuoteRequest{
+		SlotDate:                     slot.StartDate,
+		ScheduleBracketSlotId:        slot.ScheduleBracketSlotId,
+		ServiceTierId:                serviceTierId,
+		ServiceFormVersionSubmission: serviceForm,
+		TierFormVersionSubmission:    tierForm,
+	}
+
+	postQuoteBytes, err := protojson.Marshal(postQuoteRequest)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error marshalling post quote request %v", err))
+	}
+
+	postQuoteResponse := &types.PostQuoteResponse{}
+	err = apiRequest(token, http.MethodPost, "/api/v1/quotes", postQuoteBytes, nil, postQuoteResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error post quote request error: %v", err))
+	}
+	if postQuoteResponse.Quote.Id == "" {
+		return nil, errors.New("no post quote id")
+	}
+
+	return postQuoteResponse.Quote, nil
+}
