@@ -6,7 +6,7 @@ import (
 	"reflect"
 	"strconv"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -89,7 +89,6 @@ func getClientData(numClients int, commandType int32, requestParams *types.Socke
 func doSendCommandBench(clientCount, commandsPerClient int, b *testing.B) {
 	socket := InitSocket()
 	defer socket.Close()
-
 	clientIds, createCommands := getClientData(
 		clientCount,
 		CreateSocketTicketSocketCommand,
@@ -99,24 +98,30 @@ func doSendCommandBench(clientCount, commandsPerClient int, b *testing.B) {
 		},
 	)
 
-	reset(b)
-	for i := 0; i < b.N/(clientCount*commandsPerClient); i++ {
-
-		var wg sync.WaitGroup
-
-		for c := 0; c < clientCount; c++ {
-			wg.Add(1)
-			currentC := c
-			go func() {
-				defer wg.Done()
-				for j := 0; j < commandsPerClient; j++ {
-					SendCommand(socket, createCommands[clientIds[currentC]])
-				}
-			}()
-		}
-
-		wg.Wait()
+	totalIterations := b.N / (clientCount * commandsPerClient)
+	if totalIterations < 1 {
+		totalIterations = 1
 	}
+
+	b.SetParallelism(clientCount)
+	reset(b)
+
+	b.RunParallel(func(pb *testing.PB) {
+		clientIndex := int(atomic.AddInt32(new(int32), 1)-1) % clientCount
+
+		iteration := 0
+		for pb.Next() {
+			if iteration >= totalIterations {
+				break
+			}
+
+			for j := 0; j < commandsPerClient; j++ {
+				SendCommand(socket, createCommands[clientIds[clientIndex]])
+			}
+
+			iteration++
+		}
+	})
 }
 
 func BenchmarkSendCommandSingle1Client(b *testing.B) {
@@ -184,6 +189,7 @@ func BenchmarkSendCommand1000Clients100Messages(b *testing.B) {
 }
 
 func TestSocket_GetSocketTicket(t *testing.T) {
+	t.Parallel()
 	type args struct {
 		session *types.UserSession
 	}
