@@ -95,6 +95,8 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 
 	return &types.PostQuoteResponse{Quote: &types.IQuote{
 		Id:                             quoteId,
+		SlotDate:                       data.SlotDate,
+		ScheduleBracketSlotId:          data.ScheduleBracketSlotId,
 		ServiceFormVersionSubmissionId: serviceForm.GetId(),
 		TierFormVersionSubmissionId:    tierForm.GetId(),
 	}}, nil

@@ -19,7 +19,6 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid)
 			RETURNING id
 		`, booking.Quote.Id, booking.Quote.SlotDate, booking.Quote.ScheduleBracketSlotId, session.UserSub).Scan(&newBooking.Id)
-
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

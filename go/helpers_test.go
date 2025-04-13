@@ -600,3 +600,25 @@ func postQuote(token, serviceTierId string, slot *types.IGroupScheduleDateSlots,
 
 	return postQuoteResponse.Quote, nil
 }
+
+func postBooking(token string, bookingRequests []*types.IBooking) ([]*types.IBooking, error) {
+	postBookingRequest := &types.PostBookingRequest{
+		Bookings: bookingRequests,
+	}
+
+	postBookingBytes, err := protojson.Marshal(postBookingRequest)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error marshalling post booking request %v", err))
+	}
+
+	postBookingResponse := &types.PostBookingResponse{}
+	err = apiRequest(token, http.MethodPost, "/api/v1/bookings", postBookingBytes, nil, postBookingResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error post booking request error: %v", err))
+	}
+	if len(postBookingResponse.Bookings) == 0 {
+		return nil, errors.New("no bookings were created")
+	}
+
+	return postBookingResponse.Bookings, nil
+}

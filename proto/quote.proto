@@ -3,6 +3,7 @@ package types;
 
 import "file.proto";
 import "form.proto";
+import "util.proto";
 
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
@@ -15,6 +16,7 @@ service QuoteService {
       post: "/v1/quotes"
       body: "*"
     };
+    option (site_role) = APP_GROUP_BOOKINGS;
   }
 
   rpc PatchQuote(PatchQuoteRequest) returns (PatchQuoteResponse) {
@@ -22,30 +24,36 @@ service QuoteService {
       patch: "/v1/quotes/{id}"
       body: "*"
     };
+    // Requests are left up to the scheduling user to manage once submitted
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
   
   rpc GetQuotes(GetQuotesRequest) returns (GetQuotesResponse) {
     option (google.api.http) = {
       get: "/v1/quotes"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
   
   rpc GetQuoteById(GetQuoteByIdRequest) returns (GetQuoteByIdResponse) {
     option (google.api.http) = {
       get: "/v1/quotes/{id}"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
   
   rpc DeleteQuote(DeleteQuoteRequest) returns (DeleteQuoteResponse) {
     option (google.api.http) = {
       delete: "/v1/quotes/{id}"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
   
   rpc DisableQuote(DisableQuoteRequest) returns (DisableQuoteResponse) {
     option (google.api.http) = {
       patch: "/v1/quotes/disable/{ids}"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 }
 
