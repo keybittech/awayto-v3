@@ -1,8 +1,9 @@
-package main
+package integrations
 
 import (
 	"bufio"
 	"bytes"
+	"crypto/rand"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -11,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/big"
 	"net"
 	"net/http"
 	"net/http/cookiejar"
@@ -22,9 +24,7 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"golang.org/x/exp/rand"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -233,9 +233,14 @@ func extractFormAction(html []byte) string {
 
 func generateRandomString(length int) string {
 	const chars = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+	nBig, err := rand.Int(rand.Reader, big.NewInt(int64(len(chars))))
+	if err != nil {
+		panic(err)
+	}
+	n := nBig.Int64()
 	b := make([]byte, length)
 	for i := range b {
-		b[i] = chars[rand.Intn(len(chars))]
+		b[i] = chars[n]
 	}
 	return string(b)
 }
@@ -297,20 +302,20 @@ func getSocketTicket(userId int) (*types.UserSession, string, string, string) {
 	return session, token, ticket, connId
 }
 
-func getUserSocketSession(userId int) (*types.SocketResponseParams, *types.UserSession, string, string) {
-	userSession, _, ticket, connId := getSocketTicket(userId)
-
-	subscriberSocketResponse, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-		UserSub: userSession.UserSub,
-		Ticket:  ticket,
-	})
-
-	if err = clients.ChannelError(err, subscriberSocketResponse.Error); err != nil {
-		log.Fatal("failed to get subscriber socket command in setup", err.Error())
-	}
-
-	return subscriberSocketResponse.SocketResponseParams, userSession, ticket, connId
-}
+// func getUserSocketSession(userId int) (*types.SocketResponseParams, *types.UserSession, string, string) {
+// 	userSession, _, ticket, connId := getSocketTicket(userId)
+//
+// 	subscriberSocketResponse, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+// 		UserSub: userSession.UserSub,
+// 		Ticket:  ticket,
+// 	})
+//
+// 	if err = clients.ChannelError(err, subscriberSocketResponse.Error); err != nil {
+// 		log.Fatal("failed to get subscriber socket command in setup", err.Error())
+// 	}
+//
+// 	return subscriberSocketResponse.SocketResponseParams, userSession, ticket, connId
+// }
 
 func getClientSocketConnection(ticket string) net.Conn {
 	u, err := url.Parse("wss://localhost:7443/sock?ticket=" + ticket)
@@ -367,43 +372,43 @@ func getUser(userId int) (*types.UserSession, net.Conn, string, string, string) 
 	return userSession, connection, token, ticket, connId
 }
 
-func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Conn) {
-	subscribers := make(map[int]*types.Subscriber, numUsers)
-	connections := make(map[string]net.Conn, numUsers)
-
-	for c := 0; c < numUsers; c++ {
-		registerKeycloakUserViaForm(c)
-
-		userSession, _, ticket, connId := getSocketTicket(c)
-
-		connection := getClientSocketConnection(ticket)
-		if connection == nil {
-			println("count not establish socket connection for user ", strconv.Itoa(c), ticket, connId)
-			return nil, nil
-		}
-		connection.SetReadDeadline(time.Now().Add(120 * time.Second))
-		connections[userSession.UserSub] = connection
-
-		subscriberRequest, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-			UserSub: userSession.UserSub,
-			Ticket:  ticket,
-		}, connection)
-		if err != nil {
-			log.Fatalf("failed subscriber request %v", err)
-		}
-
-		subscribers[c] = &types.Subscriber{
-			UserSub:      subscriberRequest.UserSub,
-			GroupId:      subscriberRequest.GroupId,
-			Roles:        subscriberRequest.Roles,
-			ConnectionId: connId,
-		}
-
-		println("got subscribers ", len(subscribers), "connections", len(connections))
-	}
-
-	return subscribers, connections
-}
+// func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Conn) {
+// 	subscribers := make(map[int]*types.Subscriber, numUsers)
+// 	connections := make(map[string]net.Conn, numUsers)
+//
+// 	for c := 0; c < numUsers; c++ {
+// 		registerKeycloakUserViaForm(c)
+//
+// 		userSession, _, ticket, connId := getSocketTicket(c)
+//
+// 		connection := getClientSocketConnection(ticket)
+// 		if connection == nil {
+// 			println("count not establish socket connection for user ", strconv.Itoa(c), ticket, connId)
+// 			return nil, nil
+// 		}
+// 		connection.SetReadDeadline(time.Now().Add(120 * time.Second))
+// 		connections[userSession.UserSub] = connection
+//
+// 		subscriberRequest, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+// 			UserSub: userSession.UserSub,
+// 			Ticket:  ticket,
+// 		}, connection)
+// 		if err != nil {
+// 			log.Fatalf("failed subscriber request %v", err)
+// 		}
+//
+// 		subscribers[c] = &types.Subscriber{
+// 			UserSub:      subscriberRequest.UserSub,
+// 			GroupId:      subscriberRequest.GroupId,
+// 			Roles:        subscriberRequest.Roles,
+// 			ConnectionId: connId,
+// 		}
+//
+// 		println("got subscribers ", len(subscribers), "connections", len(connections))
+// 	}
+//
+// 	return subscribers, connections
+// }
 
 func getUserProfileDetails(token string) (*types.IUserProfile, error) {
 	getUserProfileDetailsResponse := &types.GetUserProfileDetailsResponse{}

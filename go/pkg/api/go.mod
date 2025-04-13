@@ -6,6 +6,10 @@ require (
 	github.com/bufbuild/protovalidate-go v0.9.2
 	github.com/golang-jwt/jwt v3.2.2+incompatible
 	github.com/google/uuid v1.6.0
+	github.com/keybittech/awayto-v3/go/pkg/clients v0.0.0-20250413170509-b98baad0beed
+	github.com/keybittech/awayto-v3/go/pkg/handlers v0.0.0-20250413170509-b98baad0beed
+	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
+	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-20250413170509-b98baad0beed
 	github.com/redis/go-redis/v9 v9.7.3
 	golang.org/x/time v0.11.0
 	google.golang.org/protobuf v1.36.6
@@ -19,10 +23,6 @@ require (
 	github.com/dgryski/go-rendezvous v0.0.0-20200823014737-9f7001d12a5f // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/cel-go v0.23.2 // indirect
-	github.com/keybittech/awayto-v3/go/pkg/clients v0.0.0-20250413170509-b98baad0beed // indirect
-	github.com/keybittech/awayto-v3/go/pkg/handlers v0.0.0-20250413170509-b98baad0beed // indirect
-	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000 // indirect
-	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-20250413170509-b98baad0beed // indirect
 	github.com/lib/pq v1.10.9 // indirect
 	github.com/sashabaranov/go-openai v1.38.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect

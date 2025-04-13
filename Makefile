@@ -41,6 +41,7 @@ GO_GEN_DIR=$(GO_SRC)/pkg/types
 GO_API_DIR=$(GO_SRC)/pkg/api
 GO_CLIENTS_DIR=$(GO_SRC)/pkg/clients
 GO_HANDLERS_DIR=$(GO_SRC)/pkg/handlers
+GO_INTEGRATIONS_DIR=$(GO_SRC)/integrations
 # GO_INTERFACES_DIR=$(GO_SRC)/pkg/interfaces
 GO_UTIL_DIR=$(GO_SRC)/pkg/util
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
@@ -245,6 +246,7 @@ go_dev:
 .PHONY: go_tidy
 go_tidy:
 	cd $(GO_SRC) && go mod tidy
+	cd $(GO_INTEGRATIONS_DIR) && go mod tidy
 	cd $(GO_API_DIR) && go mod tidy
 	cd $(GO_CLIENTS_DIR) && go mod tidy
 	cd $(GO_HANDLERS_DIR) && go mod tidy
@@ -310,17 +312,17 @@ go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_SRC) $(GO_TEST_FLAGS) -short ${PROJECT_REPO}/go
+	go test -C $(GO_INTEGRATIONS_DIR) $(GO_TEST_FLAGS) -short ${PROJECT_REPO}/go/integrations
 
 .PHONY: go_test_integration_bench
 go_test_integration_bench: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ${PROJECT_REPO}/go
+	go test -C $(GO_INTEGRATIONS_DIR) $(GO_BENCH_FLAGS) -short ${PROJECT_REPO}/go/integrations
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ${PROJECT_REPO}/go
+	go test -C $(GO_INTEGRATIONS_DIR) $(GO_BENCH_FLAGS) -v ${PROJECT_REPO}/go/integrations
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)

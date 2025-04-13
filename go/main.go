@@ -67,7 +67,7 @@ func init() {
 	}
 }
 
-func main() {
+func Start() {
 	// flag.Parse()
 
 	mainApi = &api.API{
@@ -113,4 +113,8 @@ func main() {
 		return
 	}
 
+}
+
+func main() {
+	Start()
 }

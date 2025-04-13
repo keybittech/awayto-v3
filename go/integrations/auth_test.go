@@ -1,4 +1,4 @@
-package main
+package integrations
 
 import (
 	"crypto/tls"

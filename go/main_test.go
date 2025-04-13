@@ -23,7 +23,6 @@ func reset(b *testing.B) {
 
 func TestMain(m *testing.M) {
 	go main()
-	setupSockServer()
 
 	time.Sleep(2 * time.Second)
 
