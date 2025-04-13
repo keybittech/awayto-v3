@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"errors"
 	"net/http"
 	"time"
 
@@ -12,13 +13,38 @@ import (
 func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *types.PostBookingRequest, session *types.UserSession, tx *sql.Tx) (*types.PostBookingResponse, error) {
 	newBookings := make([]*types.IBooking, 0)
 
+	var scheduleBracketSlotId string
+	for i, booking := range data.Bookings {
+		if i == 0 {
+			scheduleBracketSlotId = booking.Quote.ScheduleBracketSlotId
+		} else {
+			if booking.Quote.ScheduleBracketSlotId != scheduleBracketSlotId {
+				return nil, util.ErrCheck(util.UserError("Only appointments of the same date and time may be batch approved."))
+			}
+		}
+	}
+
+	var isOwner bool
+	err := tx.QueryRow(`
+		SELECT EXISTS(
+			SELECT 1 FROM dbtable_schema.schedule_bracket_slots
+			WHERE id = $1 AND created_sub = $2
+		)
+	`, scheduleBracketSlotId, session.UserSub).Scan(&isOwner)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	if !isOwner {
+		return nil, util.ErrCheck(errors.New("sub " + session.UserSub + " attempted to approve non-owned sbsid " + scheduleBracketSlotId))
+	}
+
 	for _, booking := range data.Bookings {
 		var newBooking types.IBooking
 		err := tx.QueryRow(`
 			INSERT INTO dbtable_schema.bookings (quote_id, slot_date, schedule_bracket_slot_id, created_sub)
 			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid)
 			RETURNING id
-		`, booking.Quote.Id, booking.Quote.SlotDate, booking.Quote.ScheduleBracketSlotId, session.UserSub).Scan(&newBooking.Id)
+		`, booking.Quote.Id, booking.Quote.SlotDate, scheduleBracketSlotId, session.UserSub).Scan(&newBooking.Id)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

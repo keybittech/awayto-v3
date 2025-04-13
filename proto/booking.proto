@@ -19,6 +19,8 @@ service BookingService {
       post: "/v1/bookings"
       body: "*"
     };
+    // schedule users confirm quotes into bookings
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc PatchBooking(PatchBookingRequest) returns (PatchBookingResponse) {
@@ -26,24 +28,28 @@ service BookingService {
       patch: "/v1/bookings"
       body: "*"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc GetBookings(GetBookingsRequest) returns (GetBookingsResponse) {
     option (google.api.http) = {
       get: "/v1/bookings"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc GetBookingById(GetBookingByIdRequest) returns (GetBookingByIdResponse) {
     option (google.api.http) = {
       get: "/v1/bookings/{id}"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc GetBookingFiles(GetBookingFilesRequest) returns (GetBookingFilesResponse) {
     option (google.api.http) = {
       get: "/v1/bookings/{id}/files"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc PatchBookingRating(PatchBookingRatingRequest) returns (PatchBookingRatingResponse) {
@@ -51,6 +57,7 @@ service BookingService {
       patch: "/v1/bookings/rating"
       body: "*"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
     option (throttle) = 1;
   }
 
@@ -58,12 +65,14 @@ service BookingService {
     option (google.api.http) = {
       delete: "/v1/bookings/{id}"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 
   rpc DisableBooking(DisableBookingRequest) returns (DisableBookingResponse) {
     option (google.api.http) = {
       patch: "/v1/bookings/{id}/disable"
     };
+    option (site_role) = APP_GROUP_SCHEDULES;
   }
 }
 
