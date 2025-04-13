@@ -225,7 +225,7 @@ working/proto-stamp: $(wildcard proto/*.proto)
 	fi
 	touch $@
 
-$(GO_TARGET): $(PROTO_MOD_TARGET) go_tidy $(shell find $(GO_SRC)/{main.go,pkg} -type f) # $(GO_MOCK_TARGET)
+$(GO_TARGET): working/proto-stamp $(shell find $(GO_SRC)/{main.go,pkg} -type f) # $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
 	go build -C $(GO_SRC) -o $(GO_TARGET) .
 
@@ -312,25 +312,25 @@ go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_SRC) $(GO_TEST_FLAGS) -short ./...
+	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_TEST_FLAGS) -short ./...
 
 .PHONY: go_test_integration_bench
 go_test_integration_bench: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ./...
+	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ./...
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ./...
+	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ./...
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)
-	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_UTIL_DIR)
+	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
+	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
+	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)
+	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_UTIL_DIR)
 
 .PHONY: go_coverage
 go_coverage: # $(GO_MOCK_TARGET)

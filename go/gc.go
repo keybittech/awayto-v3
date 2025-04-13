@@ -8,7 +8,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/api"
 )
 
-func setupGc() {
+func setupGc(a *api.API) {
 	generalCleanupTicker := time.NewTicker(5 * time.Minute)
 	go func() {
 		connLen := 0
@@ -24,7 +24,7 @@ func setupGc() {
 				// can be removed when no longer needed
 				ctx := context.Background()
 				defer ctx.Done()
-				socketConnections, err := mainApi.Handlers.Redis.RedisClient.SMembers(ctx, "socket_server_connections").Result()
+				socketConnections, err := a.Handlers.Redis.RedisClient.SMembers(ctx, "socket_server_connections").Result()
 				sockLen := len(socketConnections)
 				if err != nil {
 					println("reading socket connection err", err.Error())

@@ -161,8 +161,15 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				if errorFlag {
 					continue
 				}
-				sockErr := errors.New("sock read error " + connId + err.Error())
+				errStr := err.Error()
+				sockErr := errors.New("sock read error " + connId + errStr)
 				util.ErrorLog.Println(util.ErrCheck(sockErr))
+
+				if strings.Index(errStr, "connection reset by peer") != -1 {
+					exitReason = errStr
+					return
+				}
+
 				errorFlag = true
 			}
 		}

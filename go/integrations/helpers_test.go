@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"bytes"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -25,35 +24,10 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
-
-var publicKey *rsa.PublicKey
-
-func init() {
-
-	kc := &clients.KeycloakClient{
-		Server: os.Getenv("KC_INTERNAL"),
-		Realm:  os.Getenv("KC_REALM"),
-	}
-
-	oidcToken, err := kc.DirectGrantAuthentication()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	kc.Token = oidcToken
-
-	pk, err := kc.FetchPublicKey()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	publicKey = pk
-}
 
 func failCheck(t *testing.T) {
 	if t.Failed() {
@@ -393,7 +367,7 @@ func getUser(userId int) (*types.UserSession, net.Conn, string, string, string) 
 	if connection == nil {
 		log.Fatal("count not establish socket connection for user ", userId, ticket, connId)
 	}
-	connection.SetReadDeadline(time.Now().Add(120 * time.Second))
+	connection.SetDeadline(time.Now().Add(10 * time.Second))
 
 	return userSession, connection, token, ticket, connId
 }

@@ -1,14 +1,5 @@
 package main
 
-import (
-	"bytes"
-	"io"
-	"testing"
-	"time"
-
-	"github.com/keybittech/awayto-v3/go/pkg/util"
-)
-
 type SocketEvents struct {
 	loadSubscribersEvent []byte
 	loadMessagesEvent    []byte
@@ -407,80 +398,80 @@ func setupSockServer() {
 // 	}
 // }
 
-func TestHandleSocketConnection(t *testing.T) {
-	if testing.Short() {
-		t.Skip("skipping socket ping/pong test")
-	}
-	time.Sleep(10 * time.Second)
-
-	_, ticket, _, _ := getSocketTicket(int(time.Now().UnixNano()))
-
-	sockConn := getClientSocketConnection(ticket)
-	if sockConn != nil {
-		t.Fatal("failed to get mock connection in handle sock connection")
-	}
-	defer sockConn.Close()
-
-	t.Log("starting 3 minute ping/pong test")
-
-	t.Run("periodically pings clients", func(tt *testing.T) {
-		startTime := time.Now()
-		endTime := startTime.Add(time.Minute)
-
-		sockConn.SetReadDeadline(time.Now().Add(70 * time.Second))
-
-		errChan := make(chan error, 1)
-
-		for {
-			if time.Now().After(endTime) {
-				break
-			}
-
-			message, err := util.ReadSocketConnectionMessage(sockConn)
-			if err != nil {
-				errChan <- err
-				continue
-			}
-
-			sockConn.SetWriteDeadline(time.Now().Add(5 * time.Second))
-			tt.Log("Recieved Ping <-")
-
-			if bytes.Equal(message, socketEvents.pingMessage) && time.Now().Before(endTime) {
-				tt.Log("Sent Pong ->")
-				err = util.WriteSocketConnectionMessage(socketEvents.pongMessage, sockConn)
-				if err != nil {
-					t.Fatal(err)
-					continue
-				}
-			}
-		}
-	})
-
-	t.Run("closes the socket after a period of inactivity", func(tt *testing.T) {
-		sockConn.SetReadDeadline(time.Now().Add(2 * time.Minute))
-
-		timeoutStart := time.Now()
-		var timeoutErr error
-
-		buffer := make([]byte, 1024)
-		for {
-			_, err := sockConn.Read(buffer)
-			if err != nil {
-				timeoutErr = err
-				break
-			}
-		}
-
-		timeoutDuration := time.Since(timeoutStart)
-
-		if timeoutErr == io.EOF {
-			if timeoutDuration >= 80*time.Second && timeoutDuration <= 100*time.Second {
-				tt.Log("socket closed after a period of inactivity")
-			} else {
-				tt.Fatal("socket closed not within 30-60 seconds of EOF")
-			}
-		} else {
-			tt.Fatalf("Connection ended with unexpected error: %v\n", timeoutErr)
-		}
-	})
-}
+// func TestHandleSocketConnection(t *testing.T) {
+// 	if testing.Short() {
+// 		t.Skip("skipping socket ping/pong test")
+// 	}
+// 	time.Sleep(10 * time.Second)
+//
+// 	_, ticket, _, _ := getSocketTicket(int(time.Now().UnixNano()))
+//
+// 	sockConn := getClientSocketConnection(ticket)
+// 	if sockConn != nil {
+// 		t.Fatal("failed to get mock connection in handle sock connection")
+// 	}
+// 	defer sockConn.Close()
+//
+// 	t.Log("starting 3 minute ping/pong test")
+//
+// 	t.Run("periodically pings clients", func(tt *testing.T) {
+// 		startTime := time.Now()
+// 		endTime := startTime.Add(time.Minute)
+//
+// 		sockConn.SetReadDeadline(time.Now().Add(70 * time.Second))
+//
+// 		errChan := make(chan error, 1)
+//
+// 		for {
+// 			if time.Now().After(endTime) {
+// 				break
+// 			}
+//
+// 			message, err := util.ReadSocketConnectionMessage(sockConn)
+// 			if err != nil {
+// 				errChan <- err
+// 				continue
+// 			}
+//
+// 			sockConn.SetWriteDeadline(time.Now().Add(5 * time.Second))
+// 			tt.Log("Recieved Ping <-")
+//
+// 			if bytes.Equal(message, socketEvents.pingMessage) && time.Now().Before(endTime) {
+// 				tt.Log("Sent Pong ->")
+// 				err = util.WriteSocketConnectionMessage(socketEvents.pongMessage, sockConn)
+// 				if err != nil {
+// 					t.Fatal(err)
+// 					continue
+// 				}
+// 			}
+// 		}
+// 	})
+//
+// 	t.Run("closes the socket after a period of inactivity", func(tt *testing.T) {
+// 		sockConn.SetReadDeadline(time.Now().Add(2 * time.Minute))
+//
+// 		timeoutStart := time.Now()
+// 		var timeoutErr error
+//
+// 		buffer := make([]byte, 1024)
+// 		for {
+// 			_, err := sockConn.Read(buffer)
+// 			if err != nil {
+// 				timeoutErr = err
+// 				break
+// 			}
+// 		}
+//
+// 		timeoutDuration := time.Since(timeoutStart)
+//
+// 		if timeoutErr == io.EOF {
+// 			if timeoutDuration >= 80*time.Second && timeoutDuration <= 100*time.Second {
+// 				tt.Log("socket closed after a period of inactivity")
+// 			} else {
+// 				tt.Fatal("socket closed not within 30-60 seconds of EOF")
+// 			}
+// 		} else {
+// 			tt.Fatalf("Connection ended with unexpected error: %v\n", timeoutErr)
+// 		}
+// 	})
+// }

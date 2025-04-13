@@ -12,6 +12,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/api"
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 var (
@@ -29,8 +30,6 @@ var (
 	turnInternalPortFlag = flag.Int("turnInternalPort", turnInternalPort, "Turn internal port")
 	unixPathFlag         = flag.String("unixPath", unixPath, "Unix socket path")
 )
-
-var mainApi *api.API
 
 func init() {
 	httpPort = *httpPortFlag
@@ -70,7 +69,7 @@ func init() {
 func main() {
 	// flag.Parse()
 
-	mainApi = &api.API{
+	server := &api.API{
 		Server: &http.Server{
 			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
 			ReadTimeout:  time.Minute,
@@ -86,31 +85,30 @@ func main() {
 		},
 	}
 
-	go mainApi.InitUnixServer(unixPath)
+	go server.InitUnixServer(unixPath)
 
-	mux := mainApi.InitMux()
+	mux := server.InitMux()
 
-	mainApi.InitAuthProxy(mux)
+	server.InitAuthProxy(mux)
 
-	mainApi.InitSockServer(mux)
+	server.InitSockServer(mux)
 
-	mainApi.InitStatic(mux)
+	server.InitStatic(mux)
 
-	go mainApi.RedirectHTTP(httpPort)
+	go server.RedirectHTTP(httpPort)
 
-	defer mainApi.Server.Close()
+	defer server.Server.Close()
 
-	setupGc()
+	setupGc(server)
 
 	certLoc := os.Getenv("CERT_LOC")
 	keyLoc := os.Getenv("CERT_KEY_LOC")
 
-	println("listening on ", httpsPort, "Cert Locations:", certLoc, keyLoc)
+	util.DebugLog.Println("listening on ", httpsPort, "Cert Locations:", certLoc, keyLoc)
 
-	err := mainApi.Server.ListenAndServeTLS(certLoc, keyLoc)
+	err := server.Server.ListenAndServeTLS(certLoc, keyLoc)
 	if err != nil {
-		fmt.Printf("LISTEN AND SERVE ERROR: %s", err.Error())
+		util.DebugLog.Println("LISTEN AND SERVE ERROR: ", err.Error())
 		return
 	}
-
 }

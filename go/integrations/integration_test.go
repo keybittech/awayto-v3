@@ -1,7 +1,9 @@
 package main
 
 import (
+	"crypto/rsa"
 	"fmt"
+	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -9,8 +11,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
+
+var publicKey *rsa.PublicKey
 
 type TestUser struct {
 	TestUserId  int
@@ -46,8 +51,28 @@ func reset(b *testing.B) {
 }
 
 func TestMain(m *testing.M) {
-	cmd := exec.Command(filepath.Join("..", os.Getenv("BINARY_NAME")))
+	kc := &clients.KeycloakClient{
+		Server: os.Getenv("KC_INTERNAL"),
+		Realm:  os.Getenv("KC_REALM"),
+	}
+
+	oidcToken, err := kc.DirectGrantAuthentication()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	kc.Token = oidcToken
+
+	pk, err := kc.FetchPublicKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	publicKey = pk
+
+	cmd := exec.Command(filepath.Join("../" + os.Getenv("BINARY_NAME")))
 	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
 
 	if err := cmd.Start(); err != nil {
@@ -59,8 +84,6 @@ func TestMain(m *testing.M) {
 
 	code := m.Run()
 
-	time.Sleep(2 * time.Second)
-
 	if err := cmd.Process.Kill(); err != nil {
 		fmt.Println("Failed to close server:", err)
 	}
@@ -69,6 +92,14 @@ func TestMain(m *testing.M) {
 }
 
 func TestIntegrations(t *testing.T) {
+	defer func() {
+		for _, user := range integrationTest.TestUsers {
+			if conn, ok := integrationTest.Connections[user.UserSession.UserSub]; ok {
+				fmt.Println("disconnecting ", user.UserSession.UserSub)
+				conn.Close()
+			}
+		}
+	}()
 	testIntegrationUser(t)
 	testIntegrationGroup(t)
 	testIntegrationRoles(t)
@@ -80,4 +111,7 @@ func TestIntegrations(t *testing.T) {
 	testIntegrationUserSchedule(t)
 	testIntegrationQuotes(t)
 	testIntegrationBookings(t)
+	if t.Failed() {
+		t.FailNow()
+	}
 }

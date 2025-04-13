@@ -8,6 +8,15 @@ import (
 	"os"
 )
 
+var (
+	LoggingMode = flag.String("log", "", "Debug mode")
+	AccessLog   *CustomLogger
+	AuthLog     *CustomLogger
+	DebugLog    *CustomLogger
+	ErrorLog    *CustomLogger
+	SockLog     *CustomLogger
+)
+
 type CustomLogger struct {
 	Logger *log.Logger
 }
@@ -20,7 +29,7 @@ func (e *CustomLogger) Println(v ...any) {
 	e.Logger.Println(v...)
 
 	if *LoggingMode == "debug" {
-		println(fmt.Sprintf("DEBUG: %v", fmt.Sprint(v...)))
+		fmt.Println("DEBUG:", fmt.Sprint(v...))
 		DebugLog.Logger.Printf("DEBUG: %v\n", fmt.Sprint(v...))
 	}
 }
@@ -40,15 +49,6 @@ func makeLogger(prop string) *CustomLogger {
 
 	return &CustomLogger{log.New(logFile, "", log.Ldate|log.Ltime)}
 }
-
-var (
-	LoggingMode = flag.String("log", "", "Debug mode")
-	AccessLog   *CustomLogger
-	AuthLog     *CustomLogger
-	DebugLog    *CustomLogger
-	ErrorLog    *CustomLogger
-	SockLog     *CustomLogger
-)
 
 func init() {
 	if LoggingMode == nil || *LoggingMode == "" {
