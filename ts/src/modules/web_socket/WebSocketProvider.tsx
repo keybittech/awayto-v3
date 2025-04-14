@@ -182,7 +182,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       }
     }
     window.onfocus = () => {
-      if (socket.current && socket.current.readyState != socket.current.CLOSED && 'blurred' == localstorage.getitem('oncall')) {
+      if (socket.current && socket.current.readyState != socket.current.CLOSED && 'blurred' == localStorage.getitem('oncall')) {
         localStorage.setItem('oncall', 'true');
       }
     }
