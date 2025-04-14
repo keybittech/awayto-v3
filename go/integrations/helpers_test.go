@@ -455,6 +455,23 @@ func getMasterScheduleById(token, groupScheduleId string) (*types.IGroupSchedule
 	return getMasterScheduleByIdResponse.GroupSchedule, nil
 }
 
+func getDateSlots(token, masterScheduleId string) ([]*types.IGroupScheduleDateSlots, error) {
+	now := time.Now()
+	firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Format("2006-01-02")
+	dateSlotsUrl := "/api/v1/group/schedules/" + masterScheduleId + "/date/" + firstOfMonth
+	dateSlotsResponse := &types.GetGroupScheduleByDateResponse{}
+	err := apiRequest(token, http.MethodGet, dateSlotsUrl, nil, nil, dateSlotsResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error get group date slots request, error: %v", err))
+	}
+
+	if len(dateSlotsResponse.GroupScheduleDateSlots) == 0 {
+		return nil, errors.New(fmt.Sprintf("no date slots available to schedule %v", dateSlotsResponse))
+	}
+
+	return dateSlotsResponse.GroupScheduleDateSlots, nil
+}
+
 func getQuoteById(token, quoteId string) (*types.IQuote, error) {
 	getQuoteByIdResponse := &types.GetQuoteByIdResponse{}
 	err := apiRequest(token, http.MethodGet, "/api/v1/quotes/"+quoteId, nil, nil, getQuoteByIdResponse)
@@ -530,6 +547,22 @@ func postSchedule(token string, scheduleRequest *types.PostScheduleRequest) (*ty
 	}
 
 	return getScheduleById(token, scheduleResponse.Id)
+}
+
+func postGroupSchedule(token, scheduleId string) error {
+	scheduleRequestBytes, err := protojson.Marshal(&types.PostGroupScheduleRequest{
+		ScheduleId: scheduleId,
+	})
+	if err != nil {
+		return errors.New(fmt.Sprintf("error marshalling group schedule request: %v", err))
+	}
+
+	err = apiRequest(token, http.MethodPost, "/api/v1/group/schedules", scheduleRequestBytes, nil, nil)
+	if err != nil {
+		return errors.New(fmt.Sprintf("error post group schedule request error: %v", err))
+	}
+
+	return nil
 }
 
 func postQuote(token, serviceTierId string, slot *types.IGroupScheduleDateSlots, serviceForm, tierForm *types.IProtoFormVersionSubmission) (*types.IQuote, error) {

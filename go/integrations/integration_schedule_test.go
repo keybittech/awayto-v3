@@ -25,7 +25,6 @@ func testIntegrationSchedule(t *testing.T) {
 	}
 
 	t.Run("admin can get lookups and generate a schedule", func(t *testing.T) {
-
 		integrationTest.MasterSchedule = &types.ISchedule{
 			Name:         name + " Master",
 			Timezone:     timezone,
@@ -58,7 +57,7 @@ func testIntegrationSchedule(t *testing.T) {
 		}
 	})
 
-	t.Run("master schedule can be created", func(t *testing.T) {
+	t.Run("master schedule can be created and attached to the group", func(t *testing.T) {
 		schedule, err := postSchedule(admin.TestToken, &types.PostScheduleRequest{
 			AsGroup:            true,
 			Name:               name + " Master Creation Test",
@@ -76,6 +75,20 @@ func testIntegrationSchedule(t *testing.T) {
 			t.Error("master schedule id is not uuid")
 		}
 
-		integrationTest.Schedules = append(integrationTest.Schedules, schedule)
+		err = postGroupSchedule(admin.TestToken, schedule.Id)
+		if err != nil {
+			t.Errorf("master schedule creation attach group err: %v", err)
+		}
+
+		groupMasterSchedule, err := getMasterScheduleById(admin.TestToken, schedule.Id)
+		if err != nil {
+			t.Errorf("master schedule creation err: %v", err)
+		}
+		if groupMasterSchedule.Schedule.Id == "" {
+			t.Errorf("no master schedule > schedule id: %v", groupMasterSchedule.Schedule)
+		}
+
+		integrationTest.MasterSchedules = append(integrationTest.MasterSchedules, groupMasterSchedule.Schedule)
+		integrationTest.GroupSchedules = append(integrationTest.GroupSchedules, groupMasterSchedule)
 	})
 }

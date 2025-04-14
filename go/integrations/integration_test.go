@@ -30,19 +30,23 @@ type TestUser struct {
 }
 
 type IntegrationTest struct {
-	TestUsers      map[int]*TestUser
-	Connections    map[string]net.Conn
-	Roles          map[string]*types.IRole
-	MemberRole     *types.IRole
-	StaffRole      *types.IRole
-	Group          *types.IGroup
-	MasterService  *types.IService
-	GroupService   *types.IGroupService
-	MasterSchedule *types.ISchedule
-	Schedules      []*types.ISchedule
-	GroupSchedule  *types.IGroupSchedule
-	UserSchedule   *types.ISchedule
-	DateSlots      []*types.IGroupScheduleDateSlots
+	TestUsers       map[int]*TestUser
+	Connections     map[string]net.Conn
+	Roles           map[string]*types.IRole
+	MemberRole      *types.IRole
+	StaffRole       *types.IRole
+	Group           *types.IGroup
+	MasterService   *types.IService
+	GroupService    *types.IGroupService
+	MasterSchedule  *types.ISchedule
+	MasterSchedules []*types.ISchedule
+	GroupSchedule   *types.IGroupSchedule
+	GroupSchedules  []*types.IGroupSchedule
+	UserSchedule    *types.ISchedule
+	UserSchedules   []*types.ISchedule
+	DateSlots       []*types.IGroupScheduleDateSlots
+	Quotes          []*types.IQuote
+	Bookings        []*types.IBooking
 }
 
 var integrationTest = &IntegrationTest{}

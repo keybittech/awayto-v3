@@ -21,20 +21,11 @@ func testIntegrationQuotes(t *testing.T) {
 	member3.Quotes = make([]*types.IQuote, 10)
 
 	t.Run("date slots are retrieved prior to getting a quote", func(t *testing.T) {
-		now := time.Now()
-		firstOfMonth := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, now.Location()).Format("2006-01-02")
-		dateSlotsUrl := "/api/v1/group/schedules/" + integrationTest.MasterSchedule.Id + "/date/" + firstOfMonth
-		dateSlotsResponse := &types.GetGroupScheduleByDateResponse{}
-		err := apiRequest(admin.TestToken, http.MethodGet, dateSlotsUrl, nil, nil, dateSlotsResponse)
+		var err error
+		integrationTest.DateSlots, err = getDateSlots(admin.TestToken, integrationTest.MasterSchedule.Id)
 		if err != nil {
-			t.Errorf("error get group date slots request, error: %v", err)
+			t.Errorf("date slot retrieval error: %v", err)
 		}
-
-		if len(dateSlotsResponse.GroupScheduleDateSlots) == 0 {
-			t.Errorf("no date slots available to schedule %v", dateSlotsResponse)
-		}
-
-		integrationTest.DateSlots = dateSlotsResponse.GroupScheduleDateSlots
 	})
 
 	var serviceTierId string
@@ -74,6 +65,9 @@ func testIntegrationQuotes(t *testing.T) {
 	})
 
 	t.Run("multiple users can request the same slot", func(t *testing.T) {
+		if len(integrationTest.DateSlots) < 2 {
+			t.Errorf("date slots wrong len, expected 2, got: %d", len(integrationTest.DateSlots))
+		}
 		for i := range 2 {
 			bracketSlot := integrationTest.DateSlots[i]
 
@@ -105,6 +99,28 @@ func testIntegrationQuotes(t *testing.T) {
 				}
 
 				member.Quotes[i] = quote
+			}
+		}
+	})
+
+	t.Run("secondary quote creation", func(t *testing.T) {
+		dateSlots, err := getDateSlots(admin.TestToken, integrationTest.MasterSchedules[0].Id)
+		if err != nil {
+			t.Errorf("date slot retrieval error: %v", err)
+		}
+		if len(dateSlots) < 2 {
+			t.Errorf("secondary date slots wrong len, wanted 2, got %d", len(dateSlots))
+		}
+		for i := range 2 {
+			bracketSlot := dateSlots[i]
+
+			for _, member := range []*TestUser{member1, member2, member3} {
+				quote, err := postQuote(member.TestToken, serviceTierId, bracketSlot, nil, nil)
+				if err != nil {
+					t.Errorf("secondary request quote error: %v", err)
+				}
+
+				integrationTest.Quotes = append(integrationTest.Quotes, quote)
 			}
 		}
 	})
