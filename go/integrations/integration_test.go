@@ -24,7 +24,8 @@ type TestUser struct {
 	TestTicket  string
 	TestConnId  string
 	UserSession *types.UserSession
-	Quote       *types.IQuote
+	Quotes      []*types.IQuote
+	Bookings    []*types.IBooking
 }
 
 type IntegrationTest struct {
@@ -39,8 +40,6 @@ type IntegrationTest struct {
 	MasterSchedule *types.ISchedule
 	GroupSchedule  *types.IGroupSchedule
 	UserSchedule   *types.ISchedule
-	Quote          *types.IQuote
-	Booking        *types.IBooking
 	DateSlots      []*types.IGroupScheduleDateSlots
 }
 

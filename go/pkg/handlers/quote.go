@@ -12,20 +12,15 @@ import (
 )
 
 func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *types.UserSession, tx *sql.Tx) (*types.PostQuoteResponse, error) {
-
-	var slotTaken bool
+	var slotReserved bool
 	err := tx.QueryRow(`
-		SELECT EXISTS (
-			SELECT 1 FROM dbtable_schema.bookings
-			WHERE schedule_bracket_slot_id = $1
-			AND DATE_TRUNC('week', slot_date::DATE) = DATE_TRUNC('week', $2::DATE)
-		)
-	`, data.ScheduleBracketSlotId, data.SlotDate).Scan(&slotTaken)
+		SELECT dbfunc_schema.is_slot_taken($1, $2)
+	`, data.ScheduleBracketSlotId, data.SlotDate).Scan(&slotReserved)
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
-	if slotTaken {
+	if slotReserved {
 		return nil, util.ErrCheck(util.UserError("The selected time has already been taken. Please select a new time."))
 	}
 
@@ -93,13 +88,15 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.PostQuoteResponse{Quote: &types.IQuote{
-		Id:                             quoteId,
-		SlotDate:                       data.SlotDate,
-		ScheduleBracketSlotId:          data.ScheduleBracketSlotId,
-		ServiceFormVersionSubmissionId: serviceForm.GetId(),
-		TierFormVersionSubmissionId:    tierForm.GetId(),
-	}}, nil
+	return &types.PostQuoteResponse{
+		Quote: &types.IQuote{
+			Id:                             quoteId,
+			SlotDate:                       data.SlotDate,
+			ScheduleBracketSlotId:          data.ScheduleBracketSlotId,
+			ServiceFormVersionSubmissionId: serviceForm.GetId(),
+			TierFormVersionSubmissionId:    tierForm.GetId(),
+		},
+	}, nil
 }
 
 func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *types.PatchQuoteRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchQuoteResponse, error) {

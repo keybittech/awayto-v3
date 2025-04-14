@@ -170,4 +170,14 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   END;
   \$\$ LANGUAGE PLPGSQL;
 
+  CREATE FUNCTION dbfunc_schema.is_slot_taken(p_slot_id uuid, p_date date) 
+  RETURNS boolean AS \$\$
+  BEGIN
+    RETURN EXISTS (
+      SELECT 1 FROM dbtable_schema.bookings
+      WHERE schedule_bracket_slot_id = p_slot_id 
+      AND slot_date = p_date
+    );
+  END;
+  \$\$ LANGUAGE plpgsql SECURITY DEFINER;
 EOSQL

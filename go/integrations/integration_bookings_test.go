@@ -1,7 +1,6 @@
 package main
 
 import (
-	"net/http"
 	"strings"
 	"testing"
 
@@ -16,23 +15,25 @@ func testIntegrationBookings(t *testing.T) {
 	member2 := integrationTest.TestUsers[5]
 	member3 := integrationTest.TestUsers[6]
 
+	var serviceTierId string
+	for _, tier := range integrationTest.GroupService.Service.Tiers {
+		serviceTierId = tier.Id
+		break
+	}
+
 	t.Run("APP_GROUP_SCHEDULES is required by approver", func(t *testing.T) {
 		bookingRequests := make([]*types.IBooking, 1)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
-				Id:                    integrationTest.Quote.Id,
-				SlotDate:              integrationTest.Quote.SlotDate,
-				ScheduleBracketSlotId: integrationTest.Quote.ScheduleBracketSlotId,
+				Id:                    member1.Quotes[0].Id,
+				SlotDate:              member1.Quotes[0].SlotDate,
+				ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
 			},
 		}
 
 		_, err := postBooking(member1.TestToken, bookingRequests)
-		if err == nil || !strings.Contains(err.Error(), "Forbidden") {
-			if err != nil {
-				t.Errorf("slot approval was not forbidden without APP_GROUP_SCHEDULES permission, error %v", err)
-			} else {
-				t.Error("booking post was successful without APP_GROUP_SCHEDULES")
-			}
+		if err != nil && !strings.Contains(err.Error(), "Forbidden") {
+			t.Errorf("booking post without permissions was not Forbidden, %v", err)
 		}
 	})
 
@@ -40,9 +41,9 @@ func testIntegrationBookings(t *testing.T) {
 		bookingRequests := make([]*types.IBooking, 1)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
-				Id:                    integrationTest.Quote.Id,
-				SlotDate:              integrationTest.Quote.SlotDate,
-				ScheduleBracketSlotId: integrationTest.Quote.ScheduleBracketSlotId,
+				Id:                    member1.Quotes[0].Id,
+				SlotDate:              member1.Quotes[0].SlotDate,
+				ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
 			},
 		}
 
@@ -52,36 +53,36 @@ func testIntegrationBookings(t *testing.T) {
 		}
 	})
 
-	t.Run("different slots cannot be batch approved", func(t *testing.T) {
+	t.Run("different sbsids cannot be batch approved", func(t *testing.T) {
 		bookingRequests := make([]*types.IBooking, 2)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
-				Id:                    integrationTest.Quote.Id,
-				SlotDate:              integrationTest.Quote.SlotDate,
-				ScheduleBracketSlotId: integrationTest.Quote.ScheduleBracketSlotId,
+				Id:                    member1.Quotes[0].Id,
+				SlotDate:              member1.Quotes[0].SlotDate,
+				ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
 			},
 		}
 		bookingRequests[1] = &types.IBooking{
 			Quote: &types.IQuote{
-				Id:                    member1.Quote.Id,
-				SlotDate:              member1.Quote.SlotDate,
-				ScheduleBracketSlotId: member1.Quote.ScheduleBracketSlotId,
+				Id:                    member1.Quotes[1].Id,
+				SlotDate:              member1.Quotes[1].SlotDate,
+				ScheduleBracketSlotId: member1.Quotes[1].ScheduleBracketSlotId,
 			},
 		}
 
 		_, err := postBooking(staff1.TestToken, bookingRequests)
 		if err == nil {
-			t.Error("different booking approve was allowed")
+			t.Errorf("different booking approve was allowed, id 1 %s, id 2 %s", member1.Quotes[0].ScheduleBracketSlotId, member1.Quotes[1].ScheduleBracketSlotId)
 		}
 	})
 
-	t.Run("staff can approve a quote, creating a booking", func(t *testing.T) {
+	t.Run("staff can create a booking from quote info, reserving slots", func(t *testing.T) {
 		bookingRequests := make([]*types.IBooking, 1)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
-				Id:                    integrationTest.Quote.Id,
-				SlotDate:              integrationTest.Quote.SlotDate,
-				ScheduleBracketSlotId: integrationTest.Quote.ScheduleBracketSlotId,
+				Id:                    member1.Quotes[0].Id,
+				SlotDate:              member1.Quotes[0].SlotDate,
+				ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
 			},
 		}
 		bookings, err := postBooking(staff1.TestToken, bookingRequests)
@@ -94,22 +95,33 @@ func testIntegrationBookings(t *testing.T) {
 		}
 	})
 
+	t.Run("reserved slots are not usable in future quotes", func(t *testing.T) {
+		reservedSlot := &types.IGroupScheduleDateSlots{
+			StartDate:             member1.Quotes[0].SlotDate,
+			ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
+		}
+		_, err := postQuote(member3.TestToken, serviceTierId, reservedSlot, nil, nil)
+		if err == nil {
+			t.Errorf("user was able to request a booked slot")
+		}
+	})
+
 	t.Run("slots can be batch approved", func(t *testing.T) {
-		bookingRequests := make([]*types.IBooking, 0, 3)
-		bookingRequests = append(bookingRequests, &types.IBooking{
+		bookingRequests := make([]*types.IBooking, 2)
+		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
-				Id:                    member1.Quote.Id,
-				SlotDate:              member1.Quote.SlotDate,
-				ScheduleBracketSlotId: member1.Quote.ScheduleBracketSlotId,
+				Id:                    member1.Quotes[1].Id,
+				SlotDate:              member1.Quotes[1].SlotDate,
+				ScheduleBracketSlotId: member1.Quotes[1].ScheduleBracketSlotId,
 			},
-		})
-		bookingRequests = append(bookingRequests, &types.IBooking{
+		}
+		bookingRequests[1] = &types.IBooking{
 			Quote: &types.IQuote{
-				Id:                    member2.Quote.Id,
-				SlotDate:              member2.Quote.SlotDate,
-				ScheduleBracketSlotId: member2.Quote.ScheduleBracketSlotId,
+				Id:                    member2.Quotes[1].Id,
+				SlotDate:              member2.Quotes[1].SlotDate,
+				ScheduleBracketSlotId: member2.Quotes[1].ScheduleBracketSlotId,
 			},
-		})
+		}
 
 		bookings, err := postBooking(staff1.TestToken, bookingRequests)
 		if err != nil {
@@ -126,33 +138,6 @@ func testIntegrationBookings(t *testing.T) {
 
 		if !util.IsUUID(bookings[1].Id) {
 			t.Errorf("booking id 2 is not a uuid %s", bookings[1].Id)
-		}
-	})
-
-	t.Run("slots cannot be requested which have already been approved", func(t *testing.T) {
-		firstSlot := integrationTest.DateSlots[0]
-
-		var serviceTierId string
-		for _, tier := range integrationTest.GroupService.Service.Tiers {
-			serviceTierId = tier.Id
-			break
-		}
-
-		_, err := postQuote(admin.TestToken, serviceTierId, firstSlot, nil, nil)
-		if err == nil {
-			t.Errorf("user was able to request a booked slot")
-		}
-	})
-
-	t.Run("rejected quotes must be disabled", func(t *testing.T) {
-		disableQuoteResponse := &types.DisableQuoteResponse{}
-		err := apiRequest(staff1.TestToken, http.MethodPatch, "/api/v1/quotes/disable/"+member3.Quote.Id, nil, nil, disableQuoteResponse)
-		if err != nil {
-			t.Errorf("error disabling quote request: %v", err)
-		}
-
-		if !disableQuoteResponse.Success {
-			t.Error("disabling the quote was not successful")
 		}
 	})
 

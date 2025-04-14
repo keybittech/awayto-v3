@@ -462,6 +462,19 @@ func getMasterScheduleById(token, groupScheduleId string) (*types.IGroupSchedule
 	return getMasterScheduleByIdResponse.GroupSchedule, nil
 }
 
+func getQuoteById(token, quoteId string) (*types.IQuote, error) {
+	getQuoteByIdResponse := &types.GetQuoteByIdResponse{}
+	err := apiRequest(token, http.MethodGet, "/api/v1/quotes/"+quoteId, nil, nil, getQuoteByIdResponse)
+	if err != nil {
+		return nil, errors.New(fmt.Sprintf("error get quote by id error: %v", err))
+	}
+	if getQuoteByIdResponse.Quote.Id == "" {
+		return nil, errors.New("get quote by id response has no id")
+	}
+
+	return getQuoteByIdResponse.Quote, nil
+}
+
 func patchGroupUser(token, userSub, roleId string) error {
 	patchGroupUserRequestBytes, err := protojson.Marshal(&types.PatchGroupUserRequest{
 		UserSub: userSub,

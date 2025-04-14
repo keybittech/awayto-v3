@@ -11,10 +11,14 @@ import (
 
 func testIntegrationQuotes(t *testing.T) {
 	admin := integrationTest.TestUsers[0]
+	staff1 := integrationTest.TestUsers[1]
 	staff2 := integrationTest.TestUsers[2]
 	member1 := integrationTest.TestUsers[4]
+	member1.Quotes = make([]*types.IQuote, 10)
 	member2 := integrationTest.TestUsers[5]
+	member2.Quotes = make([]*types.IQuote, 10)
 	member3 := integrationTest.TestUsers[6]
+	member3.Quotes = make([]*types.IQuote, 10)
 
 	t.Run("date slots are retrieved prior to getting a quote", func(t *testing.T) {
 		now := time.Now()
@@ -33,9 +37,6 @@ func testIntegrationQuotes(t *testing.T) {
 		integrationTest.DateSlots = dateSlotsResponse.GroupScheduleDateSlots
 	})
 
-	firstSlot := integrationTest.DateSlots[0]
-	secondSlot := integrationTest.DateSlots[1]
-
 	var serviceTierId string
 	for _, tier := range integrationTest.GroupService.Service.Tiers {
 		serviceTierId = tier.Id
@@ -43,38 +44,67 @@ func testIntegrationQuotes(t *testing.T) {
 	}
 
 	t.Run("APP_GROUP_BOOKINGS is required to request quote", func(t *testing.T) {
+		firstSlot := integrationTest.DateSlots[0]
 		_, err := postQuote(staff2.TestToken, serviceTierId, firstSlot, nil, nil)
 		if err == nil {
 			t.Error("user created quote without APP_GROUP_BOOKINGS permissions")
 		}
 
-		integrationTest.Quote, err = postQuote(admin.TestToken, serviceTierId, firstSlot, nil, nil)
+		quote, err := postQuote(member1.TestToken, serviceTierId, firstSlot, nil, nil)
 		if err != nil {
 			t.Errorf("user can request quote error: %v", err)
 		} else {
-			t.Logf("quote created with id %s", integrationTest.Quote.Id)
+			t.Logf("quote created with id %s", quote.Id)
 		}
+
+		member1.Quotes[0] = quote
+	})
+
+	t.Run("APP_GROUP_SCHEDULES is required to disable a quote", func(t *testing.T) {
+		disableQuoteResponse := &types.DisableQuoteResponse{}
+		err := apiRequest(staff1.TestToken, http.MethodPatch, "/api/v1/quotes/disable/"+member1.Quotes[0].Id, nil, nil, disableQuoteResponse)
+		if err != nil {
+			t.Errorf("error disabling quote request: %v", err)
+		}
+
+		if !disableQuoteResponse.Success {
+			t.Error("disabling the quote was not successful")
+		}
+		member1.Quotes[0] = nil
 	})
 
 	t.Run("multiple users can request the same slot", func(t *testing.T) {
-		for _, member := range []*TestUser{member1, member2, member3} {
-			var err error
-			member.Quote, err = postQuote(member.TestToken, serviceTierId, secondSlot, nil, nil)
-			if err != nil {
-				t.Errorf("multiple users %d can request quote error: %v", member.TestUserId, err)
-			}
+		for i := range 2 {
+			bracketSlot := integrationTest.DateSlots[i]
 
-			if !util.IsUUID(member.Quote.Id) {
-				t.Errorf("user #%d quote id invalid %s", member.TestUserId, member.Quote.Id)
-			}
+			for _, member := range []*TestUser{member1, member2, member3} {
+				quote, err := postQuote(member.TestToken, serviceTierId, bracketSlot, nil, nil)
+				if err != nil {
+					t.Errorf("multiple users %d can request quote error: %v", member.TestUserId, err)
+				}
 
-			_, err = time.Parse("2006-01-02", member.Quote.SlotDate)
-			if err != nil {
-				t.Errorf("user %d quote slot date invalid %s", member.TestUserId, member.Quote.SlotDate)
-			}
+				if !util.IsUUID(quote.Id) {
+					t.Errorf("user #%d quote id invalid %s", member.TestUserId, quote.Id)
+				}
 
-			if !util.IsUUID(member.Quote.ScheduleBracketSlotId) {
-				t.Errorf("user %d quote sbs id invalid %s", member.TestUserId, member.Quote.SlotDate)
+				// Staff can see the quote info
+				if _, err := getQuoteById(staff1.TestToken, quote.Id); err != nil {
+					t.Errorf("user #%d quote id %s bad get %v", member.TestUserId, quote.Id, err)
+				}
+
+				if _, err := time.Parse("2006-01-02", quote.SlotDate); err != nil {
+					t.Errorf("user %d quote %d slot date invalid %s", member.TestUserId, i, quote.SlotDate)
+				}
+
+				if !util.IsUUID(quote.ScheduleBracketSlotId) {
+					t.Errorf("user %d quote %d sbs id invalid %s", member.TestUserId, i, quote.SlotDate)
+				}
+
+				if quote.ScheduleBracketSlotId != bracketSlot.ScheduleBracketSlotId {
+					t.Errorf("user %d quote %d sbs id %s doesn't match requested slot id %s", member.TestUserId, i, quote.SlotDate, bracketSlot.ScheduleBracketSlotId)
+				}
+
+				member.Quotes[i] = quote
 			}
 		}
 	})
