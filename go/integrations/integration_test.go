@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -71,6 +72,9 @@ func TestMain(m *testing.M) {
 	publicKey = pk
 
 	cmd := exec.Command(filepath.Join("../" + os.Getenv("BINARY_NAME")))
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	cmd.Stdin = os.Stdin
@@ -92,14 +96,6 @@ func TestMain(m *testing.M) {
 }
 
 func TestIntegrations(t *testing.T) {
-	defer func() {
-		for _, user := range integrationTest.TestUsers {
-			if conn, ok := integrationTest.Connections[user.UserSession.UserSub]; ok {
-				fmt.Println("disconnecting ", user.UserSession.UserSub)
-				conn.Close()
-			}
-		}
-	}()
 	testIntegrationUser(t)
 	testIntegrationGroup(t)
 	testIntegrationRoles(t)
@@ -111,7 +107,4 @@ func TestIntegrations(t *testing.T) {
 	testIntegrationUserSchedule(t)
 	testIntegrationQuotes(t)
 	testIntegrationBookings(t)
-	if t.Failed() {
-		t.FailNow()
-	}
 }
