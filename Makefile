@@ -324,6 +324,10 @@ go_test_integration_long: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
 	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ./...
 
+.PHONY: go_test_integration_results
+go_test_integration_results:
+	less $(GO_INTEGRATIONS_DIR)/integration_results.json
+
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true

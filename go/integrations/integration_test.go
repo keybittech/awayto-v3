@@ -2,6 +2,7 @@ package main
 
 import (
 	"crypto/rsa"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
@@ -38,6 +39,7 @@ type IntegrationTest struct {
 	MasterService  *types.IService
 	GroupService   *types.IGroupService
 	MasterSchedule *types.ISchedule
+	Schedules      []*types.ISchedule
 	GroupSchedule  *types.IGroupSchedule
 	UserSchedule   *types.ISchedule
 	DateSlots      []*types.IGroupScheduleDateSlots
@@ -86,6 +88,9 @@ func TestMain(m *testing.M) {
 	time.Sleep(2 * time.Second)
 
 	code := m.Run()
+
+	jsonBytes, _ := json.MarshalIndent(integrationTest, "", "  ")
+	os.WriteFile("integration_results.json", jsonBytes, 0600)
 
 	if err := cmd.Process.Kill(); err != nil {
 		fmt.Println("Failed to close server:", err)
