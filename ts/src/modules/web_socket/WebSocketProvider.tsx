@@ -132,7 +132,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       };
 
       ws.onerror = (error) => {
-        if (socket.current?.readyState == socket.current?.CLOSED) {
+        if ('true' == localStorage.getItem('oncall') && socket.current?.readyState == socket.current?.CLOSED) {
           // setSnack({ snackOn: 'trying to reconnect an already closed socket', snackType: 'warning' });
           localStorage.removeItem('oncall');
           connect();
@@ -182,7 +182,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       }
     }
     window.onfocus = () => {
-      if (socket.current && socket.current.readyState != socket.current.CLOSED && 'blurred' == localStorage.getItem('oncall')) {
+      if (socket.current && socket.current.readyState != socket.current.CLOSED && 'blurred' == localstorage.getitem('oncall')) {
         localStorage.setItem('oncall', 'true');
       }
     }
