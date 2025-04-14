@@ -77,6 +77,4 @@ func testIntegrationService(t *testing.T) {
 			Tiers: tiers,
 		}
 	})
-
-	failCheck(t)
 }

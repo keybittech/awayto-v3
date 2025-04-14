@@ -77,8 +77,5 @@ func testIntegrationSchedule(t *testing.T) {
 		}
 
 		integrationTest.Schedules = append(integrationTest.Schedules, schedule)
-		t.Logf("CREATE MASTER SCHEDULE %s", integrationTest.Schedules[0].Id)
 	})
-
-	failCheck(t)
 }

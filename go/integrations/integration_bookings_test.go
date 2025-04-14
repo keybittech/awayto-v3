@@ -148,6 +148,4 @@ func testIntegrationBookings(t *testing.T) {
 	t.Run("master schedules can be deleted, destroying all records", func(t *testing.T) {
 
 	})
-
-	failCheck(t)
 }

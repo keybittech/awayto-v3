@@ -173,6 +173,4 @@ func testIntegrationPromoteUser(t *testing.T) {
 			integrationTest.TestUsers[i+4].UserSession = session
 		}
 	})
-
-	failCheck(t)
 }

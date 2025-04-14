@@ -20,7 +20,6 @@ import (
 	"os"
 	"strconv"
 	"strings"
-	"testing"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
@@ -28,12 +27,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
-
-func failCheck(t *testing.T) {
-	if t.Failed() {
-		t.Logf("Integration Test: %+v", integrationTest)
-	}
-}
 
 func apiRequest(token, method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 	client := &http.Client{

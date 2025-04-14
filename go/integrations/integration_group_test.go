@@ -62,6 +62,4 @@ func testIntegrationGroup(t *testing.T) {
 		admin.TestToken = token
 		admin.UserSession = session
 	})
-
-	failCheck(t)
 }

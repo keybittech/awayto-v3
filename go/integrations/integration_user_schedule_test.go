@@ -77,6 +77,4 @@ func testIntegrationUserSchedule(t *testing.T) {
 
 		integrationTest.UserSchedule = schedule
 	})
-
-	failCheck(t)
 }

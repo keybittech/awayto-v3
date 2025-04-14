@@ -65,6 +65,4 @@ func testIntegrationOnboarding(t *testing.T) {
 
 		integrationTest.GroupSchedule = masterGroupSchedule
 	})
-
-	failCheck(t)
 }

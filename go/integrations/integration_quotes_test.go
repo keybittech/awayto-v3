@@ -108,6 +108,4 @@ func testIntegrationQuotes(t *testing.T) {
 			}
 		}
 	})
-
-	failCheck(t)
 }

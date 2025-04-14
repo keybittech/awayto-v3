@@ -35,6 +35,4 @@ func testIntegrationUser(t *testing.T) {
 
 		t.Logf("created user #%d with email %s sub %s connId %s", 1, session.UserEmail, session.UserSub, connId)
 	})
-
-	failCheck(t)
 }

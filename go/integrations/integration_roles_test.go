@@ -74,6 +74,4 @@ func testIntegrationRoles(t *testing.T) {
 		integrationTest.MemberRole = roles[memberRoleResponse.Id]
 		integrationTest.StaffRole = roles[staffRoleResponse.Id]
 	})
-
-	failCheck(t)
 }

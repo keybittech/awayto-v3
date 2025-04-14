@@ -112,6 +112,4 @@ func testIntegrationJoinGroup(t *testing.T) {
 			t.Logf("user %d has email %s sub %s", c, testUser.UserSession.UserEmail, testUser.UserSession.UserSub)
 		}
 	})
-
-	failCheck(t)
 }
