@@ -457,7 +457,7 @@ func (k *Keycloak) CreateOrGetSubGroup(userSub, groupExternalId, subGroupName st
 
 	var kcSubGroup *types.KeycloakGroup
 
-	if kcCreateSubgroup.Error != nil && strings.Contains(kcCreateSubgroup.Error.Error(), "exists") {
+	if kcCreateSubgroup.Error != nil && (strings.Contains(kcCreateSubgroup.Error.Error(), "exists") || strings.Contains(kcCreateSubgroup.Error.Error(), "Conflict")) {
 		groupSubgroupsReply, err := k.SendCommand(GetGroupSubgroupsKeycloakCommand, &types.AuthRequestParams{
 			UserSub:   userSub,
 			GroupId:   groupExternalId,
@@ -471,6 +471,7 @@ func (k *Keycloak) CreateOrGetSubGroup(userSub, groupExternalId, subGroupName st
 		for _, sg := range groupSubgroupsReply.Groups {
 			if sg.Name == subGroupName {
 				kcSubGroup = sg
+				break
 			}
 		}
 	} else if kcCreateSubgroup.Error != nil || kcCreateSubgroup.Group.Id == "" {
