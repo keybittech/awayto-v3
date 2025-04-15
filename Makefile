@@ -524,6 +524,7 @@ host_metric_cpu:
 .PHONY: host_update
 host_update:
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
+	mkdir -p $(HOST_LOCAL_DIR)/log/db
 
 .PHONY: host_deploy_op
 host_deploy_op: 
