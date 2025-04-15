@@ -362,13 +362,12 @@ test_gen:
 
 .PHONY: install_keycloak
 install_keycloak:
-	@if ! $(DOCKER_DB_EXEC) $(DOCKER_DB_CID) psql -tAc "SELECT 1 FROM pg_database WHERE datname='keycloak'" | grep -q 1; then \
+	@if ! $(DOCKER_DB_EXEC) $(DOCKER_DB_CID) psql -Ac "SELECT 1 FROM pg_database WHERE datname='keycloak'" | grep -q 1; then \
 		echo "Database 'keycloak' not found. Running install script..."; \
 		chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT); \
 	else \
 		echo "Database 'keycloak' already exists. Skipping install script."; \
 	fi
-
 
 .PHONY: docker_up
 docker_up: build
@@ -525,13 +524,13 @@ host_metric_cpu:
 
 .PHONY: host_update
 host_update:
+	sudo install -d -m 660 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_BACKUP_DIR)/db # create db folder before docker up runs in the deploy
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: host_deploy_op
 host_deploy_op: 
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
-	sudo install -d -m 660 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_BACKUP_DIR)/db
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) start.sh /usr/local/bin
