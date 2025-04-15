@@ -69,7 +69,9 @@ TS_CONFIG_API=ts/openapi-config.json
 #################################
 #            BACKUPS            #
 #################################
-DB_BACKUP_DIR=backups/db
+BACKUP_DIR=backups
+DB_BACKUP_DIR=$(BACKUP_DIR)/db
+# LOG_BACKUP_DIR=$(BACKUP_DIR)/log
 DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
 DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
@@ -84,6 +86,7 @@ DEV_SCRIPTS=$(DEPLOY_SCRIPTS)/dev
 DOCKER_SCRIPTS=$(DEPLOY_SCRIPTS)/docker
 DEPLOY_HOST_SCRIPTS=$(DEPLOY_SCRIPTS)/host
 CRON_SCRIPTS=$(DEPLOY_SCRIPTS)/cron
+DOCKER_COMPOSE_SCRIPT=$(DEPLOY_SCRIPTS)/docker/docker-compose.yml
 DEPLOY_SCRIPT=$(DEPLOY_SCRIPTS)/host/deploy.sh
 AUTH_SCRIPTS=$(DEPLOY_SCRIPTS)/auth
 AUTH_INSTALL_SCRIPT=$(AUTH_SCRIPTS)/install.sh
@@ -113,15 +116,19 @@ CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PO
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
 CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
 CURRENT_GO_LOG_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR),${PWD}/$(GO_SRC))
+CURRENT_HOST_LOCAL_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${HOST_LOCAL_DIR},${PWD}/${HOST_LOCAL_DIR})
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)PROJECT_DIR=/s&^.*$$&PROJECT_DIR=$(CURRENT_PROJECT_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)GO_LOG_DIR=/s&^.*$$&GO_LOG_DIR=$(CURRENT_GO_LOG_DIR)&;" $(ENVFILE))
+$(shell sed -i -e "/^\(#\|\)HOST_LOCAL_DIR=/s&^.*$$&HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR)&;" $(ENVFILE))
 
 $(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
 $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
+$(eval GO_LOG_DIR=$(CURRENT_GO_LOG_DIR))
+$(eval HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR))
 
 AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 
@@ -129,7 +136,7 @@ AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 #             FLAGS             #
 #################################
 
-DOCKER_COMPOSE:=compose -f deploy/scripts/docker/docker-compose.yml --env-file $(ENVFILE)
+DOCKER_COMPOSE:=compose -f $(DOCKER_COMPOSE_SCRIPT) --env-file $(ENVFILE)
 RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 GO_DEV_FLAGS=GO_ENVFILE_LOC=${PROJECT_DIR}/.env LOG_LEVEL=debug
 GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1} $${V:-}
@@ -214,7 +221,7 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 
 $(PROTO_MOD_TARGET): working/proto-stamp
 working/proto-stamp: $(wildcard proto/*.proto)
-	@mkdir -p $(@D) $(GO_GEN_DIR)
+	@mkdir -p $(@D) $(@D)/log/db $(GO_GEN_DIR)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
@@ -331,10 +338,10 @@ go_test_integration_results:
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
 	rm $(GO_LOG_DIR)/*.log || true
-	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
-	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
-	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)
-	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_UTIL_DIR)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)
+	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_UTIL_DIR)
 
 .PHONY: go_coverage
 go_coverage: # $(GO_MOCK_TARGET)
@@ -352,17 +359,27 @@ test_gen:
 #            DOCKER             #
 #################################
 
+.PHONY: install_keycloak
+install_keycloak:
+	@if ! $(DOCKER_DB_EXEC) $(DOCKER_DB_CID) psql -tAc "SELECT 1 FROM pg_database WHERE datname='keycloak'" | grep -q 1; then \
+		echo "Database 'keycloak' not found. Running install script..."; \
+		chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT); \
+	else \
+		echo "Database 'keycloak' already exists. Skipping install script."; \
+	fi
+
+
 .PHONY: docker_up
 docker_up: build
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA) || true
 	${SUDO} docker volume create $(REDIS_DATA) || true
 	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build
-	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
-
+	@$(MAKE) install_keycloak
+	
 .PHONY: docker_down
 docker_down:
-	${SUDO} docker $(DOCKER_COMPOSE) down 
+	${SUDO} docker $(DOCKER_COMPOSE) down -v
 	${SUDO} docker volume remove $(PG_DATA) || true
 	${SUDO} docker volume remove $(REDIS_DATA) || true
 
@@ -512,7 +529,7 @@ host_update:
 .PHONY: host_deploy_op
 host_deploy_op: 
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
-	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
+	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) start.sh /usr/local/bin
@@ -532,6 +549,10 @@ host_update_cert_op:
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo certbot certificates
 	sudo systemctl is-active $(BINARY_SERVICE)
+
+# .PHONY: host_rotate_logs
+# host_rotate_logs:
+# 	rsync ${RSYNC_FLAGS} "$(H_SIGN):$(H_REM_DIR)/$(LOG_BACKUP_DIR)/" "$(HOST_LOCAL_DIR)/$(LOG_BACKUP_DIR)/"
 
 #################################
 #            BACKUP             #

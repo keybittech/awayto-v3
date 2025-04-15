@@ -4,7 +4,7 @@ services:
     image: ${DB_IMAGE} 
     networks:
       - host
-    user: "postgres:1000" # secrets are mounted in g 1000
+    user: postgres:1000 # secrets are mounted in g 1000
     build:
       context: ../../../
       dockerfile: ./deploy/scripts/docker/db_Dockerfile
@@ -15,10 +15,12 @@ services:
       - PG_DB=${PG_DB}
       - PG_WORKER=${PG_WORKER}
       - PG_WORKER_PASS_FILE=/run/secrets/pg_worker_pass
+      - POSTGRES_INITDB_ARGS="--data-checksums"
     secrets:
       - pg_pass
       - pg_worker_pass
     volumes: 
+      - ${PROJECT_DIR}/working/log/db:/pglog
       - ${UNIX_SOCK_DIR}:/var/run/postgresql
       - pg_data:/var/lib/postgresql/data
 
@@ -40,7 +42,7 @@ services:
       - redis_data:/data
 
   auth: # 8443 keycloak
-    image: ${AUTH_IMAGE} 
+    image: ${AUTH_IMAGE}
     depends_on:
       - db
     networks: 
@@ -48,14 +50,6 @@ services:
     ports:
       - 8080:8080
       - 8443:8443
-    # deploy:
-    #   resources:
-    #     limits:
-    #       cpus: '1'
-    #       memory: 512M
-    #     reservations:
-    #       cpus: '0.5'
-    #       memory: 256M
     build:
       context: ../../../
       dockerfile: ./deploy/scripts/docker/auth_Dockerfile
@@ -69,7 +63,6 @@ services:
       - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN}
       - KC_BOOTSTRAP_ADMIN_PASSWORD_FILE=/run/secrets/kc_pass
-      # - KC_DB_URL=jdbc:postgresql://db:${PG_PORT}/keycloak
       - KC_DB_URL=jdbc:postgresql:///keycloak?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$$FactoryArg&socketFactoryArg=/unix_sock/.s.PGSQL.5432
       - KC_DB_USERNAME=${PG_WORKER}
       - KC_DB_PASSWORD_FILE=/run/secrets/pg_worker_pass
@@ -80,7 +73,7 @@ services:
       - ${UNIX_SOCK_DIR}:/unix_sock
 
   turn:
-    image: ${TURN_IMAGE} 
+    image: ${TURN_IMAGE}
     networks:
       - host
     build:
