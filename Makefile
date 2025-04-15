@@ -169,7 +169,6 @@ ifeq ($(DEPLOYING),true)
 	sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt
 	sudo chmod 600 ${CERT_LOC} ${CERT_KEY_LOC}
 else
-	mkdir -p $(LOG_BACKUP_DIR)/db # convenience
 	mkdir -p $(@D)
 	chmod 750 $(@D)
 	openssl req -nodes -new -x509 -keyout ${CERT_KEY_LOC} -out ${CERT_LOC} -days 365 -subj "/CN=${APP_HOST_NAME}"
@@ -477,7 +476,6 @@ host_sync_env:
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(H_SIGN):$(H_REM_DIR)"
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 644 java/target/junixsocket-selftest*.jar "$(H_SIGN):$(H_REM_DIR)/java/target"
 	$(SSH) 'run-parts /etc/cron.daily'
-	$(SSH) 'mkdir -p $(LOG_BACKUP_DIR) && sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} $(LOG_BACKUP_DIR)' # create db folder before docker up runs in the deploy
 
 #################################
 #           HOST UTILS          #
@@ -550,10 +548,6 @@ host_update_cert_op:
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo certbot certificates
 	sudo systemctl is-active $(BINARY_SERVICE)
-
-# .PHONY: host_rotate_logs
-# host_rotate_logs:
-# 	rsync ${RSYNC_FLAGS} "$(H_SIGN):$(H_REM_DIR)/$(LOG_BACKUP_DIR)/" "$(HOST_LOCAL_DIR)/$(LOG_BACKUP_DIR)/"
 
 #################################
 #            BACKUP             #
