@@ -477,6 +477,7 @@ host_sync_env:
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(H_SIGN):$(H_REM_DIR)"
 	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 644 java/target/junixsocket-selftest*.jar "$(H_SIGN):$(H_REM_DIR)/java/target"
 	$(SSH) 'run-parts /etc/cron.daily'
+	$(SSH) 'mkdir -p $(LOG_BACKUP_DIR) && sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} $(LOG_BACKUP_DIR)' # create db folder before docker up runs in the deploy
 
 #################################
 #           HOST UTILS          #
@@ -524,7 +525,6 @@ host_metric_cpu:
 
 .PHONY: host_update
 host_update:
-	sudo install -d -m 660 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_BACKUP_DIR)/db # create db folder before docker up runs in the deploy
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: host_deploy_op
