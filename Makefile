@@ -71,7 +71,7 @@ TS_CONFIG_API=ts/openapi-config.json
 #################################
 BACKUP_DIR=backups
 DB_BACKUP_DIR=$(BACKUP_DIR)/db
-# LOG_BACKUP_DIR=$(BACKUP_DIR)/log
+LOG_BACKUP_DIR=working/log
 DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
 DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
@@ -169,6 +169,7 @@ ifeq ($(DEPLOYING),true)
 	sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt
 	sudo chmod 600 ${CERT_LOC} ${CERT_KEY_LOC}
 else
+	mkdir -p $(LOG_BACKUP_DIR)/db # convenience
 	mkdir -p $(@D)
 	chmod 750 $(@D)
 	openssl req -nodes -new -x509 -keyout ${CERT_KEY_LOC} -out ${CERT_LOC} -days 365 -subj "/CN=${APP_HOST_NAME}"
@@ -221,7 +222,7 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 
 $(PROTO_MOD_TARGET): working/proto-stamp
 working/proto-stamp: $(wildcard proto/*.proto)
-	@mkdir -p $(@D) $(@D)/log/db $(GO_GEN_DIR)
+	@mkdir -p $(@D) $(GO_GEN_DIR)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
@@ -530,6 +531,7 @@ host_update:
 host_deploy_op: 
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
+	sudo install -d -m 660 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_BACKUP_DIR)/db
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) start.sh /usr/local/bin
