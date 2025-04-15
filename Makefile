@@ -524,6 +524,7 @@ host_metric_cpu:
 host_update:
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 	sudo install -d -m 640 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(PROJECT_DIR)/working/log/db
+	touch $(PROJECT_DIR)/working/log/db/.created
 
 .PHONY: host_deploy_op
 host_deploy_op: 
