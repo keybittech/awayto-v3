@@ -20,7 +20,7 @@ services:
       - pg_pass
       - pg_worker_pass
     volumes: 
-      - ${PROJECT_DIR}/working/log/db:/pglog
+      - ${PROJECT_DIR}/log:/pglog
       - ${UNIX_SOCK_DIR}:/var/run/postgresql
       - pg_data:/var/lib/postgresql/data
 
