@@ -22,13 +22,13 @@ type CustomLogger struct {
 }
 
 func (e *CustomLogger) Println(v ...any) {
-	if v == nil {
+	if v == nil || e == nil || e.Logger == nil {
 		return
 	}
 
 	e.Logger.Println(v...)
 
-	if *LoggingMode == "debug" {
+	if *LoggingMode == "debug" && DebugLog != nil {
 		fmt.Println("DEBUG:", fmt.Sprint(v...))
 		DebugLog.Logger.Printf("DEBUG: %v\n", fmt.Sprint(v...))
 	}
