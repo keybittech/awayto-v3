@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -253,47 +252,69 @@ func InitKeycloak() *Keycloak {
 		for {
 			select {
 			case _ = <-ticker.C:
-				response, err := k.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
+				_, err := k.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
 					UserSub: "worker",
 				})
-				if err = ChannelError(err, response.Error); err != nil {
-					util.ErrorLog.Println(util.ErrCheck(response.Error))
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
 				}
 			}
 		}
 	}()
 
-	response, err := k.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
-		UserSub: "worker",
-	})
-	if err = ChannelError(err, response.Error); err != nil {
-		log.Fatal(util.ErrCheck(response.Error))
+	connected := false
+	setupTicker := time.NewTicker(5 * time.Second)
+
+	for {
+		select {
+		case <-setupTicker.C:
+			_, err := k.SendCommand(SetKeycloakTokenKeycloakCommand, &types.AuthRequestParams{
+				UserSub: "worker",
+			})
+			if err != nil {
+				util.DebugLog.Println(util.ErrCheck(err))
+				continue
+			}
+
+			_, err = k.SendCommand(SetKeycloakRealmClientsKeycloakCommand, &types.AuthRequestParams{
+				UserSub: "worker",
+			})
+			if err != nil {
+				util.DebugLog.Println(util.ErrCheck(err))
+				continue
+			}
+
+			_, err = k.SendCommand(SetKeycloakRolesKeycloakCommand, &types.AuthRequestParams{
+				UserSub: "worker",
+			})
+			if err != nil {
+				util.DebugLog.Println(util.ErrCheck(err))
+				continue
+			}
+
+			pk, err := kc.FetchPublicKey()
+			if err != nil {
+				util.DebugLog.Println(util.ErrCheck(err))
+				continue
+			}
+
+			kc.PublicKey = pk
+
+			k.Client = kc
+
+			connected = true
+
+		default:
+		}
+
+		if connected {
+			println("Keycloak Init")
+			break
+		}
 	}
 
-	response, err = k.SendCommand(SetKeycloakRealmClientsKeycloakCommand, &types.AuthRequestParams{
-		UserSub: "worker",
-	})
-	if err = ChannelError(err, response.Error); err != nil {
-		log.Fatal(util.ErrCheck(response.Error))
-	}
+	setupTicker.Stop()
 
-	response, err = k.SendCommand(SetKeycloakRolesKeycloakCommand, &types.AuthRequestParams{
-		UserSub: "worker",
-	})
-	if err = ChannelError(err, response.Error); err != nil {
-		log.Fatal(util.ErrCheck(response.Error))
-	}
-
-	pk, err := kc.FetchPublicKey()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	kc.PublicKey = pk
-
-	k.Client = kc
-
-	println("Keycloak Init")
 	return k
 }
 
@@ -322,18 +343,24 @@ func (k *Keycloak) SendCommand(cmdType int32, request *types.AuthRequestParams) 
 		}
 	}
 
-	return SendCommand(k, createCmd)
+	res, err := SendCommand(k, createCmd)
+	err = ChannelError(err, res.Error)
+	if err != nil {
+		return AuthResponse{}, util.ErrCheck(err)
+	}
+
+	return res, nil
 }
 
 func (k *Keycloak) UpdateUser(userSub, id, firstName, lastName string) error {
-	response, err := k.SendCommand(UpdateUserKeycloakCommand, &types.AuthRequestParams{
+	_, err := k.SendCommand(UpdateUserKeycloakCommand, &types.AuthRequestParams{
 		UserSub:   userSub,
 		UserId:    id,
 		FirstName: firstName,
 		LastName:  lastName,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
@@ -345,7 +372,7 @@ func (k *Keycloak) GetGroupAdminRoles(userSub string) ([]*types.KeycloakRole, er
 		UserSub: userSub,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -358,7 +385,7 @@ func (k *Keycloak) GetGroupSiteRoles(userSub, groupId string) ([]*types.ClientRo
 		GroupId: groupId,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -371,7 +398,7 @@ func (k *Keycloak) CreateGroup(userSub, name string) (*types.KeycloakGroup, erro
 		GroupName: name,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -384,7 +411,7 @@ func (k *Keycloak) GetGroup(userSub, id string) (*types.KeycloakGroup, error) {
 		GroupId: id,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -397,7 +424,7 @@ func (k *Keycloak) GetGroupByName(userSub, name string) ([]*types.KeycloakGroup,
 		GroupName: name,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -410,7 +437,7 @@ func (k *Keycloak) GetGroupSubgroups(userSub, groupId string) ([]*types.Keycloak
 		GroupId: groupId,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -418,12 +445,12 @@ func (k *Keycloak) GetGroupSubgroups(userSub, groupId string) ([]*types.Keycloak
 }
 
 func (k *Keycloak) DeleteGroup(userSub, id string) error {
-	response, err := k.SendCommand(DeleteGroupKeycloakCommand, &types.AuthRequestParams{
+	_, err := k.SendCommand(DeleteGroupKeycloakCommand, &types.AuthRequestParams{
 		UserSub: userSub,
 		GroupId: id,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
@@ -431,13 +458,13 @@ func (k *Keycloak) DeleteGroup(userSub, id string) error {
 }
 
 func (k *Keycloak) UpdateGroup(userSub, id, name string) error {
-	response, err := k.SendCommand(UpdateGroupKeycloakCommand, &types.AuthRequestParams{
+	_, err := k.SendCommand(UpdateGroupKeycloakCommand, &types.AuthRequestParams{
 		UserSub:   userSub,
 		GroupId:   id,
 		GroupName: name,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
@@ -463,8 +490,7 @@ func (k *Keycloak) CreateOrGetSubGroup(userSub, groupExternalId, subGroupName st
 			GroupId:   groupExternalId,
 			GroupName: subGroupName,
 		})
-
-		if err = ChannelError(err, groupSubgroupsReply.Error); err != nil {
+		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
@@ -484,13 +510,13 @@ func (k *Keycloak) CreateOrGetSubGroup(userSub, groupExternalId, subGroupName st
 }
 
 func (k *Keycloak) AddRolesToGroup(userSub, id string, roles []*types.KeycloakRole) error {
-	response, err := k.SendCommand(AddRolesToGroupKeycloakCommand, &types.AuthRequestParams{
+	_, err := k.SendCommand(AddRolesToGroupKeycloakCommand, &types.AuthRequestParams{
 		UserSub: userSub,
 		GroupId: id,
 		Roles:   roles,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
@@ -498,13 +524,13 @@ func (k *Keycloak) AddRolesToGroup(userSub, id string, roles []*types.KeycloakRo
 }
 
 func (k *Keycloak) AddUserToGroup(userSub, joiningUserId, groupId string) error {
-	response, err := k.SendCommand(AddUserToGroupKeycloakCommand, &types.AuthRequestParams{
+	_, err := k.SendCommand(AddUserToGroupKeycloakCommand, &types.AuthRequestParams{
 		UserSub: userSub,
 		GroupId: groupId,
 		UserId:  joiningUserId,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
@@ -512,13 +538,13 @@ func (k *Keycloak) AddUserToGroup(userSub, joiningUserId, groupId string) error 
 }
 
 func (k *Keycloak) DeleteUserFromGroup(userSub, deletingUserId, groupId string) error {
-	response, err := k.SendCommand(DeleteUserFromGroupKeycloakCommand, &types.AuthRequestParams{
+	_, err := k.SendCommand(DeleteUserFromGroupKeycloakCommand, &types.AuthRequestParams{
 		UserSub: userSub,
 		GroupId: groupId,
 		UserId:  deletingUserId,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
