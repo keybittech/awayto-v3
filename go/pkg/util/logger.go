@@ -40,9 +40,9 @@ func makeLogger(prop string) *CustomLogger {
 		log.Fatal(errors.New("Empty file path for log file " + prop))
 	}
 
-	filePath := os.Getenv("GO_LOG_DIR") + "/" + fileName
+	filePath := os.Getenv("LOG_DIR") + "/" + fileName
 
-	logFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0666)
+	logFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		log.Fatal(errors.New("Failed to open " + prop + " log" + err.Error()))
 	}
@@ -55,7 +55,9 @@ func init() {
 		logLevel := os.Getenv("LOG_LEVEL")
 		LoggingMode = &logLevel
 	}
+}
 
+func MakeLoggers() {
 	AccessLog = makeLogger("GO_ACCESS_LOG")
 	AuthLog = makeLogger("GO_AUTH_LOG")
 	DebugLog = makeLogger("GO_DEBUG_LOG")

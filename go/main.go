@@ -67,6 +67,7 @@ func init() {
 }
 
 func main() {
+	util.MakeLoggers()
 	// flag.Parse()
 
 	server := &api.API{
@@ -99,16 +100,16 @@ func main() {
 
 	defer server.Server.Close()
 
-	setupGc(server)
+	go setupGc(server)
 
 	certLoc := os.Getenv("CERT_LOC")
 	keyLoc := os.Getenv("CERT_KEY_LOC")
 
-	util.DebugLog.Println("listening on ", httpsPort, "Cert Locations:", certLoc, keyLoc)
+	println("listening on ", httpsPort, "\nCert Locations:", certLoc, keyLoc)
 
 	err := server.Server.ListenAndServeTLS(certLoc, keyLoc)
 	if err != nil {
-		util.DebugLog.Println("LISTEN AND SERVE ERROR: ", err.Error())
+		println("LISTEN AND SERVE ERROR: ", err.Error())
 		return
 	}
 }
