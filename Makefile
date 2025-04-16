@@ -485,6 +485,7 @@ host_sync_env:
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_env
 	$(SSH) 'cd $(H_REM_DIR) && make host_deploy_op'
+	$(SSH) 'cd $(H_REM_DIR) && make host_service_start_op'
 
 .PHONY: host_update_cert
 host_update_cert:
@@ -516,7 +517,8 @@ host_service_start:
 
 .PHONY: host_service_start_op
 host_service_start_op:
-	sudo systemctl start $(BINARY_SERVICE)
+	sudo systemctl restart $(BINARY_SERVICE)
+	sudo systemctl is-active $(BINARY_SERVICE)
 
 .PHONY: host_service_stop
 host_service_stop:
@@ -542,8 +544,6 @@ host_deploy_op:
 	SUDO=sudo make docker_up
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) /usr/local/bin
-	sudo systemctl restart $(BINARY_SERVICE)
-	sudo systemctl is-active $(BINARY_SERVICE)
 
 .PHONY: host_update_cert_op
 host_update_cert_op:
