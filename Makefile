@@ -18,7 +18,6 @@ export $(shell sed 's/=.*//' $(ENVFILE))
 BINARY_TEST=$(BINARY_NAME).test
 BINARY_SERVICE=$(BINARY_NAME).service
 
-
 #################################
 #          SOURCE DIRS          #
 #################################
@@ -69,6 +68,7 @@ TS_CONFIG_API=ts/openapi-config.json
 #################################
 #            BACKUPS            #
 #################################
+
 BACKUP_DIR=backups
 DB_BACKUP_DIR=$(BACKUP_DIR)/db
 DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
@@ -114,19 +114,22 @@ endef
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
 CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
-CURRENT_GO_LOG_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR),${PWD}/$(GO_SRC))
+CURRENT_GO_LOG_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/$(LOG_DIR),${PWD}/$(GO_SRC))
+CURRENT_LOG_DIR=$(call if_deploying,/var/log/${PROJECT_PREFIX},${PWD}/$(LOG_DIR))
 CURRENT_HOST_LOCAL_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${HOST_LOCAL_DIR},${PWD}/${HOST_LOCAL_DIR})
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)PROJECT_DIR=/s&^.*$$&PROJECT_DIR=$(CURRENT_PROJECT_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)GO_LOG_DIR=/s&^.*$$&GO_LOG_DIR=$(CURRENT_GO_LOG_DIR)&;" $(ENVFILE))
+$(shell sed -i -e "/^\(#\|\)LOG_DIR=/s&^.*$$&LOG_DIR=$(CURRENT_LOG_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)HOST_LOCAL_DIR=/s&^.*$$&HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR)&;" $(ENVFILE))
 
 $(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
 $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 $(eval GO_LOG_DIR=$(CURRENT_GO_LOG_DIR))
+$(eval LOG_DIR=$(CURRENT_LOG_DIR))
 $(eval HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR))
 
 AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
@@ -152,7 +155,7 @@ build: ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_P
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
 clean:
-	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) \
+	rm -rf $(LOG_DIR) $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
 	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_LOG_DIR)/*.log working/proto-stamp # $(MOCK_TARGET)
 
@@ -360,6 +363,7 @@ test_gen:
 
 .PHONY: docker_up
 docker_up: build
+	@mkdir -p $(LOG_DIR)/db
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA) || true
 	${SUDO} docker volume create $(REDIS_DATA) || true
@@ -427,6 +431,8 @@ host_install:
 	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
+	sudo bash -c "iptables-save > /etc/iptables/rules.v4"
+	sudo bash -c "ip6tables-save > /etc/iptables/rules.v6"
 	@echo "installing nvm"
 	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
 	. ~/.nvm/nvm.sh && nvm install $(NODE_VERSION) && npm i -g pnpm@latest-10
@@ -514,7 +520,7 @@ host_metric_cpu:
 .PHONY: host_update
 host_update:
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
-	# sudo install -d -m 777 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(PROJECT_DIR)/log
+	sudo install -d -m 660 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_DIR)
 
 .PHONY: host_deploy_op
 host_deploy_op: 

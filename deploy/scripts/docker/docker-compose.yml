@@ -22,7 +22,7 @@ services:
     volumes: 
       - ${UNIX_SOCK_DIR}:/var/run/postgresql
       - pg_data:/var/lib/postgresql/data
-      # - ${PROJECT_DIR}/log:/pglog
+      - ${LOG_DIR}/db:/pglog
 
   redis: # 6379
     image: ${REDIS_IMAGE}

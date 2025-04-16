@@ -16,6 +16,7 @@ packages:
   - fail2ban
   - certbot
   - build-essential 
+  - iptables-persistent
   - ufw
   - jq
   - openjdk-21-jre
