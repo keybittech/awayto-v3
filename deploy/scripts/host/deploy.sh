@@ -6,7 +6,6 @@ git reset --hard HEAD
 git pull
 make build
 make host_update
-SUDO=sudo make docker_up
 make host_deploy_op
 
 exit 0
