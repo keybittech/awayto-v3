@@ -484,12 +484,12 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_env
-	$(SSH) make host_deploy_op
+	$(SSH) 'cd $(PROJECT_DIR) && make host_deploy_op'
 	# $(SSH) sh $(DEPLOY_SCRIPT)
 
 .PHONY: host_update_cert
 host_update_cert:
-	$(SSH) make host_update_cert_op
+	$(SSH) 'cd $(PROJECT_DIR) && make host_update_cert_op'
 
 .PHONY: host_ssh
 host_ssh:
