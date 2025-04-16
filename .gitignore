@@ -7,7 +7,7 @@ certs/
 secrets/
 sites/
 deploy/images/
-go/*.log
+log/
 .hugo_build.lock
 .swap/
 working/

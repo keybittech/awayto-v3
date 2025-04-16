@@ -35,6 +35,7 @@ JAVA_TARGET_DIR=java/target
 JAVA_THEMES_DIR=java/themes
 LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
+LOG_DIR=log
 HOST_LOCAL_DIR=sites/${PROJECT_PREFIX}
 GO_GEN_DIR=$(GO_SRC)/pkg/types
 GO_API_DIR=$(GO_SRC)/pkg/api
@@ -114,21 +115,18 @@ endef
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
 CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
-CURRENT_GO_LOG_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/$(LOG_DIR),${PWD}/$(GO_SRC))
-CURRENT_LOG_DIR=$(call if_deploying,/var/log/${PROJECT_PREFIX},${PWD}/$(LOG_DIR))
+CURRENT_LOG_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${LOG_DIR},${PWD}/${LOG_DIR})
 CURRENT_HOST_LOCAL_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${HOST_LOCAL_DIR},${PWD}/${HOST_LOCAL_DIR})
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)PROJECT_DIR=/s&^.*$$&PROJECT_DIR=$(CURRENT_PROJECT_DIR)&;" $(ENVFILE))
-$(shell sed -i -e "/^\(#\|\)GO_LOG_DIR=/s&^.*$$&GO_LOG_DIR=$(CURRENT_GO_LOG_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)LOG_DIR=/s&^.*$$&LOG_DIR=$(CURRENT_LOG_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)HOST_LOCAL_DIR=/s&^.*$$&HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR)&;" $(ENVFILE))
 
 $(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 $(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
 $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
-$(eval GO_LOG_DIR=$(CURRENT_GO_LOG_DIR))
 $(eval LOG_DIR=$(CURRENT_LOG_DIR))
 $(eval HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR))
 
@@ -150,14 +148,17 @@ SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 #           TARGETS             #
 #################################
 
-build: ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
+build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
 clean:
 	rm -rf $(LOG_DIR) $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_LOG_DIR)/*.log working/proto-stamp # $(MOCK_TARGET)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) working/proto-stamp # $(MOCK_TARGET)
+
+$(LOG_DIR):
+	mkdir -p $(LOG_DIR)
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
 ifeq ($(DEPLOYING),true)
@@ -248,7 +249,7 @@ $(GO_TARGET): working/proto-stamp $(shell find $(GO_SRC)/{main.go,pkg} -type f) 
 
 .PHONY: go_dev
 go_dev:
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) .
 
@@ -265,19 +266,19 @@ go_tidy:
 
 .PHONY: go_watch
 go_watch:
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod build -C $(GO_SRC) -o $(GO_TARGET) .
 
 .PHONY: go_debug
 go_debug:
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	cd go && $(GO_DEV_FLAGS) dlv debug --wd ${PWD}
 
 .PHONY: go_debug_exec
 go_debug_exec:
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) dlv exec --wd ${PWD} $(GO_TARGET)
 
@@ -311,7 +312,7 @@ go_test_ui: build $(GO_TARGET)
 
 .PHONY: go_test_unit
 go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) go test -C $(GO_API_DIR) $(GO_TEST_FLAGS) ./...
 	$(GO_DEV_FLAGS) go test -C $(GO_CLIENTS_DIR) $(GO_TEST_FLAGS) ./...
@@ -320,17 +321,17 @@ go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
 
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_TEST_FLAGS) -short ./...
 
 .PHONY: go_test_integration_bench
 go_test_integration_bench: $(GO_TARGET)
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ./...
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ./...
 
 .PHONY: go_test_integration_results
@@ -339,7 +340,7 @@ go_test_integration_results:
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
-	rm $(GO_LOG_DIR)/*.log || true
+	rm $(LOG_DIR)/*.log || true
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)
