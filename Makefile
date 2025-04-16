@@ -511,7 +511,7 @@ host_service_start:
 
 .PHONY: host_service_start_op
 host_service_start_op:
-	/usr/local/bin/$(BINARY_NAME) --log debug
+	sudo systemctl start $(BINARY_SERVICE)
 
 .PHONY: host_service_stop
 host_service_stop:

@@ -2,7 +2,7 @@
 
 cd work-dir && \
   SUDO=sudo make docker_up && \ 
-  make host_service_start_op && \
+  make host_deploy_op && \
   cd -
 
 sleep 1
