@@ -484,7 +484,7 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_env
-	$(SSH) 'cd $(H_REM_DIR) && make host_update && make host_deploy_op && make host_service_start_op'
+	$(SSH) 'cd $(H_REM_DIR) && make host_update && SUDO=sudo make docker_up && make host_deploy_op && make host_service_start_op'
 
 .PHONY: host_update_cert
 host_update_cert:
@@ -533,14 +533,12 @@ host_metric_cpu:
 
 .PHONY: host_update
 host_update:
+	git reset --hard HEAD
+	git pull
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: host_deploy_op
 host_deploy_op: 
-	git reset --hard HEAD
-	git pull
-	$(call set_local_unix_sock_dir)
-	COMPOSE_BAKE=true sudo docker $(DOCKER_COMPOSE) up -d --build
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) /usr/local/bin
 

@@ -1,5 +1,9 @@
 #!/bin/bash
 
-cd work-dir && make host_deploy_op && cd -
+set -a
+. etc-dir/.env 
+set +a
+
+cd work-dir && SUDO=sudo make docker_up && cd -
 
 exec /usr/local/bin/binary-name
