@@ -368,7 +368,6 @@ docker_up: build
 	${SUDO} docker volume create $(PG_DATA) || true
 	${SUDO} docker volume create $(REDIS_DATA) || true
 	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build
-	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 	
 .PHONY: docker_down
 docker_down:
@@ -508,11 +507,19 @@ host_redis:
 
 .PHONY: host_service_start
 host_service_start:
-	$(SSH) sudo systemctl start $(BINARY_SERVICE)
+	$(SSH) make host_service_start_op
+
+.PHONY: host_service_start_op
+host_service_start_op:
+	/etc/systemd/system/$(BINARY_SERVICE) --log debug
 
 .PHONY: host_service_stop
 host_service_stop:
-	$(SSH) sudo systemctl stop $(BINARY_SERVICE)
+	$(SSH) make host_service_stop_op
+
+.PHONY: host_service_stop_op
+host_service_stop_op:
+	sudo systemctl stop $(BINARY_SERVICE)
 
 .PHONY: host_metric_cpu
 host_metric_cpu:
