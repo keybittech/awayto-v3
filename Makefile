@@ -484,7 +484,7 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_env
-	$(SSH) 'cd $(H_REM_DIR) && make host_update_cert_op'
+	$(SSH) 'cd $(H_REM_DIR) && make host_deploy_op'
 
 .PHONY: host_update_cert
 host_update_cert:
