@@ -511,7 +511,7 @@ host_service_start:
 
 .PHONY: host_service_start_op
 host_service_start_op:
-	/etc/systemd/system/$(BINARY_SERVICE) --log debug
+	/usr/local/bin/$(GO_TARGET) --log debug
 
 .PHONY: host_service_stop
 host_service_stop:
