@@ -447,6 +447,11 @@ host_install:
 	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
 	sudo install -d -m 770 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_DIR)
+	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
+	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
+	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} start.sh /usr/local/bin
+	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
+	sudo systemctl enable $(BINARY_SERVICE)
 
 # 	go install github.com/golang/mock/mockgen@v1.6.0
 
@@ -479,11 +484,12 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_env
-	$(SSH) 'cd "$(H_REM_DIR)" && sh $(DEPLOY_SCRIPT)'
+	$(SSH) make host_deploy_op
+	# $(SSH) sh $(DEPLOY_SCRIPT)
 
 .PHONY: host_update_cert
 host_update_cert:
-	$(SSH) 'cd "$(H_REM_DIR)" && make host_update_cert_op'
+	$(SSH) make host_update_cert_op
 
 .PHONY: host_ssh
 host_ssh:
@@ -531,13 +537,12 @@ host_update:
 
 .PHONY: host_deploy_op
 host_deploy_op: 
-	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
-	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
+	git reset --hard HEAD
+	git pull
+	make host_update
+	SUDO=sudo make docker_up
 	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
-	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
-	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) start.sh /usr/local/bin
-	rm start.sh $(BINARY_SERVICE) $(GO_TARGET)
-	sudo systemctl enable $(BINARY_SERVICE)
+	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) /usr/local/bin
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo systemctl is-active $(BINARY_SERVICE)
 
