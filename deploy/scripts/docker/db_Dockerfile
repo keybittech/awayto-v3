@@ -25,10 +25,12 @@ RUN chmod -R 755 /docker-entrypoint-initdb.d/
 
 CMD ["postgres", "-c", "unix_socket_directories=/var/run/postgresql", \
   "-c", "unix_socket_permissions=0666", \
-  "-c", "listen_addresses=0.0.0.0", \
-  "-c", "logging_collector=on", \
-  "-c", "log_file_mode=0640", \
-  "-c", "log_destination=stderr", \
-  "-c", "log_directory=/pglog", \
-  "-c", "log_statement=mod"]
+  "-c", "listen_addresses=0.0.0.0"]
+
+  # , \
+  # "-c", "logging_collector=on", \
+  # "-c", "log_file_mode=0640", \
+  # "-c", "log_destination=stderr", \
+  # "-c", "log_directory=/pglog", \
+  # "-c", "log_statement=mod"]
 

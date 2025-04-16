@@ -514,7 +514,7 @@ host_metric_cpu:
 .PHONY: host_update
 host_update:
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
-	sudo install -d -m 770 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(PROJECT_DIR)/log
+	# sudo install -d -m 777 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(PROJECT_DIR)/log
 
 .PHONY: host_deploy_op
 host_deploy_op: 
