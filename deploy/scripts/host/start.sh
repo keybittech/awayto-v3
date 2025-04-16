@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd work-dir && make host_service_start_op && cd -
+cd work-dir && SUDO=sudo make docker_up && make host_service_start_op && cd -
 
 sleep 1
 
