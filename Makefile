@@ -364,7 +364,6 @@ test_gen:
 
 .PHONY: docker_up
 docker_up: build
-	@mkdir -p $(LOG_DIR)/db
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA) || true
 	${SUDO} docker volume create $(REDIS_DATA) || true
@@ -448,6 +447,7 @@ host_install:
 	fi
 	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
+	sudo install -d -m 770 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_DIR)
 
 # 	go install github.com/golang/mock/mockgen@v1.6.0
 
@@ -521,7 +521,6 @@ host_metric_cpu:
 .PHONY: host_update
 host_update:
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
-	sudo install -d -m 660 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_DIR)
 
 .PHONY: host_deploy_op
 host_deploy_op: 
