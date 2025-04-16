@@ -358,22 +358,13 @@ test_gen:
 #            DOCKER             #
 #################################
 
-.PHONY: install_keycloak
-install_keycloak:
-	@if ! $(DOCKER_DB_EXEC) $(DOCKER_DB_CID) psql -Ac "SELECT 1 FROM pg_database WHERE datname='keycloak'" | grep -q 1; then \
-		echo "Database 'keycloak' not found. Running install script..."; \
-		chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT); \
-	else \
-		echo "Database 'keycloak' already exists. Skipping install script."; \
-	fi
-
 .PHONY: docker_up
 docker_up: build
 	$(call set_local_unix_sock_dir)
 	${SUDO} docker volume create $(PG_DATA) || true
 	${SUDO} docker volume create $(REDIS_DATA) || true
 	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build
-	@$(MAKE) install_keycloak
+	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 	
 .PHONY: docker_down
 docker_down:
@@ -524,7 +515,6 @@ host_metric_cpu:
 host_update:
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 	sudo install -d -m 770 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(PROJECT_DIR)/log
-	touch $(PROJECT_DIR)/log/.created
 
 .PHONY: host_deploy_op
 host_deploy_op: 

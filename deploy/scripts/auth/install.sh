@@ -17,12 +17,12 @@ done
 
 kcadm update realms/master -s sslRequired=NONE
 
-# EXISTING=$(kcadm get realms/$KC_REALM)
-#
-# if [ "$EXISTING" != "" ]; then
-#   echo "Exiting due to existing realm"
-#   exit 0
-# fi
+EXISTING=$(kcadm get realms/$KC_REALM)
+
+if [ "$EXISTING" != "" ]; then
+  echo "Exiting due to existing realm"
+  exit 0
+fi
 
 # Realm creation
 echo "# Creating the realm $KC_REALM."
