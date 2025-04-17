@@ -55,7 +55,7 @@ func (a *API) SocketMessageReceiver(userSub string, data []byte) *types.SocketMe
 func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, userSub, groupId, roles string) {
 	var err error
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(5*time.Second))
+	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(250*time.Millisecond))
 	defer func(us string) {
 		clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
 		if err != nil {
@@ -74,7 +74,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			Topic:   sm.Topic,
 		})
 
-		if err = clients.ChannelError(err, hasSubRequest.Error); err != nil {
+		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
@@ -89,7 +89,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 		hasTracking, err := a.Handlers.Redis.HasTracking(ctx, sm.Topic, socketId)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		} else if hasTracking {
 			return
@@ -124,18 +124,18 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 		// Get Member Info for anyone connected
 		_, cachedParticipantTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, true)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
-		response, err := a.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
+		_, err = a.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
 			UserSub: userSub,
 			Topic:   sm.Topic,
 			Targets: cachedParticipantTargets,
 		})
 
-		if err = clients.ChannelError(err, response.Error); err != nil {
-			util.ErrorLog.Println(err)
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
@@ -168,12 +168,11 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 		a.Handlers.Redis.RemoveTopicFromConnection(socketId, sm.Topic)
 
-		response, err := a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
+		_, err = a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
 			UserSub: userSub,
 			Topic:   sm.Topic,
 		})
-
-		if err = clients.ChannelError(err, response.Error); err != nil {
+		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
@@ -182,7 +181,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 		participants, onlineTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, false)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
@@ -207,7 +206,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 		cachedParticipantsBytes, err := json.Marshal(participants)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
@@ -221,7 +220,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 	case types.SocketActions_LOAD_MESSAGES:
 		var pageInfo map[string]int
 		if err := json.Unmarshal([]byte(sm.Payload), &pageInfo); err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 		messages := [][]byte{}
@@ -241,13 +240,13 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 		for _, messageBytes := range messages {
 			if messageBytes != nil {
-				response, err := a.Handlers.Socket.SendCommand(clients.SendSocketMessageSocketCommand, &types.SocketRequestParams{
+				_, err := a.Handlers.Socket.SendCommand(clients.SendSocketMessageSocketCommand, &types.SocketRequestParams{
 					UserSub:      userSub,
 					Targets:      connId,
 					MessageBytes: messageBytes,
 				})
 
-				if err = clients.ChannelError(err, response.Error); err != nil {
+				if err != nil {
 					util.ErrorLog.Println(err)
 					return
 				}
@@ -257,13 +256,13 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 	default:
 		_, cachedParticipantTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, true)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
 		err = a.Handlers.Socket.SendMessage(userSub, cachedParticipantTargets, sm)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 	}

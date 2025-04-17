@@ -3,7 +3,9 @@ package main
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"crypto/rand"
+	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -23,19 +25,44 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
-func apiRequest(token, method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
-	client := &http.Client{
+var (
+	publicKey  *rsa.PublicKey
+	httpClient = &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
 				InsecureSkipVerify: true,
 			},
 		},
 	}
+)
+
+func doAndRead(req *http.Request) ([]byte, error) {
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
+	}
+
+	return body, nil
+}
+
+func apiRequest(token, method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 
 	reqURL := "https://localhost:7443" + path
 	if queryParams != nil && len(queryParams) > 0 {
@@ -63,16 +90,19 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 
 	req.Header.Add("Authorization", "Bearer "+token)
 
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
 	resp, err := client.Do(req)
 	if err != nil {
 		return fmt.Errorf("error sending request: %w", err)
 	}
 	defer resp.Body.Close()
-
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		bodyBytes, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(bodyBytes))
-	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -86,6 +116,44 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 	}
 
 	return nil
+}
+
+func checkServer() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+	defer cancel()
+
+	req, err := http.NewRequestWithContext(ctx, "GET", "https://localhost:7443/", nil)
+	if err != nil {
+		return fmt.Errorf("%w", err)
+	}
+
+	_, err = doAndRead(req)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	return nil
+}
+
+func getPublicKey() {
+	kc := &clients.KeycloakClient{
+		Server: os.Getenv("KC_INTERNAL"),
+		Realm:  os.Getenv("KC_REALM"),
+	}
+
+	oidcToken, err := kc.DirectGrantAuthentication()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	kc.Token = oidcToken
+
+	pk, err := kc.FetchPublicKey()
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	publicKey = pk
 }
 
 func getKeycloakToken(userId int) (string, *types.UserSession, error) {
@@ -106,17 +174,7 @@ func getKeycloakToken(userId int) (string, *types.UserSession, error) {
 
 	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
+	body, err := doAndRead(req)
 	if err != nil {
 		return "", nil, err
 	}
@@ -259,29 +317,14 @@ func getSocketTicket(userId int) (*types.UserSession, string, string, string) {
 
 	req.Header.Add("Authorization", "Bearer "+token)
 
-	tr := &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-	}
-	client := &http.Client{Transport: tr}
-	resp, err := client.Do(req)
+	body, err := doAndRead(req)
 	if err != nil {
-		log.Fatalf("failed ticket transport %v", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		log.Fatalf("failed ticket body read %v", err)
-	}
-
-	// Debug the response if it's not JSON
-	if len(body) > 0 && body[0] != '{' {
-		log.Fatalf("unexpected ticket response: %s", string(body))
+		log.Fatal("failed get socket ticket", err)
 	}
 
 	var result map[string]interface{}
 	if err := json.Unmarshal(body, &result); err != nil {
-		log.Fatalf("ticket JSON parse error: %v, body: %s", err, string(body))
+		log.Fatal("failed marshal ticket body", err)
 	}
 
 	ticket, ok := result["ticket"].(string)

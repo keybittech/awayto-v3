@@ -134,7 +134,7 @@ func (keycloakClient KeycloakClient) FindResource(resource, search string) ([]by
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return resp, nil
@@ -148,12 +148,12 @@ func (keycloakClient KeycloakClient) GetUserListInRealm() ([]*types.KeycloakUser
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result []*types.KeycloakUser
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return result, nil
@@ -167,12 +167,12 @@ func (keycloakClient KeycloakClient) GetUserGroups(userId string) ([]*types.Keyc
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result []*types.KeycloakUserGroup
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return result, nil
@@ -186,13 +186,13 @@ func (keycloakClient KeycloakClient) GetGroupRoleMappings(groupId string) ([]*ty
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var f map[string]map[string]*types.ClientRoleMapping
 
 	if err := json.Unmarshal(resp, &f); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	mappings := []*types.ClientRoleMappingRole{}
@@ -215,12 +215,12 @@ func (keycloakClient KeycloakClient) GetAppClientRoles() ([]*types.KeycloakRole,
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result []*types.KeycloakRole
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return result, nil
@@ -233,12 +233,12 @@ func (keycloakClient KeycloakClient) GetRealmClients() ([]*types.KeycloakRealmCl
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result []*types.KeycloakRealmClient
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return result, nil
@@ -254,7 +254,7 @@ func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName stri
 	kcUserJson, err := json.Marshal(kcUser)
 
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	_, err = util.Mutate(
@@ -265,7 +265,7 @@ func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName stri
 	)
 
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	return nil
@@ -294,14 +294,14 @@ func (keycloakClient KeycloakClient) CreateGroup(name string) (string, error) {
 	if resp.StatusCode != 201 {
 		defer resp.Body.Close()
 		body, _ := io.ReadAll(resp.Body)
-		return "", errors.New(fmt.Sprintf("create group error code %d %s", resp.StatusCode, string(body)))
+		return "", util.ErrCheck(errors.New(fmt.Sprintf("create group error code %d %s", resp.StatusCode, string(body))))
 	}
 
 	locationHeader := resp.Header.Get("Location")
 
 	parts := strings.SplitAfterN(locationHeader, "/", -1)
 	if locationHeader == "" || len(parts) < 2 {
-		return "", errors.New("no group id found")
+		return "", util.ErrCheck(errors.New("no group id found"))
 	}
 
 	return parts[len(parts)-1], nil
@@ -316,7 +316,7 @@ func (keycloakClient KeycloakClient) DeleteGroup(groupId string) error {
 	)
 
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	return nil
@@ -331,7 +331,7 @@ func (keycloakClient KeycloakClient) UpdateGroup(groupId, groupName string) erro
 	)
 
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	return nil
@@ -344,12 +344,12 @@ func (keycloakClient KeycloakClient) GetGroup(groupId string) (*types.KeycloakGr
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result types.KeycloakGroup
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return &result, nil
@@ -364,12 +364,12 @@ func (keycloakClient KeycloakClient) CreateSubgroup(groupId, subgroupName string
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result types.KeycloakGroup
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return &result, nil
@@ -387,12 +387,12 @@ func (keycloakClient KeycloakClient) GetGroupSubgroups(groupId string) ([]*types
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	var result []*types.KeycloakGroup
 	if err := json.Unmarshal(resp, &result); err != nil {
-		return nil, err
+		return nil, util.ErrCheck(err)
 	}
 
 	return result, nil
@@ -402,7 +402,7 @@ func (keycloakClient KeycloakClient) MutateGroupRoles(method, groupId string, ro
 
 	rolesBytes, err := json.Marshal(roles)
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	_, err = util.Mutate(
@@ -413,7 +413,7 @@ func (keycloakClient KeycloakClient) MutateGroupRoles(method, groupId string, ro
 	)
 
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	return nil
@@ -429,7 +429,7 @@ func (keycloakClient KeycloakClient) MutateUserGroupMembership(method, userId, g
 	)
 
 	if err != nil {
-		return err
+		return util.ErrCheck(err)
 	}
 
 	return nil

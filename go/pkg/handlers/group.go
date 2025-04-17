@@ -250,12 +250,12 @@ func (h *Handlers) PatchGroupAssignments(w http.ResponseWriter, req *http.Reques
 			}
 
 			if len(deletions) > 0 {
-				response, err := h.Keycloak.SendCommand(clients.DeleteRolesFromGroupKeycloakCommand, &types.AuthRequestParams{
+				_, err := h.Keycloak.SendCommand(clients.DeleteRolesFromGroupKeycloakCommand, &types.AuthRequestParams{
 					UserSub: session.UserSub,
 					GroupId: sgRoleActions.Id,
 					Roles:   deletions,
 				})
-				if err = clients.ChannelError(err, response.Error); err != nil {
+				if err != nil {
 					return nil, util.ErrCheck(err)
 				}
 

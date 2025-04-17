@@ -133,13 +133,17 @@ func InitSocket() *Socket {
 		case CreateSocketConnectionSocketCommand:
 			auth, _, err := util.SplitColonJoined(cmd.Request.Ticket)
 			if err != nil {
-				cmd.ReplyChan <- SocketResponse{Error: err}
+				cmd.ReplyChan <- SocketResponse{
+					Error: err,
+				}
 				break
 			}
 
 			userSub, ok := socketMaps.authSubscribers[auth]
 			if !ok {
-				cmd.ReplyChan <- SocketResponse{Error: authSubscriberNotFound}
+				cmd.ReplyChan <- SocketResponse{
+					Error: authSubscriberNotFound,
+				}
 				break
 			}
 
@@ -373,13 +377,9 @@ func (s *Socket) Connected(userSub string) bool {
 	return false
 }
 
-func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, conn ...net.Conn) (SocketResponse, error) {
+func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams) (*types.SocketResponseParams, error) {
 	if request.UserSub == "" {
-		return emptySocketResponse, socketCommandMustHaveSub
-	}
-	var userConn net.Conn
-	if len(conn) > 0 {
-		userConn = conn[0]
+		return nil, socketCommandMustHaveSub
 	}
 	createCmd := func(replyChan chan SocketResponse) SocketCommand {
 		return SocketCommand{
@@ -389,13 +389,44 @@ func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams, 
 			},
 			Request: SocketRequest{
 				SocketRequestParams: request,
-				Conn:                userConn,
 			},
 			ReplyChan: replyChan,
 		}
 	}
 
-	return SendCommand(s, createCmd)
+	res, err := SendCommand(s, createCmd)
+	err = ChannelError(err, res.Error)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return res.SocketResponseParams, nil
+}
+
+func (s *Socket) StoreConn(ticket string, conn net.Conn) (SocketResponse, error) {
+	createCmd := func(replyChan chan SocketResponse) SocketCommand {
+		return SocketCommand{
+			WorkerCommandParams: &types.WorkerCommandParams{
+				Ty:       CreateSocketConnectionSocketCommand,
+				ClientId: "worker",
+			},
+			Request: SocketRequest{
+				SocketRequestParams: &types.SocketRequestParams{
+					Ticket: ticket,
+				},
+				Conn: conn,
+			},
+			ReplyChan: replyChan,
+		}
+	}
+
+	res, err := SendCommand(s, createCmd)
+	err = ChannelError(err, res.Error)
+	if err != nil {
+		return SocketResponse{}, util.ErrCheck(err)
+	}
+
+	return res, nil
 }
 
 func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
@@ -405,7 +436,7 @@ func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 		Roles:   session.Roles,
 	})
 
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return "", util.ErrCheck(err)
 	}
 
@@ -420,13 +451,12 @@ func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) 
 		return util.ErrCheck(errors.New("user sub required to send a message"))
 	}
 
-	response, err := s.SendCommand(SendSocketMessageSocketCommand, &types.SocketRequestParams{
+	_, err := s.SendCommand(SendSocketMessageSocketCommand, &types.SocketRequestParams{
 		UserSub:      userSub,
 		Targets:      targets,
 		MessageBytes: messageBytes,
 	})
-
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
@@ -448,15 +478,16 @@ func (s *Socket) RoleCall(userSub string) error {
 	response, err := s.SendCommand(GetSubscribedTargetsSocketCommand, &types.SocketRequestParams{
 		UserSub: userSub,
 	})
-
-	if err = ChannelError(err, response.Error); err != nil {
+	if err != nil {
 		return util.ErrCheck(err)
 	}
 
 	if len(response.Targets) > 0 {
-		err := s.SendMessage(userSub, response.Targets, &types.SocketMessage{Action: types.SocketActions_ROLE_CALL})
+		err := s.SendMessage(userSub, response.Targets, &types.SocketMessage{
+			Action: types.SocketActions_ROLE_CALL,
+		})
 		if err != nil {
-			return util.ErrCheck(response.Error)
+			return util.ErrCheck(err)
 		}
 	}
 

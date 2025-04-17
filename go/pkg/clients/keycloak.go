@@ -91,7 +91,9 @@ func InitKeycloak() *Keycloak {
 		defer func(replyChan chan AuthResponse) {
 			if r := recover(); r != nil {
 				err := errors.New(fmt.Sprintf("Did recover from %+v", r))
-				replyChan <- AuthResponse{Error: err}
+				replyChan <- AuthResponse{
+					Error: err,
+				}
 			}
 			close(replyChan)
 		}(cmd.ReplyChan)
@@ -100,15 +102,19 @@ func InitKeycloak() *Keycloak {
 		case SetKeycloakTokenKeycloakCommand:
 			oidcToken, err := kc.DirectGrantAuthentication()
 			if err != nil {
-				cmd.ReplyChan <- AuthResponse{Error: err}
+				cmd.ReplyChan <- AuthResponse{
+					Error: err,
+				}
 			} else {
 				kc.Token = oidcToken
-				cmd.ReplyChan <- AuthResponse{}
+				cmd.ReplyChan <- emptyAuthResponse
 			}
 		case SetKeycloakRealmClientsKeycloakCommand:
 			realmClients, err := kc.GetRealmClients()
 			if err != nil {
-				cmd.ReplyChan <- AuthResponse{Error: err}
+				cmd.ReplyChan <- AuthResponse{
+					Error: err,
+				}
 			} else {
 				for _, realmClient := range realmClients {
 					if realmClient.ClientId == string(os.Getenv("KC_CLIENT")) {
@@ -118,13 +124,15 @@ func InitKeycloak() *Keycloak {
 						kc.ApiClient = realmClient
 					}
 				}
-				cmd.ReplyChan <- AuthResponse{}
+				cmd.ReplyChan <- emptyAuthResponse
 			}
 		case SetKeycloakRolesKeycloakCommand:
 			var groupAdminRoles []*types.KeycloakRole
 			roles, err := kc.GetAppClientRoles()
 			if err != nil {
-				cmd.ReplyChan <- AuthResponse{Error: err}
+				cmd.ReplyChan <- AuthResponse{
+					Error: err,
+				}
 			} else {
 				for _, role := range roles {
 					if role.Name == "APP_ROLE_CALL" {
@@ -134,7 +142,7 @@ func InitKeycloak() *Keycloak {
 					}
 				}
 				kc.GroupAdminRoles = groupAdminRoles
-				cmd.ReplyChan <- AuthResponse{}
+				cmd.ReplyChan <- emptyAuthResponse
 			}
 		case GetGroupAdminRolesKeycloakCommand:
 			cmd.ReplyChan <- AuthResponse{
@@ -263,7 +271,7 @@ func InitKeycloak() *Keycloak {
 	}()
 
 	connected := false
-	setupTicker := time.NewTicker(5 * time.Second)
+	setupTicker := time.NewTicker(1 * time.Second)
 
 	for {
 		select {

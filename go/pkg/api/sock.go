@@ -67,11 +67,8 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 			return
 		}
 
-		userConnection, err := a.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-			UserSub: "worker",
-			Ticket:  ticket,
-		}, conn)
-		if err = clients.ChannelError(err, userConnection.Error); err != nil {
+		userConnection, err := a.Handlers.Socket.StoreConn(ticket, conn)
+		if err != nil {
 			util.ErrorLog.Println(err)
 			return
 		}

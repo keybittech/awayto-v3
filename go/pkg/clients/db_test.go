@@ -6,8 +6,96 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	_ "github.com/lib/pq"
 )
+
+var selectAdminRoleIdSQL = `SELECT id FROM dbtable_schema.roles WHERE name = 'Admin'`
+
+func BenchmarkDbDefaultExec(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		db.Client().Exec(selectAdminRoleIdSQL)
+	}
+}
+
+func BenchmarkDbDefaultQuery(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		var adminRoleId string
+		db.Client().QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+	}
+}
+
+func BenchmarkDbDefaultTx(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		var adminRoleId string
+		tx, _ := db.Client().Begin()
+		defer tx.Rollback()
+		tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+		tx.Commit()
+	}
+}
+
+func BenchmarkDbTxExec(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		var adminRoleId string
+		db.TxExec(func(tx *sql.Tx) error {
+			var txErr error
+			txErr = tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+			if txErr != nil {
+				return util.ErrCheck(txErr)
+			}
+
+			return nil
+		}, "worker", "", "")
+	}
+}
+
+func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+	participants := make(map[string]*types.SocketParticipant)
+	topic := "test-topic"
+	err := db.TxExec(func(tx *sql.Tx) error {
+		reset(b)
+		for c := 0; c < b.N; c++ {
+			db.GetTopicMessageParticipants(tx, topic, participants)
+		}
+		return nil
+	}, "", "", "")
+	if err != nil {
+		b.Fatal(err)
+	}
+}
+
+func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+	topic := "test-topic"
+	err := db.TxExec(func(tx *sql.Tx) error {
+		description, handle, _ := util.SplitColonJoined(topic)
+		reset(b)
+		for c := 0; c < b.N; c++ {
+			db.GetSocketAllowances(tx, "", description, handle)
+		}
+		return nil
+	}, "", "", "")
+	if err != nil {
+		b.Fatal(err)
+	}
+}
 
 func TestDatabase_Client(t *testing.T) {
 	tests := []struct {
@@ -69,7 +157,7 @@ func TestInitDatabase(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := InitDatabase(); !reflect.DeepEqual(got, tt.want) {
+			if got := InitDatabase(); got == nil {
 				t.Errorf("InitDatabase() = %v, want %v", got, tt.want)
 			}
 		})

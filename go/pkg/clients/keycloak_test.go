@@ -444,7 +444,7 @@ func TestKeycloak_SendCommand(t *testing.T) {
 		name    string
 		k       *Keycloak
 		args    args
-		want    AuthResponse
+		want    *types.AuthResponseParams
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -456,7 +456,7 @@ func TestKeycloak_SendCommand(t *testing.T) {
 				t.Errorf("Keycloak.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.request, err, tt.wantErr)
 				return
 			}
-			if !reflect.DeepEqual(got, tt.want) {
+			if !reflect.DeepEqual(got.AuthResponseParams, tt.want) {
 				t.Errorf("Keycloak.SendCommand(%v, %v) = %v, want %v", tt.args.cmdType, tt.args.request, got, tt.want)
 			}
 		})

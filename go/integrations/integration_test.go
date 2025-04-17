@@ -1,10 +1,8 @@
 package main
 
 import (
-	"crypto/rsa"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -13,11 +11,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
-
-var publicKey *rsa.PublicKey
 
 type TestUser struct {
 	TestUserId  int
@@ -49,7 +44,9 @@ type IntegrationTest struct {
 	Bookings        []*types.IBooking
 }
 
-var integrationTest = &IntegrationTest{}
+var (
+	integrationTest = &IntegrationTest{}
+)
 
 func reset(b *testing.B) {
 	b.ReportAllocs()
@@ -57,24 +54,6 @@ func reset(b *testing.B) {
 }
 
 func TestMain(m *testing.M) {
-	kc := &clients.KeycloakClient{
-		Server: os.Getenv("KC_INTERNAL"),
-		Realm:  os.Getenv("KC_REALM"),
-	}
-
-	oidcToken, err := kc.DirectGrantAuthentication()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	kc.Token = oidcToken
-
-	pk, err := kc.FetchPublicKey()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	publicKey = pk
 
 	cmd := exec.Command(filepath.Join("../" + os.Getenv("BINARY_NAME")))
 	cmd.SysProcAttr = &syscall.SysProcAttr{
@@ -89,7 +68,27 @@ func TestMain(m *testing.M) {
 		os.Exit(1)
 	}
 
-	time.Sleep(2 * time.Second)
+	startupTicker := time.NewTicker(1 * time.Second)
+	started := false
+
+	for {
+		select {
+		case <-startupTicker.C:
+			err := checkServer()
+			if err != nil {
+				continue
+			}
+			started = true
+		default:
+		}
+		if started {
+			break
+		}
+	}
+
+	startupTicker.Stop()
+
+	getPublicKey()
 
 	code := m.Run()
 
