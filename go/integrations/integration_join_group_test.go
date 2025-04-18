@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 	"time"
@@ -16,9 +17,9 @@ func testIntegrationJoinGroup(t *testing.T) {
 		for c := existingUsers; c < existingUsers+6; c++ {
 			time.Sleep(500 * time.Millisecond)
 			joinViaRegister := c%2 == 0
-			userId := int(time.Now().UnixNano())
+			userId := fmt.Sprint(time.Now().UnixNano())
 
-			t.Logf("Registering #%d", userId)
+			t.Logf("Registering #%s", userId)
 			if joinViaRegister {
 				// This takes care of attach user to group and activate profile on the backend
 				registerKeycloakUserViaForm(userId, integrationTest.Group.Code)
@@ -96,7 +97,7 @@ func testIntegrationJoinGroup(t *testing.T) {
 				t.Errorf("no group id after getting new token %v", session)
 			}
 
-			testUser := &TestUser{
+			testUser := &types.TestUser{
 				TestUserId:  userId,
 				TestToken:   token,
 				TestTicket:  ticket,
@@ -106,8 +107,8 @@ func testIntegrationJoinGroup(t *testing.T) {
 
 			t.Logf("created user #%d with sub %s connId %s", c, session.UserSub, connId)
 
-			integrationTest.TestUsers[c] = testUser
-			integrationTest.Connections[session.UserSub] = connection
+			integrationTest.TestUsers[int32(c)] = testUser
+			connections[session.UserSub] = connection
 
 			t.Logf("user %d has email %s sub %s", c, testUser.UserSession.UserEmail, testUser.UserSession.UserSub)
 		}

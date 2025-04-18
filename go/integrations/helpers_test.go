@@ -20,7 +20,6 @@ import (
 	"net/http/cookiejar"
 	"net/url"
 	"os"
-	"strconv"
 	"strings"
 	"time"
 
@@ -156,10 +155,10 @@ func getPublicKey() {
 	publicKey = pk
 }
 
-func getKeycloakToken(userId int) (string, *types.UserSession, error) {
+func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 	data := url.Values{}
 	data.Set("client_id", os.Getenv("KC_CLIENT"))
-	data.Set("username", "1@"+strconv.Itoa(userId+1))
+	data.Set("username", "1@"+userId)
 	data.Set("password", "1")
 	data.Set("grant_type", "password")
 
@@ -194,10 +193,15 @@ func getKeycloakToken(userId int) (string, *types.UserSession, error) {
 		log.Fatalf("error validating auth token: %v", err)
 	}
 
+	if integrationTest.Group != nil {
+		groupId := integrationTest.Group.Id
+		session.GroupId = groupId
+	}
+
 	return token, session, nil
 }
 
-func registerKeycloakUserViaForm(userId int, code ...string) (bool, error) {
+func registerKeycloakUserViaForm(userId string, code ...string) (bool, error) {
 	// Setup client with cookie jar and TLS skip
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{
@@ -245,7 +249,7 @@ func registerKeycloakUserViaForm(userId int, code ...string) (bool, error) {
 		formData.Set("groupCode", code[0])
 	}
 
-	formData.Set("email", "1@"+strconv.Itoa(userId+1))
+	formData.Set("email", "1@"+userId)
 	formData.Set("firstName", "first-name")
 	formData.Set("lastName", "last-name")
 	formData.Set("password", "1")
@@ -303,7 +307,7 @@ func generateCodeChallenge() string {
 	return base64.RawURLEncoding.EncodeToString(h.Sum(nil))
 }
 
-func getSocketTicket(userId int) (*types.UserSession, string, string, string) {
+func getSocketTicket(userId string) (*types.UserSession, string, string, string) {
 	// Get authentication token first
 	token, session, err := getKeycloakToken(userId)
 	if err != nil {
@@ -395,8 +399,7 @@ func getClientSocketConnection(ticket string) net.Conn {
 	return sockConn
 }
 
-func getUser(userId int) (*types.UserSession, net.Conn, string, string, string) {
-
+func getUser(userId string) (*types.UserSession, net.Conn, string, string, string) {
 	userSession, token, ticket, connId := getSocketTicket(userId)
 
 	connection := getClientSocketConnection(ticket)

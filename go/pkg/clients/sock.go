@@ -329,6 +329,8 @@ func InitSocket() *Socket {
 		return true
 	})
 
+	util.DebugLog.Println("Sock Init")
+
 	return &Socket{
 		handlerId:  sockHandlerId,
 		SocketMaps: socketMaps,
@@ -403,7 +405,7 @@ func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams) 
 	return res.SocketResponseParams, nil
 }
 
-func (s *Socket) StoreConn(ticket string, conn net.Conn) (SocketResponse, error) {
+func (s *Socket) StoreConn(ticket string, conn net.Conn) (*types.UserSession, error) {
 	createCmd := func(replyChan chan SocketResponse) SocketCommand {
 		return SocketCommand{
 			WorkerCommandParams: &types.WorkerCommandParams{
@@ -423,10 +425,14 @@ func (s *Socket) StoreConn(ticket string, conn net.Conn) (SocketResponse, error)
 	res, err := SendCommand(s, createCmd)
 	err = ChannelError(err, res.Error)
 	if err != nil {
-		return SocketResponse{}, util.ErrCheck(err)
+		return nil, util.ErrCheck(err)
 	}
 
-	return res, nil
+	return &types.UserSession{
+		UserSub: res.SocketResponseParams.UserSub,
+		GroupId: res.SocketResponseParams.GroupId,
+		Roles:   res.SocketResponseParams.Roles,
+	}, nil
 }
 
 func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {

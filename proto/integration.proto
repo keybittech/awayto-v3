@@ -1,0 +1,43 @@
+syntax = "proto3";
+package types;
+
+import "session.proto";
+import "role.proto";
+import "quote.proto";
+import "booking.proto";
+import "group.proto";
+import "service.proto";
+import "schedule.proto";
+import "group_service.proto";
+import "group_schedule.proto";
+
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+message TestUser {
+  string testUserId = 1;
+  string testToken = 2;
+  string testTicket = 3;
+  string testConnId = 4;
+  UserSession userSession = 5;
+  repeated IQuote quotes = 6;
+  repeated IBooking bookings = 7;
+}
+
+message IntegrationTest {
+  map<int32, TestUser> testUsers = 1;
+  map<string, IRole> roles = 2;
+  IRole memberRole = 3;
+  IRole staffRole = 4;
+  IGroup group = 5;
+  IService masterService = 6;
+  IGroupService groupService = 7;
+  ISchedule masterSchedule = 8;
+  repeated ISchedule masterSchedules = 9;
+  IGroupSchedule groupSchedule = 10;
+  repeated IGroupSchedule groupSchedules = 11;
+  ISchedule userSchedule = 12;
+  repeated ISchedule userSchedules = 13;
+  repeated IGroupScheduleDateSlots dateSlots = 14;
+  repeated IQuote quotes = 15;
+  repeated IBooking bookings = 16;
+}

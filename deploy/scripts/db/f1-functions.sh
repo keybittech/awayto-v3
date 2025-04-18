@@ -16,6 +16,44 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   END;
   \$\$ LANGUAGE PLPGSQL;
 
+  -- DROP FUNCTION IF EXISTS dbfunc_schema.session_query_13(text, text, text, text, text, text, text, text, text, text, text, text, text);
+
+  CREATE OR REPLACE FUNCTION dbfunc_schema.session_query_13(
+    p_user_sub text,
+    p_group_id text,
+    p_roles text,
+    query_text text,
+    query_param_1 text DEFAULT NULL,
+    query_param_2 text DEFAULT NULL,
+    query_param_3 text DEFAULT NULL,
+    query_param_4 text DEFAULT NULL,
+    query_param_5 text DEFAULT NULL,
+    query_param_6 text DEFAULT NULL,
+    query_param_7 text DEFAULT NULL,
+    query_param_8 text DEFAULT NULL,
+    query_param_9 text DEFAULT NULL
+  )
+  RETURNS SETOF RECORD
+  LANGUAGE plpgsql
+  VOLATILE
+  AS \$\$
+  BEGIN
+    EXECUTE format(
+      'SET SESSION app_session.user_sub = %L; SET SESSION app_session.group_id = %L; SET SESSION app_session.roles = %L;',
+      p_user_sub,
+      p_group_id,
+      p_roles
+    );
+    
+    RETURN QUERY EXECUTE query_text
+    USING query_param_1, query_param_2, query_param_3, query_param_4, query_param_5, query_param_6, query_param_7, query_param_8, query_param_9;
+  EXCEPTION
+    WHEN OTHERS THEN
+      RAISE WARNING 'Error in session_query_13 %', SQLERRM;
+      RAISE;
+  END;
+  \$\$;
+
   CREATE OR REPLACE FUNCTION dbfunc_schema.delete_group(
     sub UUID  
   ) RETURNS TABLE (

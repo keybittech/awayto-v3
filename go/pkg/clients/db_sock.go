@@ -60,47 +60,42 @@ var (
 	exchangeWhiteboardNumCheck = "exchange/" + fmt.Sprint(types.ExchangeActions_EXCHANGE_WHITEBOARD.Number())
 )
 
-func (db *Database) GetSocketAllowances(tx *sql.Tx, userSub, description, handle string) (bool, error) {
+var socketAllowanceExec = `
+	SELECT allowed
+	FROM dbfunc_schema.session_query_13($1, $2, $3, $4, $5, $6)
+	AS (allowed bool)
+`
 
-	var subscribed bool
-	err := tx.QueryRow(`
-		SELECT EXISTS (
-			SELECT 1
-			FROM dbtable_schema.bookings b
-			JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = b.schedule_bracket_slot_id
-			JOIN dbtable_schema.quotes q ON q.id = b.quote_id
-			WHERE b.id = $2 AND (sbs.created_sub = $1 OR q.created_sub = $1)
-		)
-	`, userSub, handle).Scan(&subscribed)
+var socketAllowanceQuery = `
+	SELECT EXISTS (
+		SELECT 1 as allowed
+		FROM dbtable_schema.bookings b
+		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = b.schedule_bracket_slot_id
+		JOIN dbtable_schema.quotes q ON q.id = b.quote_id
+		WHERE b.id = $2::uuid AND (sbs.created_sub = $1::uuid OR q.created_sub = $1::uuid)
+		LIMIT 1
+	)
+`
+
+func (db *Database) GetSocketAllowances(session *types.UserSession, bookingId string) (bool, error) {
+	var allowed bool
+	err := db.Client().QueryRow(
+		socketAllowanceExec,
+		session.UserSub,
+		session.GroupId,
+		session.Roles,
+		socketAllowanceQuery,
+		session.UserSub,
+		bookingId,
+	).Scan(&allowed)
 	if err != nil {
-		return false, util.ErrCheck(err)
+		return false, fmt.Errorf("database function call failed: %w", err)
 	}
 
-	// defer rows.Close()
-	//
-	// subscribed := false
-	// var r util.IdStruct
-	//
-	// switch description {
-	// case exchangeTextNumCheck,
-	// 	exchangeCallNumCheck,
-	// 	exchangeWhiteboardNumCheck:
-	//
-	// 	for rows.Next() {
-	// 		rows.Scan(&r.Id)
-	// 		if r.Id == handle {
-	// 			subscribed = true
-	// 		}
-	// 	}
-	// default:
-	// 	return false, nil
-	// }
-
-	return subscribed, nil
+	return allowed, nil
 }
 
 func (db *Database) GetTopicMessageParticipants(tx *sql.Tx, topic string, participants map[string]*types.SocketParticipant) error {
-
 	err := db.SetDbVar(tx, "sock_topic", topic)
 	if err != nil {
 		return util.ErrCheck(err)
@@ -169,7 +164,6 @@ func (db *Database) GetSocketParticipantDetails(tx *sql.Tx, participants map[str
 }
 
 func (db *Database) StoreTopicMessage(tx *sql.Tx, connId string, message *types.SocketMessage) error {
-
 	message.Store = false
 	message.Historical = true
 	message.Timestamp = time.Now().Local().String()
@@ -189,7 +183,6 @@ func (db *Database) StoreTopicMessage(tx *sql.Tx, connId string, message *types.
 }
 
 func (db *Database) GetTopicMessages(tx *sql.Tx, topic string, page, pageSize int) ([][]byte, error) {
-
 	messages := make([][]byte, pageSize)
 
 	paginatedQuery := util.WithPagination(`

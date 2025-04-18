@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"database/sql"
@@ -36,6 +37,7 @@ var colTypes *ColTypes
 
 var emptyString string
 var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)`
+var setSessionVariablesSQLReplacer = `SELECT dbfunc_schema.set_session_vars($a::VARCHAR, $b::VARCHAR, $c::VARCHAR)`
 
 type Database struct {
 	DatabaseClient      *sql.DB
@@ -128,7 +130,7 @@ func InitDatabase() *Database {
 	dbc.DatabaseAdminSub = adminSub
 	dbc.DatabaseAdminRoleId = adminRoleId
 
-	println(fmt.Sprintf("Database Initialized\nAdmin Sub: %s\nAdmin Role Id: %s", dbc.AdminSub(), dbc.AdminRoleId()))
+	util.DebugLog.Println(fmt.Sprintf("Database Init\nAdmin Sub: %s\nAdmin Role Id: %s", dbc.AdminSub(), dbc.AdminRoleId()))
 
 	return dbc
 }
@@ -172,6 +174,67 @@ func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
 	_, err = sb.WriteString("),")
 	if err != nil {
 		return err
+	}
+
+	return nil
+}
+
+const (
+	sessionVarPrefix = "WITH session_setup AS (SELECT dbfunc_schema.set_session_vars($"
+	varcharSeparator = "::VARCHAR, $"
+	sessionVarSuffix = "::VARCHAR)) "
+)
+
+func (db *Database) BuildSessionQuery(userSub, groupId, roles, query string, args ...interface{}) (string, []interface{}, error) {
+	argLen := len(args)
+
+	allParams := make([]interface{}, argLen+3)
+
+	copy(allParams, args)
+
+	allParams[argLen] = userSub
+	allParams[argLen+1] = groupId
+	allParams[argLen+2] = roles
+
+	var finalQuery strings.Builder
+	finalQuery.Grow(len(sessionVarPrefix) + len(query) + 30)
+
+	finalQuery.WriteString(sessionVarPrefix)
+	finalQuery.WriteString(strconv.Itoa(argLen + 1))
+	finalQuery.WriteString(varcharSeparator)
+	finalQuery.WriteString(strconv.Itoa(argLen + 2))
+	finalQuery.WriteString(varcharSeparator)
+	finalQuery.WriteString(strconv.Itoa(argLen + 3))
+	finalQuery.WriteString(sessionVarSuffix)
+	finalQuery.WriteString(query)
+
+	return finalQuery.String(), allParams, nil
+}
+
+func (db *Database) BeginSessionTx(session *types.UserSession) (*sql.Tx, error) {
+	tx, err := db.Client().Begin()
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = tx.Exec(setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles)
+	if err != nil {
+		tx.Rollback()
+		return nil, util.ErrCheck(err)
+	}
+
+	return tx, nil
+}
+
+func (db *Database) CommitSessionTx(tx *sql.Tx) error {
+	_, err := tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	err = tx.Commit()
+	if err != nil {
+		return util.ErrCheck(err)
 	}
 
 	return nil

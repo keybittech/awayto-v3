@@ -316,7 +316,7 @@ func InitKeycloak() *Keycloak {
 		}
 
 		if connected {
-			println("Keycloak Init")
+			util.DebugLog.Println("Keycloak Init")
 			break
 		}
 	}

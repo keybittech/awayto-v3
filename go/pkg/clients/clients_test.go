@@ -2,12 +2,34 @@ package clients
 
 import (
 	"fmt"
+	"log"
+	"os"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"google.golang.org/protobuf/encoding/protojson"
 )
+
+var integrationTest = &types.IntegrationTest{}
+
+func init() {
+	jsonBytes, err := os.ReadFile(filepath.Join("..", "..", "integrations", "integration_results.json"))
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	err = protojson.Unmarshal(jsonBytes, integrationTest)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	println("init clients_test")
+}
 
 func reset(b *testing.B) {
 	b.ReportAllocs()

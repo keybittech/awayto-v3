@@ -139,6 +139,8 @@ func testIntegrationBookings(t *testing.T) {
 		if !util.IsUUID(bookings[1].Id) {
 			t.Errorf("booking id 2 is not a uuid %s", bookings[1].Id)
 		}
+
+		integrationTest.Bookings = append(integrationTest.Bookings, bookings...)
 	})
 
 	t.Run("master schedules can be disabled, preserving all records", func(t *testing.T) {

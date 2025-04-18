@@ -1,19 +1,21 @@
 package main
 
 import (
+	"fmt"
 	"net"
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func testIntegrationUser(t *testing.T) {
-	integrationTest.TestUsers = make(map[int]*TestUser, 10)
-	integrationTest.Connections = make(map[string]net.Conn, 10)
+	integrationTest.TestUsers = make(map[int32]*types.TestUser, 10)
+	connections = make(map[string]net.Conn, 10)
 
 	t.Run("user can register and connect", func(t *testing.T) {
-		userId := int(time.Now().UnixNano())
+		userId := fmt.Sprint(time.Now().UnixNano())
 		registerKeycloakUserViaForm(userId)
 
 		session, connection, token, ticket, connId := getUser(userId)
@@ -22,7 +24,7 @@ func testIntegrationUser(t *testing.T) {
 			t.Errorf("user sub is not a uuid: %s", session.UserSub)
 		}
 
-		testUser := &TestUser{
+		testUser := &types.TestUser{
 			TestUserId:  userId,
 			TestToken:   token,
 			TestTicket:  ticket,
@@ -31,7 +33,7 @@ func testIntegrationUser(t *testing.T) {
 		}
 
 		integrationTest.TestUsers[0] = testUser
-		integrationTest.Connections[session.UserSub] = connection
+		connections[session.UserSub] = connection
 
 		t.Logf("created user #%d with email %s sub %s connId %s", 1, session.UserEmail, session.UserSub, connId)
 	})

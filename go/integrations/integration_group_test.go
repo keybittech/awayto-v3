@@ -3,7 +3,6 @@ package main
 import (
 	"net/http"
 	"slices"
-	"strconv"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -15,8 +14,8 @@ func testIntegrationGroup(t *testing.T) {
 	t.Run("admin can create a group", func(t *testing.T) {
 		admin := integrationTest.TestUsers[0]
 		groupRequest := &types.PostGroupRequest{
-			Name:           "the_test_group_" + strconv.Itoa(admin.TestUserId),
-			DisplayName:    "The Test Group #" + strconv.Itoa(admin.TestUserId),
+			Name:           "the_test_group_" + string(admin.TestUserId),
+			DisplayName:    "The Test Group #" + string(admin.TestUserId),
 			Ai:             true,
 			Purpose:        "integration testing group",
 			AllowedDomains: "",

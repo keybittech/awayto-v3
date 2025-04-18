@@ -54,11 +54,11 @@ func TestDatabase_RemoveDbSocketConnection(t *testing.T) {
 }
 
 func TestDatabase_GetSocketAllowances(t *testing.T) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
 	type args struct {
-		tx          *sql.Tx
-		userSub     string
-		description string
-		handle      string
+		session *types.UserSession
+		handle  string
 	}
 	tests := []struct {
 		name    string
@@ -71,13 +71,13 @@ func TestDatabase_GetSocketAllowances(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.db.GetSocketAllowances(tt.args.tx, tt.args.userSub, tt.args.description, tt.args.handle)
+			got, err := tt.db.GetSocketAllowances(tt.args.session, tt.args.handle)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Database.GetSocketAllowances(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.tx, tt.args.userSub, tt.args.description, tt.args.handle, err, tt.wantErr)
+				t.Errorf("Database.GetSocketAllowances(%v, %v) error = %v, wantErr %v", tt.args.session, tt.args.handle, err, tt.wantErr)
 				return
 			}
 			if got != tt.want {
-				t.Errorf("Database.GetSocketAllowances(%v, %v, %v, %v) = %v, want %v", tt.args.tx, tt.args.userSub, tt.args.description, tt.args.handle, got, tt.want)
+				t.Errorf("Database.GetSocketAllowances(%v, %v) = %v, want %v", tt.args.session, tt.args.handle, got, tt.want)
 			}
 		})
 	}

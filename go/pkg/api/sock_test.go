@@ -3,6 +3,8 @@ package api
 import (
 	"net/http"
 	"testing"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func TestAPI_InitSockServer(t *testing.T) {
@@ -51,9 +53,7 @@ func TestAPI_SocketRequest(t *testing.T) {
 		data     []byte
 		connId   string
 		socketId string
-		userSub  string
-		groupId  string
-		roles    string
+		session  *types.UserSession
 	}
 	tests := []struct {
 		name string
@@ -65,8 +65,8 @@ func TestAPI_SocketRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.SocketRequest(tt.args.data, tt.args.connId, tt.args.socketId, tt.args.userSub, tt.args.groupId, tt.args.roles); got != tt.want {
-				t.Errorf("API.SocketRequest(%v, %v, %v, %v, %v, %v) = %v, want %v", tt.args.data, tt.args.connId, tt.args.socketId, tt.args.userSub, tt.args.groupId, tt.args.roles, got, tt.want)
+			if got := tt.a.SocketRequest(tt.args.data, tt.args.connId, tt.args.socketId, tt.args.session); got != tt.want {
+				t.Errorf("API.SocketRequest(%v, %v, %v, %v) = %v, want %v", tt.args.data, tt.args.connId, tt.args.socketId, tt.args.session, got, tt.want)
 			}
 		})
 	}

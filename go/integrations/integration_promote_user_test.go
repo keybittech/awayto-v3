@@ -138,39 +138,41 @@ func testIntegrationPromoteUser(t *testing.T) {
 
 	t.Run("new roles have been assigned", func(t *testing.T) {
 		// Update TestUser states
-		staffs := make([]*TestUser, 3)
+		staffs := make([]*types.TestUser, 3)
 		staffs[0] = integrationTest.TestUsers[1]
 		staffs[1] = integrationTest.TestUsers[2]
 		staffs[2] = integrationTest.TestUsers[3]
 		for i, staff := range staffs {
 			token, session, err := getKeycloakToken(staff.TestUserId)
 			if err != nil {
-				t.Errorf("failed to get new staff token after role update staffid:%d %v", staff.TestUserId, err)
+				t.Errorf("failed to get new staff token after role update staffid:%s %v", staff.TestUserId, err)
 			}
 			if strings.Index(session.Roles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) == -1 {
-				t.Errorf("staff %d does not have APP_GROUP_SCHEDULES permissions, %s", staff.TestUserId, session.Roles)
+				t.Errorf("staff %s does not have APP_GROUP_SCHEDULES permissions, %s", staff.TestUserId, session.Roles)
 			}
 			if strings.Index(session.Roles, types.SiteRoles_APP_GROUP_USERS.String()) == -1 {
-				t.Errorf("staff %d does not have APP_GROUP_USERS permissions, %s", staff.TestUserId, session.Roles)
+				t.Errorf("staff %s does not have APP_GROUP_USERS permissions, %s", staff.TestUserId, session.Roles)
 			}
-			integrationTest.TestUsers[i+1].TestToken = token
-			integrationTest.TestUsers[i+1].UserSession = session
+			testUserIdx := int32(i + 1) // skip admin
+			integrationTest.TestUsers[testUserIdx].TestToken = token
+			integrationTest.TestUsers[testUserIdx].UserSession = session
 		}
 
-		members := make([]*TestUser, 3)
+		members := make([]*types.TestUser, 3)
 		members[0] = integrationTest.TestUsers[4]
 		members[1] = integrationTest.TestUsers[5]
 		members[2] = integrationTest.TestUsers[6]
 		for i, member := range members {
 			token, session, err := getKeycloakToken(member.TestUserId)
 			if err != nil {
-				t.Errorf("failed to get new member token after role update memberid:%d %v", member.TestUserId, err)
+				t.Errorf("failed to get new member token after role update memberid:%s %v", member.TestUserId, err)
 			}
 			if strings.Index(session.Roles, types.SiteRoles_APP_GROUP_BOOKINGS.String()) == -1 {
-				t.Errorf("member %d does not have APP_GROUP_BOOKINGS permissions, %s", member.TestUserId, session.Roles)
+				t.Errorf("member %s does not have APP_GROUP_BOOKINGS permissions, %s", member.TestUserId, session.Roles)
 			}
-			integrationTest.TestUsers[i+4].TestToken = token
-			integrationTest.TestUsers[i+4].UserSession = session
+			testUserIdx := int32(i + 4) // skip admin + 3 staff
+			integrationTest.TestUsers[testUserIdx].TestToken = token
+			integrationTest.TestUsers[testUserIdx].UserSession = session
 		}
 	})
 }

@@ -68,32 +68,83 @@ func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 	defer db.DatabaseClient.Close()
 	participants := make(map[string]*types.SocketParticipant)
 	topic := "test-topic"
-	err := db.TxExec(func(tx *sql.Tx) error {
-		reset(b)
-		for c := 0; c < b.N; c++ {
+	reset(b)
+	b.StopTimer()
+	for c := 0; c < b.N; c++ {
+		err := db.TxExec(func(tx *sql.Tx) error {
+			b.StartTimer()
 			db.GetTopicMessageParticipants(tx, topic, participants)
+			b.StopTimer()
+			return nil
+		}, "", "", "")
+		if err != nil {
+			b.Fatal(err)
 		}
-		return nil
-	}, "", "", "")
+	}
+}
+
+var workerString = "worker"
+
+var execQuery = `
+	SELECT sub, id
+	FROM dbfunc_schema.session_query_13($1, $2, $3, $4)
+	AS (sub uuid, id uuid)
+`
+
+var testQuery = `
+	SELECT u.sub, r.id
+	FROM dbtable_schema.users u
+	JOIN dbtable_schema.roles r ON r.name = 'Admin'
+	WHERE u.username = 'system_owner'
+`
+
+var testSub, testId string
+
+func (db *Database) GetTestQuery() (bool, error) {
+	err := db.Client().QueryRow(
+		execQuery,
+		workerString,
+		emptyString,
+		emptyString,
+		testQuery,
+	).Scan(&testSub, &testId)
 	if err != nil {
-		b.Fatal(err)
+		println(err.Error())
+	}
+	return true, nil
+}
+
+func BenchmarkDbSocketGetTestQuery(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		db.GetTestQuery()
+		// if b != nil {
+		// 	println(fmt.Sprintf("error %v", b))
+		// }
+		//
+		// println(fmt.Sprint(a))
 	}
 }
 
 func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
-	topic := "test-topic"
-	err := db.TxExec(func(tx *sql.Tx) error {
-		description, handle, _ := util.SplitColonJoined(topic)
-		reset(b)
-		for c := 0; c < b.N; c++ {
-			db.GetSocketAllowances(tx, "", description, handle)
-		}
-		return nil
-	}, "", "", "")
-	if err != nil {
-		b.Fatal(err)
+	bookingId := integrationTest.Bookings[1].Id
+
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		b.StopTimer()
+		user := integrationTest.TestUsers[int32(c%7)]
+		b.StartTimer()
+		db.GetSocketAllowances(user.UserSession, bookingId)
+		// if b != nil {
+		// 	println(fmt.Sprintf("error %v", b))
+		// }
+		//
+		// println(fmt.Sprint(a))
 	}
 }
 
@@ -353,6 +404,41 @@ func Test_extractValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := extractValue(tt.args.dst, tt.args.src); (err != nil) != tt.wantErr {
 				t.Errorf("extractValue(%v, %v) error = %v, wantErr %v", tt.args.dst, tt.args.src, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestDatabase_BuildSessionQuery(t *testing.T) {
+	type args struct {
+		userSub string
+		groupId string
+		roles   string
+		query   string
+		args    []interface{}
+	}
+	tests := []struct {
+		name    string
+		db      *Database
+		args    args
+		want    string
+		want1   []interface{}
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1, err := tt.db.BuildSessionQuery(tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args...)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Database.BuildSessionQuery(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args, err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Database.BuildSessionQuery(%v, %v, %v, %v, %v) got = %v, want %v", tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args, got, tt.want)
+			}
+			if !reflect.DeepEqual(got1, tt.want1) {
+				t.Errorf("Database.BuildSessionQuery(%v, %v, %v, %v, %v) got1 = %v, want %v", tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args, got1, tt.want1)
 			}
 		})
 	}

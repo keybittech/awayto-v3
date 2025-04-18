@@ -67,23 +67,23 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 			return
 		}
 
-		userConnection, err := a.Handlers.Socket.StoreConn(ticket, conn)
+		userSession, err := a.Handlers.Socket.StoreConn(ticket, conn)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
 		}
 
 		var exitReason string
-		util.SockLog.Println("JOIN /sock sub:" + userConnection.UserSub + " cid:" + connId)
+		util.SockLog.Println("JOIN /sock sub:" + userSession.UserSub + " cid:" + connId)
 		defer func() {
-			util.SockLog.Println("PART /sock sub:" + userConnection.UserSub + " cid:" + connId + " reason:" + exitReason)
+			util.SockLog.Println("PART /sock sub:" + userSession.UserSub + " cid:" + connId + " reason:" + exitReason)
 		}()
 
-		socketId := util.GetColonJoined(userConnection.UserSub, connId)
+		socketId := util.GetColonJoined(userSession.UserSub, connId)
 
-		defer a.TearDownSocketConnection(socketId, connId, userConnection.UserSub)
+		defer a.TearDownSocketConnection(socketId, connId, userSession.UserSub)
 
-		err = a.Handlers.Database.InitDbSocketConnection(connId, userConnection.UserSub, userConnection.GroupId, userConnection.Roles)
+		err = a.Handlers.Database.InitDbSocketConnection(connId, userSession.UserSub, userSession.GroupId, userSession.Roles)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
@@ -132,7 +132,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 					return
 				}
 
-				err := a.Handlers.Socket.SendMessage(userConnection.UserSub, connId, &types.SocketMessage{
+				err := a.Handlers.Socket.SendMessage(userSession.UserSub, connId, &types.SocketMessage{
 					Action:  types.SocketActions_PING_PONG,
 					Payload: PING,
 				})
@@ -146,11 +146,11 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 					exitReason = "returned due to messages EOF"
 					return
 				} else {
-					if sockRl.Limit(userConnection.UserSub) {
+					if sockRl.Limit(userSession.UserSub) {
 						continue
 					}
 
-					go a.SocketRequest(data, connId, socketId, userConnection.UserSub, userConnection.GroupId, userConnection.Roles)
+					go a.SocketRequest(data, connId, socketId, userSession)
 				}
 			case err := <-errs:
 				// normally shouldn't error, but if it does it could potentially be heavy load
@@ -218,8 +218,8 @@ func (a *API) TearDownSocketConnection(socketId, connId, userSub string) {
 	clients.GetGlobalWorkerPool().CleanUpClientMapping(userSub)
 }
 
-func (a *API) SocketRequest(data []byte, connId, socketId, userSub, groupId, roles string) bool {
-	socketMessage := a.SocketMessageReceiver(userSub, data)
+func (a *API) SocketRequest(data []byte, connId, socketId string, session *types.UserSession) bool {
+	socketMessage := a.SocketMessageReceiver(data)
 	if socketMessage == nil {
 		return false
 	}
@@ -229,6 +229,6 @@ func (a *API) SocketRequest(data []byte, connId, socketId, userSub, groupId, rol
 		return true
 	}
 
-	a.SocketMessageRouter(socketMessage, connId, socketId, userSub, groupId, roles)
+	a.SocketMessageRouter(socketMessage, connId, socketId, session)
 	return true
 }

@@ -71,31 +71,31 @@ func testIntegrationQuotes(t *testing.T) {
 		for i := range 2 {
 			bracketSlot := integrationTest.DateSlots[i]
 
-			for _, member := range []*TestUser{member1, member2, member3} {
+			for _, member := range []*types.TestUser{member1, member2, member3} {
 				quote, err := postQuote(member.TestToken, serviceTierId, bracketSlot, nil, nil)
 				if err != nil {
-					t.Errorf("multiple users %d can request quote error: %v", member.TestUserId, err)
+					t.Errorf("multiple users %s can request quote error: %v", member.TestUserId, err)
 				}
 
 				if !util.IsUUID(quote.Id) {
-					t.Errorf("user #%d quote id invalid %s", member.TestUserId, quote.Id)
+					t.Errorf("user #%s quote id invalid %s", member.TestUserId, quote.Id)
 				}
 
 				// Staff can see the quote info
 				if _, err := getQuoteById(staff1.TestToken, quote.Id); err != nil {
-					t.Errorf("user #%d quote id %s bad get %v", member.TestUserId, quote.Id, err)
+					t.Errorf("user #%s quote id %s bad get %v", member.TestUserId, quote.Id, err)
 				}
 
 				if _, err := time.Parse("2006-01-02", quote.SlotDate); err != nil {
-					t.Errorf("user %d quote %d slot date invalid %s", member.TestUserId, i, quote.SlotDate)
+					t.Errorf("user %s quote %d slot date invalid %s", member.TestUserId, i, quote.SlotDate)
 				}
 
 				if !util.IsUUID(quote.ScheduleBracketSlotId) {
-					t.Errorf("user %d quote %d sbs id invalid %s", member.TestUserId, i, quote.SlotDate)
+					t.Errorf("user %s quote %d sbs id invalid %s", member.TestUserId, i, quote.SlotDate)
 				}
 
 				if quote.ScheduleBracketSlotId != bracketSlot.ScheduleBracketSlotId {
-					t.Errorf("user %d quote %d sbs id %s doesn't match requested slot id %s", member.TestUserId, i, quote.SlotDate, bracketSlot.ScheduleBracketSlotId)
+					t.Errorf("user %s quote %d sbs id %s doesn't match requested slot id %s", member.TestUserId, i, quote.SlotDate, bracketSlot.ScheduleBracketSlotId)
 				}
 
 				member.Quotes[i] = quote
@@ -114,7 +114,7 @@ func testIntegrationQuotes(t *testing.T) {
 		for i := range 2 {
 			bracketSlot := dateSlots[i]
 
-			for _, member := range []*TestUser{member1, member2, member3} {
+			for _, member := range []*types.TestUser{member1, member2, member3} {
 				quote, err := postQuote(member.TestToken, serviceTierId, bracketSlot, nil, nil)
 				if err != nil {
 					t.Errorf("secondary request quote error: %v", err)

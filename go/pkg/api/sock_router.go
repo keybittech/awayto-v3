@@ -13,7 +13,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (a *API) SocketMessageReceiver(userSub string, data []byte) *types.SocketMessage {
+func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 	var socketMessage types.SocketMessage
 
 	messageParams := make([]string, 7)
@@ -52,17 +52,17 @@ func (a *API) SocketMessageReceiver(userSub string, data []byte) *types.SocketMe
 	return &socketMessage
 }
 
-func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, userSub, groupId, roles string) {
+func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId string, session *types.UserSession) {
 	var err error
 
 	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(250*time.Millisecond))
-	defer func(us string) {
-		clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
+	defer func() {
+		clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 		}
 		cancel()
-	}(userSub)
+	}()
 
 	if sm.Topic == "" {
 		return
@@ -70,7 +70,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 	if sm.Action != types.SocketActions_SUBSCRIBE {
 		hasSubRequest, err := a.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+			UserSub: session.UserSub,
 			Topic:   sm.Topic,
 		})
 
@@ -97,24 +97,19 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 
 		// topics are in the format of context/action:ref-id
 		// for example exchange/2:0195ec07-e989-71ac-a0c4-f6a08d1f93f6
-		description, handle, err := util.SplitColonJoined(sm.Topic)
+		_, handle, err := util.SplitColonJoined(sm.Topic)
 		if err != nil {
 			return
 		}
 
-		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
-			var txErr error
-			subscribed, txErr := a.Handlers.Database.GetSocketAllowances(tx, userSub, description, handle)
-			if txErr != nil {
-				return util.ErrCheck(txErr)
-			}
-			if !subscribed {
-				return errors.New("not subscribed")
-			}
-			return nil
-		}, userSub, groupId, roles)
+		subscribed, err := a.Handlers.Database.GetSocketAllowances(session, handle)
 		if err != nil {
 			util.ErrorLog.Println(err)
+			return
+		}
+
+		if !subscribed {
+			util.DebugLog.Println(errors.New("not subscribed"))
 			return
 		}
 
@@ -129,7 +124,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 		}
 
 		_, err = a.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+			UserSub: session.UserSub,
 			Topic:   sm.Topic,
 			Targets: cachedParticipantTargets,
 		})
@@ -139,7 +134,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(userSub, connId, &types.SocketMessage{
+		a.Handlers.Socket.SendMessage(session.UserSub, connId, &types.SocketMessage{
 			Action: types.SocketActions_SUBSCRIBE,
 			Topic:  sm.Topic,
 		})
@@ -160,7 +155,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(userSub, cachedParticipantTargets, &types.SocketMessage{
+		a.Handlers.Socket.SendMessage(session.UserSub, cachedParticipantTargets, &types.SocketMessage{
 			Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 			Topic:   sm.Topic,
 			Payload: socketId,
@@ -169,7 +164,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 		a.Handlers.Redis.RemoveTopicFromConnection(socketId, sm.Topic)
 
 		_, err = a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: userSub,
+			UserSub: session.UserSub,
 			Topic:   sm.Topic,
 		})
 		if err != nil {
@@ -198,7 +193,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 				return util.ErrCheck(txErr)
 			}
 			return nil
-		}, userSub, groupId, roles)
+		}, session.UserSub, session.GroupId, session.Roles)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
@@ -210,7 +205,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(userSub, onlineTargets, &types.SocketMessage{
+		a.Handlers.Socket.SendMessage(session.UserSub, onlineTargets, &types.SocketMessage{
 			Action:  types.SocketActions_LOAD_SUBSCRIBERS,
 			Sender:  connId,
 			Topic:   sm.Topic,
@@ -232,7 +227,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 				return util.ErrCheck(txErr)
 			}
 			return nil
-		}, userSub, groupId, roles)
+		}, session.UserSub, session.GroupId, session.Roles)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return
@@ -241,7 +236,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 		for _, messageBytes := range messages {
 			if messageBytes != nil {
 				_, err := a.Handlers.Socket.SendCommand(clients.SendSocketMessageSocketCommand, &types.SocketRequestParams{
-					UserSub:      userSub,
+					UserSub:      session.UserSub,
 					Targets:      connId,
 					MessageBytes: messageBytes,
 				})
@@ -260,7 +255,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 			return
 		}
 
-		err = a.Handlers.Socket.SendMessage(userSub, cachedParticipantTargets, sm)
+		err = a.Handlers.Socket.SendMessage(session.UserSub, cachedParticipantTargets, sm)
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
@@ -276,7 +271,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId, use
 				return util.ErrCheck(txErr)
 			}
 			return nil
-		}, userSub, groupId, roles)
+		}, session.UserSub, session.GroupId, session.Roles)
 		if err != nil {
 			util.ErrorLog.Println(err)
 			return

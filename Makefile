@@ -132,6 +132,13 @@ $(eval HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR))
 
 AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
 
+define clean_logs
+  $(shell if [ $$(ls -1 $(LOG_DIR)/db/*.log 2>/dev/null | wc -l) -gt 1 ]; then \
+    ls -t $(LOG_DIR)/db/*.log | tail -n +2 | xargs rm -f; \
+  fi)
+endef
+
+
 #################################
 #             FLAGS             #
 #################################
@@ -249,7 +256,7 @@ $(GO_TARGET): working/proto-stamp $(shell find $(GO_SRC)/{main.go,pkg} -type f) 
 
 .PHONY: go_dev
 go_dev:
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) .
 
@@ -266,19 +273,19 @@ go_tidy:
 
 .PHONY: go_watch
 go_watch:
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod build -C $(GO_SRC) -o $(GO_TARGET) .
 
 .PHONY: go_debug
 go_debug:
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
 	cd go && $(GO_DEV_FLAGS) dlv debug --wd ${PWD}
 
 .PHONY: go_debug_exec
 go_debug_exec:
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) dlv exec --wd ${PWD} $(GO_TARGET)
 
@@ -312,7 +319,7 @@ go_test_ui: build $(GO_TARGET)
 
 .PHONY: go_test_unit
 go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) go test -C $(GO_API_DIR) $(GO_TEST_FLAGS) ./...
 	$(GO_DEV_FLAGS) go test -C $(GO_CLIENTS_DIR) $(GO_TEST_FLAGS) ./...
@@ -321,17 +328,17 @@ go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
 
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_TEST_FLAGS) -short ./...
 
 .PHONY: go_test_integration_bench
 go_test_integration_bench: $(GO_TARGET)
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -short ./...
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	$(GO_DEV_FLAGS) go test -C $(GO_SRC) $(GO_BENCH_FLAGS) -v ./...
 
 .PHONY: go_test_integration_results
@@ -340,7 +347,7 @@ go_test_integration_results:
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
-	rm $(LOG_DIR)/*.log || true
+	$(call clean_logs)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_API_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_CLIENTS_DIR)
 	go test -C $(GO_SRC) $(GO_BENCH_FLAGS) ${PROJECT_REPO}/$(GO_HANDLERS_DIR)

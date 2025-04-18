@@ -4,7 +4,6 @@ import (
 	"log"
 	"net"
 	"reflect"
-	"strconv"
 	"strings"
 	"sync/atomic"
 	"testing"
@@ -43,6 +42,7 @@ func init() {
 		Sender:     "sender",
 		Timestamp:  "timestamp",
 	}
+	println("init sock_test")
 }
 
 func TestInitSocket(t *testing.T) {
@@ -60,22 +60,25 @@ func TestInitSocket(t *testing.T) {
 	}
 }
 
-func getClientData(numClients int, commandType int32, requestParams *types.SocketRequestParams, conn ...bool) ([]string, map[string]func(replyChan chan SocketResponse) SocketCommand) {
+func getClientData(numClients int, commandType int32, requestParams *types.SocketRequestParams) ([]string, []func(replyChan chan SocketResponse) SocketCommand) {
+	if requestParams == nil {
+		requestParams = &types.SocketRequestParams{}
+	}
 	clientIds := make([]string, numClients)
-	clientCommands := make(map[string]func(replyChan chan SocketResponse) SocketCommand)
+	clientCommands := make([]func(replyChan chan SocketResponse) SocketCommand, numClients)
 	for i := 0; i < numClients; i++ {
-		clientId := "client-" + strconv.Itoa(numClients) + "-" + strconv.Itoa(i)
-		clientIds[i] = clientId
-		clientCommands[clientId] = func(replyChan chan SocketResponse) SocketCommand {
-			requestParams.UserSub = clientId
-			request := SocketRequest{SocketRequestParams: requestParams}
-			if conn != nil {
-				request.Conn = &util.NullConn{}
-			}
+		userIter := int32(i % 6)
+		userClient := integrationTest.TestUsers[userIter]
+		clientIds[userIter] = userClient.UserSession.UserSub
+		requestParams.UserSub = userClient.UserSession.UserSub
+		requestParams.GroupId = userClient.UserSession.GroupId
+		requestParams.Roles = userClient.UserSession.Roles
+		request := SocketRequest{SocketRequestParams: requestParams}
+		clientCommands[userIter] = func(replyChan chan SocketResponse) SocketCommand {
 			return SocketCommand{
 				WorkerCommandParams: &types.WorkerCommandParams{
 					Ty:       commandType,
-					ClientId: clientId,
+					ClientId: userClient.UserSession.UserSub,
 				},
 				Request:   request,
 				ReplyChan: replyChan,
@@ -89,22 +92,19 @@ func getClientData(numClients int, commandType int32, requestParams *types.Socke
 func doSendCommandBench(clientCount int, b *testing.B) {
 	socket := InitSocket()
 	defer socket.Close()
-	clientIds, createCommands := getClientData(
+	_, createCommands := getClientData(
 		clientCount,
 		CreateSocketTicketSocketCommand,
-		&types.SocketRequestParams{
-			GroupId: "group-id",
-			Roles:   "APP_GROUP_ADMIN",
-		},
+		nil,
 	)
 	// b.SetParallelism(clientCount)
 	reset(b)
 
 	b.RunParallel(func(pb *testing.PB) {
-		clientIndex := int(atomic.AddInt32(new(int32), 1)-1) % clientCount
+		clientIndex := int32((int(atomic.AddInt32(new(int32), 1)-1) % clientCount) % 6)
 
 		for pb.Next() {
-			_, err := SendCommand(socket, createCommands[clientIds[clientIndex]])
+			_, err := SendCommand(socket, createCommands[clientIndex])
 			if err != nil {
 				b.Errorf("send command error %v", err)
 			}
@@ -718,6 +718,62 @@ func TestSocket_Connected(t *testing.T) {
 			if got := tt.s.Connected(tt.args.userSub); got != tt.want {
 				t.Errorf("Socket.Connected(%v) = %v, want %v", tt.args.userSub, got, tt.want)
 			}
+		})
+	}
+}
+
+func TestSocket_SendCommand(t *testing.T) {
+	type args struct {
+		cmdType int32
+		request *types.SocketRequestParams
+	}
+	tests := []struct {
+		name    string
+		s       *Socket
+		args    args
+		want    *types.SocketResponseParams
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.s.SendCommand(tt.args.cmdType, tt.args.request)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Socket.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.request, err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Socket.SendCommand(%v, %v) = %v, want %v", tt.args.cmdType, tt.args.request, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestSocket_StoreConn(t *testing.T) {
+	type args struct {
+		ticket string
+		conn   net.Conn
+	}
+	tests := []struct {
+		name    string
+		s       *Socket
+		args    args
+		want    SocketResponse
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			// got, err := tt.s.StoreConn(tt.args.ticket, tt.args.conn)
+			// if (err != nil) != tt.wantErr {
+			// 	t.Errorf("Socket.StoreConn(%v, %v) error = %v, wantErr %v", tt.args.ticket, tt.args.conn, err, tt.wantErr)
+			// 	return
+			// }
+			// if !reflect.DeepEqual(got, tt.want) {
+			// 	t.Errorf("Socket.StoreConn(%v, %v) = %v, want %v", tt.args.ticket, tt.args.conn, got, tt.want)
+			// }
 		})
 	}
 }
