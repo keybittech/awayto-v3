@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_CheckGroupName(t *testing.T) {
 		req     *http.Request
 		data    *types.CheckGroupNameRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_JoinGroup(t *testing.T) {
 		req     *http.Request
 		data    *types.JoinGroupRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_LeaveGroup(t *testing.T) {
 		req     *http.Request
 		data    *types.LeaveGroupRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_AttachUser(t *testing.T) {
 		req     *http.Request
 		data    *types.AttachUserRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_CompleteOnboarding(t *testing.T) {
 		req     *http.Request
 		data    *types.CompleteOnboardingRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

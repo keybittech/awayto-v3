@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostGroupFile(t *testing.T) {
 		req     *http.Request
 		data    *types.PostGroupFileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PatchGroupFile(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchGroupFileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetGroupFiles(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupFilesRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetGroupFileById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupFileByIdRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_DeleteGroupFile(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteGroupFileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

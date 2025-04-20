@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostForm(w http.ResponseWriter, req *http.Request, data *types.PostFormRequest, session *types.UserSession, tx *sql.Tx) (*types.PostFormResponse, error) {
+func (h *Handlers) PostForm(w http.ResponseWriter, req *http.Request, data *types.PostFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostFormResponse, error) {
 	var id string
 	err := tx.QueryRow(`
 		INSERT INTO dbtable_schema.forms (name, created_on, created_sub)
@@ -23,7 +24,7 @@ func (h *Handlers) PostForm(w http.ResponseWriter, req *http.Request, data *type
 	return &types.PostFormResponse{Id: id}, nil
 }
 
-func (h *Handlers) PostFormVersion(w http.ResponseWriter, req *http.Request, data *types.PostFormVersionRequest, session *types.UserSession, tx *sql.Tx) (*types.PostFormVersionResponse, error) {
+func (h *Handlers) PostFormVersion(w http.ResponseWriter, req *http.Request, data *types.PostFormVersionRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostFormVersionResponse, error) {
 	formJson, err := data.GetVersion().GetForm().MarshalJSON()
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -51,7 +52,7 @@ func (h *Handlers) PostFormVersion(w http.ResponseWriter, req *http.Request, dat
 	return &types.PostFormVersionResponse{Id: versionId}, nil
 }
 
-func (h *Handlers) PatchForm(w http.ResponseWriter, req *http.Request, data *types.PatchFormRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchFormResponse, error) {
+func (h *Handlers) PatchForm(w http.ResponseWriter, req *http.Request, data *types.PatchFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchFormResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.forms
 		SET name = $1, updated_on = $2, updated_sub = $3
@@ -65,7 +66,7 @@ func (h *Handlers) PatchForm(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.PatchFormResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetForms(w http.ResponseWriter, req *http.Request, data *types.GetFormsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetFormsResponse, error) {
+func (h *Handlers) GetForms(w http.ResponseWriter, req *http.Request, data *types.GetFormsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetFormsResponse, error) {
 	var forms []*types.IProtoForm
 
 	err := h.Database.QueryRows(tx, &forms, `
@@ -78,7 +79,7 @@ func (h *Handlers) GetForms(w http.ResponseWriter, req *http.Request, data *type
 	return &types.GetFormsResponse{Forms: forms}, nil
 }
 
-func (h *Handlers) GetFormById(w http.ResponseWriter, req *http.Request, data *types.GetFormByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetFormByIdResponse, error) {
+func (h *Handlers) GetFormById(w http.ResponseWriter, req *http.Request, data *types.GetFormByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetFormByIdResponse, error) {
 	var forms []*types.IProtoForm
 
 	err := h.Database.QueryRows(tx, &forms, `
@@ -96,7 +97,7 @@ func (h *Handlers) GetFormById(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetFormByIdResponse{Form: forms[0]}, nil
 }
 
-func (h *Handlers) DeleteForm(w http.ResponseWriter, req *http.Request, data *types.DeleteFormRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteFormResponse, error) {
+func (h *Handlers) DeleteForm(w http.ResponseWriter, req *http.Request, data *types.DeleteFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteFormResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.forms
 		WHERE id = $1
@@ -108,7 +109,7 @@ func (h *Handlers) DeleteForm(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.DeleteFormResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableForm(w http.ResponseWriter, req *http.Request, data *types.DisableFormRequest, session *types.UserSession, tx *sql.Tx) (*types.DisableFormResponse, error) {
+func (h *Handlers) DisableForm(w http.ResponseWriter, req *http.Request, data *types.DisableFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableFormResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.forms
 		SET enabled = false, updated_on = $2, updated_sub = $3

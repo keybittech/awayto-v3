@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostGroup(t *testing.T) {
 		req     *http.Request
 		data    *types.PostGroupRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PatchGroup(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchGroupRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_PatchGroupAssignments(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchGroupAssignmentsRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetGroupAssignments(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupAssignmentsRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_DeleteGroup(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteGroupRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

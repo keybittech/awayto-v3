@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostUserProfile(t *testing.T) {
 		req     *http.Request
 		data    *types.PostUserProfileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PatchUserProfile(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchUserProfileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetUserProfileDetails(t *testing.T) {
 		req     *http.Request
 		data    *types.GetUserProfileDetailsRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetUserProfileDetailsBySub(t *testing.T) {
 		req     *http.Request
 		data    *types.GetUserProfileDetailsBySubRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_GetUserProfileDetailsById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetUserProfileDetailsByIdRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_DisableUserProfile(t *testing.T) {
 		req     *http.Request
 		data    *types.DisableUserProfileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -201,7 +201,7 @@ func TestHandlers_ActivateProfile(t *testing.T) {
 		req     *http.Request
 		data    *types.ActivateProfileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -232,7 +232,7 @@ func TestHandlers_DeactivateProfile(t *testing.T) {
 		req     *http.Request
 		data    *types.DeactivateProfileRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

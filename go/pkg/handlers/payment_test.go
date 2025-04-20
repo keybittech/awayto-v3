@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostPayment(t *testing.T) {
 		req     *http.Request
 		data    *types.PostPaymentRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PatchPayment(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchPaymentRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetPayments(t *testing.T) {
 		req     *http.Request
 		data    *types.GetPaymentsRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetPaymentById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetPaymentByIdRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_DeletePayment(t *testing.T) {
 		req     *http.Request
 		data    *types.DeletePaymentRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_DisablePayment(t *testing.T) {
 		req     *http.Request
 		data    *types.DisablePaymentRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostServiceTier(t *testing.T) {
 		req     *http.Request
 		data    *types.PostServiceTierRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PatchServiceTier(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchServiceTierRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetServiceTiers(t *testing.T) {
 		req     *http.Request
 		data    *types.GetServiceTiersRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetServiceTierById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetServiceTierByIdRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_DeleteServiceTier(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteServiceTierRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_DisableServiceTier(t *testing.T) {
 		req     *http.Request
 		data    *types.DisableServiceTierRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -13,7 +13,7 @@ func TestHandlers_AuthWebhook_REGISTER(t *testing.T) {
 		req       *http.Request
 		authEvent *types.AuthEvent
 		session   *types.UserSession
-		tx        *sql.Tx
+		tx        *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -43,7 +43,7 @@ func TestHandlers_AuthWebhook_REGISTER_VALIDATE(t *testing.T) {
 		req       *http.Request
 		authEvent *types.AuthEvent
 		session   *types.UserSession
-		tx        *sql.Tx
+		tx        *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

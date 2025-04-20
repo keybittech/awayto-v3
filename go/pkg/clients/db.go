@@ -15,6 +15,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -77,6 +78,10 @@ func (ptx PoolTx) SetSession(session *types.UserSession) {
 
 func (ptx PoolTx) UnsetSession() {
 	ptx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+}
+
+type PoolRow struct {
+	Rows pgx.Rows
 }
 
 type Database struct {
@@ -478,7 +483,7 @@ func (db *Database) TxExec(doFunc func(PoolTx) error, ids ...string) error {
 // 	return nil
 // }
 
-func (db *Database) QueryRows(tx *sql.Tx, protoStructSlice interface{}, query string, args ...interface{}) error {
+func (db *Database) QueryRows(tx *PoolTx, protoStructSlice interface{}, query string, args ...interface{}) error {
 
 	protoValue := reflect.ValueOf(protoStructSlice)
 	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
@@ -496,14 +501,16 @@ func (db *Database) QueryRows(tx *sql.Tx, protoStructSlice interface{}, query st
 
 	defer rows.Close()
 
-	columns, err := rows.Columns()
-	if err != nil {
-		return util.ErrCheck(err)
-	}
+	fds := rows.FieldDescriptions()
 
-	columnTypes, err := rows.ColumnTypes()
-	if err != nil {
-		return util.ErrCheck(err)
+	var columns []string
+	var columnTypes []uint32
+
+	for _, fd := range fds {
+		if fd.DataTypeOID != uint32(0) {
+			columns = append(columns, fd.Name)
+			columnTypes = append(columnTypes, fd.DataTypeOID)
+		}
 	}
 
 	for rows.Next() {
@@ -514,7 +521,7 @@ func (db *Database) QueryRows(tx *sql.Tx, protoStructSlice interface{}, query st
 		for i, column := range columns {
 			index, ok := indexes[column]
 			if ok {
-				safeVal := reflect.New(mapTypeToNullType(columnTypes[i].DatabaseTypeName()))
+				safeVal := reflect.New(mapIntTypeToNullType(columnTypes[i]))
 				values = append(values, safeVal.Interface())
 				deferrals = append(deferrals, func() error {
 					return extractValue(newElem.Elem().Field(index), safeVal)
@@ -589,6 +596,25 @@ func (pms *JSONSerializer) Scan(src interface{}) error {
 	*pms = source
 
 	return nil
+}
+
+func mapIntTypeToNullType(t uint32) reflect.Type {
+	switch t {
+	case pgtype.TimestamptzOID:
+		return colTypes.reflectTimestamp
+	case pgtype.VarcharOID, pgtype.TimestampOID, pgtype.DateOID, pgtype.IntervalOID, pgtype.TextOID, pgtype.UUIDOID:
+		return colTypes.reflectString
+	case pgtype.Int8OID, pgtype.Int4OID, pgtype.Int2OID:
+		return colTypes.reflectInt32
+	// case INTEGER", "SMALLINT":
+	// return colTypes.reflectInt64
+	case pgtype.BoolOID:
+		return colTypes.reflectBool
+	case pgtype.JSONOID, pgtype.JSONBOID:
+		return colTypes.reflectJson
+	default:
+		return nil
+	}
 }
 
 func mapTypeToNullType(t string) reflect.Type {

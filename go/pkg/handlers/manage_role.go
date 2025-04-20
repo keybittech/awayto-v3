@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"database/sql"
 	"errors"
 	"net/http"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, data *types.PostManageRolesRequest, session *types.UserSession, tx *sql.Tx) (*types.PostManageRolesResponse, error) {
+func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, data *types.PostManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostManageRolesResponse, error) {
 	var roles []*types.IRole
 
 	err := h.Database.QueryRows(tx, &roles, `
@@ -29,7 +29,7 @@ func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, dat
 	return &types.PostManageRolesResponse{Id: roles[0].GetId(), Name: roles[0].GetName()}, nil
 }
 
-func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, data *types.PatchManageRolesRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchManageRolesResponse, error) {
+func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, data *types.PatchManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchManageRolesResponse, error) {
 	var roles []*types.IRole
 
 	err := h.Database.QueryRows(tx, &roles, `
@@ -49,7 +49,7 @@ func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, da
 	return &types.PatchManageRolesResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data *types.GetManageRolesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetManageRolesResponse, error) {
+func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data *types.GetManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetManageRolesResponse, error) {
 	var roles []*types.IRole
 
 	err := h.Database.QueryRows(tx, &roles, `
@@ -62,7 +62,7 @@ func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data
 	return &types.GetManageRolesResponse{Roles: roles}, nil
 }
 
-func (h *Handlers) DeleteManageRoles(w http.ResponseWriter, req *http.Request, data *types.DeleteManageRolesRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteManageRolesResponse, error) {
+func (h *Handlers) DeleteManageRoles(w http.ResponseWriter, req *http.Request, data *types.DeleteManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteManageRolesResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.roles
 		WHERE id = $1

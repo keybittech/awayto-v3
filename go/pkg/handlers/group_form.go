@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"database/sql"
 	"errors"
 	"net/http"
 	"strings"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupFormResponse, error) {
+func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupFormResponse, error) {
 	var groupFormExists string
 
 	err := tx.QueryRow(`
@@ -67,7 +67,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 	return &types.PostGroupFormResponse{Id: groupFormId}, nil
 }
 
-func (h *Handlers) PostGroupFormVersion(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormVersionRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupFormVersionResponse, error) {
+func (h *Handlers) PostGroupFormVersion(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormVersionRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupFormVersionResponse, error) {
 	formVersionResp, err := h.PostFormVersion(w, req, &types.PostFormVersionRequest{Name: data.GetName(), Version: data.GetGroupFormVersion()}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -79,7 +79,7 @@ func (h *Handlers) PostGroupFormVersion(w http.ResponseWriter, req *http.Request
 	return &types.PostGroupFormVersionResponse{Id: formVersionResp.GetId()}, nil
 }
 
-func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFormRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupFormResponse, error) {
+func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupFormResponse, error) {
 	_, err := h.PatchForm(w, req, &types.PatchFormRequest{Form: data.GetGroupForm().GetForm()}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -91,7 +91,7 @@ func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupFormResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupFormsResponse, error) {
+func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFormsResponse, error) {
 	var forms []*types.IProtoForm
 
 	err := h.Database.QueryRows(tx, &forms, `
@@ -112,7 +112,7 @@ func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupFormsResponse{GroupForms: groupForms}, nil
 }
 
-func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupFormByIdResponse, error) {
+func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFormByIdResponse, error) {
 	var groupForms []*types.IGroupForm
 
 	err := h.Database.QueryRows(tx, &groupForms, `
@@ -131,7 +131,7 @@ func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupFormByIdResponse{GroupForm: groupForms[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupFormResponse, error) {
+func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupFormResponse, error) {
 
 	for _, formId := range strings.Split(data.GetIds(), ",") {
 		_, err := tx.Exec(`DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)

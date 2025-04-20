@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostGroupUserSchedule(t *testing.T) {
 		req     *http.Request
 		data    *types.PostGroupUserScheduleRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_GetGroupUserSchedules(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupUserSchedulesRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetGroupUserScheduleStubs(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupUserScheduleStubsRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetGroupUserScheduleStubReplacement(t *testing.T) {
 		req     *http.Request
 		data    *types.GetGroupUserScheduleStubReplacementRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_PatchGroupUserScheduleStubReplacement(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchGroupUserScheduleStubReplacementRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_DeleteGroupUserScheduleByUserScheduleId(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteGroupUserScheduleByUserScheduleIdRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

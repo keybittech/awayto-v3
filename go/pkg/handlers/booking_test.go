@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostBooking(t *testing.T) {
 		req     *http.Request
 		data    *types.PostBookingRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PatchBooking(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchBookingRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_GetBookings(t *testing.T) {
 		req     *http.Request
 		data    *types.GetBookingsRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetBookingById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetBookingByIdRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_GetBookingFiles(t *testing.T) {
 		req     *http.Request
 		data    *types.GetBookingFilesRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_PatchBookingRating(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchBookingRatingRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -201,7 +201,7 @@ func TestHandlers_DeleteBooking(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteBookingRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -232,7 +232,7 @@ func TestHandlers_DisableBooking(t *testing.T) {
 		req     *http.Request
 		data    *types.DisableBookingRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string

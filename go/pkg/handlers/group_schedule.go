@@ -5,12 +5,13 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupScheduleResponse, error) {
+func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupScheduleResponse, error) {
 
 	var groupScheduleId string
 	err := tx.QueryRow(`
@@ -27,7 +28,7 @@ func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, d
 	return &types.PostGroupScheduleResponse{Id: groupScheduleId}, nil
 }
 
-func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupScheduleResponse, error) {
+func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupScheduleResponse, error) {
 	scheduleResp, err := h.PatchSchedule(w, req, &types.PatchScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, session, tx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -39,7 +40,7 @@ func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, 
 	return &types.PatchGroupScheduleResponse{Success: scheduleResp.Success}, nil
 }
 
-func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupSchedulesResponse, error) {
+func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupSchedulesResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
 	err := h.Database.QueryRows(tx, &groupSchedules, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
@@ -55,7 +56,7 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 	return &types.GetGroupSchedulesResponse{GroupSchedules: groupSchedules}, nil
 }
 
-func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupScheduleMasterByIdResponse, error) {
+func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	groupSchedule := &types.IGroupSchedule{}
 	var scheduleBytes []byte
 	err := tx.QueryRow(`
@@ -80,7 +81,7 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: groupSchedule}, nil
 }
 
-func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupScheduleByDateResponse, error) {
+func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupScheduleByDateResponse, error) {
 
 	var scheduleTimeUnitName string
 	err := tx.QueryRow(`
@@ -161,7 +162,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: groupScheduleDateSlots}, nil
 }
 
-func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupScheduleResponse, error) {
+func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupScheduleResponse, error) {
 
 	err := h.Database.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {

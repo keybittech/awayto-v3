@@ -1,15 +1,15 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.PostGroupFeedbackRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupFeedbackResponse, error) {
+func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.PostGroupFeedbackRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupFeedbackResponse, error) {
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.group_feedback (message, group_id, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3::uuid, $4)
@@ -23,7 +23,7 @@ func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, d
 	return &types.PostGroupFeedbackResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupFeedbackResponse, error) {
+func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFeedbackResponse, error) {
 	var feedback []*types.IFeedback
 
 	err := h.Database.QueryRows(tx, &feedback, `

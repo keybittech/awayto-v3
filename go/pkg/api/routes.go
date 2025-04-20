@@ -1,6 +1,7 @@
 package api
 
 import (
+	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -83,28 +84,33 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
 		)
 
-		results := []reflect.Value{}
-
-		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
-			results = handlerFunc.Call([]reflect.Value{
-				reflect.ValueOf(w),
-				reflect.ValueOf(req),
-				reflect.ValueOf(pb),
-				reflect.ValueOf(session),
-				reflect.ValueOf(tx),
-			})
-
-			if len(results) != 2 {
-				return util.ErrCheck(errors.New("badly formed handler"))
-			}
-
-			if err, ok := results[1].Interface().(error); ok {
-				return util.ErrCheck(err)
-			}
-
-			return nil
-		}, session.UserSub, session.GroupId, session.Roles)
+		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(context.Background())
 		if err != nil {
+			deferredError = util.ErrCheck(err)
+			return
+		}
+
+		poolTx := &clients.PoolTx{Tx: tx}
+
+		poolTx.SetSession(session)
+
+		results := handlerFunc.Call([]reflect.Value{
+			reflect.ValueOf(w),
+			reflect.ValueOf(req),
+			reflect.ValueOf(pb),
+			reflect.ValueOf(session),
+			reflect.ValueOf(poolTx),
+		})
+
+		poolTx.UnsetSession()
+		poolTx.Commit()
+
+		if len(results) != 2 {
+			deferredError = util.ErrCheck(errors.New("badly formed handler"))
+			return
+		}
+
+		if err, ok := results[1].Interface().(error); ok {
 			deferredError = util.ErrCheck(err)
 			return
 		}

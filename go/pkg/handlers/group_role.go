@@ -1,20 +1,20 @@
 package handlers
 
 import (
-	"database/sql"
 	"fmt"
 	"net/http"
 	"slices"
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data *types.PostGroupRoleRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupRoleResponse, error) {
+func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data *types.PostGroupRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupRoleResponse, error) {
 	kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(session.UserSub, session.GroupExternalId, data.GetName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -51,7 +51,7 @@ func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data 
 	return &types.PostGroupRoleResponse{GroupRoleId: groupRoleId}, nil
 }
 
-func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRoleRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupRoleResponse, error) {
+func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupRoleResponse, error) {
 	var existingRoleExternalId, defaultRoleId string
 	err := tx.QueryRow(`
 		SELECT gr.external_id, g.default_role_id FROM dbtable_schema.group_roles gr
@@ -120,7 +120,7 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupRoleResponse{Success: true}, nil
 }
 
-func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRolesRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupRolesResponse, error) {
+func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupRolesResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.groups
 		SET default_role_id = $2, updated_sub = $3, updated_on = $4 
@@ -226,7 +226,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 	return &types.PatchGroupRolesResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data *types.GetGroupRolesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupRolesResponse, error) {
+func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data *types.GetGroupRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupRolesResponse, error) {
 	var roles []*types.IGroupRole
 	err := h.Database.QueryRows(tx, &roles, `
 		SELECT 
@@ -246,7 +246,7 @@ func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupRolesResponse{GroupRoles: roles}, nil
 }
 
-func (h *Handlers) DeleteGroupRole(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRoleRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupRoleResponse, error) {
+func (h *Handlers) DeleteGroupRole(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupRoleResponse, error) {
 	groupRoleIds := strings.Split(data.GetIds(), ",")
 
 	// handle default role id update

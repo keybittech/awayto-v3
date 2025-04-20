@@ -1,15 +1,15 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostSiteFeedback(w http.ResponseWriter, req *http.Request, data *types.PostSiteFeedbackRequest, session *types.UserSession, tx *sql.Tx) (*types.PostSiteFeedbackResponse, error) {
+func (h *Handlers) PostSiteFeedback(w http.ResponseWriter, req *http.Request, data *types.PostSiteFeedbackRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostSiteFeedbackResponse, error) {
 	_, err := tx.Exec(`
 		INSERT INTO dbtable_schema.feedback (message, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3)

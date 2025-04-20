@@ -1,16 +1,16 @@
 package handlers
 
 import (
-	"database/sql"
 	"errors"
 	"net/http"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data *types.PostGroupFileRequest, session *types.UserSession, tx *sql.Tx) (*types.PostGroupFileResponse, error) {
+func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data *types.PostGroupFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupFileResponse, error) {
 	var groupFileId string
 
 	err := tx.QueryRow(`
@@ -29,7 +29,7 @@ func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data 
 	return &types.PostGroupFileResponse{Id: groupFileId}, nil
 }
 
-func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFileRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchGroupFileResponse, error) {
+func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupFileResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.group_files
 		SET group_id = $2, file_id = $3, updated_sub = $4, updated_on = $5
@@ -42,7 +42,7 @@ func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupFileResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data *types.GetGroupFilesRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupFilesResponse, error) {
+func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data *types.GetGroupFilesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFilesResponse, error) {
 	var groupFiles []*types.IGroupFile
 
 	err := h.Database.QueryRows(tx, &groupFiles, `
@@ -56,7 +56,7 @@ func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupFilesResponse{Files: groupFiles}, nil
 }
 
-func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFileByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetGroupFileByIdResponse, error) {
+func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFileByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFileByIdResponse, error) {
 	var groupFiles []*types.IGroupFile
 
 	err := h.Database.QueryRows(tx, &groupFiles, `
@@ -70,7 +70,7 @@ func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupFileByIdResponse{File: groupFiles[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupFile(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFileRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupFileResponse, error) {
+func (h *Handlers) DeleteGroupFile(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupFileResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.group_files
 		WHERE id = $1

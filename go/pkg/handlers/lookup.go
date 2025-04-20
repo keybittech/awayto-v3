@@ -1,14 +1,14 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetLookupsResponse, error) {
+func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetLookupsResponse, error) {
 	var budgets []*types.ILookup
 	var timelines []*types.ILookup
 	var timeUnits []*types.ITimeUnit

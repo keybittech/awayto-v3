@@ -390,7 +390,7 @@ func TestDatabase_TxExec(t *testing.T) {
 
 func TestDatabase_QueryRows(t *testing.T) {
 	type args struct {
-		tx               *sql.Tx
+		tx               *PoolTx
 		protoStructSlice interface{}
 		query            string
 		args             []interface{}

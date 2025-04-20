@@ -5,11 +5,12 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostServiceAddonRequest, session *types.UserSession, tx *sql.Tx) (*types.PostServiceAddonResponse, error) {
+func (h *Handlers) PostServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostServiceAddonResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
 	err := h.Database.QueryRows(tx, &serviceAddons, `
@@ -39,7 +40,7 @@ func (h *Handlers) PostServiceAddon(w http.ResponseWriter, req *http.Request, da
 	return &types.PostServiceAddonResponse{Id: serviceAddons[0].GetId()}, nil
 }
 
-func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PatchServiceAddonRequest, session *types.UserSession, tx *sql.Tx) (*types.PatchServiceAddonResponse, error) {
+func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PatchServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchServiceAddonResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.service_addons
 		SET name = $2, updated_sub = $3, updated_on = $4
@@ -54,7 +55,7 @@ func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, d
 	return &types.PatchServiceAddonResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonsRequest, session *types.UserSession, tx *sql.Tx) (*types.GetServiceAddonsResponse, error) {
+func (h *Handlers) GetServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceAddonsResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
 	err := h.Database.QueryRows(tx, &serviceAddons, `
@@ -67,7 +68,7 @@ func (h *Handlers) GetServiceAddons(w http.ResponseWriter, req *http.Request, da
 	return &types.GetServiceAddonsResponse{ServiceAddons: serviceAddons}, nil
 }
 
-func (h *Handlers) GetServiceAddonById(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonByIdRequest, session *types.UserSession, tx *sql.Tx) (*types.GetServiceAddonByIdResponse, error) {
+func (h *Handlers) GetServiceAddonById(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceAddonByIdResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
 	err := h.Database.QueryRows(tx, &serviceAddons, `
@@ -85,7 +86,7 @@ func (h *Handlers) GetServiceAddonById(w http.ResponseWriter, req *http.Request,
 	return &types.GetServiceAddonByIdResponse{ServiceAddon: serviceAddons[0]}, nil
 }
 
-func (h *Handlers) DeleteServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceAddonRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteServiceAddonResponse, error) {
+func (h *Handlers) DeleteServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteServiceAddonResponse, error) {
 	_, err := tx.Exec(`
 		DELETE FROM dbtable_schema.service_addons
 		WHERE id = $1
@@ -99,7 +100,7 @@ func (h *Handlers) DeleteServiceAddon(w http.ResponseWriter, req *http.Request, 
 	return &types.DeleteServiceAddonResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DisableServiceAddonRequest, session *types.UserSession, tx *sql.Tx) (*types.DisableServiceAddonResponse, error) {
+func (h *Handlers) DisableServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DisableServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableServiceAddonResponse, error) {
 	_, err := tx.Exec(`
 		UPDATE dbtable_schema.service_addons
 		SET enabled = false, updated_on = $2, updated_sub = $3

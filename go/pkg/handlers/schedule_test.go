@@ -1,11 +1,11 @@
 package handlers
 
 import (
-	"database/sql"
 	"net/http"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -15,7 +15,7 @@ func TestHandlers_PostSchedule(t *testing.T) {
 		req     *http.Request
 		data    *types.PostScheduleRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -46,7 +46,7 @@ func TestHandlers_PostScheduleBrackets(t *testing.T) {
 		req     *http.Request
 		data    *types.PostScheduleBracketsRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -77,7 +77,7 @@ func TestHandlers_PatchSchedule(t *testing.T) {
 		req     *http.Request
 		data    *types.PatchScheduleRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -108,7 +108,7 @@ func TestHandlers_GetSchedules(t *testing.T) {
 		req     *http.Request
 		data    *types.GetSchedulesRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -139,7 +139,7 @@ func TestHandlers_GetScheduleById(t *testing.T) {
 		req     *http.Request
 		data    *types.GetScheduleByIdRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -170,7 +170,7 @@ func TestHandlers_DeleteSchedule(t *testing.T) {
 		req     *http.Request
 		data    *types.DeleteScheduleRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -201,7 +201,7 @@ func TestHandlers_DisableSchedule(t *testing.T) {
 		req     *http.Request
 		data    *types.DisableScheduleRequest
 		session *types.UserSession
-		tx      *sql.Tx
+		tx      *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -230,7 +230,7 @@ func TestHandlers_HandleExistingBrackets(t *testing.T) {
 	type args struct {
 		existingBracketIds []string
 		brackets           map[string]*types.IScheduleBracket
-		tx                 *sql.Tx
+		tx                 *clients.PoolTx
 		session            *types.UserSession
 	}
 	tests := []struct {
@@ -254,7 +254,7 @@ func TestHandlers_InsertNewBrackets(t *testing.T) {
 	type args struct {
 		scheduleId  string
 		newBrackets map[string]*types.IScheduleBracket
-		tx          *sql.Tx
+		tx          *clients.PoolTx
 		session     *types.UserSession
 	}
 	tests := []struct {
@@ -278,7 +278,7 @@ func Test_handleDeletedBrackets(t *testing.T) {
 	type args struct {
 		scheduleId         string
 		existingBracketIds []string
-		tx                 *sql.Tx
+		tx                 *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
@@ -300,7 +300,7 @@ func Test_disableAndDeleteBrackets(t *testing.T) {
 	type args struct {
 		bracketsToDisable []string
 		bracketsToDelete  []string
-		tx                *sql.Tx
+		tx                *clients.PoolTx
 	}
 	tests := []struct {
 		name    string
