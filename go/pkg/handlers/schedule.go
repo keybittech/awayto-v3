@@ -71,7 +71,7 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 		session.UserSub = session.GroupSub
 
 		// The group db user owns master schedule records
-		err = h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
+		err = h.Database.SetDbVar("user_sub", session.GroupSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -92,7 +92,7 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 
 	if data.AsGroup {
 		session.UserSub = userSub
-		err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
+		err = h.Database.SetDbVar("user_sub", session.UserSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

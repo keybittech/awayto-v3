@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"database/sql"
 	"reflect"
 	"testing"
 
@@ -85,7 +84,7 @@ func TestDatabase_GetSocketAllowances(t *testing.T) {
 
 func TestDatabase_GetTopicMessageParticipants(t *testing.T) {
 	type args struct {
-		tx           *sql.Tx
+		tx           PoolTx
 		topic        string
 		participants map[string]*types.SocketParticipant
 	}
@@ -108,7 +107,7 @@ func TestDatabase_GetTopicMessageParticipants(t *testing.T) {
 
 func TestDatabase_GetSocketParticipantDetails(t *testing.T) {
 	type args struct {
-		tx           *sql.Tx
+		tx           PoolTx
 		participants map[string]*types.SocketParticipant
 	}
 	tests := []struct {
@@ -130,7 +129,7 @@ func TestDatabase_GetSocketParticipantDetails(t *testing.T) {
 
 func TestDatabase_StoreTopicMessage(t *testing.T) {
 	type args struct {
-		tx      *sql.Tx
+		tx      PoolTx
 		connId  string
 		message *types.SocketMessage
 	}
@@ -153,7 +152,7 @@ func TestDatabase_StoreTopicMessage(t *testing.T) {
 
 func TestDatabase_GetTopicMessages(t *testing.T) {
 	type args struct {
-		tx       *sql.Tx
+		tx       PoolTx
 		topic    string
 		page     int
 		pageSize int

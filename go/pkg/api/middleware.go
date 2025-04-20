@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/redis/go-redis/v9"
@@ -193,7 +193,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 					return
 				}
 
-				err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
+				err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
 					var txErr error
 
 					txErr = tx.QueryRow(`

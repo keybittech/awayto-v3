@@ -48,7 +48,7 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 		}
 	}
 
-	err = h.Database.SetDbVar(tx, "group_id", groupId)
+	err = h.Database.SetDbVar("group_id", groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -116,7 +116,7 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.SetDbVar(tx, "group_id", groupId)
+	err = h.Database.SetDbVar("group_id", groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -45,7 +45,7 @@ func InitRedis() *Redis {
 
 	r.InitKeys()
 
-	println("Redis Init")
+	util.DebugLog.Println("Redis Init")
 	return r
 }
 

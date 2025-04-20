@@ -1,7 +1,6 @@
 package api
 
 import (
-	"database/sql"
 	"errors"
 	"log"
 	"net/http"
@@ -86,7 +85,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		results := []reflect.Value{}
 
-		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
+		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
 			results = handlerFunc.Call([]reflect.Value{
 				reflect.ValueOf(w),
 				reflect.ValueOf(req),

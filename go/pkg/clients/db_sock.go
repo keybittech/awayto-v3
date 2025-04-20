@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"database/sql"
 	"fmt"
 	"slices"
 	"time"
@@ -12,7 +11,7 @@ import (
 )
 
 func (db *Database) InitDbSocketConnection(connId, userSub, groupId, roles string) error {
-	err := db.TxExec(func(tx *sql.Tx) error {
+	err := db.TxExec(func(tx PoolTx) error {
 		_, err := tx.Exec(`
 			INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
 			VALUES ($1::uuid, $2)
@@ -30,8 +29,8 @@ func (db *Database) InitDbSocketConnection(connId, userSub, groupId, roles strin
 }
 
 func (db *Database) RemoveDbSocketConnection(connId string) error {
-	err := db.TxExec(func(tx *sql.Tx) error {
-		txErr := db.SetDbVar(tx, "sock_topic", "")
+	err := db.TxExec(func(tx PoolTx) error {
+		txErr := db.SetDbVar("sock_topic", "")
 		if txErr != nil {
 			return util.ErrCheck(txErr)
 		}
@@ -95,8 +94,8 @@ func (db *Database) GetSocketAllowances(session *types.UserSession, bookingId st
 	return allowed, nil
 }
 
-func (db *Database) GetTopicMessageParticipants(tx *sql.Tx, topic string, participants map[string]*types.SocketParticipant) error {
-	err := db.SetDbVar(tx, "sock_topic", topic)
+func (db *Database) GetTopicMessageParticipants(tx PoolTx, topic string, participants map[string]*types.SocketParticipant) error {
+	err := db.SetDbVar("sock_topic", topic)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -134,7 +133,7 @@ func (db *Database) GetTopicMessageParticipants(tx *sql.Tx, topic string, partic
 		}
 	}
 
-	err = db.SetDbVar(tx, "sock_topic", "")
+	err = db.SetDbVar("sock_topic", "")
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -142,7 +141,7 @@ func (db *Database) GetTopicMessageParticipants(tx *sql.Tx, topic string, partic
 	return nil
 }
 
-func (db *Database) GetSocketParticipantDetails(tx *sql.Tx, participants map[string]*types.SocketParticipant) error {
+func (db *Database) GetSocketParticipantDetails(tx PoolTx, participants map[string]*types.SocketParticipant) error {
 	for userSub, details := range participants {
 		// Get user anon info
 		err := tx.QueryRow(`
@@ -163,7 +162,7 @@ func (db *Database) GetSocketParticipantDetails(tx *sql.Tx, participants map[str
 	return nil
 }
 
-func (db *Database) StoreTopicMessage(tx *sql.Tx, connId string, message *types.SocketMessage) error {
+func (db *Database) StoreTopicMessage(tx PoolTx, connId string, message *types.SocketMessage) error {
 	message.Store = false
 	message.Historical = true
 	message.Timestamp = time.Now().Local().String()
@@ -182,7 +181,7 @@ func (db *Database) StoreTopicMessage(tx *sql.Tx, connId string, message *types.
 	return nil
 }
 
-func (db *Database) GetTopicMessages(tx *sql.Tx, topic string, page, pageSize int) ([][]byte, error) {
+func (db *Database) GetTopicMessages(tx PoolTx, topic string, page, pageSize int) ([][]byte, error) {
 	messages := make([][]byte, pageSize)
 
 	paginatedQuery := util.WithPagination(`
@@ -191,7 +190,7 @@ func (db *Database) GetTopicMessages(tx *sql.Tx, topic string, page, pageSize in
 		ORDER BY created_on DESC
 	`, page, pageSize)
 
-	err := db.SetDbVar(tx, "sock_topic", topic)
+	err := db.SetDbVar("sock_topic", topic)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -212,7 +211,7 @@ func (db *Database) GetTopicMessages(tx *sql.Tx, topic string, page, pageSize in
 		i++
 	}
 
-	err = db.SetDbVar(tx, "sock_topic", "")
+	err = db.SetDbVar("sock_topic", "")
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

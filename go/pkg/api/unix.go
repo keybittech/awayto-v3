@@ -2,7 +2,7 @@ package api
 
 import (
 	"bufio"
-	"database/sql"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -13,6 +13,7 @@ import (
 	"reflect"
 	"sync"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -83,20 +84,30 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 			}
 		}()
 
-		results := []reflect.Value{}
-		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
-			results = handler.Call([]reflect.Value{
-				reflect.ValueOf(fakeReq),
-				reflect.ValueOf(authEvent),
-				reflect.ValueOf(session),
-				reflect.ValueOf(tx),
-			})
-			return nil
-		}, "worker", "", "")
+		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(context.Background())
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
+
+		poolTx := &clients.PoolTx{Tx: tx}
+
+		workerSession := &types.UserSession{
+			UserSub: "worker",
+		}
+
+		poolTx.SetSession(workerSession)
+
+		results := []reflect.Value{}
+		results = handler.Call([]reflect.Value{
+			reflect.ValueOf(fakeReq),
+			reflect.ValueOf(authEvent),
+			reflect.ValueOf(session),
+			reflect.ValueOf(poolTx),
+		})
+
+		poolTx.UnsetSession()
+		poolTx.Commit()
 
 		if len(results) != 2 {
 			deferredError = util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))

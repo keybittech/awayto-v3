@@ -2,17 +2,18 @@
 
 psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
 
+  -- DROP FUNCTION IF EXISTS dbfunc_schema.set_session_vars(varchar, varchar, varchar, varchar);
   CREATE OR REPLACE FUNCTION dbfunc_schema.set_session_vars(
     p_user_sub VARCHAR,
     p_group_id VARCHAR,
-    p_roles VARCHAR
+    p_roles VARCHAR,
+    p_sock_topic VARCHAR
   ) RETURNS VOID AS \$\$
   BEGIN
-
     EXECUTE format('SET SESSION app_session.user_sub = %L', p_user_sub);
     EXECUTE format('SET SESSION app_session.group_id = %L', p_group_id);
     EXECUTE format('SET SESSION app_session.roles = %L', p_roles);
-  
+    EXECUTE format('SET SESSION app_session.sock_topic = %L', p_sock_topic);
   END;
   \$\$ LANGUAGE PLPGSQL;
 

@@ -157,7 +157,7 @@ func (h *Handlers) DisableUserProfile(w http.ResponseWriter, req *http.Request, 
 }
 
 func (h *Handlers) ActivateProfile(w http.ResponseWriter, req *http.Request, data *types.ActivateProfileRequest, session *types.UserSession, tx *sql.Tx) (*types.ActivateProfileResponse, error) {
-	err := h.Database.SetDbVar(tx, "user_sub", session.UserSub)
+	err := h.Database.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

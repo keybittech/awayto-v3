@@ -53,7 +53,7 @@ func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent *t
 		return `{ "success": false, "reason": "invalid group code" }`, nil
 	}
 
-	err = h.Database.SetDbVar(tx, "group_id", group.GetId())
+	err = h.Database.SetDbVar("group_id", group.GetId())
 	if err != nil {
 		return "", util.ErrCheck(err)
 	}

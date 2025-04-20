@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"errors"
 	"strconv"
@@ -180,7 +179,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 			return
 		}
 
-		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
+		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
 			var txErr error
 
 			txErr = a.Handlers.Database.GetTopicMessageParticipants(tx, sm.Topic, participants)
@@ -220,7 +219,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 		}
 		messages := [][]byte{}
 
-		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
+		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
 			var txErr error
 			messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, pageInfo["page"], 100) // int(pageInfo["pageSize"])
 			if txErr != nil {
@@ -263,7 +262,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 	}
 
 	if sm.Store {
-		err = a.Handlers.Database.TxExec(func(tx *sql.Tx) error {
+		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
 			var txErr error
 
 			txErr = a.Handlers.Database.StoreTopicMessage(tx, connId, sm)

@@ -47,7 +47,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	session.GroupSub = groupSub.String()
 
-	err = h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
+	err = h.Database.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -60,7 +60,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
+	err = h.Database.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -180,7 +180,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
+	err = h.Database.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -194,7 +194,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
+	err = h.Database.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

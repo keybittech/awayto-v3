@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -12,6 +13,9 @@ import (
 	"sync"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -36,16 +40,69 @@ type ColTypes struct {
 var colTypes *ColTypes
 
 var emptyString string
-var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)`
+var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR)`
 var setSessionVariablesSQLReplacer = `SELECT dbfunc_schema.set_session_vars($a::VARCHAR, $b::VARCHAR, $c::VARCHAR)`
 
+type DatabaseClient struct {
+	Pool *pgxpool.Pool
+}
+
+type PoolTx struct {
+	pgx.Tx
+}
+
+func (ptx PoolTx) Rollback() {
+	ptx.Tx.Rollback(context.Background())
+}
+
+func (ptx PoolTx) Commit() error {
+	return ptx.Tx.Commit(context.Background())
+}
+
+func (ptx PoolTx) Query(query string, params ...interface{}) (pgx.Rows, error) {
+	return ptx.Tx.Query(context.Background(), query, params...)
+}
+
+func (ptx PoolTx) QueryRow(query string, params ...interface{}) pgx.Row {
+	return ptx.Tx.QueryRow(context.Background(), query, params...)
+}
+
+func (ptx PoolTx) Exec(query string, params ...interface{}) (pgconn.CommandTag, error) {
+	return ptx.Tx.Exec(context.Background(), query, params...)
+}
+
+func (ptx PoolTx) SetSession(session *types.UserSession) {
+	ptx.Exec(setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles, emptyString)
+}
+
+func (ptx PoolTx) UnsetSession() {
+	ptx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+}
+
 type Database struct {
-	DatabaseClient      *sql.DB
+	DatabaseClient      *DatabaseClient
 	DatabaseAdminSub    string
 	DatabaseAdminRoleId string
 }
 
-func (db *Database) Client() *sql.DB {
+func (dbc *DatabaseClient) Begin() (PoolTx, error) {
+	tx, err := dbc.Pool.Begin(context.Background())
+	return PoolTx{tx}, err
+}
+
+func (dbc *DatabaseClient) Exec(query string, params ...interface{}) (pgconn.CommandTag, error) {
+	return dbc.Pool.Exec(context.Background(), query, params...)
+}
+
+func (dbc *DatabaseClient) QueryRow(query string, params ...interface{}) pgx.Row {
+	return dbc.Pool.QueryRow(context.Background(), query, params...)
+}
+
+func (dbc *DatabaseClient) Close() {
+	dbc.Pool.Close()
+}
+
+func (db *Database) Client() *DatabaseClient {
 	return db.DatabaseClient
 }
 
@@ -58,10 +115,9 @@ func (db *Database) AdminRoleId() string {
 }
 
 func InitDatabase() *Database {
+
 	dbDriver := os.Getenv("DB_DRIVER")
 	pgUser := os.Getenv("PG_WORKER")
-	// pgHost := os.Getenv("PG_HOST")
-	// pgPort := os.Getenv("PG_PORT")
 	pgDb := os.Getenv("PG_DB")
 	pgPass, err := util.EnvFile(os.Getenv("PG_WORKER_PASS_FILE"))
 	if err != nil {
@@ -69,17 +125,18 @@ func InitDatabase() *Database {
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	// connString := fmt.Sprintf("%s://%s:%s@%s:%s/%s?sslmode=disable", dbDriver, pgUser, pgPass, pgHost, pgPort, pgDb)
 	connString2 := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", dbDriver, pgUser, pgPass, pgDb, os.Getenv("UNIX_SOCK_DIR"))
-
-	db, err := sql.Open(dbDriver, connString2)
+	dbpool, err := pgxpool.New(context.Background(), connString2)
 	if err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
-		log.Fatal(util.ErrCheck(err))
+		println("ERROR", err.Error())
+		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
+		os.Exit(1)
 	}
 
 	dbc := &Database{
-		DatabaseClient: db,
+		DatabaseClient: &DatabaseClient{
+			Pool: dbpool,
+		},
 	}
 
 	colTypes = &ColTypes{
@@ -92,51 +149,49 @@ func InitDatabase() *Database {
 		reflect.TypeOf(&time.Time{}),
 	}
 
-	var adminRoleId, adminSub string
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
+	defer cancel()
+	workerDbSession := &DbSession{
+		Pool: dbpool,
+		Ctx:  ctx,
+		UserSession: &types.UserSession{
+			UserSub: "worker",
+		},
+	}
 
-	err = dbc.TxExec(func(tx *sql.Tx) error {
-		var txErr error
-		txErr = tx.QueryRow(`
-			SELECT u.sub, r.id FROM dbtable_schema.users u
-			JOIN dbtable_schema.roles r ON r.name = 'Admin'
-			WHERE u.username = 'system_owner'
-		`).Scan(&adminSub, &adminRoleId)
-		if txErr != nil {
-			return util.ErrCheck(txErr)
-		}
-
-		txErr = dbc.SetDbVar(tx, "sock_topic", "")
-		if txErr != nil {
-			return util.ErrCheck(txErr)
-		}
-
-		_, txErr = tx.Exec(`
-			DELETE FROM dbtable_schema.sock_connections
-			USING dbtable_schema.sock_connections sc
-			LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
-			WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL
-		`)
-		if txErr != nil {
-			return util.ErrCheck(txErr)
-		}
-
-		return nil
-	}, "worker", "", "")
+	row, close, err := workerDbSession.SessionBatchQueryRow(`
+		SELECT u.sub, r.id FROM dbtable_schema.users u
+		JOIN dbtable_schema.roles r ON r.name = 'Admin'
+		WHERE u.username = 'system_owner'
+	`)
 	if err != nil {
-		util.ErrorLog.Println(util.ErrCheck(err))
+		log.Fatal(util.ErrCheck(err))
+	}
+	defer close()
+
+	err = row.Scan(&dbc.DatabaseAdminSub, &dbc.DatabaseAdminRoleId)
+	if err != nil {
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	dbc.DatabaseAdminSub = adminSub
-	dbc.DatabaseAdminRoleId = adminRoleId
+	_, err = workerDbSession.SessionBatchExec(`
+		DELETE FROM dbtable_schema.sock_connections
+		USING dbtable_schema.sock_connections sc
+		LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
+		WHERE dbtable_schema.sock_connections.id = sc.id AND tm.id IS NULL
+	`)
+	if err != nil {
+		log.Fatal(util.ErrCheck(err))
+	}
 
 	util.DebugLog.Println(fmt.Sprintf("Database Init\nAdmin Sub: %s\nAdmin Role Id: %s", dbc.AdminSub(), dbc.AdminRoleId()))
 
 	return dbc
 }
 
-func (db *Database) SetDbVar(tx *sql.Tx, prop, value string) error {
-	_, err := tx.Exec(fmt.Sprintf("SET SESSION app_session.%s = '%s'", prop, value))
+func (db *Database) SetDbVar(prop, value string) error {
+	tx, err := db.Client().Pool.Begin(context.Background())
+	_, err = tx.Exec(context.Background(), fmt.Sprintf("SET SESSION app_session.%s = '%s'", prop, value))
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -180,6 +235,7 @@ func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
 }
 
 const (
+	sessionVarQuery  = "SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)"
 	sessionVarPrefix = "WITH session_setup AS (SELECT dbfunc_schema.set_session_vars($"
 	varcharSeparator = "::VARCHAR, $"
 	sessionVarSuffix = "::VARCHAR)) "
@@ -211,36 +267,115 @@ func (db *Database) BuildSessionQuery(userSub, groupId, roles, query string, arg
 	return finalQuery.String(), allParams, nil
 }
 
-func (db *Database) BeginSessionTx(session *types.UserSession) (*sql.Tx, error) {
-	tx, err := db.Client().Begin()
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+// var batchPool = &sync.Pool{
+// 	New: func() interface{} {
+// 		return &pgx.Batch{}
+// 	},
+// }
 
-	_, err = tx.Exec(setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles)
-	if err != nil {
-		tx.Rollback()
-		return nil, util.ErrCheck(err)
-	}
-
-	return tx, nil
+type DbSession struct {
+	*types.UserSession
+	*pgxpool.Pool
+	Topic string
+	Ctx   context.Context
 }
 
-func (db *Database) CommitSessionTx(tx *sql.Tx) error {
-	_, err := tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString)
-	if err != nil {
-		return util.ErrCheck(err)
+func (ds *DbSession) SessionBatch(primaryQuery string, params ...interface{}) (pgx.BatchResults, error) {
+	if ds.Ctx == nil {
+		return nil, util.ErrCheck(errors.New("context must be provided"))
 	}
 
-	err = tx.Commit()
-	if err != nil {
-		return util.ErrCheck(err)
-	}
+	batch := &pgx.Batch{}
+	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.Roles, ds.Topic)
+	batch.Queue(primaryQuery, params...)
+	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
 
-	return nil
+	return ds.SendBatch(ds.Ctx, batch), nil
 }
 
-func (db *Database) TxExec(doFunc func(*sql.Tx) error, ids ...string) error {
+var emptyTag = pgconn.CommandTag{}
+
+func (ds *DbSession) SessionBatchExec(query string, params ...interface{}) (pgconn.CommandTag, error) {
+	results, err := ds.SessionBatch(query, params...)
+	if err != nil {
+		return emptyTag, util.ErrCheck(err)
+	}
+	defer results.Close()
+
+	if _, err := results.Exec(); err != nil {
+		results.Close()
+		return emptyTag, util.ErrCheck(err)
+	}
+
+	commandTag, err := results.Exec()
+	if err != nil {
+		results.Close()
+		return emptyTag, util.ErrCheck(err)
+	}
+
+	if _, err := results.Exec(); err != nil {
+		results.Close()
+		return emptyTag, util.ErrCheck(err)
+	}
+
+	return commandTag, nil
+}
+
+func (ds *DbSession) SessionBatchQuery(query string, params ...interface{}) (pgx.Rows, func() error, error) {
+	results, err := ds.SessionBatch(query, params...)
+	if err != nil {
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	if _, err := results.Exec(); err != nil {
+		results.Close()
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	rows, err := results.Query()
+	if err != nil {
+		results.Close()
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	close := func() error {
+		defer results.Close()
+		_, err := results.Exec()
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+		return nil
+	}
+
+	return rows, close, nil
+}
+
+func (ds *DbSession) SessionBatchQueryRow(query string, params ...interface{}) (pgx.Row, func() error, error) {
+	results, err := ds.SessionBatch(query, params...)
+	if err != nil {
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	if _, err := results.Exec(); err != nil {
+		results.Close()
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	row := results.QueryRow()
+
+	close := func() error {
+		defer results.Close()
+		_, err := results.Exec()
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+		return nil
+	}
+
+	return row, close, nil
+}
+
+func (db *Database) TxExec(doFunc func(PoolTx) error, ids ...string) error {
 	if ids == nil || len(ids) != 3 {
 		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
 	}
@@ -251,7 +386,7 @@ func (db *Database) TxExec(doFunc func(*sql.Tx) error, ids ...string) error {
 	}
 	defer tx.Rollback()
 
-	_, err = tx.Exec(setSessionVariablesSQL, ids[0], ids[1], ids[2])
+	_, err = tx.Exec(setSessionVariablesSQL, ids[0], ids[1], ids[2], emptyString)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -261,7 +396,7 @@ func (db *Database) TxExec(doFunc func(*sql.Tx) error, ids ...string) error {
 		return util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString)
+	_, err = tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
 	if err != nil {
 		return util.ErrCheck(err)
 	}

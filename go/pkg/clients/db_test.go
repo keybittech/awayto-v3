@@ -1,11 +1,17 @@
 package clients
 
 import (
+	"context"
 	"database/sql"
+	"fmt"
+	"log"
+	"os"
 	"reflect"
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	_ "github.com/lib/pq"
@@ -13,7 +19,59 @@ import (
 
 var selectAdminRoleIdSQL = `SELECT id FROM dbtable_schema.roles WHERE name = 'Admin'`
 
-func BenchmarkDbDefaultExec(b *testing.B) {
+func InitPgxPool() *pgxpool.Pool {
+	dbDriver := os.Getenv("DB_DRIVER")
+	pgUser := os.Getenv("PG_WORKER")
+	pgDb := os.Getenv("PG_DB")
+	pgPass, err := util.EnvFile(os.Getenv("PG_WORKER_PASS_FILE"))
+	if err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+		log.Fatal(util.ErrCheck(err))
+	}
+
+	connString2 := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", dbDriver, pgUser, pgPass, pgDb, os.Getenv("UNIX_SOCK_DIR"))
+	dbpool, err := pgxpool.New(context.Background(), connString2)
+	if err != nil {
+		println("ERROR", err.Error())
+		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
+		os.Exit(1)
+	}
+
+	return dbpool
+}
+
+func BenchmarkDbPgxQueryRow(b *testing.B) {
+	db := InitPgxPool()
+	defer db.Close()
+	ctx := context.Background()
+	var testStr string
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		db.QueryRow(ctx, selectAdminRoleIdSQL).Scan(&testStr)
+	}
+}
+
+func BenchmarkDbQueryRow(b *testing.B) {
+	db := InitDatabase()
+	defer db.DatabaseClient.Close()
+	var adminRoleId string
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		db.Client().QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+	}
+}
+
+func BenchmarkDbPgxExec(b *testing.B) {
+	db := InitPgxPool()
+	defer db.Close()
+	ctx := context.Background()
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		db.Exec(ctx, selectAdminRoleIdSQL)
+	}
+}
+
+func BenchmarkDbExec(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
 	reset(b)
@@ -22,26 +80,74 @@ func BenchmarkDbDefaultExec(b *testing.B) {
 	}
 }
 
-func BenchmarkDbDefaultQuery(b *testing.B) {
-	db := InitDatabase()
-	defer db.DatabaseClient.Close()
+func BenchmarkDbPgxTx(b *testing.B) {
+	db := InitPgxPool()
+	defer db.Close()
+	ctx := context.Background()
+	var adminRoleId string
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		var adminRoleId string
-		db.Client().QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+		tx, _ := db.Begin(ctx)
+		defer tx.Rollback(ctx)
+		tx.QueryRow(ctx, selectAdminRoleIdSQL).Scan(&adminRoleId)
+		tx.Commit(ctx)
 	}
 }
 
-func BenchmarkDbDefaultTx(b *testing.B) {
+func BenchmarkDbTx(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
+	var adminRoleId string
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		var adminRoleId string
 		tx, _ := db.Client().Begin()
 		defer tx.Rollback()
 		tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
 		tx.Commit()
+	}
+}
+
+func BenchmarkDbPgxBatchNoCommit(b *testing.B) {
+	db := InitPgxPool()
+	defer db.Close()
+	ctx := context.Background()
+	var adminRoleId string
+
+	var emptyString string
+	var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)`
+
+	reset(b)
+	for c := 0; c < b.N; c++ {
+		tx, err := db.Begin(ctx)
+		if err != nil {
+			b.Fatal(err)
+		}
+
+		batch := &pgx.Batch{}
+
+		batch.Queue(setSessionVariablesSQL, "worker", "", "")
+		batch.Queue(selectAdminRoleIdSQL)
+		batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString)
+		results := tx.SendBatch(ctx, batch)
+
+		_, _ = results.Exec()
+
+		err = results.QueryRow().Scan(&adminRoleId)
+		if err != nil {
+			results.Close()
+			tx.Rollback(ctx)
+			b.Fatal(err)
+		}
+
+		_, _ = results.Exec()
+
+		err = results.Close()
+		if err != nil {
+			tx.Rollback(ctx)
+			b.Fatal(err)
+		}
+
+		tx.Rollback(ctx)
 	}
 }
 
@@ -51,7 +157,7 @@ func BenchmarkDbTxExec(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		var adminRoleId string
-		db.TxExec(func(tx *sql.Tx) error {
+		db.TxExec(func(tx PoolTx) error {
 			var txErr error
 			txErr = tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
 			if txErr != nil {
@@ -71,7 +177,7 @@ func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 	reset(b)
 	b.StopTimer()
 	for c := 0; c < b.N; c++ {
-		err := db.TxExec(func(tx *sql.Tx) error {
+		err := db.TxExec(func(tx PoolTx) error {
 			b.StartTimer()
 			db.GetTopicMessageParticipants(tx, topic, participants)
 			b.StopTimer()
@@ -217,7 +323,6 @@ func TestInitDatabase(t *testing.T) {
 
 func TestDatabase_SetDbVar(t *testing.T) {
 	type args struct {
-		tx    *sql.Tx
 		prop  string
 		value string
 	}
@@ -231,8 +336,8 @@ func TestDatabase_SetDbVar(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.db.SetDbVar(tt.args.tx, tt.args.prop, tt.args.value); (err != nil) != tt.wantErr {
-				t.Errorf("Database.SetDbVar(%v, %v, %v) error = %v, wantErr %v", tt.args.tx, tt.args.prop, tt.args.value, err, tt.wantErr)
+			if err := tt.db.SetDbVar(tt.args.prop, tt.args.value); (err != nil) != tt.wantErr {
+				t.Errorf("Database.SetDbVar(%v, %v) error = %v, wantErr %v", tt.args.prop, tt.args.value, err, tt.wantErr)
 			}
 		})
 	}
@@ -263,7 +368,7 @@ func TestDatabase_BuildInserts(t *testing.T) {
 
 func TestDatabase_TxExec(t *testing.T) {
 	type args struct {
-		doFunc func(*sql.Tx) error
+		doFunc func(PoolTx) error
 		ids    []string
 	}
 	tests := []struct {

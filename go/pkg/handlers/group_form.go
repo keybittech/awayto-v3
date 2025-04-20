@@ -25,7 +25,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
 	}
 
-	err = h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
+	err = h.Database.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -35,7 +35,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
+	err = h.Database.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

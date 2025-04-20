@@ -163,7 +163,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 
 func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *types.UserSession, tx *sql.Tx) (*types.DeleteGroupScheduleResponse, error) {
 
-	err := h.Database.SetDbVar(tx, "user_sub", session.GroupSub)
+	err := h.Database.SetDbVar("user_sub", session.GroupSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -226,7 +226,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	err = h.Database.SetDbVar(tx, "user_sub", session.UserSub)
+	err = h.Database.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
