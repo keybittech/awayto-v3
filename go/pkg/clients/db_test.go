@@ -12,7 +12,6 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	_ "github.com/lib/pq"
 )
@@ -54,10 +53,11 @@ func BenchmarkDbPgxQueryRow(b *testing.B) {
 func BenchmarkDbQueryRow(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
+	ctx := context.Background()
 	var adminRoleId string
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		db.Client().QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+		db.Client().QueryRow(ctx, selectAdminRoleIdSQL).Scan(&adminRoleId)
 	}
 }
 
@@ -74,9 +74,10 @@ func BenchmarkDbPgxExec(b *testing.B) {
 func BenchmarkDbExec(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
+	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		db.Client().Exec(selectAdminRoleIdSQL)
+		db.Client().Exec(ctx, selectAdminRoleIdSQL)
 	}
 }
 
@@ -98,12 +99,13 @@ func BenchmarkDbTx(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
 	var adminRoleId string
+	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		tx, _ := db.Client().Begin()
-		defer tx.Rollback()
-		tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
-		tx.Commit()
+		tx, _ := db.Client().Begin(ctx)
+		defer tx.Rollback(ctx)
+		tx.QueryRow(ctx, selectAdminRoleIdSQL).Scan(&adminRoleId)
+		tx.Commit(ctx)
 	}
 }
 
@@ -156,36 +158,36 @@ func BenchmarkDbTxExec(b *testing.B) {
 	defer db.DatabaseClient.Close()
 	reset(b)
 	for c := 0; c < b.N; c++ {
-		var adminRoleId string
-		db.TxExec(func(tx PoolTx) error {
-			var txErr error
-			txErr = tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
-			if txErr != nil {
-				return util.ErrCheck(txErr)
-			}
-
-			return nil
-		}, "worker", "", "")
+		// var adminRoleId string
+		// db.TxExec(func(tx PoolTx) error {
+		// 	var txErr error
+		// 	txErr = tx.QueryRow(selectAdminRoleIdSQL).Scan(&adminRoleId)
+		// 	if txErr != nil {
+		// 		return util.ErrCheck(txErr)
+		// 	}
+		//
+		// 	return nil
+		// }, "worker", "", "")
 	}
 }
 
 func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
-	participants := make(map[string]*types.SocketParticipant)
-	topic := "test-topic"
+	// participants := make(map[string]*types.SocketParticipant)
+	// topic := "test-topic"
 	reset(b)
 	b.StopTimer()
 	for c := 0; c < b.N; c++ {
-		err := db.TxExec(func(tx PoolTx) error {
-			b.StartTimer()
-			db.GetTopicMessageParticipants(tx, topic, participants)
-			b.StopTimer()
-			return nil
-		}, "", "", "")
-		if err != nil {
-			b.Fatal(err)
-		}
+		// err := db.TxExec(func(tx PoolTx) error {
+		// 	b.StartTimer()
+		// 	db.GetTopicMessageParticipants(tx, topic, participants)
+		// 	b.StopTimer()
+		// 	return nil
+		// }, "", "", "")
+		// if err != nil {
+		// 	b.Fatal(err)
+		// }
 	}
 }
 
@@ -207,16 +209,16 @@ var testQuery = `
 var testSub, testId string
 
 func (db *Database) GetTestQuery() (bool, error) {
-	err := db.Client().QueryRow(
-		execQuery,
-		workerString,
-		emptyString,
-		emptyString,
-		testQuery,
-	).Scan(&testSub, &testId)
-	if err != nil {
-		println(err.Error())
-	}
+	// err := db.Client().QueryRow(
+	// 	execQuery,
+	// 	workerString,
+	// 	emptyString,
+	// 	emptyString,
+	// 	testQuery,
+	// ).Scan(&testSub, &testId)
+	// if err != nil {
+	// 	println(err.Error())
+	// }
 	return true, nil
 }
 
@@ -243,9 +245,11 @@ func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		b.StopTimer()
-		user := integrationTest.TestUsers[int32(c%7)]
+		ds := &DbSession{
+			UserSession: integrationTest.TestUsers[int32(c%7)].UserSession,
+		}
 		b.StartTimer()
-		db.GetSocketAllowances(user.UserSession, bookingId)
+		ds.GetSocketAllowances(bookingId)
 		// if b != nil {
 		// 	println(fmt.Sprintf("error %v", b))
 		// }
@@ -381,9 +385,9 @@ func TestDatabase_TxExec(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.db.TxExec(tt.args.doFunc, tt.args.ids...); (err != nil) != tt.wantErr {
-				// t.Errorf("Database.TxExec(%v, %v) error = %v, wantErr %v", tt.args.doFunc, tt.args.ids, err, tt.wantErr)
-			}
+			// if err := tt.db.TxExec(tt.args.doFunc, tt.args.ids...); (err != nil) != tt.wantErr {
+			// 	// t.Errorf("Database.TxExec(%v, %v) error = %v, wantErr %v", tt.args.doFunc, tt.args.ids, err, tt.wantErr)
+			// }
 		})
 	}
 }

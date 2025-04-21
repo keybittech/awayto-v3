@@ -44,8 +44,8 @@ var emptyString string
 var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR)`
 var setSessionVariablesSQLReplacer = `SELECT dbfunc_schema.set_session_vars($a::VARCHAR, $b::VARCHAR, $c::VARCHAR)`
 
-type DatabaseClient struct {
-	Pool *pgxpool.Pool
+type Pool struct {
+	*pgxpool.Pool
 }
 
 type PoolTx struct {
@@ -80,34 +80,13 @@ func (ptx PoolTx) UnsetSession() {
 	ptx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
 }
 
-type PoolRow struct {
-	Rows pgx.Rows
-}
-
 type Database struct {
-	DatabaseClient      *DatabaseClient
+	DatabaseClient      *Pool
 	DatabaseAdminSub    string
 	DatabaseAdminRoleId string
 }
 
-func (dbc *DatabaseClient) Begin() (PoolTx, error) {
-	tx, err := dbc.Pool.Begin(context.Background())
-	return PoolTx{tx}, err
-}
-
-func (dbc *DatabaseClient) Exec(query string, params ...interface{}) (pgconn.CommandTag, error) {
-	return dbc.Pool.Exec(context.Background(), query, params...)
-}
-
-func (dbc *DatabaseClient) QueryRow(query string, params ...interface{}) pgx.Row {
-	return dbc.Pool.QueryRow(context.Background(), query, params...)
-}
-
-func (dbc *DatabaseClient) Close() {
-	dbc.Pool.Close()
-}
-
-func (db *Database) Client() *DatabaseClient {
+func (db *Database) Client() *Pool {
 	return db.DatabaseClient
 }
 
@@ -139,7 +118,7 @@ func InitDatabase() *Database {
 	}
 
 	dbc := &Database{
-		DatabaseClient: &DatabaseClient{
+		DatabaseClient: &Pool{
 			Pool: dbpool,
 		},
 	}
@@ -380,39 +359,39 @@ func (ds *DbSession) SessionBatchQueryRow(query string, params ...interface{}) (
 	return row, close, nil
 }
 
-func (db *Database) TxExec(doFunc func(PoolTx) error, ids ...string) error {
-	if ids == nil || len(ids) != 3 {
-		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
-	}
-
-	tx, err := db.Client().Begin()
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-	defer tx.Rollback()
-
-	_, err = tx.Exec(setSessionVariablesSQL, ids[0], ids[1], ids[2], emptyString)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	err = doFunc(tx)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	_, err = tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	err = tx.Commit()
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	return nil
-}
+// func (db *Database) TxExec(doFunc func(PoolTx) error, ids ...string) error {
+// 	if ids == nil || len(ids) != 3 {
+// 		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
+// 	}
+//
+// 	tx, err := db.Client().Begin()
+// 	if err != nil {
+// 		return util.ErrCheck(err)
+// 	}
+// 	defer tx.Rollback()
+//
+// 	_, err = tx.Exec(setSessionVariablesSQL, ids[0], ids[1], ids[2], emptyString)
+// 	if err != nil {
+// 		return util.ErrCheck(err)
+// 	}
+//
+// 	err = doFunc(tx)
+// 	if err != nil {
+// 		return util.ErrCheck(err)
+// 	}
+//
+// 	_, err = tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+// 	if err != nil {
+// 		return util.ErrCheck(err)
+// 	}
+//
+// 	err = tx.Commit()
+// 	if err != nil {
+// 		return util.ErrCheck(err)
+// 	}
+//
+// 	return nil
+// }
 
 // func (db *Database) QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error {
 //

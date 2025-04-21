@@ -1,7 +1,6 @@
 package api
 
 import (
-	"context"
 	"errors"
 	"log"
 	"net/http"
@@ -84,11 +83,12 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
 		)
 
-		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(context.Background())
+		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(req.Context())
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
+		defer tx.Rollback(req.Context())
 
 		poolTx := &clients.PoolTx{Tx: tx}
 
