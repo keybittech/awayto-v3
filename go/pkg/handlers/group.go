@@ -51,7 +51,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.users (sub, username, created_on, created_sub)
 		VALUES ($1::uuid, $2, $3, $1::uuid)
 	`, session.GroupSub, data.GetName(), time.Now().Local().UTC())
@@ -67,7 +67,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	// Create group in application db
 	// All the repeated $1 (UserSub) at the start are just placeholders until later in the method
 	// group "code" is generated via TRIGGER set_group_code
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
 		VALUES ($1::uuid, $1, $1::uuid, $2, $3, $4, $1::uuid, $5, $6, $7)
 		RETURNING id, name
@@ -104,7 +104,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	kcAdminSubgroupExternalId = kcAdminSubgroup.Id
 
 	// Add admin subgroup/role to the app db
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		ON CONFLICT (group_id, role_id) DO NOTHING
@@ -132,7 +132,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	// Update the group with the keycloak reference id and get the group code
 	var groupCode string
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		UPDATE dbtable_schema.groups 
 		SET external_id = $2, admin_role_external_id = $3, purpose = $4
 		WHERE id = $1
@@ -143,14 +143,14 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 	}
 
 	var adminUserId string
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT id FROM dbview_schema.enabled_users WHERE sub = $1
 	`, session.UserSub).Scan(&adminUserId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		ON CONFLICT (user_id, group_id) DO NOTHING
@@ -170,7 +170,7 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupResponse, error) {
 
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.groups
 		SET name = $2, purpose = $3, display_name = $4, updated_sub = $5, updated_on = $6, ai = $7
 		WHERE id = $1
@@ -184,7 +184,7 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.users
 		SET username = $2, updated_sub = $3, updated_on = $4
 		WHERE sub = $1
@@ -351,7 +351,7 @@ func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *t
 	for _, id := range data.GetIds() {
 		var groupExternalId string
 
-		err := tx.QueryRow(`
+		err := tx.QueryRow(req.Context(), `
 			SELECT external_id FROM dbtable_schema.groups WHERE id = $1
 		`, id).Scan(&groupExternalId)
 		if err != nil || groupExternalId == "" {
@@ -363,7 +363,7 @@ func (h *Handlers) DeleteGroup(w http.ResponseWriter, req *http.Request, data *t
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			DELETE FROM dbtable_schema.group_roles WHERE group_id = $1;
 			DELETE FROM dbtable_schema.groups WHERE id = $1;
 		`, id)

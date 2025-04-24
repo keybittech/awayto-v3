@@ -13,7 +13,7 @@ import (
 
 func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostQuoteResponse, error) {
 	var slotReserved bool
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT dbfunc_schema.is_slot_taken($1, $2)
 	`, data.ScheduleBracketSlotId, data.SlotDate).Scan(&slotReserved)
 	if err != nil {
@@ -33,7 +33,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 				return nil, util.ErrCheck(err)
 			}
 
-			err = tx.QueryRow(`
+			err = tx.QueryRow(req.Context(), `
 				INSERT INTO dbtable_schema.form_version_submissions (form_version_id, submission, created_sub)
 				VALUES ($1, $2::jsonb, $3::uuid)
 				RETURNING id
@@ -46,7 +46,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 
 	var quoteId string
 
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub, group_id)
 		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7::uuid)
 		RETURNING id
@@ -60,7 +60,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			INSERT INTO dbtable_schema.quote_files (quote_id, file_id, created_sub)
 			VALUES ($1::uuid, $2::uuid, $3::uuid)
 		`, quoteId, fileRes.GetId(), session.UserSub)
@@ -71,7 +71,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 
 	var staffSub string
 
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT created_sub
 		FROM dbtable_schema.schedule_bracket_slots
 		WHERE id = $1
@@ -100,7 +100,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 }
 
 func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *types.PatchQuoteRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchQuoteResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
       UPDATE dbtable_schema.quotes
       SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
       WHERE id = $1
@@ -114,7 +114,7 @@ func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *ty
 
 func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *types.GetQuotesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetQuotesResponse, error) {
 	var quotes []*types.IQuote
-	err := h.Database.QueryRows(tx, &quotes, `
+	err := h.Database.QueryRows(req.Context(), tx, &quotes, `
 		SELECT q.*
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q.schedule_bracket_slot_id
@@ -130,7 +130,7 @@ func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *typ
 func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *types.GetQuoteByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetQuoteByIdResponse, error) {
 	var quotes []*types.IQuote
 
-	err := h.Database.QueryRows(tx, &quotes, `
+	err := h.Database.QueryRows(req.Context(), tx, &quotes, `
 		SELECT * FROM dbview_schema.enabled_quotes_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -142,7 +142,7 @@ func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *
 }
 
 func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *types.DeleteQuoteRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteQuoteResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.quotes
 		WHERE id = $1
 	`, data.GetId())
@@ -157,7 +157,7 @@ func (h *Handlers) DisableQuote(w http.ResponseWriter, req *http.Request, data *
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := tx.Exec(`
+		_, err := tx.Exec(req.Context(), `
 			UPDATE dbtable_schema.quotes
 			SET enabled = false, updated_on = $2, updated_sub = $3
 			WHERE id = $1

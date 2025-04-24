@@ -10,7 +10,7 @@ import (
 )
 
 func (h *Handlers) PostSiteFeedback(w http.ResponseWriter, req *http.Request, data *types.PostSiteFeedbackRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostSiteFeedbackResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.feedback (message, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3)
 	`, data.GetFeedback().GetFeedbackMessage(), session.UserSub, time.Now().Local().UTC())

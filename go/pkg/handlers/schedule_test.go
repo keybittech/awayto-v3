@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"net/http"
 	"reflect"
 	"testing"
@@ -228,6 +229,7 @@ func TestHandlers_DisableSchedule(t *testing.T) {
 
 func TestHandlers_HandleExistingBrackets(t *testing.T) {
 	type args struct {
+		ctx                context.Context
 		existingBracketIds []string
 		brackets           map[string]*types.IScheduleBracket
 		tx                 *clients.PoolTx
@@ -243,8 +245,8 @@ func TestHandlers_HandleExistingBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.h.HandleExistingBrackets(tt.args.existingBracketIds, tt.args.brackets, tt.args.tx, tt.args.session); (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.HandleExistingBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.existingBracketIds, tt.args.brackets, tt.args.tx, tt.args.session, err, tt.wantErr)
+			if err := tt.h.HandleExistingBrackets(tt.args.ctx, tt.args.existingBracketIds, tt.args.brackets, tt.args.tx, tt.args.session); (err != nil) != tt.wantErr {
+				t.Errorf("Handlers.HandleExistingBrackets(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.existingBracketIds, tt.args.brackets, tt.args.tx, tt.args.session, err, tt.wantErr)
 			}
 		})
 	}
@@ -252,6 +254,7 @@ func TestHandlers_HandleExistingBrackets(t *testing.T) {
 
 func TestHandlers_InsertNewBrackets(t *testing.T) {
 	type args struct {
+		ctx         context.Context
 		scheduleId  string
 		newBrackets map[string]*types.IScheduleBracket
 		tx          *clients.PoolTx
@@ -267,8 +270,8 @@ func TestHandlers_InsertNewBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.h.InsertNewBrackets(tt.args.scheduleId, tt.args.newBrackets, tt.args.tx, tt.args.session); (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.InsertNewBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.scheduleId, tt.args.newBrackets, tt.args.tx, tt.args.session, err, tt.wantErr)
+			if err := tt.h.InsertNewBrackets(tt.args.ctx, tt.args.scheduleId, tt.args.newBrackets, tt.args.tx, tt.args.session); (err != nil) != tt.wantErr {
+				t.Errorf("Handlers.InsertNewBrackets(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.scheduleId, tt.args.newBrackets, tt.args.tx, tt.args.session, err, tt.wantErr)
 			}
 		})
 	}
@@ -276,6 +279,7 @@ func TestHandlers_InsertNewBrackets(t *testing.T) {
 
 func Test_handleDeletedBrackets(t *testing.T) {
 	type args struct {
+		ctx                context.Context
 		scheduleId         string
 		existingBracketIds []string
 		tx                 *clients.PoolTx
@@ -289,8 +293,8 @@ func Test_handleDeletedBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := handleDeletedBrackets(tt.args.scheduleId, tt.args.existingBracketIds, tt.args.tx); (err != nil) != tt.wantErr {
-				t.Errorf("handleDeletedBrackets(%v, %v, %v) error = %v, wantErr %v", tt.args.scheduleId, tt.args.existingBracketIds, tt.args.tx, err, tt.wantErr)
+			if err := handleDeletedBrackets(tt.args.ctx, tt.args.scheduleId, tt.args.existingBracketIds, tt.args.tx); (err != nil) != tt.wantErr {
+				t.Errorf("handleDeletedBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.scheduleId, tt.args.existingBracketIds, tt.args.tx, err, tt.wantErr)
 			}
 		})
 	}
@@ -298,6 +302,7 @@ func Test_handleDeletedBrackets(t *testing.T) {
 
 func Test_disableAndDeleteBrackets(t *testing.T) {
 	type args struct {
+		ctx               context.Context
 		bracketsToDisable []string
 		bracketsToDelete  []string
 		tx                *clients.PoolTx
@@ -311,8 +316,8 @@ func Test_disableAndDeleteBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := disableAndDeleteBrackets(tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.tx); (err != nil) != tt.wantErr {
-				t.Errorf("disableAndDeleteBrackets(%v, %v, %v) error = %v, wantErr %v", tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.tx, err, tt.wantErr)
+			if err := disableAndDeleteBrackets(tt.args.ctx, tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.tx); (err != nil) != tt.wantErr {
+				t.Errorf("disableAndDeleteBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.tx, err, tt.wantErr)
 			}
 		})
 	}

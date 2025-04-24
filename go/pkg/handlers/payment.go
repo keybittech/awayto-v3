@@ -14,7 +14,7 @@ import (
 func (h *Handlers) PostPayment(w http.ResponseWriter, req *http.Request, data *types.PostPaymentRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostPaymentResponse, error) {
 	var paymentId string
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.payments (contact_id, details, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id, contact_id as "contactId", details
@@ -32,7 +32,7 @@ func (h *Handlers) PatchPayment(w http.ResponseWriter, req *http.Request, data *
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.payments
 		SET contact_id = $2, details = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
@@ -47,7 +47,7 @@ func (h *Handlers) PatchPayment(w http.ResponseWriter, req *http.Request, data *
 
 func (h *Handlers) GetPayments(w http.ResponseWriter, req *http.Request, data *types.GetPaymentsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetPaymentsResponse, error) {
 	var payments []*types.IPayment
-	err := h.Database.QueryRows(tx, &payments, `SELECT * FROM dbview_schema.enabled_payments`)
+	err := h.Database.QueryRows(req.Context(), tx, &payments, `SELECT * FROM dbview_schema.enabled_payments`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -58,7 +58,7 @@ func (h *Handlers) GetPayments(w http.ResponseWriter, req *http.Request, data *t
 func (h *Handlers) GetPaymentById(w http.ResponseWriter, req *http.Request, data *types.GetPaymentByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetPaymentByIdResponse, error) {
 	var payments []*types.IPayment
 
-	err := h.Database.QueryRows(tx, &payments, `
+	err := h.Database.QueryRows(req.Context(), tx, &payments, `
 		SELECT * FROM dbview_schema.enabled_payments
 		WHERE id = $1
 	`, data.GetId())
@@ -74,7 +74,7 @@ func (h *Handlers) GetPaymentById(w http.ResponseWriter, req *http.Request, data
 }
 
 func (h *Handlers) DeletePayment(w http.ResponseWriter, req *http.Request, data *types.DeletePaymentRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeletePaymentResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.payments
 		WHERE id = $1
 	`, data.GetId())
@@ -86,7 +86,7 @@ func (h *Handlers) DeletePayment(w http.ResponseWriter, req *http.Request, data 
 }
 
 func (h *Handlers) DisablePayment(w http.ResponseWriter, req *http.Request, data *types.DisablePaymentRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisablePaymentResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.payments
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

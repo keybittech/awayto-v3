@@ -16,7 +16,7 @@ func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data
 
 	time.Sleep(time.Second)
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT COUNT(*) FROM dbtable_schema.groups WHERE name = $1
 	`, data.GetName()).Scan(&count)
 	if err != nil {
@@ -29,14 +29,14 @@ func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data
 func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *types.JoinGroupRequest, session *types.UserSession, tx *clients.PoolTx) (*types.JoinGroupResponse, error) {
 	var userId, groupId, allowedDomains, defaultRoleId string
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
 	`, data.GetCode()).Scan(&groupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = tx.QueryRow(`SELECT id FROM dbtable_schema.users WHERE sub = $1`, session.UserSub).Scan(&userId)
+	err = tx.QueryRow(req.Context(), `SELECT id FROM dbtable_schema.users WHERE sub = $1`, session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -54,7 +54,7 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 	}
 
 	var kcSubgroupExternalId string
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT external_id
 		FROM dbtable_schema.group_roles
 		WHERE role_id = $1
@@ -63,7 +63,7 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 	`, userId, groupId, kcSubgroupExternalId, session.UserSub)
@@ -80,19 +80,19 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *types.LeaveGroupRequest, session *types.UserSession, tx *clients.PoolTx) (*types.LeaveGroupResponse, error) {
 	var userId, groupId, allowedDomains, defaultRoleId string
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
 	`, data.GetCode()).Scan(&groupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = tx.QueryRow(`SELECT id FROM dbtable_schema.users WHERE sub = $1`, session.UserSub).Scan(&userId)
+	err = tx.QueryRow(req.Context(), `SELECT id FROM dbtable_schema.users WHERE sub = $1`, session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.group_users WHERE user_id = $1 AND group_id = $2
 	`, userId, groupId)
 	if err != nil {
@@ -111,7 +111,7 @@ func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *ty
 func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *types.AttachUserRequest, session *types.UserSession, tx *clients.PoolTx) (*types.AttachUserResponse, error) {
 	var groupId, kcGroupExternalId, kcRoleSubgroupExternalId, defaultRoleId, createdSub string
 
-	err := tx.QueryRow(`SELECT g.id FROM dbtable_schema.groups g WHERE g.code = $1`, data.GetCode()).Scan(&groupId)
+	err := tx.QueryRow(req.Context(), `SELECT g.id FROM dbtable_schema.groups g WHERE g.code = $1`, data.GetCode()).Scan(&groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -121,7 +121,7 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT g.external_id, g.default_role_id, g.created_sub, gr.external_id FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
 		WHERE g.id = $1

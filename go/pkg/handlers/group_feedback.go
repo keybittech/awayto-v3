@@ -10,7 +10,7 @@ import (
 )
 
 func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.PostGroupFeedbackRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupFeedbackResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.group_feedback (message, group_id, created_sub, created_on)
 		VALUES ($1, $2::uuid, $3::uuid, $4)
 	`, data.GetFeedback().GetFeedbackMessage(), session.GroupId, session.UserSub, time.Now().Local().UTC())
@@ -26,7 +26,7 @@ func (h *Handlers) PostGroupFeedback(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetGroupFeedback(w http.ResponseWriter, req *http.Request, data *types.GetGroupFeedbackRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFeedbackResponse, error) {
 	var feedback []*types.IFeedback
 
-	err := h.Database.QueryRows(tx, &feedback, `
+	err := h.Database.QueryRows(req.Context(), tx, &feedback, `
 		SELECT f.id, f.message as "feedbackMessage", f.created_on as "createdOn"
 		FROM dbtable_schema.group_feedback f
 		JOIN dbtable_schema.users u ON u.sub = f.created_sub

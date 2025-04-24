@@ -11,7 +11,7 @@ import (
 
 func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostRoleResponse, error) {
 	var role types.IRole
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.roles (name, created_sub)
 			SELECT * FROM input_rows
@@ -30,14 +30,14 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 	}
 
 	var userId string
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
 	`, session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.user_roles (user_id, role_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (user_id, role_id) DO NOTHING
@@ -53,7 +53,7 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 
 func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetRolesResponse, error) {
 	var roles []*types.IRole
-	err := h.Database.QueryRows(tx, &roles, `
+	err := h.Database.QueryRows(req.Context(), tx, &roles, `
 		SELECT eur.id, er.name, eur."createdOn" 
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
@@ -69,7 +69,7 @@ func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *type
 
 func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetRoleByIdResponse, error) {
 	var role types.IRole
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT * FROM dbview_schema.enabled_roles
 		WHERE id = $1
 	`, data.GetId()).Scan(&role.Id, &role.Name)
@@ -82,7 +82,7 @@ func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *t
 
 func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteRoleResponse, error) {
 	var userId string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
 	`, session.UserSub).Scan(&userId)
 	if err != nil {
@@ -92,7 +92,7 @@ func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *ty
 	ids := data.GetIds()
 	for _, id := range strings.Split(ids, ",") {
 		if id != "" {
-			_, err = tx.Exec(`
+			_, err = tx.Exec(req.Context(), `
 				DELETE FROM dbtable_schema.user_roles
 				WHERE role_id = $1 AND user_id = $2
 			`, id, userId)

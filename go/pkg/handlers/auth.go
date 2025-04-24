@@ -40,7 +40,7 @@ func (h *Handlers) AuthWebhook_REGISTER(req *http.Request, authEvent *types.Auth
 func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent *types.AuthEvent, session *types.UserSession, tx *clients.PoolTx) (string, error) {
 
 	group := &types.IGroup{}
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT id, default_role_id, name, allowed_domains
 		FROM dbtable_schema.groups
 		WHERE code = $1
@@ -60,7 +60,7 @@ func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent *t
 
 	var kcRoleSubgroupExternalId string
 
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT external_id
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2

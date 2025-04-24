@@ -16,7 +16,7 @@ import (
 func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *types.PostServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostServiceResponse, error) {
 	service := data.GetService()
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.services (name, cost, form_id, survey_id, created_sub)
 		VALUES ($1, $2::integer, $3, $4, $5::uuid)
 		ON CONFLICT (name, created_sub) DO UPDATE
@@ -43,7 +43,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	for _, tier := range service.GetTiers() {
 		var tierId string
 
-		err := tx.QueryRow(`
+		err := tx.QueryRow(req.Context(), `
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
 				SELECT * FROM input_rows
@@ -67,7 +67,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		// insert new tier addons, enabling on conflict
 		insertedTierAddonIds := make([]string, 0)
 		for _, addon := range tier.GetAddons() {
-			_, err = tx.Exec(`
+			_, err = tx.Exec(req.Context(), `
 				INSERT INTO dbtable_schema.service_tier_addons (service_addon_id, service_tier_id, created_sub)
 				VALUES ($1, $2, $3::uuid)
 				ON CONFLICT (service_addon_id, service_tier_id) DO UPDATE
@@ -80,7 +80,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		}
 
 		// delete old addons, never referenced beyond the tier
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			DELETE FROM dbtable_schema.service_tier_addons
 			WHERE service_addon_id IN (
 				SELECT service_addon_id
@@ -96,7 +96,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 
 	// disable tiers that were not inserted or re-enabled
 	// may be referenced by a quote, which must show accurate info at the time of the request
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false
 		WHERE id IN (
@@ -111,7 +111,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	}
 
 	// update service
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.services
 		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
@@ -128,7 +128,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *types.GetServicesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServicesResponse, error) {
 	var services []*types.IService
 
-	err := h.Database.QueryRows(tx, &services, `
+	err := h.Database.QueryRows(req.Context(), tx, &services, `
 		SELECT * FROM dbtable_schema.services
 		WHERE created_sub = $1
 	`, session.UserSub)
@@ -144,7 +144,7 @@ func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data
 	service := &types.IService{}
 
 	var tierBytes []byte
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT id, name, "formId", "surveyId", "createdOn", tiers
 		FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
@@ -167,7 +167,7 @@ func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data
 func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.services
 		WHERE id = ANY($1)
 	`, pq.Array(serviceIds))
@@ -187,7 +187,7 @@ func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) DisableService(w http.ResponseWriter, req *http.Request, data *types.DisableServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.services
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = ANY($1)

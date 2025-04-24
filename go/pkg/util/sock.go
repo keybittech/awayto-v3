@@ -172,7 +172,7 @@ func GenerateMessage(padTo int, message *types.SocketMessage) []byte {
 		historicalStr = "t"
 	}
 
-	actionNumber := strconv.Itoa(int(message.Action.Number()))
+	actionNumber := strconv.Itoa(int(message.Action))
 
 	paddedMessage := PaddedLen(padTo, len(actionNumber)) + actionNumber +
 		PaddedLen(padTo, 1) + storeStr +

@@ -21,7 +21,7 @@ func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data 
 	}
 
 	var groupRoleId string
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (group_id, role_id) DO NOTHING
@@ -33,7 +33,7 @@ func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data 
 
 	// update the default role
 	if data.GetDefaultRole() {
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			UPDATE dbtable_schema.groups
 			SET default_role_id = $2
 			WHERE id = $1
@@ -53,7 +53,7 @@ func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data 
 
 func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupRoleResponse, error) {
 	var existingRoleExternalId, defaultRoleId string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT gr.external_id, g.default_role_id FROM dbtable_schema.group_roles gr
 		JOIN dbtable_schema.groups g ON g.id = gr.group_id
 		WHERE gr.group_id = $1 AND gr.role_id = $2
@@ -75,7 +75,7 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 
 	// update the default role
 	if data.GetDefaultRole() {
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			UPDATE dbtable_schema.groups
 			SET default_role_id = $2
 			WHERE id = $1
@@ -87,7 +87,7 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 
 	if postRoleResponse.GetId() != data.GetRoleId() {
 		// remove the old group role entry and
-		_, err := tx.Exec(`
+		_, err := tx.Exec(req.Context(), `
 			DELETE FROM dbtable_schema.group_roles
 			WHERE group_id = $1 AND role_id = $2
 		`, session.GroupId, data.GetRoleId())
@@ -96,7 +96,7 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 		}
 
 		// create a new group_role attachment pointing to the new role id, retaining the keycloak external id
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (group_id, role_id) DO NOTHING
@@ -121,7 +121,7 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 }
 
 func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupRolesResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.groups
 		SET default_role_id = $2, updated_sub = $3, updated_on = $4 
 		WHERE id = $1
@@ -139,7 +139,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 	var diffs []*types.IGroupRole
 
 	// Remove all unused roles from keycloak and the group records
-	rows, err := tx.Query(`
+	rows, err := tx.Query(req.Context(), `
 		SELECT egr.id, egr."roleId", er.name
 		FROM dbview_schema.enabled_group_roles egr
 		JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
@@ -188,7 +188,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 			}
 		}
 
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			DELETE FROM dbtable_schema.group_roles
 			WHERE id = ANY($1::uuid[])
 		`, pq.Array(diffIds))
@@ -211,7 +211,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err = tx.Exec(`
+		_, err = tx.Exec(req.Context(), `
 			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 			VALUES ($1, $2, $3, $4, $5::uuid)
 			ON CONFLICT (group_id, role_id) DO NOTHING
@@ -228,7 +228,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 
 func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data *types.GetGroupRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupRolesResponse, error) {
 	var roles []*types.IGroupRole
-	err := h.Database.QueryRows(tx, &roles, `
+	err := h.Database.QueryRows(req.Context(), tx, &roles, `
 		SELECT 
 			TO_JSONB(er) as role,
 			egr.id,
@@ -251,7 +251,7 @@ func (h *Handlers) DeleteGroupRole(w http.ResponseWriter, req *http.Request, dat
 
 	// handle default role id update
 	var defaultGroupRoleId string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT gr.id FROM dbtable_schema.group_roles gr
 		JOIN dbtable_schema.groups g ON g.default_role_id = gr.role_id
 		WHERE g.id = $1
@@ -269,7 +269,7 @@ func (h *Handlers) DeleteGroupRole(w http.ResponseWriter, req *http.Request, dat
 	for _, id := range groupRoleIds {
 		if id != "" {
 			var subGroupExternalId string
-			err := tx.QueryRow(`
+			err := tx.QueryRow(req.Context(), `
 				DELETE FROM dbtable_schema.group_roles
 				WHERE id = $1 AND group_id = $2
 				RETURNING external_id

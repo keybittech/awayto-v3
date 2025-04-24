@@ -13,7 +13,7 @@ import (
 func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, data *types.PostManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostManageRolesResponse, error) {
 	var roles []*types.IRole
 
-	err := h.Database.QueryRows(tx, &roles, `
+	err := h.Database.QueryRows(req.Context(), tx, &roles, `
 		INSERT INTO dbtable_schema.roles (name, created_sub)
 		VALUES ($1, $2::uuid)
 		RETURNING id, name
@@ -32,7 +32,7 @@ func (h *Handlers) PostManageRoles(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, data *types.PatchManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchManageRolesResponse, error) {
 	var roles []*types.IRole
 
-	err := h.Database.QueryRows(tx, &roles, `
+	err := h.Database.QueryRows(req.Context(), tx, &roles, `
 		UPDATE dbtable_schema.roles
 		SET name = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
@@ -52,7 +52,7 @@ func (h *Handlers) PatchManageRoles(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data *types.GetManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetManageRolesResponse, error) {
 	var roles []*types.IRole
 
-	err := h.Database.QueryRows(tx, &roles, `
+	err := h.Database.QueryRows(req.Context(), tx, &roles, `
 		SELECT * FROM dbview_schema.enabled_roles
 	`)
 	if err != nil {
@@ -63,7 +63,7 @@ func (h *Handlers) GetManageRoles(w http.ResponseWriter, req *http.Request, data
 }
 
 func (h *Handlers) DeleteManageRoles(w http.ResponseWriter, req *http.Request, data *types.DeleteManageRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteManageRolesResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.roles
 		WHERE id = $1
 	`, data.GetId())

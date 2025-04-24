@@ -12,7 +12,7 @@ import (
 
 func (h *Handlers) PostForm(w http.ResponseWriter, req *http.Request, data *types.PostFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostFormResponse, error) {
 	var id string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.forms (name, created_on, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
@@ -31,7 +31,7 @@ func (h *Handlers) PostFormVersion(w http.ResponseWriter, req *http.Request, dat
 	}
 
 	var versionId string
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.form_versions (form_id, form, created_on, created_sub)
 		VALUES ($1::uuid, $2::jsonb, $3, $4::uuid)
 		RETURNING id
@@ -40,7 +40,7 @@ func (h *Handlers) PostFormVersion(w http.ResponseWriter, req *http.Request, dat
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.forms
 		SET name = $1, updated_on = $2, updated_sub = $3
 		WHERE id = $4
@@ -53,7 +53,7 @@ func (h *Handlers) PostFormVersion(w http.ResponseWriter, req *http.Request, dat
 }
 
 func (h *Handlers) PatchForm(w http.ResponseWriter, req *http.Request, data *types.PatchFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchFormResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.forms
 		SET name = $1, updated_on = $2, updated_sub = $3
 		WHERE id = $4
@@ -69,7 +69,7 @@ func (h *Handlers) PatchForm(w http.ResponseWriter, req *http.Request, data *typ
 func (h *Handlers) GetForms(w http.ResponseWriter, req *http.Request, data *types.GetFormsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetFormsResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(tx, &forms, `
+	err := h.Database.QueryRows(req.Context(), tx, &forms, `
 		SELECT * FROM dbview_schema.enabled_forms
 	`)
 	if err != nil {
@@ -82,7 +82,7 @@ func (h *Handlers) GetForms(w http.ResponseWriter, req *http.Request, data *type
 func (h *Handlers) GetFormById(w http.ResponseWriter, req *http.Request, data *types.GetFormByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetFormByIdResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(tx, &forms, `
+	err := h.Database.QueryRows(req.Context(), tx, &forms, `
 		SELECT * FROM dbview_schema.enabled_forms
 		WHERE id = $1
 	`, data.GetId())
@@ -98,7 +98,7 @@ func (h *Handlers) GetFormById(w http.ResponseWriter, req *http.Request, data *t
 }
 
 func (h *Handlers) DeleteForm(w http.ResponseWriter, req *http.Request, data *types.DeleteFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteFormResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.forms
 		WHERE id = $1
 	`, data.GetId())
@@ -110,7 +110,7 @@ func (h *Handlers) DeleteForm(w http.ResponseWriter, req *http.Request, data *ty
 }
 
 func (h *Handlers) DisableForm(w http.ResponseWriter, req *http.Request, data *types.DisableFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableFormResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.forms
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

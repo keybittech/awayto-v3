@@ -20,7 +20,7 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 
 	// If a file was deleted from the FileManager ui, its uuid won't be sent
 	// so delete all unrepresented files
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.file_contents
 		WHERE upload_id = $1
 		AND uuid NOT IN (SELECT unnest($2::text[]))
@@ -82,7 +82,7 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 
 		fileUuid, _ := uuid.NewV7()
 
-		_, err := tx.Exec(`
+		_, err := tx.Exec(req.Context(), `
 			INSERT INTO dbtable_schema.file_contents (uuid, name, content, content_length, created_on, created_sub, upload_id)
 			VALUES ($1::uuid, $2, $3::bytea, $4, $5, $6, $7)
 		`, fileUuid.String(), file.GetName(), pdfDoc, len(pdfDoc), time.Now(), session.UserSub, data.UploadId)
@@ -94,7 +94,7 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 	}
 
 	// Remove overwritten files
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.file_contents
 		WHERE uuid = ANY($1)
 	`, pq.Array(data.OverwriteIds))
@@ -105,7 +105,7 @@ func (h *Handlers) PostFileContents(w http.ResponseWriter, req *http.Request, da
 	// Check file size of current file set
 	var totalSize int32
 
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT SUM(COALESCE(content_length, 0))
 		FROM dbtable_schema.file_contents
 		WHERE upload_id = $1
@@ -133,7 +133,7 @@ func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest, session *types.UserSession, tx *clients.PoolTx) (*[]byte, error) {
 	var fileContent []byte
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT content FROM dbtable_schema.file_contents
 		WHERE uuid = $1
 	`, data.FileId).Scan(&fileContent)
@@ -147,7 +147,7 @@ func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *types.PostFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostFileResponse, error) {
 	file := data.GetFile()
 	var fileID string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		RETURNING id
@@ -159,7 +159,7 @@ func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *type
 }
 
 func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *types.PatchFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchFileResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.files
 		SET name = $2, updated_on = $3, updated_sub = $4
 		WHERE id = $1
@@ -172,7 +172,7 @@ func (h *Handlers) PatchFile(w http.ResponseWriter, req *http.Request, data *typ
 
 func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *types.GetFilesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetFilesResponse, error) {
 	var files []*types.IFile
-	err := h.Database.QueryRows(tx, &files, "SELECT * FROM dbview_schema.enabled_files")
+	err := h.Database.QueryRows(req.Context(), tx, &files, "SELECT * FROM dbview_schema.enabled_files")
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -181,7 +181,7 @@ func (h *Handlers) GetFiles(w http.ResponseWriter, req *http.Request, data *type
 
 func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *types.GetFileByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetFileByIdResponse, error) {
 	var files []*types.IFile
-	err := h.Database.QueryRows(tx, &files, "SELECT * FROM dbview_schema.enabled_files WHERE id = $1", data.GetId())
+	err := h.Database.QueryRows(req.Context(), tx, &files, "SELECT * FROM dbview_schema.enabled_files WHERE id = $1", data.GetId())
 	if err != nil || len(files) == 0 {
 		return nil, util.ErrCheck(err)
 	}
@@ -189,7 +189,7 @@ func (h *Handlers) GetFileById(w http.ResponseWriter, req *http.Request, data *t
 }
 
 func (h *Handlers) DeleteFile(w http.ResponseWriter, req *http.Request, data *types.DeleteFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteFileResponse, error) {
-	_, err := tx.Exec("DELETE FROM dbtable_schema.files WHERE id = $1", data.GetId())
+	_, err := tx.Exec(req.Context(), `DELETE FROM dbtable_schema.files WHERE id = $1`, data.GetId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -197,7 +197,7 @@ func (h *Handlers) DeleteFile(w http.ResponseWriter, req *http.Request, data *ty
 }
 
 func (h *Handlers) DisableFile(w http.ResponseWriter, req *http.Request, data *types.DisableFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableFileResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.files
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

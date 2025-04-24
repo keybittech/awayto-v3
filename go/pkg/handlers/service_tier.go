@@ -13,7 +13,7 @@ import (
 func (h *Handlers) PostServiceTier(w http.ResponseWriter, req *http.Request, data *types.PostServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostServiceTierResponse, error) {
 	var serviceTierId string
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.service_tiers (name, serviceId, multiplier, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
@@ -32,7 +32,7 @@ func (h *Handlers) PostServiceTier(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) PatchServiceTier(w http.ResponseWriter, req *http.Request, data *types.PatchServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchServiceTierResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(tx, &serviceTiers, `
+	err := h.Database.QueryRows(req.Context(), tx, &serviceTiers, `
 		UPDATE dbtable_schema.service_tiers
 		SET name = $2, multiplier = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
@@ -47,7 +47,7 @@ func (h *Handlers) PatchServiceTier(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetServiceTiers(w http.ResponseWriter, req *http.Request, data *types.GetServiceTiersRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceTiersResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(tx, &serviceTiers, `
+	err := h.Database.QueryRows(req.Context(), tx, &serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers
 	`)
 	if err != nil {
@@ -60,7 +60,7 @@ func (h *Handlers) GetServiceTiers(w http.ResponseWriter, req *http.Request, dat
 func (h *Handlers) GetServiceTierById(w http.ResponseWriter, req *http.Request, data *types.GetServiceTierByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceTierByIdResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(tx, &serviceTiers, `
+	err := h.Database.QueryRows(req.Context(), tx, &serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -78,7 +78,7 @@ func (h *Handlers) GetServiceTierById(w http.ResponseWriter, req *http.Request, 
 }
 
 func (h *Handlers) DeleteServiceTier(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteServiceTierResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.service_tiers
 		WHERE id = $1
 	`, data.GetId())
@@ -90,7 +90,7 @@ func (h *Handlers) DeleteServiceTier(w http.ResponseWriter, req *http.Request, d
 }
 
 func (h *Handlers) DisableServiceTier(w http.ResponseWriter, req *http.Request, data *types.DisableServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableServiceTierResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

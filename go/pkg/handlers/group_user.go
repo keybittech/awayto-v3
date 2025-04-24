@@ -15,7 +15,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 	roleId := data.GetRoleId()
 
 	var userId, oldSubgroupExternalId string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT gu.external_id as "externalId", gu.user_id as "userId"
 		FROM dbtable_schema.group_users gu
 		JOIN dbtable_schema.users u ON u.id = gu.user_id
@@ -27,7 +27,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 	}
 
 	var newSubgroupExternalId string
-	err = tx.QueryRow(`
+	err = tx.QueryRow(req.Context(), `
 		SELECT external_id as "externalId"
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
@@ -46,7 +46,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.group_users
 		SET external_id = $3
 		WHERE group_id = $1 AND user_id = $2
@@ -75,7 +75,7 @@ func (h *Handlers) PatchGroupUser(w http.ResponseWriter, req *http.Request, data
 func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data *types.GetGroupUsersRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupUsersResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := h.Database.QueryRows(tx, &groupUsers, `
+	err := h.Database.QueryRows(req.Context(), tx, &groupUsers, `
 		SELECT TO_JSONB(eu) as "userProfile", egu.id, r.id as "roleId", r.name as "roleName"
 		FROM dbview_schema.enabled_group_users egu
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = egu."userId"
@@ -94,7 +94,7 @@ func (h *Handlers) GetGroupUsers(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetGroupUserById(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupUserByIdResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := h.Database.QueryRows(tx, &groupUsers, `
+	err := h.Database.QueryRows(req.Context(), tx, &groupUsers, `
 		SELECT
 			eu.id,
 			egu.groupId,
@@ -128,7 +128,7 @@ func (h *Handlers) DeleteGroupUser(w http.ResponseWriter, req *http.Request, dat
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := tx.Exec(`
+		_, err := tx.Exec(req.Context(), `
 			DELETE FROM dbtable_schema.group_users
 			WHERE group_id = $1 AND user_id = $2
 		`, session.GroupId, id)
@@ -144,7 +144,7 @@ func (h *Handlers) LockGroupUser(w http.ResponseWriter, req *http.Request, data 
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := tx.Exec(`
+		_, err := tx.Exec(req.Context(), `
 			UPDATE dbtable_schema.group_users
 			SET locked = true
 			WHERE group_id = $1 AND user_id = $2
@@ -163,7 +163,7 @@ func (h *Handlers) UnlockGroupUser(w http.ResponseWriter, req *http.Request, dat
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := tx.Exec(`
+		_, err := tx.Exec(req.Context(), `
 			UPDATE dbtable_schema.group_users
 			SET locked = false
 			WHERE group_id = $1 AND user_id = $2

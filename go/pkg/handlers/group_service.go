@@ -12,7 +12,7 @@ import (
 
 func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, data *types.PostGroupServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupServiceResponse, error) {
 	var groupServiceId string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.group_services (group_id, service_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		ON CONFLICT (group_id, service_id) DO NOTHING
@@ -31,7 +31,7 @@ func (h *Handlers) PostGroupService(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, data *types.GetGroupServicesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupServicesResponse, error) {
 	var groupServices []*types.IGroupService
 
-	err := h.Database.QueryRows(tx, &groupServices, `
+	err := h.Database.QueryRows(req.Context(), tx, &groupServices, `
 		SELECT TO_JSONB(es) as service, egs.id, egs."groupId", egs."serviceId"
 		FROM dbview_schema.enabled_group_services egs
 		LEFT JOIN dbview_schema.enabled_services es ON es.id = egs."serviceId"
@@ -48,7 +48,7 @@ func (h *Handlers) GetGroupServices(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) DeleteGroupService(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupServiceResponse, error) {
 
 	serviceIds := strings.Split(data.Ids, ",")
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.group_services
 		WHERE group_id = $1 AND service_id = ANY($2)
 	`, session.GroupId, pq.Array(serviceIds))

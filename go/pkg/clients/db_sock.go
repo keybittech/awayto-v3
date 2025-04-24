@@ -8,7 +8,6 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"github.com/lib/pq"
 )
 
 func (ds DbSession) InitDbSocketConnection(ctx context.Context, connId string) error {
@@ -96,7 +95,7 @@ func (ds DbSession) GetTopicMessageParticipants(ctx context.Context, participant
 		var userSub string
 		var cids []string
 
-		err = topicRows.Scan(&userSub, (*pq.StringArray)(&cids))
+		err = topicRows.Scan(&userSub, &cids)
 		if err != nil {
 			return util.ErrCheck(err)
 		}

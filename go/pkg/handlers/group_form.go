@@ -13,7 +13,7 @@ import (
 func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data *types.PostGroupFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupFormResponse, error) {
 	var groupFormExists string
 
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT f.id FROM dbtable_schema.forms f
 		LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
 		WHERE f.name = $1 AND gf.group_id = $2
@@ -53,7 +53,7 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(`
+	_, err = tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.group_forms (group_id, form_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (group_id, form_id) DO NOTHING
@@ -94,7 +94,7 @@ func (h *Handlers) PatchGroupForm(w http.ResponseWriter, req *http.Request, data
 func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFormsResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(tx, &forms, `
+	err := h.Database.QueryRows(req.Context(), tx, &forms, `
 		SELECT es.*
 		FROM dbview_schema.enabled_group_forms eus
 		LEFT JOIN dbview_schema.enabled_forms es ON es.id = eus."formId"
@@ -115,7 +115,7 @@ func (h *Handlers) GetGroupForms(w http.ResponseWriter, req *http.Request, data 
 func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFormByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFormByIdResponse, error) {
 	var groupForms []*types.IGroupForm
 
-	err := h.Database.QueryRows(tx, &groupForms, `
+	err := h.Database.QueryRows(req.Context(), tx, &groupForms, `
 		SELECT egfe.*
 		FROM dbview_schema.enabled_group_forms_ext egfe
 		WHERE egfe."groupId" = $1 and egfe."formId" = $2
@@ -134,7 +134,7 @@ func (h *Handlers) GetGroupFormById(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) DeleteGroupForm(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFormRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupFormResponse, error) {
 
 	for _, formId := range strings.Split(data.GetIds(), ",") {
-		_, err := tx.Exec(`DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)
+		_, err := tx.Exec(req.Context(), `DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

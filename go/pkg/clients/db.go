@@ -293,15 +293,9 @@ func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params 
 		return nil, nil, util.ErrCheck(err)
 	}
 
-	_, err = results.Exec()
-	if err != nil {
-		rows.Close()
-		results.Close()
-		return nil, nil, util.ErrCheck(err)
-	}
-
 	done := func() {
 		rows.Close()
+		results.Exec()
 		results.Close()
 	}
 
@@ -321,13 +315,8 @@ func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, para
 
 	row := results.QueryRow()
 
-	_, err = results.Exec()
-	if err != nil {
-		results.Close()
-		return nil, nil, util.ErrCheck(err)
-	}
-
 	done := func() {
+		results.Exec()
 		results.Close()
 	}
 

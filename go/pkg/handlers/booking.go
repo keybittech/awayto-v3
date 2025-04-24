@@ -25,7 +25,7 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 	}
 
 	var isOwner bool
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT EXISTS(
 			SELECT 1 FROM dbtable_schema.schedule_bracket_slots
 			WHERE id = $1 AND created_sub = $2
@@ -40,7 +40,7 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 
 	for _, booking := range data.Bookings {
 		var newBooking types.IBooking
-		err := tx.QueryRow(`
+		err := tx.QueryRow(req.Context(), `
 			INSERT INTO dbtable_schema.bookings (quote_id, slot_date, schedule_bracket_slot_id, created_sub)
 			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid)
 			RETURNING id
@@ -50,7 +50,7 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 		}
 
 		var quoteUserSub string
-		err = tx.QueryRow(`
+		err = tx.QueryRow(req.Context(), `
 			SELECT created_sub
 			FROM dbtable_schema.quotes
 			WHERE id = $1
@@ -71,7 +71,7 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 
 func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchBookingResponse, error) {
 	var updatedBookings []*types.IBooking
-	err := h.Database.QueryRows(tx, &updatedBookings, `
+	err := h.Database.QueryRows(req.Context(), tx, &updatedBookings, `
 		UPDATE dbtable_schema.bookings
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
@@ -86,7 +86,7 @@ func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *
 
 func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *types.GetBookingsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetBookingsResponse, error) {
 	bookings := []*types.IBooking{}
-	err := h.Database.QueryRows(tx, &bookings, `
+	err := h.Database.QueryRows(req.Context(), tx, &bookings, `
 		SELECT eb.*
 		FROM dbview_schema.enabled_bookings eb
 		JOIN dbtable_schema.bookings b ON b.id = eb.id
@@ -98,7 +98,7 @@ func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *t
 
 func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data *types.GetBookingByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetBookingByIdResponse, error) {
 	var bookings []*types.IBooking
-	err := h.Database.QueryRows(tx, &bookings, `
+	err := h.Database.QueryRows(req.Context(), tx, &bookings, `
 		SELECT * FROM dbview_schema.enabled_bookings
 		WHERE id = $1
 	`, data.Id)
@@ -115,7 +115,7 @@ func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data
 
 func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, data *types.GetBookingFilesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetBookingFilesResponse, error) {
 	files := []*types.IFile{}
-	err := h.Database.QueryRows(tx, &files, `
+	err := h.Database.QueryRows(req.Context(), tx, &files, `
 		SELECT f.name, f.uuid, f."mimeType"
 		FROM dbview_schema.enabled_files f
 		JOIN dbtable_schema.quote_files qf ON qf.file_id = f.id
@@ -126,7 +126,7 @@ func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, dat
 }
 
 func (h *Handlers) PatchBookingRating(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRatingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchBookingRatingResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.bookings
 		SET rating = $2
 		WHERE id = $1
@@ -141,7 +141,7 @@ func (h *Handlers) PatchBookingRating(w http.ResponseWriter, req *http.Request, 
 }
 
 func (h *Handlers) DeleteBooking(w http.ResponseWriter, req *http.Request, data *types.DeleteBookingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteBookingResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.bookings
 		WHERE id = $1
 	`, data.GetId())
@@ -149,7 +149,7 @@ func (h *Handlers) DeleteBooking(w http.ResponseWriter, req *http.Request, data 
 }
 
 func (h *Handlers) DisableBooking(w http.ResponseWriter, req *http.Request, data *types.DisableBookingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableBookingResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

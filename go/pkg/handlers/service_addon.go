@@ -13,7 +13,7 @@ import (
 func (h *Handlers) PostServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PostServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostServiceAddonResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
-	err := h.Database.QueryRows(tx, &serviceAddons, `
+	err := h.Database.QueryRows(req.Context(), tx, &serviceAddons, `
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.service_addons (name, created_sub)
 			SELECT * FROM input_rows
@@ -41,7 +41,7 @@ func (h *Handlers) PostServiceAddon(w http.ResponseWriter, req *http.Request, da
 }
 
 func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, data *types.PatchServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchServiceAddonResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.service_addons
 		SET name = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
@@ -58,7 +58,7 @@ func (h *Handlers) PatchServiceAddon(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetServiceAddons(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceAddonsResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
-	err := h.Database.QueryRows(tx, &serviceAddons, `
+	err := h.Database.QueryRows(req.Context(), tx, &serviceAddons, `
 		SELECT * FROM dbview_schema.enabled_service_addons
 	`)
 	if err != nil {
@@ -71,7 +71,7 @@ func (h *Handlers) GetServiceAddons(w http.ResponseWriter, req *http.Request, da
 func (h *Handlers) GetServiceAddonById(w http.ResponseWriter, req *http.Request, data *types.GetServiceAddonByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceAddonByIdResponse, error) {
 	var serviceAddons []*types.IServiceAddon
 
-	err := h.Database.QueryRows(tx, &serviceAddons, `
+	err := h.Database.QueryRows(req.Context(), tx, &serviceAddons, `
 		SELECT * FROM dbview_schema.enabled_service_addons
 		WHERE id = $1
 	`, data.GetId())
@@ -87,7 +87,7 @@ func (h *Handlers) GetServiceAddonById(w http.ResponseWriter, req *http.Request,
 }
 
 func (h *Handlers) DeleteServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteServiceAddonResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		DELETE FROM dbtable_schema.service_addons
 		WHERE id = $1
 	`, data.GetId())
@@ -101,7 +101,7 @@ func (h *Handlers) DeleteServiceAddon(w http.ResponseWriter, req *http.Request, 
 }
 
 func (h *Handlers) DisableServiceAddon(w http.ResponseWriter, req *http.Request, data *types.DisableServiceAddonRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableServiceAddonResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.service_addons
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

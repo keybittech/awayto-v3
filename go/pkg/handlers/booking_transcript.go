@@ -30,7 +30,7 @@ func (h *Handlers) DeleteBookingTranscript(w http.ResponseWriter, req *http.Requ
 }
 
 func (h *Handlers) DisableBookingTranscript(w http.ResponseWriter, req *http.Request, data *types.DisableBookingTranscriptRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableBookingTranscriptResponse, error) {
-	_, err := tx.Exec(`
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

@@ -14,7 +14,7 @@ import (
 func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupScheduleResponse, error) {
 
 	var groupScheduleId string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
@@ -42,7 +42,7 @@ func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, 
 
 func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupSchedulesResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
-	err := h.Database.QueryRows(tx, &groupSchedules, `
+	err := h.Database.QueryRows(req.Context(), tx, &groupSchedules, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbview_schema.enabled_group_schedules egs ON egs."scheduleId" = es.id
@@ -59,7 +59,7 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	groupSchedule := &types.IGroupSchedule{}
 	var scheduleBytes []byte
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT TO_JSONB(ese), ese.name
 		FROM dbview_schema.enabled_schedules_ext ese
 		WHERE ese.id = $1
@@ -84,7 +84,7 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupScheduleByDateResponse, error) {
 
 	var scheduleTimeUnitName string
-	err := tx.QueryRow(`
+	err := tx.QueryRow(req.Context(), `
 		SELECT tu.name
 		FROM dbtable_schema.schedules s
 		JOIN dbtable_schema.time_units tu ON tu.id = s.schedule_time_unit_id
@@ -94,7 +94,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	var groupScheduleDateSlots []*types.IGroupScheduleDateSlots
 
 	if "week" == scheduleTimeUnitName {
-		err = h.Database.QueryRows(tx, &groupScheduleDateSlots, `
+		err = h.Database.QueryRows(req.Context(), tx, &groupScheduleDateSlots, `
 			SELECT
         DISTINCT slot."startTime"::INTERVAL,
         slot.id as "scheduleBracketSlotId",
@@ -117,7 +117,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
       ORDER BY "startDate", "startTime"
 		`, data.Date, data.GroupScheduleId, session.Timezone)
 	} else {
-		err = h.Database.QueryRows(tx, &groupScheduleDateSlots, `
+		err = h.Database.QueryRows(req.Context(), tx, &groupScheduleDateSlots, `
 			SELECT
 				DISTINCT slot."startTime"::INTERVAL,
 				slot.id as "scheduleBracketSlotId",
@@ -171,7 +171,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 
 	for _, groupScheduleTableId := range strings.Split(data.GetGroupScheduleIds(), ",") {
 		var groupScheduleId string
-		err = tx.QueryRow(`
+		err = tx.QueryRow(req.Context(), `
 			DELETE FROM dbtable_schema.group_schedules
 			WHERE id = $1
 			RETURNING schedule_id
@@ -181,7 +181,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		var userScheduleIds sql.NullString
-		err = tx.QueryRow(`
+		err = tx.QueryRow(req.Context(), `
 			SELECT STRING_AGG(user_schedule_id::TEXT, ',')
 			FROM dbtable_schema.group_user_schedules
 			WHERE group_schedule_id = $1
@@ -198,7 +198,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		var userScheduleCount int64
-		err = tx.QueryRow(`
+		err = tx.QueryRow(req.Context(), `
 			SELECT COUNT(user_schedule_id)
 			FROM dbtable_schema.group_user_schedules
 			WHERE group_schedule_id = $1
@@ -208,7 +208,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		if userScheduleCount > 0 {
-			_, err = tx.Exec(`
+			_, err = tx.Exec(req.Context(), `
 				UPDATE dbtable_schema.schedules
 				SET enabled = false
 				WHERE id = $1
@@ -217,7 +217,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 				return nil, util.ErrCheck(err)
 			}
 		} else {
-			_, err = tx.Exec(`
+			_, err = tx.Exec(req.Context(), `
 			DELETE FROM dbtable_schema.schedules
 			WHERE dbtable_schema.schedules.id = $1
 		`, groupScheduleId)
