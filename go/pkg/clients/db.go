@@ -42,7 +42,6 @@ var colTypes *ColTypes
 
 var emptyString string
 var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR)`
-var setSessionVariablesSQLReplacer = `SELECT dbfunc_schema.set_session_vars($a::VARCHAR, $b::VARCHAR, $c::VARCHAR)`
 
 type Pool struct {
 	*pgxpool.Pool
@@ -52,32 +51,12 @@ type PoolTx struct {
 	pgx.Tx
 }
 
-func (ptx PoolTx) Rollback() {
-	ptx.Tx.Rollback(context.Background())
+func (ptx PoolTx) SetSession(ctx context.Context, session *types.UserSession) {
+	ptx.Exec(ctx, setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles, emptyString)
 }
 
-func (ptx PoolTx) Commit() error {
-	return ptx.Tx.Commit(context.Background())
-}
-
-func (ptx PoolTx) Query(query string, params ...interface{}) (pgx.Rows, error) {
-	return ptx.Tx.Query(context.Background(), query, params...)
-}
-
-func (ptx PoolTx) QueryRow(query string, params ...interface{}) pgx.Row {
-	return ptx.Tx.QueryRow(context.Background(), query, params...)
-}
-
-func (ptx PoolTx) Exec(query string, params ...interface{}) (pgconn.CommandTag, error) {
-	return ptx.Tx.Exec(context.Background(), query, params...)
-}
-
-func (ptx PoolTx) SetSession(session *types.UserSession) {
-	ptx.Exec(setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles, emptyString)
-}
-
-func (ptx PoolTx) UnsetSession() {
-	ptx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+func (ptx PoolTx) UnsetSession(ctx context.Context) {
+	ptx.Exec(ctx, setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
 }
 
 type Database struct {
@@ -112,9 +91,7 @@ func InitDatabase() *Database {
 	connString2 := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", dbDriver, pgUser, pgPass, pgDb, os.Getenv("UNIX_SOCK_DIR"))
 	dbpool, err := pgxpool.New(context.Background(), connString2)
 	if err != nil {
-		println("ERROR", err.Error())
-		fmt.Fprintf(os.Stderr, "Unable to create connection pool: %v\n", err)
-		os.Exit(1)
+		log.Fatalf("Unable to create connection pool: %v\n", err)
 	}
 
 	dbc := &Database{
@@ -137,13 +114,12 @@ func InitDatabase() *Database {
 	defer cancel()
 	workerDbSession := &DbSession{
 		Pool: dbpool,
-		Ctx:  ctx,
 		UserSession: &types.UserSession{
 			UserSub: "worker",
 		},
 	}
 
-	row, close, err := workerDbSession.SessionBatchQueryRow(`
+	row, done, err := workerDbSession.SessionBatchQueryRow(ctx, `
 		SELECT u.sub, r.id FROM dbtable_schema.users u
 		JOIN dbtable_schema.roles r ON r.name = 'Admin'
 		WHERE u.username = 'system_owner'
@@ -151,14 +127,14 @@ func InitDatabase() *Database {
 	if err != nil {
 		log.Fatal(util.ErrCheck(err))
 	}
-	defer close()
+	defer done()
 
 	err = row.Scan(&dbc.DatabaseAdminSub, &dbc.DatabaseAdminRoleId)
 	if err != nil {
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	_, err = workerDbSession.SessionBatchExec(`
+	_, err = workerDbSession.SessionBatchExec(ctx, `
 		DELETE FROM dbtable_schema.sock_connections
 		USING dbtable_schema.sock_connections sc
 		LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
@@ -258,29 +234,24 @@ func (db *Database) BuildSessionQuery(userSub, groupId, roles, query string, arg
 // }
 
 type DbSession struct {
+	Topic string
 	*types.UserSession
 	*pgxpool.Pool
-	Topic string
-	Ctx   context.Context
 }
 
-func (ds *DbSession) SessionBatch(primaryQuery string, params ...interface{}) (pgx.BatchResults, error) {
-	if ds.Ctx == nil {
-		return nil, util.ErrCheck(errors.New("context must be provided"))
-	}
-
+func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, params ...interface{}) (pgx.BatchResults, error) {
 	batch := &pgx.Batch{}
 	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.Roles, ds.Topic)
 	batch.Queue(primaryQuery, params...)
 	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
 
-	return ds.SendBatch(ds.Ctx, batch), nil
+	return ds.SendBatch(ctx, batch), nil
 }
 
 var emptyTag = pgconn.CommandTag{}
 
-func (ds *DbSession) SessionBatchExec(query string, params ...interface{}) (pgconn.CommandTag, error) {
-	results, err := ds.SessionBatch(query, params...)
+func (ds DbSession) SessionBatchExec(ctx context.Context, query string, params ...interface{}) (pgconn.CommandTag, error) {
+	results, err := ds.SessionBatch(ctx, query, params...)
 	if err != nil {
 		return emptyTag, util.ErrCheck(err)
 	}
@@ -305,8 +276,8 @@ func (ds *DbSession) SessionBatchExec(query string, params ...interface{}) (pgco
 	return commandTag, nil
 }
 
-func (ds *DbSession) SessionBatchQuery(query string, params ...interface{}) (pgx.Rows, func() error, error) {
-	results, err := ds.SessionBatch(query, params...)
+func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params ...interface{}) (pgx.Rows, func(), error) {
+	results, err := ds.SessionBatch(ctx, query, params...)
 	if err != nil {
 		return nil, nil, util.ErrCheck(err)
 	}
@@ -322,20 +293,23 @@ func (ds *DbSession) SessionBatchQuery(query string, params ...interface{}) (pgx
 		return nil, nil, util.ErrCheck(err)
 	}
 
-	close := func() error {
-		defer results.Close()
-		_, err := results.Exec()
-		if err != nil {
-			return util.ErrCheck(err)
-		}
-		return nil
+	_, err = results.Exec()
+	if err != nil {
+		rows.Close()
+		results.Close()
+		return nil, nil, util.ErrCheck(err)
 	}
 
-	return rows, close, nil
+	done := func() {
+		rows.Close()
+		results.Close()
+	}
+
+	return rows, done, nil
 }
 
-func (ds *DbSession) SessionBatchQueryRow(query string, params ...interface{}) (pgx.Row, func() error, error) {
-	results, err := ds.SessionBatch(query, params...)
+func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, params ...interface{}) (pgx.Row, func(), error) {
+	results, err := ds.SessionBatch(ctx, query, params...)
 	if err != nil {
 		return nil, nil, util.ErrCheck(err)
 	}
@@ -347,16 +321,17 @@ func (ds *DbSession) SessionBatchQueryRow(query string, params ...interface{}) (
 
 	row := results.QueryRow()
 
-	close := func() error {
-		defer results.Close()
-		_, err := results.Exec()
-		if err != nil {
-			return util.ErrCheck(err)
-		}
-		return nil
+	_, err = results.Exec()
+	if err != nil {
+		results.Close()
+		return nil, nil, util.ErrCheck(err)
 	}
 
-	return row, close, nil
+	done := func() {
+		results.Close()
+	}
+
+	return row, done, nil
 }
 
 // func (db *Database) TxExec(doFunc func(PoolTx) error, ids ...string) error {
@@ -462,7 +437,7 @@ func (ds *DbSession) SessionBatchQueryRow(query string, params ...interface{}) (
 // 	return nil
 // }
 
-func (db *Database) QueryRows(tx *PoolTx, protoStructSlice interface{}, query string, args ...interface{}) error {
+func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice interface{}, query string, args ...interface{}) error {
 
 	protoValue := reflect.ValueOf(protoStructSlice)
 	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
@@ -473,7 +448,7 @@ func (db *Database) QueryRows(tx *PoolTx, protoStructSlice interface{}, query st
 
 	indexes := cachedFieldIndexes(protoType.Elem())
 
-	rows, err := tx.Query(query, args...)
+	rows, err := tx.Query(ctx, query, args...)
 	if err != nil {
 		return util.ErrCheck(err)
 	}

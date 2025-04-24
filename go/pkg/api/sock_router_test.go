@@ -1,9 +1,11 @@
 package api
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -30,13 +32,11 @@ func TestAPI_SocketMessageReceiver(t *testing.T) {
 
 func TestAPI_SocketMessageRouter(t *testing.T) {
 	type args struct {
-		sm       *types.SocketMessage
+		ctx      context.Context
 		connId   string
 		socketId string
-		session  *types.UserSession
-		userSub  string
-		groupId  string
-		roles    string
+		sm       *types.SocketMessage
+		ds       clients.DbSession
 	}
 	tests := []struct {
 		name string
@@ -47,7 +47,7 @@ func TestAPI_SocketMessageRouter(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.a.SocketMessageRouter(tt.args.sm, tt.args.connId, tt.args.socketId, tt.args.session)
+			tt.a.SocketMessageRouter(tt.args.ctx, tt.args.connId, tt.args.socketId, tt.args.sm, tt.args.ds)
 		})
 	}
 }

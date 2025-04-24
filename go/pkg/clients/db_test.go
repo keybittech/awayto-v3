@@ -241,7 +241,7 @@ func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
 	bookingId := integrationTest.Bookings[1].Id
-
+	ctx := context.Background()
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		b.StopTimer()
@@ -249,7 +249,7 @@ func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 			UserSession: integrationTest.TestUsers[int32(c%7)].UserSession,
 		}
 		b.StartTimer()
-		ds.GetSocketAllowances(bookingId)
+		ds.GetSocketAllowances(ctx, bookingId)
 		// if b != nil {
 		// 	println(fmt.Sprintf("error %v", b))
 		// }
@@ -394,6 +394,7 @@ func TestDatabase_TxExec(t *testing.T) {
 
 func TestDatabase_QueryRows(t *testing.T) {
 	type args struct {
+		ctx              context.Context
 		tx               *PoolTx
 		protoStructSlice interface{}
 		query            string
@@ -409,7 +410,7 @@ func TestDatabase_QueryRows(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.db.QueryRows(tt.args.tx, tt.args.protoStructSlice, tt.args.query, tt.args.args...); (err != nil) != tt.wantErr {
+			if err := tt.db.QueryRows(tt.args.ctx, tt.args.tx, tt.args.protoStructSlice, tt.args.query, tt.args.args...); (err != nil) != tt.wantErr {
 				t.Errorf("Database.QueryRows(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.tx, tt.args.protoStructSlice, tt.args.query, tt.args.args, err, tt.wantErr)
 			}
 		})

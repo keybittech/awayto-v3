@@ -95,21 +95,26 @@ func TestSocketIdTopicsKey(t *testing.T) {
 }
 
 func TestRedis_InitKeys(t *testing.T) {
+	type args struct {
+		ctx context.Context
+	}
 	tests := []struct {
 		name string
 		r    *Redis
+		args args
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.r.InitKeys()
+			tt.r.InitKeys(tt.args.ctx)
 		})
 	}
 }
 
 func TestRedis_InitRedisSocketConnection(t *testing.T) {
 	type args struct {
+		ctx      context.Context
 		socketId string
 	}
 	tests := []struct {
@@ -122,7 +127,7 @@ func TestRedis_InitRedisSocketConnection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.r.InitRedisSocketConnection(tt.args.socketId); (err != nil) != tt.wantErr {
+			if err := tt.r.InitRedisSocketConnection(tt.args.ctx, tt.args.socketId); (err != nil) != tt.wantErr {
 				t.Errorf("Redis.InitRedisSocketConnection(%v) error = %v, wantErr %v", tt.args.socketId, err, tt.wantErr)
 			}
 		})
@@ -131,6 +136,7 @@ func TestRedis_InitRedisSocketConnection(t *testing.T) {
 
 func TestRedis_HandleUnsub(t *testing.T) {
 	type args struct {
+		ctx      context.Context
 		socketId string
 	}
 	tests := []struct {
@@ -144,7 +150,7 @@ func TestRedis_HandleUnsub(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.r.HandleUnsub(tt.args.socketId)
+			got, err := tt.r.HandleUnsub(tt.args.ctx, tt.args.socketId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Redis.HandleUnsub(%v) error = %v, wantErr %v", tt.args.socketId, err, tt.wantErr)
 				return
@@ -158,6 +164,7 @@ func TestRedis_HandleUnsub(t *testing.T) {
 
 func TestRedis_RemoveTopicFromConnection(t *testing.T) {
 	type args struct {
+		ctx      context.Context
 		socketId string
 		topic    string
 	}
@@ -171,7 +178,7 @@ func TestRedis_RemoveTopicFromConnection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.r.RemoveTopicFromConnection(tt.args.socketId, tt.args.topic); (err != nil) != tt.wantErr {
+			if err := tt.r.RemoveTopicFromConnection(tt.args.ctx, tt.args.socketId, tt.args.topic); (err != nil) != tt.wantErr {
 				t.Errorf("Redis.RemoveTopicFromConnection(%v, %v) error = %v, wantErr %v", tt.args.socketId, tt.args.topic, err, tt.wantErr)
 			}
 		})

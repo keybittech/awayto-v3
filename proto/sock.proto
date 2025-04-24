@@ -67,7 +67,7 @@ message SocketParticipant {
 }
 
 message SocketMessage {
-  SocketActions action = 1;
+  int32 action = 1;
   bool store = 2;
   bool historical = 3;
   string topic = 4;

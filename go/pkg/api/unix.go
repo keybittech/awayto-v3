@@ -12,6 +12,7 @@ import (
 	"os"
 	"reflect"
 	"sync"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -84,7 +85,10 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 			}
 		}()
 
-		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+		defer cancel()
+
+		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(ctx)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
@@ -96,7 +100,7 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 			UserSub: "worker",
 		}
 
-		poolTx.SetSession(workerSession)
+		poolTx.SetSession(ctx, workerSession)
 
 		results := []reflect.Value{}
 		results = handler.Call([]reflect.Value{
@@ -106,8 +110,8 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 			reflect.ValueOf(poolTx),
 		})
 
-		poolTx.UnsetSession()
-		poolTx.Commit()
+		poolTx.UnsetSession(ctx)
+		poolTx.Commit(ctx)
 
 		if len(results) != 2 {
 			deferredError = util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))

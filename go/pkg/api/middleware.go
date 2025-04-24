@@ -10,6 +10,7 @@ import (
 	"os"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -193,24 +194,28 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 					return
 				}
 
-				err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
-					var txErr error
+				ds := clients.DbSession{
+					Pool:        a.Handlers.Database.DatabaseClient.Pool,
+					UserSession: session,
+				}
 
-					txErr = tx.QueryRow(`
-						SELECT id, ai, sub
-						FROM dbtable_schema.groups
-						WHERE external_id = $1
-					`, session.GroupExternalId).Scan(&session.GroupId, &session.GroupAi, &session.GroupSub)
-					if txErr != nil {
-						return util.ErrCheck(txErr)
-					}
-
-					return nil
-				}, session.UserSub, session.GroupExternalId, strings.Join(session.AvailableUserGroupRoles, " "))
+				row, done, err := ds.SessionBatchQueryRow(req.Context(), `
+					SELECT id, ai, sub
+					FROM dbtable_schema.groups
+					WHERE external_id = $1
+				`, session.GroupExternalId)
 				if err != nil {
 					deferredErr = util.ErrCheck(err)
 					return
 				}
+
+				err = row.Scan(&session.GroupId, &session.GroupAi, &session.GroupSub)
+				if err != nil {
+					done()
+					deferredErr = util.ErrCheck(err)
+					return
+				}
+				done()
 
 				groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(req.Context(), session.GroupId)
 				if err != nil {
@@ -241,15 +246,22 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 			}
 		} else {
 			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-				attempt := opts.Pattern + " sub:" + session.UserSub + " role:" + opts.SiteRole
+				var sb strings.Builder
+				sb.WriteString(opts.Pattern)
+				sb.WriteString(" sub:")
+				sb.WriteString(session.UserSub)
+				sb.WriteString(" role:")
+				sb.WriteString(opts.SiteRole)
 
 				if strings.Index(session.Roles, opts.SiteRole) == -1 {
-					util.AuthLog.Println(attempt + " FAIL")
+					sb.WriteString(" FAIL")
+					util.AuthLog.Println(sb.String())
 					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 					return
 				}
 
-				util.AuthLog.Println(attempt + " PASS")
+				sb.WriteString(" PASS")
+				util.AuthLog.Println(sb.String())
 
 				next(w, req, session)
 			}
@@ -274,37 +286,50 @@ type CacheMeta struct {
 	StatusCode int       `json:"status_code"`
 }
 
-func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
+const maxCacheBuffer = 1 << 12
 
-	duration180, _ := time.ParseDuration("180s")
+var (
+	apiPathLen     = len(os.Getenv("API_PATH"))
+	duration180, _ = time.ParseDuration("180s")
+)
+
+var cacheMiddlewareBufferPool = sync.Pool{
+	New: func() interface{} {
+		var buf bytes.Buffer
+		return &buf
+	},
+}
+
+func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
 	shouldStore := types.CacheType_STORE == opts.CacheType
 
 	return func(next SessionHandler) SessionHandler {
 		return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 			// gives a cache key like absd-asff-asff-asfdgroup/users
-			cacheKey := session.UserSub + strings.TrimLeft(req.URL.String(), os.Getenv("API_PATH"))
+			var cacheKey strings.Builder
+			cacheKey.WriteString(session.UserSub)
+			cacheKey.WriteString(req.URL.String()[apiPathLen:])
 
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
 				next(w, req, session)
 				if types.CacheType_STORE != opts.CacheType {
-					a.Handlers.Redis.Client().Del(req.Context(), cacheKey)
+					a.Handlers.Redis.Client().Del(req.Context(), cacheKey.String())
 				}
 				return
 			}
 
 			// Check if client sent If-Modified-Since header
-			ifModifiedSince := req.Header.Get("If-Modified-Since")
 			var clientModTime time.Time
-			if ifModifiedSince != "" {
-				if t, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+			if req.Header.Get("If-Modified-Since") != "" {
+				if t, err := time.Parse(http.TimeFormat, req.Header.Get("If-Modified-Since")); err == nil {
 					clientModTime = t.Truncate(time.Second)
 				}
 			}
 
 			if types.CacheType_SKIP != opts.CacheType {
 				// Check redis cache for request
-				if cacheData, err := a.Handlers.Redis.Client().Get(req.Context(), cacheKey).Bytes(); err == nil {
+				if cacheData, err := a.Handlers.Redis.Client().Get(req.Context(), cacheKey.String()).Bytes(); err == nil {
 
 					var cacheMeta CacheMeta
 					err = json.Unmarshal(cacheData, &cacheMeta)
@@ -337,17 +362,22 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			w.Header().Set("X-Cache-Status", "MISS")
 			w.Header().Set("Last-Modified", timeNow.Format(http.TimeFormat))
 
+			buf := cacheMiddlewareBufferPool.Get().(*bytes.Buffer)
+			buf.Reset()
+
 			// Perform the handler request
 			cacheWriter := &CacheWriter{
 				ResponseWriter: w,
-				Buffer:         new(bytes.Buffer),
+				Buffer:         buf,
 			}
 
 			// Response is written out to client
 			next(cacheWriter, req, session)
 
+			writeLen := cacheWriter.Buffer.Len()
+
 			// Cache any response
-			if cacheWriter.Buffer.Len() > 0 {
+			if writeLen > 0 {
 
 				// Prep for redis storage
 				cacheMeta := CacheMeta{
@@ -365,7 +395,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				if shouldStore {
 
 					// Store the response in redis until restart
-					a.Handlers.Redis.Client().Set(req.Context(), cacheKey, cacheData, 0)
+					a.Handlers.Redis.Client().Set(req.Context(), cacheKey.String(), cacheData, 0)
 
 				} else {
 
@@ -379,8 +409,12 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 						}
 					}
 
-					a.Handlers.Redis.Client().SetEx(req.Context(), cacheKey, cacheData, duration)
+					a.Handlers.Redis.Client().SetEx(req.Context(), cacheKey.String(), cacheData, duration)
 				}
+			}
+
+			if writeLen < maxCacheBuffer {
+				cacheMiddlewareBufferPool.Put(buf)
 			}
 		}
 	}

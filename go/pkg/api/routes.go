@@ -92,7 +92,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		poolTx := &clients.PoolTx{Tx: tx}
 
-		poolTx.SetSession(session)
+		poolTx.SetSession(req.Context(), session)
 
 		results := handlerFunc.Call([]reflect.Value{
 			reflect.ValueOf(w),
@@ -102,8 +102,8 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			reflect.ValueOf(poolTx),
 		})
 
-		poolTx.UnsetSession()
-		poolTx.Commit()
+		poolTx.UnsetSession(req.Context())
+		poolTx.Commit(req.Context())
 
 		if len(results) != 2 {
 			deferredError = util.ErrCheck(errors.New("badly formed handler"))

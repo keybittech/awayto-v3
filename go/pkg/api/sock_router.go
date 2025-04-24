@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"strconv"
-	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -40,7 +39,7 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 		return nil
 	}
 
-	socketMessage.Action = types.SocketActions(actionId)
+	socketMessage.Action = int32(actionId)
 	socketMessage.Store = messageParams[1] == "t"
 	socketMessage.Historical = messageParams[2] == "t"
 	socketMessage.Timestamp = messageParams[3]
@@ -51,25 +50,23 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 	return &socketMessage
 }
 
-func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId string, session *types.UserSession) {
-	var err error
+const (
+	socketActionPingPong         = int32(types.SocketActions_PING_PONG)
+	socketActionSubscribe        = int32(types.SocketActions_SUBSCRIBE)
+	socketActionUnsubscribe      = int32(types.SocketActions_UNSUBSCRIBE)
+	socketActionUnsubscribeTopic = int32(types.SocketActions_UNSUBSCRIBE_TOPIC)
+	socketActionLoadSubscribers  = int32(types.SocketActions_LOAD_SUBSCRIBERS)
+	socketActionLoadMessages     = int32(types.SocketActions_LOAD_MESSAGES)
+)
 
-	ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(250*time.Millisecond))
-	defer func() {
-		clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-		}
-		cancel()
-	}()
-
+func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, sm *types.SocketMessage, ds clients.DbSession) {
 	if sm.Topic == "" {
 		return
 	}
 
-	if sm.Action != types.SocketActions_SUBSCRIBE {
+	if sm.Action != socketActionSubscribe {
 		hasSubRequest, err := a.Handlers.Socket.SendCommand(clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: session.UserSub,
+			UserSub: ds.UserSession.UserSub,
 			Topic:   sm.Topic,
 		})
 
@@ -84,7 +81,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 	}
 
 	switch sm.Action {
-	case types.SocketActions_SUBSCRIBE:
+	case socketActionSubscribe:
 
 		hasTracking, err := a.Handlers.Redis.HasTracking(ctx, sm.Topic, socketId)
 		if err != nil {
@@ -101,9 +98,9 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 			return
 		}
 
-		subscribed, err := a.Handlers.Database.GetSocketAllowances(session, handle)
+		subscribed, err := ds.GetSocketAllowances(ctx, handle)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
@@ -123,7 +120,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 		}
 
 		_, err = a.Handlers.Socket.SendCommand(clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: session.UserSub,
+			UserSub: ds.UserSession.UserSub,
 			Topic:   sm.Topic,
 			Targets: cachedParticipantTargets,
 		})
@@ -133,16 +130,16 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(session.UserSub, connId, &types.SocketMessage{
-			Action: types.SocketActions_SUBSCRIBE,
+		a.Handlers.Socket.SendMessage(ds.UserSession.UserSub, connId, &types.SocketMessage{
+			Action: socketActionSubscribe,
 			Topic:  sm.Topic,
 		})
 
-	case types.SocketActions_UNSUBSCRIBE:
+	case socketActionUnsubscribe:
 
 		hasTracking, err := a.Handlers.Redis.HasTracking(ctx, sm.Topic, socketId)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		} else if !hasTracking {
 			return
@@ -154,16 +151,16 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(session.UserSub, cachedParticipantTargets, &types.SocketMessage{
-			Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
+		a.Handlers.Socket.SendMessage(ds.UserSession.UserSub, cachedParticipantTargets, &types.SocketMessage{
+			Action:  socketActionUnsubscribeTopic,
 			Topic:   sm.Topic,
 			Payload: socketId,
 		})
 
-		a.Handlers.Redis.RemoveTopicFromConnection(socketId, sm.Topic)
+		a.Handlers.Redis.RemoveTopicFromConnection(ctx, socketId, sm.Topic)
 
 		_, err = a.Handlers.Socket.SendCommand(clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: session.UserSub,
+			UserSub: ds.UserSession.UserSub,
 			Topic:   sm.Topic,
 		})
 		if err != nil {
@@ -171,7 +168,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 			return
 		}
 
-	case types.SocketActions_LOAD_SUBSCRIBERS:
+	case socketActionLoadSubscribers:
 
 		participants, onlineTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, false)
 		if err != nil {
@@ -179,69 +176,54 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 			return
 		}
 
-		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
-			var txErr error
-
-			txErr = a.Handlers.Database.GetTopicMessageParticipants(tx, sm.Topic, participants)
-			if txErr != nil {
-				return util.ErrCheck(txErr)
-			}
-
-			txErr = a.Handlers.Database.GetSocketParticipantDetails(tx, participants)
-			if txErr != nil {
-				return util.ErrCheck(txErr)
-			}
-			return nil
-		}, session.UserSub, session.GroupId, session.Roles)
-		if err != nil {
-			util.ErrorLog.Println(err)
-			return
-		}
-
-		cachedParticipantsBytes, err := json.Marshal(participants)
+		err = ds.GetTopicMessageParticipants(ctx, participants)
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(session.UserSub, onlineTargets, &types.SocketMessage{
-			Action:  types.SocketActions_LOAD_SUBSCRIBERS,
+		err = ds.GetSocketParticipantDetails(ctx, participants)
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
+
+		participantsBytes, err := json.Marshal(participants)
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
+
+		a.Handlers.Socket.SendMessage(ds.UserSession.UserSub, onlineTargets, &types.SocketMessage{
+			Action:  socketActionLoadSubscribers,
 			Sender:  connId,
 			Topic:   sm.Topic,
-			Payload: string(cachedParticipantsBytes),
+			Payload: string(participantsBytes),
 		})
 
-	case types.SocketActions_LOAD_MESSAGES:
+	case socketActionLoadMessages:
 		var pageInfo map[string]int
 		if err := json.Unmarshal([]byte(sm.Payload), &pageInfo); err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
-		messages := [][]byte{}
 
-		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
-			var txErr error
-			messages, txErr = a.Handlers.Database.GetTopicMessages(tx, sm.Topic, pageInfo["page"], 100) // int(pageInfo["pageSize"])
-			if txErr != nil {
-				return util.ErrCheck(txErr)
-			}
-			return nil
-		}, session.UserSub, session.GroupId, session.Roles)
+		messages, err := ds.GetTopicMessages(ctx, pageInfo["page"], 100) // int(pageInfo["pageSize"])
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
 		for _, messageBytes := range messages {
 			if messageBytes != nil {
 				_, err := a.Handlers.Socket.SendCommand(clients.SendSocketMessageSocketCommand, &types.SocketRequestParams{
-					UserSub:      session.UserSub,
+					UserSub:      ds.UserSession.UserSub,
 					Targets:      connId,
 					MessageBytes: messageBytes,
 				})
 
 				if err != nil {
-					util.ErrorLog.Println(err)
+					util.ErrorLog.Println(util.ErrCheck(err))
 					return
 				}
 			}
@@ -254,7 +236,7 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 			return
 		}
 
-		err = a.Handlers.Socket.SendMessage(session.UserSub, cachedParticipantTargets, sm)
+		err = a.Handlers.Socket.SendMessage(ds.UserSession.UserSub, cachedParticipantTargets, sm)
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
@@ -262,17 +244,9 @@ func (a *API) SocketMessageRouter(sm *types.SocketMessage, connId, socketId stri
 	}
 
 	if sm.Store {
-		err = a.Handlers.Database.TxExec(func(tx clients.PoolTx) error {
-			var txErr error
-
-			txErr = a.Handlers.Database.StoreTopicMessage(tx, connId, sm)
-			if txErr != nil {
-				return util.ErrCheck(txErr)
-			}
-			return nil
-		}, session.UserSub, session.GroupId, session.Roles)
+		err := ds.StoreTopicMessage(ctx, connId, sm)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 	}

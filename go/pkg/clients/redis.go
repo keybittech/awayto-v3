@@ -43,7 +43,7 @@ func InitRedis() *Redis {
 		RedisClient: rc,
 	}
 
-	r.InitKeys()
+	r.InitKeys(context.Background())
 
 	util.DebugLog.Println("Redis Init")
 	return r
@@ -63,19 +63,14 @@ func SocketIdTopicsKey(socketId string) (string, error) {
 	return "socket_id:" + socketId + ":topics", nil
 }
 
-func (r *Redis) InitKeys() {
-	ctx := context.Background()
-	defer ctx.Done()
+func (r *Redis) InitKeys(ctx context.Context) {
 	_, err := r.Client().Del(ctx, socketServerConnectionsKey).Result()
 	if err != nil {
 		panic(err)
 	}
 }
 
-func (r *Redis) InitRedisSocketConnection(socketId string) error {
-	ctx := context.Background()
-	defer ctx.Done()
-
+func (r *Redis) InitRedisSocketConnection(ctx context.Context, socketId string) error {
 	_, err := r.Client().SAdd(ctx, socketServerConnectionsKey, socketId).Result()
 	if err != nil {
 		return util.ErrCheck(err)
@@ -84,9 +79,8 @@ func (r *Redis) InitRedisSocketConnection(socketId string) error {
 	return nil
 }
 
-func (r *Redis) HandleUnsub(socketId string) (map[string]string, error) {
-	ctx := context.Background()
-	defer ctx.Done()
+func (r *Redis) HandleUnsub(ctx context.Context, socketId string) (map[string]string, error) {
+
 	removedTopics := make(map[string]string)
 
 	r.Client().SRem(ctx, socketServerConnectionsKey, socketId)
@@ -137,10 +131,7 @@ func (r *Redis) HandleUnsub(socketId string) (map[string]string, error) {
 	return removedTopics, nil
 }
 
-func (r *Redis) RemoveTopicFromConnection(socketId, topic string) error {
-	ctx := context.Background()
-	defer ctx.Done()
-
+func (r *Redis) RemoveTopicFromConnection(ctx context.Context, socketId, topic string) error {
 	participantTopicsKey, err := ParticipantTopicsKey(topic)
 	if err != nil {
 		return util.ErrCheck(err)

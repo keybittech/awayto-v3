@@ -26,6 +26,30 @@ const (
 	HasSubscribedTopicSocketCommand
 )
 
+const (
+	CID_LENGTH                  = 36
+	socketActionHasMoreMessages = int32(types.SocketActions_HAS_MORE_MESSAGES)
+	socketActionRoleCall        = int32(types.SocketActions_ROLE_CALL)
+	sockHandlerId               = "sock"
+)
+
+var (
+	emptySocketResponse       = SocketResponse{}
+	authSubscriberNotFound    = errors.New("auth subscriber not found")
+	invalidTicket             = errors.New("invalid ticket")
+	invalidTicketConnectionId = errors.New("invalid ticket conn id")
+	messageRequired           = errors.New("message required")
+	noDeletionConnectionId    = errors.New("connection id not found to delete")
+	noSubFoundInSock          = errors.New("no sub found in sock")
+	noSubscriberForAuth       = errors.New("no subscriber for auth")
+	noSubscriberToAddTopic    = errors.New("no subscriber found to add topic")
+	noSubscriberTargets       = errors.New("no subscriber targets")
+	noTargetsToSend           = errors.New("no targets to send to")
+	noTargetsProvided         = errors.New("no targets provided")
+	socketCommandMustHaveSub  = errors.New("socket command request must contain a user sub")
+	subRequiredToSend         = errors.New("user sub required to send a message")
+)
+
 type Subscribers map[string]*types.Subscriber
 type Connections map[string]net.Conn
 type AuthSubscribers map[string]string
@@ -45,36 +69,10 @@ func NewSocketMaps() *SocketMaps {
 	}
 }
 
-var (
-	CID_LENGTH = 36
-)
-
 type Socket struct {
 	handlerId  string
 	SocketMaps *SocketMaps
 }
-
-type ConnectedSocket struct {
-	Conn net.Conn
-	Sock *Socket
-}
-
-const sockHandlerId = "sock"
-
-var emptySocketResponse = SocketResponse{}
-
-var (
-	socketCommandMustHaveSub  = errors.New("socket command request must contain a user sub")
-	authSubscriberNotFound    = errors.New("auth subscriber not found")
-	noSubscriberForAuth       = errors.New("no subscriber for auth")
-	invalidTicket             = errors.New("invalid ticket")
-	invalidTicketConnectionId = errors.New("invalid ticket conn id")
-	noDeletionConnectionId    = errors.New("connection id not found to delete")
-	noSubFoundInSock          = errors.New("no sub found in sock")
-	noTargetsToSend           = errors.New("no targets to send to")
-	noSubscriberToAddTopic    = errors.New("no subscriber found to add topic")
-	noSubscriberTargets       = errors.New("no subscriber targets")
-)
 
 func InitSocket() *Socket {
 
@@ -451,10 +449,10 @@ func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 
 func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) error {
 	if targets == "" {
-		return util.ErrCheck(errors.New("no targets provided"))
+		return util.ErrCheck(noTargetsProvided)
 	}
 	if len(userSub) == 0 {
-		return util.ErrCheck(errors.New("user sub required to send a message"))
+		return util.ErrCheck(subRequiredToSend)
 	}
 
 	_, err := s.SendCommand(SendSocketMessageSocketCommand, &types.SocketRequestParams{
@@ -471,7 +469,7 @@ func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) 
 
 func (s *Socket) SendMessage(userSub, targets string, message *types.SocketMessage) error {
 	if message == nil {
-		return util.ErrCheck(errors.New("message required"))
+		return util.ErrCheck(messageRequired)
 	}
 	return s.SendMessageBytes(userSub, targets, util.GenerateMessage(util.DefaultPadding, message))
 }
@@ -490,7 +488,7 @@ func (s *Socket) RoleCall(userSub string) error {
 
 	if len(response.Targets) > 0 {
 		err := s.SendMessage(userSub, response.Targets, &types.SocketMessage{
-			Action: types.SocketActions_ROLE_CALL,
+			Action: socketActionRoleCall,
 		})
 		if err != nil {
 			return util.ErrCheck(err)

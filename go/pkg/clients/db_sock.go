@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"fmt"
 	"slices"
 	"time"
@@ -10,8 +11,8 @@ import (
 	"github.com/lib/pq"
 )
 
-func (ds *DbSession) InitDbSocketConnection(connId string) error {
-	_, err := ds.SessionBatchExec(`
+func (ds DbSession) InitDbSocketConnection(ctx context.Context, connId string) error {
+	_, err := ds.SessionBatchExec(ctx, `
 		INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
 		VALUES ($1::uuid, $2)
 	`, ds.UserSession.UserSub, connId)
@@ -22,10 +23,10 @@ func (ds *DbSession) InitDbSocketConnection(connId string) error {
 	return nil
 }
 
-func (ds *DbSession) RemoveDbSocketConnection(connId string) error {
+func (ds DbSession) RemoveDbSocketConnection(ctx context.Context, connId string) error {
 	ds.UserSession.UserSub = "worker"
 
-	_, err := ds.SessionBatchExec(`
+	_, err := ds.SessionBatchExec(ctx, `
 		DELETE FROM dbtable_schema.sock_connections
 		USING dbtable_schema.sock_connections sc
 		LEFT OUTER JOIN dbtable_schema.topic_messages tm ON tm.connection_id = sc.connection_id
@@ -61,15 +62,14 @@ var socketAllowanceQuery = `
 	)
 `
 
-func (ds *DbSession) GetSocketAllowances(bookingId string) (bool, error) {
-	row, close, err := ds.SessionBatchQueryRow(socketAllowanceQuery,
+func (ds DbSession) GetSocketAllowances(ctx context.Context, bookingId string) (bool, error) {
+	row, done, err := ds.SessionBatchQueryRow(ctx, socketAllowanceQuery,
 		ds.UserSession.UserSub,
 		bookingId)
 	if err != nil {
-		close()
 		return false, fmt.Errorf("database function call failed: %w", err)
 	}
-	defer close()
+	defer done()
 
 	var allowed bool
 	row.Scan(&allowed)
@@ -77,8 +77,8 @@ func (ds *DbSession) GetSocketAllowances(bookingId string) (bool, error) {
 	return allowed, nil
 }
 
-func (ds *DbSession) GetTopicMessageParticipants(participants map[string]*types.SocketParticipant) error {
-	topicRows, close, err := ds.SessionBatchQuery(`
+func (ds DbSession) GetTopicMessageParticipants(ctx context.Context, participants map[string]*types.SocketParticipant) error {
+	topicRows, done, err := ds.SessionBatchQuery(ctx, `
 		SELECT
 			created_sub,
 			ARRAY_AGG(connection_id)
@@ -87,10 +87,9 @@ func (ds *DbSession) GetTopicMessageParticipants(participants map[string]*types.
 		GROUP BY created_sub
 	`, ds.Topic)
 	if err != nil {
-		close()
 		return util.ErrCheck(err)
 	}
-	defer close()
+	defer done()
 
 	defer topicRows.Close()
 	for topicRows.Next() {
@@ -116,7 +115,7 @@ func (ds *DbSession) GetTopicMessageParticipants(participants map[string]*types.
 	return nil
 }
 
-func (ds *DbSession) GetSocketParticipantDetails(participants map[string]*types.SocketParticipant) error {
+func (ds DbSession) GetSocketParticipantDetails(ctx context.Context, participants map[string]*types.SocketParticipant) error {
 	lenPart := len(participants)
 	if lenPart == 0 {
 		return nil
@@ -127,7 +126,7 @@ func (ds *DbSession) GetSocketParticipantDetails(participants map[string]*types.
 		subs = append(subs, sub)
 	}
 
-	rows, close, err := ds.SessionBatchQuery(`
+	rows, done, err := ds.SessionBatchQuery(ctx, `
 		SELECT
 			u.sub,
 			LEFT(u.first_name, 1) || LEFT(u.last_name, 1) as name,
@@ -141,8 +140,7 @@ func (ds *DbSession) GetSocketParticipantDetails(participants map[string]*types.
 	if err != nil {
 		return util.ErrCheck(err)
 	}
-	defer close()
-	defer rows.Close()
+	defer done()
 
 	for rows.Next() {
 		var sub, name, role string
@@ -160,12 +158,12 @@ func (ds *DbSession) GetSocketParticipantDetails(participants map[string]*types.
 	return nil
 }
 
-func (ds *DbSession) StoreTopicMessage(connId string, message *types.SocketMessage) error {
+func (ds DbSession) StoreTopicMessage(ctx context.Context, connId string, message *types.SocketMessage) error {
 	message.Store = false
 	message.Historical = true
 	message.Timestamp = time.Now().Local().String()
 
-	_, err := ds.SessionBatchExec(`
+	_, err := ds.SessionBatchExec(ctx, `
 		INSERT INTO dbtable_schema.topic_messages (created_sub, topic, message, connection_id)
 		SELECT created_sub, $2, $3, $1
 		FROM dbtable_schema.sock_connections
@@ -178,7 +176,7 @@ func (ds *DbSession) StoreTopicMessage(connId string, message *types.SocketMessa
 	return nil
 }
 
-func (ds *DbSession) GetTopicMessages(page, pageSize int) ([][]byte, error) {
+func (ds DbSession) GetTopicMessages(ctx context.Context, page, pageSize int) ([][]byte, error) {
 	messages := make([][]byte, pageSize)
 
 	paginatedQuery := util.WithPagination(`
@@ -187,12 +185,11 @@ func (ds *DbSession) GetTopicMessages(page, pageSize int) ([][]byte, error) {
 		ORDER BY created_on DESC
 	`, page, pageSize)
 
-	rows, close, err := ds.SessionBatchQuery(paginatedQuery, ds.Topic)
+	rows, done, err := ds.SessionBatchQuery(ctx, paginatedQuery, ds.Topic)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-	defer close()
-	defer rows.Close()
+	defer done()
 
 	i := 0
 	for rows.Next() {
@@ -206,7 +203,7 @@ func (ds *DbSession) GetTopicMessages(page, pageSize int) ([][]byte, error) {
 	if messages[pageSize-1] != nil {
 		messages = append(messages, util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{
 			Topic:  ds.Topic,
-			Action: types.SocketActions_HAS_MORE_MESSAGES,
+			Action: socketActionHasMoreMessages,
 		}))
 	}
 
