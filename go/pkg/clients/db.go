@@ -28,44 +28,26 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type ColTypes struct {
-	reflectString    reflect.Type
-	reflectInt32     reflect.Type
-	reflectInt64     reflect.Type
-	reflectFloat64   reflect.Type
-	reflectBool      reflect.Type
-	reflectJson      reflect.Type
-	reflectTimestamp reflect.Type
-}
+var (
+	colTypes               *ColTypes
+	emptyString            string
+	setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR)`
+)
 
-var colTypes *ColTypes
-
-var emptyString string
-var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR)`
-
-type Pool struct {
-	*pgxpool.Pool
-}
-
-type PoolTx struct {
-	pgx.Tx
-}
-
-func (ptx PoolTx) SetSession(ctx context.Context, session *types.UserSession) {
-	ptx.Exec(ctx, setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles, emptyString)
-}
-
-func (ptx PoolTx) UnsetSession(ctx context.Context) {
-	ptx.Exec(ctx, setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
-}
+const (
+	sessionVarQuery  = "SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)"
+	sessionVarPrefix = "WITH session_setup AS (SELECT dbfunc_schema.set_session_vars($"
+	varcharSeparator = "::VARCHAR, $"
+	sessionVarSuffix = "::VARCHAR)) "
+)
 
 type Database struct {
-	DatabaseClient      *Pool
+	DatabaseClient      *DatabaseClient
 	DatabaseAdminSub    string
 	DatabaseAdminRoleId string
 }
 
-func (db *Database) Client() *Pool {
+func (db *Database) Client() *DatabaseClient {
 	return db.DatabaseClient
 }
 
@@ -95,7 +77,7 @@ func InitDatabase() *Database {
 	}
 
 	dbc := &Database{
-		DatabaseClient: &Pool{
+		DatabaseClient: &DatabaseClient{
 			Pool: dbpool,
 		},
 	}
@@ -149,16 +131,6 @@ func InitDatabase() *Database {
 	return dbc
 }
 
-func (db *Database) SetDbVar(prop, value string) error {
-	tx, err := db.Client().Pool.Begin(context.Background())
-	_, err = tx.Exec(context.Background(), fmt.Sprintf("SET SESSION app_session.%s = '%s'", prop, value))
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	return nil
-}
-
 // Go code
 func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
 
@@ -194,13 +166,6 @@ func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
 	return nil
 }
 
-const (
-	sessionVarQuery  = "SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)"
-	sessionVarPrefix = "WITH session_setup AS (SELECT dbfunc_schema.set_session_vars($"
-	varcharSeparator = "::VARCHAR, $"
-	sessionVarSuffix = "::VARCHAR)) "
-)
-
 func (db *Database) BuildSessionQuery(userSub, groupId, roles, query string, args ...interface{}) (string, []interface{}, error) {
 	argLen := len(args)
 
@@ -227,11 +192,77 @@ func (db *Database) BuildSessionQuery(userSub, groupId, roles, query string, arg
 	return finalQuery.String(), allParams, nil
 }
 
-// var batchPool = &sync.Pool{
-// 	New: func() interface{} {
-// 		return &pgx.Batch{}
-// 	},
-// }
+type ColTypes struct {
+	reflectString    reflect.Type
+	reflectInt32     reflect.Type
+	reflectInt64     reflect.Type
+	reflectFloat64   reflect.Type
+	reflectBool      reflect.Type
+	reflectJson      reflect.Type
+	reflectTimestamp reflect.Type
+}
+
+type DatabaseClient struct {
+	*pgxpool.Pool
+}
+
+func (dc *DatabaseClient) OpenPoolSessionGroupTx(ctx context.Context, session *types.UserSession) (*PoolTx, *types.UserSession, error) {
+	groupSession := &types.UserSession{
+		UserSub: session.GroupSub,
+		GroupId: session.GroupId,
+	}
+	groupPoolTx, err := dc.OpenPoolSessionTx(ctx, groupSession)
+	return groupPoolTx, groupSession, err
+}
+
+func (dc *DatabaseClient) OpenPoolSessionTx(ctx context.Context, session *types.UserSession) (*PoolTx, error) {
+	tx, err := dc.Pool.Begin(ctx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	poolTx := &PoolTx{
+		Tx: tx,
+	}
+
+	poolTx.SetSession(ctx, session)
+
+	return poolTx, nil
+}
+
+func (dc *DatabaseClient) ClosePoolSessionTx(ctx context.Context, poolTx *PoolTx) error {
+	err := poolTx.UnsetSession(ctx)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	err = poolTx.Commit(ctx)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	return nil
+}
+
+type PoolTx struct {
+	pgx.Tx
+}
+
+func (ptx *PoolTx) SetSession(ctx context.Context, session *types.UserSession) error {
+	_, err := ptx.Exec(ctx, setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles, emptyString)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+	return nil
+}
+
+func (ptx *PoolTx) UnsetSession(ctx context.Context) error {
+	_, err := ptx.Exec(ctx, setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+	return nil
+}
 
 type DbSession struct {
 	Topic string
@@ -239,22 +270,41 @@ type DbSession struct {
 	*pgxpool.Pool
 }
 
-func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, params ...interface{}) (pgx.BatchResults, error) {
-	batch := &pgx.Batch{}
+func NewGroupDbSession(pool *pgxpool.Pool, session *types.UserSession) DbSession {
+	return DbSession{
+		Pool: pool,
+		UserSession: &types.UserSession{
+			UserSub: session.GroupSub,
+			GroupId: session.GroupId,
+		},
+	}
+}
+
+var batchPool = &sync.Pool{
+	New: func() interface{} {
+		return &pgx.Batch{}
+	},
+}
+
+func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, params ...interface{}) pgx.BatchResults {
+	batch := batchPool.Get().(*pgx.Batch)
+	batch.QueuedQueries = nil
+
 	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.Roles, ds.Topic)
 	batch.Queue(primaryQuery, params...)
 	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
 
-	return ds.SendBatch(ctx, batch), nil
+	results := ds.SendBatch(ctx, batch)
+
+	batchPool.Put(batch)
+
+	return results
 }
 
 var emptyTag = pgconn.CommandTag{}
 
 func (ds DbSession) SessionBatchExec(ctx context.Context, query string, params ...interface{}) (pgconn.CommandTag, error) {
-	results, err := ds.SessionBatch(ctx, query, params...)
-	if err != nil {
-		return emptyTag, util.ErrCheck(err)
-	}
+	results := ds.SessionBatch(ctx, query, params...)
 	defer results.Close()
 
 	if _, err := results.Exec(); err != nil {
@@ -277,10 +327,7 @@ func (ds DbSession) SessionBatchExec(ctx context.Context, query string, params .
 }
 
 func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params ...interface{}) (pgx.Rows, func(), error) {
-	results, err := ds.SessionBatch(ctx, query, params...)
-	if err != nil {
-		return nil, nil, util.ErrCheck(err)
-	}
+	results := ds.SessionBatch(ctx, query, params...)
 
 	if _, err := results.Exec(); err != nil {
 		results.Close()
@@ -303,10 +350,7 @@ func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params 
 }
 
 func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, params ...interface{}) (pgx.Row, func(), error) {
-	results, err := ds.SessionBatch(ctx, query, params...)
-	if err != nil {
-		return nil, nil, util.ErrCheck(err)
-	}
+	results := ds.SessionBatch(ctx, query, params...)
 
 	if _, err := results.Exec(); err != nil {
 		results.Close()
@@ -323,108 +367,24 @@ func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, para
 	return row, done, nil
 }
 
-// func (db *Database) TxExec(doFunc func(PoolTx) error, ids ...string) error {
-// 	if ids == nil || len(ids) != 3 {
-// 		return util.ErrCheck(errors.New("improperly structured TxExec ids"))
-// 	}
-//
-// 	tx, err := db.Client().Begin()
-// 	if err != nil {
-// 		return util.ErrCheck(err)
-// 	}
-// 	defer tx.Rollback()
-//
-// 	_, err = tx.Exec(setSessionVariablesSQL, ids[0], ids[1], ids[2], emptyString)
-// 	if err != nil {
-// 		return util.ErrCheck(err)
-// 	}
-//
-// 	err = doFunc(tx)
-// 	if err != nil {
-// 		return util.ErrCheck(err)
-// 	}
-//
-// 	_, err = tx.Exec(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
-// 	if err != nil {
-// 		return util.ErrCheck(err)
-// 	}
-//
-// 	err = tx.Commit()
-// 	if err != nil {
-// 		return util.ErrCheck(err)
-// 	}
-//
-// 	return nil
-// }
+func (ds DbSession) SessionOpenBatch(ctx context.Context) *pgx.Batch {
+	batch := batchPool.Get().(*pgx.Batch)
+	batch.QueuedQueries = nil
 
-// func (db *Database) QueryRows(protoStructSlice interface{}, query string, args ...interface{}) error {
-//
-// 	protoValue := reflect.ValueOf(protoStructSlice)
-// 	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
-// 		return errors.New("must provide a pointer to a slice")
-// 	}
-//
-// 	protoType := protoValue.Elem().Type().Elem()
-//
-// 	rows, err := db.Client().Query(query, args...)
-// 	if err != nil {
-// 		return err
-// 	}
-//
-// 	defer rows.Close()
-//
-// 	columns, err := rows.Columns()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-//
-// 	columnTypes, err := rows.ColumnTypes()
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-//
-// 	for rows.Next() {
-// 		newElem := reflect.New(protoType.Elem())
-// 		values := make([]interface{}, len(columns))
-// 		deferrals := make([]func(), 0)
-//
-// 		for i, col := range columnTypes {
-//
-// 			colType := col.DatabaseTypeName()
-//
-// 			for k := 0; k < protoType.Elem().NumField(); k++ {
-// 				fName := strings.Split(protoType.Elem().Field(k).Tag.Get("json"), ",")[0]
-//
-// 				if fName != columns[i] {
-// 					continue
-// 				}
-//
-// 				fVal := newElem.Elem().Field(k)
-//
-// 				safeVal := reflect.New(mapTypeToNullType(colType))
-// 				values[i] = safeVal.Interface()
-//
-// 				deferrals = append(deferrals, func() {
-// 					extractValue(fVal, safeVal)
-// 				})
-//
-// 				break
-// 			}
-// 		}
-//
-// 		if err := rows.Scan(values...); err != nil {
-// 			return err
-// 		}
-//
-// 		for _, d := range deferrals {
-// 			d()
-// 		}
-//
-// 		protoValue.Elem().Set(reflect.Append(protoValue.Elem(), newElem.Elem().Addr()))
-// 	}
-//
-// 	return nil
-// }
+	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.Roles, ds.Topic)
+
+	return batch
+}
+
+func (ds DbSession) SessionSendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
+	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+
+	results := ds.SendBatch(ctx, batch)
+
+	batchPool.Put(batch)
+
+	return results
+}
 
 func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice interface{}, query string, args ...interface{}) error {
 

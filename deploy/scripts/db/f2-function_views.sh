@@ -7,7 +7,7 @@ psql -v ON_ERROR_STOP=1 --dbname $PG_DB <<-EOSQL
   SELECT
     brac.schedule_id as "userScheduleId",
     q.id as "quoteId",
-    q.slot_date as "slotDate",
+    q.slot_date::TEXT as "slotDate",
     sbs.start_time::TEXT as "startTime",
     serv.name as "serviceName",
     t.name as "tierName",

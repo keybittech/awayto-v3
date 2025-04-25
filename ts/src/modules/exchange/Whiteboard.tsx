@@ -35,9 +35,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   const fileScroller = useRef<HTMLDivElement>(null);
   const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
   const boxDidUpdate = useRef<boolean>(false);
-  // Track if currently drawing
   const isDrawing = useRef<boolean>(false);
-  // Track last touch position
   const lastTouchPoint = useRef<{ x: number, y: number } | null>(null);
 
   const whiteboard = useRef<IWhiteboard>({
@@ -55,6 +53,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
 
   const [canvasPointerEvents, setCanvasPointerEvents] = useState('none');
   const [zoom, setZoom] = useState(1);
+  const [currentFile, setCurrentFile] = useState<IFile | null | undefined>(sharedFile);
   const { fileContents, getFileContents } = useFileContents();
 
   const [active, setActive] = useState(false);
@@ -93,6 +92,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         setPageNumber(1);
         if (!board.sharedFile) {
           setSharedFile(undefined);
+          setCurrentFile(undefined);
           getFileContents({});
         } else {
           const fileDetails = { name: board.sharedFile?.name, mimeType: board.sharedFile?.mimeType, uuid: board.sharedFile?.uuid };
@@ -103,6 +103,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
                   isConfirming: true,
                   confirmEffect: `${user.name} wants to share a file`,
                   confirmAction: () => {
+                    setCurrentFile(board.sharedFile);
                     getFileContents(fileDetails).catch(console.error);
                   }
                 });
@@ -305,8 +306,11 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   }, [connectionId]);
 
   useEffect(() => {
-    sendWhiteboardMessage(SocketActions.SHARE_FILE, { sharedFile });
-  }, [sharedFile]);
+    if ((!!sharedFile && sharedFile.uuid !== currentFile?.uuid) || (!sharedFile && !!currentFile)) {
+      setCurrentFile(sharedFile);
+      sendWhiteboardMessage(SocketActions.SHARE_FILE, { sharedFile });
+    }
+  }, [sharedFile, currentFile]);
 
   useEffect(() => {
     const scrollDiv = fileScroller.current;

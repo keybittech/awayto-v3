@@ -58,8 +58,6 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		var deferredError error
 		var pbVal reflect.Value
 
-		ctx := req.Context()
-
 		defer func(us string) {
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
 			if p := recover(); p != nil {
@@ -85,16 +83,12 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
 		)
 
-		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(ctx)
+		poolTx, err := a.Handlers.Database.DatabaseClient.OpenPoolSessionTx(req.Context(), session)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
-		defer tx.Rollback(ctx)
-
-		poolTx := &clients.PoolTx{Tx: tx}
-
-		poolTx.SetSession(ctx, session)
+		defer poolTx.Rollback(req.Context())
 
 		results := handlerFunc.Call([]reflect.Value{
 			reflect.ValueOf(w),
@@ -104,8 +98,11 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			reflect.ValueOf(poolTx),
 		})
 
-		poolTx.UnsetSession(ctx)
-		poolTx.Commit(ctx)
+		err = a.Handlers.Database.DatabaseClient.ClosePoolSessionTx(req.Context(), poolTx)
+		if err != nil {
+			deferredError = util.ErrCheck(err)
+			return
+		}
 
 		if len(results) != 2 {
 			deferredError = util.ErrCheck(errors.New("badly formed handler"))

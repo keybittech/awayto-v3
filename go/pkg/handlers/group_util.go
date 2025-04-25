@@ -27,16 +27,20 @@ func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data
 }
 
 func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *types.JoinGroupRequest, session *types.UserSession, tx *clients.PoolTx) (*types.JoinGroupResponse, error) {
-	var userId, groupId, allowedDomains, defaultRoleId string
+	var userId, allowedDomains, defaultRoleId string
 
 	err := tx.QueryRow(req.Context(), `
 		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
-	`, data.GetCode()).Scan(&groupId, &allowedDomains, &defaultRoleId)
+	`, data.GetCode()).Scan(&session.GroupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = tx.QueryRow(req.Context(), `SELECT id FROM dbtable_schema.users WHERE sub = $1`, session.UserSub).Scan(&userId)
+	err = tx.QueryRow(req.Context(), `
+		SELECT id
+		FROM dbtable_schema.users
+		WHERE sub = $1
+	`, session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -48,10 +52,7 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 		}
 	}
 
-	err = h.Database.SetDbVar("group_id", groupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	tx.SetSession(req.Context(), session)
 
 	var kcSubgroupExternalId string
 	err = tx.QueryRow(req.Context(), `
@@ -66,12 +67,12 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 	_, err = tx.Exec(req.Context(), `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
-	`, userId, groupId, kcSubgroupExternalId, session.UserSub)
+	`, userId, session.GroupId, kcSubgroupExternalId, session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.SetGroupSessionVersion(req.Context(), groupId)
+	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
 	h.Redis.DeleteSession(req.Context(), session.UserSub)
 
 	return &types.JoinGroupResponse{Success: true}, nil
@@ -109,23 +110,31 @@ func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *ty
 
 // AttachUser
 func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *types.AttachUserRequest, session *types.UserSession, tx *clients.PoolTx) (*types.AttachUserResponse, error) {
-	var groupId, kcGroupExternalId, kcRoleSubgroupExternalId, defaultRoleId, createdSub string
+	var kcRoleSubgroupExternalId, createdSub string
 
-	err := tx.QueryRow(req.Context(), `SELECT g.id FROM dbtable_schema.groups g WHERE g.code = $1`, data.GetCode()).Scan(&groupId)
+	err := tx.QueryRow(req.Context(), `
+		SELECT g.id
+		FROM dbtable_schema.groups g
+		WHERE g.code = $1
+	`, data.GetCode()).Scan(&session.GroupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.SetDbVar("group_id", groupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, session)
 
-	err = tx.QueryRow(req.Context(), `
-		SELECT g.external_id, g.default_role_id, g.created_sub, gr.external_id FROM dbtable_schema.groups g
+	row, done, err := ds.SessionBatchQueryRow(req.Context(), `
+		SELECT g.created_sub, gr.external_id
+		FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
 		WHERE g.id = $1
-	`, groupId).Scan(&kcGroupExternalId, &defaultRoleId, &createdSub, &kcRoleSubgroupExternalId)
+	`, session.GroupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	defer done()
+
+	err = row.Scan(&createdSub, &kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -142,7 +151,7 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
 	h.Redis.Client().Del(req.Context(), createdSub+"profile/details")
 	h.Redis.DeleteSession(req.Context(), session.UserSub)
-	h.Redis.SetGroupSessionVersion(req.Context(), groupId)
+	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
 
 	return &types.AttachUserResponse{Success: true}, nil
 }

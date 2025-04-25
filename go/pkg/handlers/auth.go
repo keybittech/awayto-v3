@@ -53,18 +53,22 @@ func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(req *http.Request, authEvent *t
 		return `{ "success": false, "reason": "invalid group code" }`, nil
 	}
 
-	err = h.Database.SetDbVar("group_id", group.GetId())
-	if err != nil {
-		return "", util.ErrCheck(err)
-	}
+	session.GroupId = group.GetId()
+	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, session)
 
 	var kcRoleSubgroupExternalId string
 
-	err = tx.QueryRow(req.Context(), `
+	row, done, err := ds.SessionBatchQueryRow(req.Context(), `
 		SELECT external_id
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
-	`, group.GetId(), group.GetDefaultRoleId()).Scan(&kcRoleSubgroupExternalId)
+	`, group.GetId(), group.GetDefaultRoleId())
+	if err != nil {
+		return "", util.ErrCheck(err)
+	}
+	defer done()
+
+	err = row.Scan(&kcRoleSubgroupExternalId)
 	if err != nil {
 		return "", util.ErrCheck(err)
 	}

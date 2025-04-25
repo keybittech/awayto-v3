@@ -46,20 +46,12 @@ func (h *Handlers) PostGroup(w http.ResponseWriter, req *http.Request, data *typ
 
 	session.GroupSub = groupSub.String()
 
-	err = h.Database.SetDbVar("user_sub", session.GroupSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, session)
 
-	_, err = tx.Exec(req.Context(), `
+	_, err = ds.SessionBatchExec(req.Context(), `
 		INSERT INTO dbtable_schema.users (sub, username, created_on, created_sub)
 		VALUES ($1::uuid, $2, $3, $1::uuid)
 	`, session.GroupSub, data.GetName(), time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	err = h.Database.SetDbVar("user_sub", session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -179,21 +171,13 @@ func (h *Handlers) PatchGroup(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.SetDbVar("user_sub", session.GroupSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, session)
 
-	_, err = tx.Exec(req.Context(), `
+	_, err = ds.SessionBatchExec(req.Context(), `
 		UPDATE dbtable_schema.users
 		SET username = $2, updated_sub = $3, updated_on = $4
 		WHERE sub = $1
-	`, session.GroupSub, data.GetName(), session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	err = h.Database.SetDbVar("user_sub", session.UserSub)
+	`, session.GroupSub, data.GetName(), session.UserSub, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

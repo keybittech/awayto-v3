@@ -157,12 +157,8 @@ func (h *Handlers) DisableUserProfile(w http.ResponseWriter, req *http.Request, 
 }
 
 func (h *Handlers) ActivateProfile(w http.ResponseWriter, req *http.Request, data *types.ActivateProfileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.ActivateProfileResponse, error) {
-	err := h.Database.SetDbVar("user_sub", session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	_, err = tx.Exec(req.Context(), `
+	_, err := tx.Exec(req.Context(), `
 		UPDATE dbtable_schema.users
 		SET active = true, updated_on = $2, updated_sub = $1
 		WHERE sub = $1

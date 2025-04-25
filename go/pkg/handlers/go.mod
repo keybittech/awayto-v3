@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/google/uuid v1.6.0
+	github.com/jackc/pgx/v5 v5.7.4
 	github.com/keybittech/awayto-v3/go/pkg/clients v0.0.0-20250413170509-b98baad0beed
 	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-20250413170509-b98baad0beed
@@ -20,7 +21,6 @@ require (
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20240606120523-5a60cdf6a761 // indirect
-	github.com/jackc/pgx/v5 v5.7.4 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/sashabaranov/go-openai v1.38.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -46,14 +47,10 @@ func (h *Handlers) GetGroupUserSchedules(w http.ResponseWriter, req *http.Reques
 }
 
 func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Request, data *types.GetGroupUserScheduleStubsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupUserScheduleStubsResponse, error) {
-	var groupUserScheduleStubs []*types.IGroupUserScheduleStub
 
-	err := h.Database.SetDbVar("user_sub", session.GroupSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, session)
 
-	err = h.Database.QueryRows(req.Context(), tx, &groupUserScheduleStubs, `
+	rows, done, err := ds.SessionBatchQuery(req.Context(), `
 		SELECT guss.*, gus.group_schedule_id as "groupScheduleId"
 		FROM dbview_schema.group_user_schedule_stubs guss
 		JOIN dbtable_schema.group_user_schedules gus ON gus.user_schedule_id = guss."userScheduleId"
@@ -65,8 +62,9 @@ func (h *Handlers) GetGroupUserScheduleStubs(w http.ResponseWriter, req *http.Re
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+	defer done()
 
-	err = h.Database.SetDbVar("user_sub", session.UserSub)
+	groupUserScheduleStubs, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IGroupUserScheduleStub])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

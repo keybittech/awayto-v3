@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -60,29 +61,29 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 		endTime = &et
 	}
 
+	var insertScheduleQuery = `
+		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_time, end_time, timezone)
+		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9)
+		RETURNING id
+	`
+	var insertScheduleParams = []any{data.GetName(), session.UserSub, data.GetSlotDuration(), data.GetScheduleTimeUnitId(), data.GetBracketTimeUnitId(), data.GetSlotTimeUnitId(), &startTime, &endTime, session.Timezone}
+
 	var err error
-	var userSub string
+	var row pgx.Row
+	var done func()
+
 	if data.AsGroup {
 		// check to see APP_GROUP_SCHEDULE role is on session.Roles
 		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
 			return nil, util.ErrCheck(errors.New("does not have APP_GROUP_SCHEDULES role"))
 		}
 
-		userSub = session.UserSub
-		session.UserSub = session.GroupSub
-
-		// The group db user owns master schedule records
-		err = h.Database.SetDbVar("user_sub", session.GroupSub)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
+		ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, session)
+		insertScheduleParams[1] = session.GroupSub
+		row, done, err = ds.SessionBatchQueryRow(req.Context(), insertScheduleQuery, insertScheduleParams...)
+	} else {
+		row = tx.QueryRow(req.Context(), insertScheduleQuery, insertScheduleParams...)
 	}
-
-	err = tx.QueryRow(req.Context(), `
-		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_time, end_time, timezone)
-		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9)
-		RETURNING id
-	`, data.GetName(), session.UserSub, data.GetSlotDuration(), data.GetScheduleTimeUnitId(), data.GetBracketTimeUnitId(), data.GetSlotTimeUnitId(), &startTime, &endTime, session.Timezone).Scan(&scheduleId)
 	if err != nil {
 		var pgErr *pq.Error
 		if errors.As(err, &pgErr) && pgErr.Constraint == "unique_enabled_name_created_sub" {
@@ -90,13 +91,13 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 		}
 		return nil, util.ErrCheck(err)
 	}
+	if done != nil {
+		defer done()
+	}
 
-	if data.AsGroup {
-		session.UserSub = userSub
-		err = h.Database.SetDbVar("user_sub", session.UserSub)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
+	err = row.Scan(&scheduleId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	// Runs when users post their brackets to an existing master schedule

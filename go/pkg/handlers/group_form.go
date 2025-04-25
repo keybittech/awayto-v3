@@ -25,17 +25,18 @@ func (h *Handlers) PostGroupForm(w http.ResponseWriter, req *http.Request, data 
 		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
 	}
 
-	err = h.Database.SetDbVar("user_sub", session.GroupSub)
+	groupPoolTx, groupSession, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(req.Context(), session)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	defer groupPoolTx.Tx.Rollback(req.Context())
+
+	formResp, err := h.PostForm(w, req, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()}, groupSession, groupPoolTx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	formResp, err := h.PostForm(w, req, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()}, &types.UserSession{UserSub: session.GroupSub}, tx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	err = h.Database.SetDbVar("user_sub", session.UserSub)
+	err = h.Database.DatabaseClient.ClosePoolSessionTx(req.Context(), groupPoolTx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

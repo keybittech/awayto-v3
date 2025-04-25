@@ -94,7 +94,9 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 			return
 		}
 
-		poolTx := &clients.PoolTx{Tx: tx}
+		poolTx := &clients.PoolTx{
+			Tx: tx,
+		}
 
 		workerSession := &types.UserSession{
 			UserSub: "worker",

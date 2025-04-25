@@ -96,7 +96,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	if "week" == scheduleTimeUnitName {
 		err = h.Database.QueryRows(req.Context(), tx, &groupScheduleDateSlots, `
 			SELECT
-        DISTINCT slot."startTime"::INTERVAL,
+        DISTINCT slot."startTime",
         slot.id as "scheduleBracketSlotId",
         TO_CHAR(DATE_TRUNC('week', week_start::DATE), 'YYYY-MM-DD')::TEXT as "weekStart",
         TO_CHAR(DATE_TRUNC('week', week_start::DATE) + slot."startTime"::INTERVAL, 'YYYY-MM-DD')::TEXT as "startDate"
@@ -119,7 +119,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	} else {
 		err = h.Database.QueryRows(req.Context(), tx, &groupScheduleDateSlots, `
 			SELECT
-				DISTINCT slot."startTime"::INTERVAL,
+				DISTINCT slot."startTime",
 				slot.id as "scheduleBracketSlotId",
 				TO_CHAR(cycle_start::DATE, 'YYYY-MM-DD')::TEXT as "weekStart",
 				TO_CHAR(cycle_start::DATE + slot."startTime"::INTERVAL, 'YYYY-MM-DD')::TEXT as "startDate"
@@ -164,14 +164,15 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 
 func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupScheduleResponse, error) {
 
-	err := h.Database.SetDbVar("user_sub", session.GroupSub)
+	groupPoolTx, _, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(req.Context(), session)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+	defer groupPoolTx.Rollback(req.Context())
 
 	for _, groupScheduleTableId := range strings.Split(data.GetGroupScheduleIds(), ",") {
 		var groupScheduleId string
-		err = tx.QueryRow(req.Context(), `
+		err = groupPoolTx.QueryRow(req.Context(), `
 			DELETE FROM dbtable_schema.group_schedules
 			WHERE id = $1
 			RETURNING schedule_id
@@ -181,7 +182,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		var userScheduleIds sql.NullString
-		err = tx.QueryRow(req.Context(), `
+		err = groupPoolTx.QueryRow(req.Context(), `
 			SELECT STRING_AGG(user_schedule_id::TEXT, ',')
 			FROM dbtable_schema.group_user_schedules
 			WHERE group_schedule_id = $1
@@ -198,7 +199,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		var userScheduleCount int64
-		err = tx.QueryRow(req.Context(), `
+		err = groupPoolTx.QueryRow(req.Context(), `
 			SELECT COUNT(user_schedule_id)
 			FROM dbtable_schema.group_user_schedules
 			WHERE group_schedule_id = $1
@@ -208,7 +209,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		if userScheduleCount > 0 {
-			_, err = tx.Exec(req.Context(), `
+			_, err = groupPoolTx.Exec(req.Context(), `
 				UPDATE dbtable_schema.schedules
 				SET enabled = false
 				WHERE id = $1
@@ -217,7 +218,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 				return nil, util.ErrCheck(err)
 			}
 		} else {
-			_, err = tx.Exec(req.Context(), `
+			_, err = groupPoolTx.Exec(req.Context(), `
 			DELETE FROM dbtable_schema.schedules
 			WHERE dbtable_schema.schedules.id = $1
 		`, groupScheduleId)
@@ -227,7 +228,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	err = h.Database.SetDbVar("user_sub", session.UserSub)
+	err = h.Database.DatabaseClient.ClosePoolSessionTx(req.Context(), groupPoolTx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
