@@ -82,11 +82,10 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 
 		socketId := util.GetColonJoined(userSession.UserSub, connId)
 
-		// Use wait group/goroutine to clean up DbSession usage
+		// Use wait group/goroutine to clean up DbSession usage as this overall func is long-lived
 		var wg sync.WaitGroup
 
 		wg.Add(1)
-
 		go func() {
 			defer wg.Done()
 
@@ -261,39 +260,66 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 
 func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId string, ds clients.DbSession) {
 	var tearDownFailures strings.Builder
+	var wg sync.WaitGroup
 	// Log errors but attempt to tear down everything
-	topics, err := a.Handlers.Redis.HandleUnsub(ctx, socketId)
-	if err != nil {
-		tearDownFailures.WriteString("handle_unsub ")
-	}
 
-	for topic, targets := range topics {
-		a.Handlers.Socket.SendMessage(ds.UserSession.UserSub, targets, &types.SocketMessage{
-			Action:  socketActionUnsubscribeTopic,
-			Topic:   topic,
-			Payload: socketId,
-		})
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
 
-		err = a.Handlers.Redis.RemoveTopicFromConnection(ctx, socketId, topic)
+		topics, err := a.Handlers.Redis.HandleUnsub(ctx, socketId)
 		if err != nil {
-			tearDownFailures.WriteString("rem_conn_topic ")
-			tearDownFailures.WriteString(topic)
-			tearDownFailures.WriteString(" ")
+			tearDownFailures.WriteString("handle_unsub ")
+			return
 		}
-	}
 
-	err = ds.RemoveDbSocketConnection(ctx, connId)
-	if err != nil {
-		tearDownFailures.WriteString("rem_sock_conn ")
-	}
+		for topic, targets := range topics {
+			a.Handlers.Socket.SendMessage(ds.UserSession.UserSub, targets, &types.SocketMessage{
+				Action:  socketActionUnsubscribeTopic,
+				Topic:   topic,
+				Payload: socketId,
+			})
 
-	_, err = a.Handlers.Socket.SendCommand(clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
-		UserSub: ds.UserSession.UserSub,
-		ConnId:  connId,
-	})
-	if err != nil {
-		tearDownFailures.WriteString("del_cmd ")
-	}
+			err = a.Handlers.Redis.RemoveTopicFromConnection(ctx, socketId, topic)
+			if err != nil {
+				tearDownFailures.WriteString("rem_conn_topic ")
+				tearDownFailures.WriteString(topic)
+				tearDownFailures.WriteString(" ")
+			}
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		workerDs := clients.DbSession{
+			Pool: a.Handlers.Database.DatabaseClient.Pool,
+			UserSession: &types.UserSession{
+				UserSub: "worker",
+			},
+		}
+
+		err := workerDs.RemoveDbSocketConnection(ctx, connId)
+		if err != nil {
+			tearDownFailures.WriteString("rem_sock_conn ")
+		}
+	}()
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+
+		_, err := a.Handlers.Socket.SendCommand(clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
+			UserSub: ds.UserSession.UserSub,
+			ConnId:  connId,
+		})
+		if err != nil {
+			tearDownFailures.WriteString("del_cmd ")
+		}
+	}()
+
+	wg.Wait()
 
 	if tearDownFailures.Len() > 0 {
 		tearDownFailures.WriteString("TEARDOWN /sock sub:")

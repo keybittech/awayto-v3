@@ -23,8 +23,6 @@ func (ds DbSession) InitDbSocketConnection(ctx context.Context, connId string) e
 }
 
 func (ds DbSession) RemoveDbSocketConnection(ctx context.Context, connId string) error {
-	ds.UserSession.UserSub = "worker"
-
 	_, err := ds.SessionBatchExec(ctx, `
 		DELETE FROM dbtable_schema.sock_connections
 		USING dbtable_schema.sock_connections sc
