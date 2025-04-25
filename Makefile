@@ -519,7 +519,7 @@ host_redis:
 
 .PHONY: host_service_start
 host_service_start:
-	$(SSH) make host_service_start_op
+	$(SSH) "cd $(H_REM_DIR) && make host_service_start_op"
 
 .PHONY: host_service_start_op
 host_service_start_op:
@@ -528,7 +528,7 @@ host_service_start_op:
 
 .PHONY: host_service_stop
 host_service_stop:
-	$(SSH) make host_service_stop_op
+	$(SSH) "cd $(H_REM_DIR) && make host_service_stop_op"
 
 .PHONY: host_service_stop_op
 host_service_stop_op:
