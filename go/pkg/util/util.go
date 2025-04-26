@@ -195,11 +195,11 @@ func VerifySigned(name, signedValue string) error {
 }
 
 func StringsToBitmask(roles []string) int32 {
-	bitmask := int32(0)
+	var bitmask int32
 	for _, role := range roles {
 		if bit, ok := types.SiteRoles_value[role]; ok {
 			bitmask |= bit
 		}
 	}
-	return int32(bitmask)
+	return bitmask
 }

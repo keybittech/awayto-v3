@@ -145,7 +145,7 @@ func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data
 
 	var tierBytes []byte
 	err := tx.QueryRow(req.Context(), `
-		SELECT id, name, "formId", "surveyId", "createdOn", tiers
+		SELECT id, name, "formId", "surveyId", "createdOn"::TEXT, tiers
 		FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
 	`, data.GetId()).Scan(&service.Id, &service.Name, &service.FormId, &service.SurveyId, &service.CreatedOn, &tierBytes)
