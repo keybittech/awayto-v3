@@ -48,7 +48,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
   const { openConfirm } = useUtil();
   const classes = useStyles();
   const navigate = useNavigate();
-  const hasRole = useSecure();
+  const secure = useSecure();
 
   const location = useLocation();
 
@@ -84,26 +84,35 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
   };
 
   const roleActions = useMemo(() => {
-    const augr = profileRequest?.userProfile.availableUserGroupRoles?.filter(x => ![SiteRoles.APP_GROUP_BOOKINGS].includes(x as SiteRoles));
-    if (!augr) return [<></>];
-    const actions = Object.values(SiteRoles).filter(r => augr.includes(r)).map((r, i) => {
-      const rd = SiteRoleDetails[r];
-      const ActionIcon = rd.icon;
+    const userRoleBits = profileRequest?.userProfile.roleBits;
+    if (!userRoleBits) {
+      return [<></>];
+    }
 
-      return <MenuItem
-        {...targets(`available role actions ${rd.description}`, `perform the ${rd.description} action`)}
-        key={`role_menu_option_${i + 1}`}
-        onClick={e => handleNavAndClose(e, rd.resource)}
-      >
-        <ListItemIcon><ActionIcon color={location.pathname == rd.resource ? "secondary" : "primary"} /></ListItemIcon>
-        <ListItemText>{rd.name}</ListItemText>
-      </MenuItem>;
-    });
+    const actions = [];
+    for (let r in SiteRoles) {
+      const roleNum = parseInt(r)
+      if (roleNum > 0 && roleNum != SiteRoles.APP_GROUP_BOOKINGS && (userRoleBits & roleNum) > 0) {
+        const rd = SiteRoleDetails[roleNum as SiteRoles];
+
+        const ActionIcon = rd.icon;
+
+        actions.push(<MenuItem
+          {...targets(`available role actions ${rd.description}`, `perform the ${rd.description} action`)}
+          key={`role_menu_option_${roleNum}`}
+          onClick={e => handleNavAndClose(e, rd.resource)}
+        >
+          <ListItemIcon><ActionIcon color={location.pathname == rd.resource ? "secondary" : "primary"} /></ListItemIcon>
+          <ListItemText>{rd.name}</ListItemText>
+        </MenuItem>);
+      }
+    }
+
     if (actions.length) {
       actions.unshift(<Divider key={"action-divider"} />);
     }
     return actions;
-  }, [location, profileRequest?.userProfile.availableUserGroupRoles]);
+  }, [location, profileRequest?.userProfile.roleBits]);
 
   const isSelected = (opt: string) => {
     return { color: location.pathname === opt ? 'secondary.main' : 'primary.main' }
@@ -223,7 +232,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           Go to Summary
         </Button>
       </Tooltip> : <>
-        {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <Grid>
+        {secure([SiteRoles.APP_GROUP_SCHEDULES]) && <Grid>
           {/** PENDING REQUESTS MENU */}
           <Tooltip title="Approve Appointments">
             <span>

@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 	"time"
 
@@ -74,7 +73,7 @@ func (h *Handlers) PostSchedule(w http.ResponseWriter, req *http.Request, data *
 
 	if data.AsGroup {
 		// check to see APP_GROUP_SCHEDULE role is on session.Roles
-		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_SCHEDULES.String()) {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_SCHEDULES) == 0 {
 			return nil, util.ErrCheck(errors.New("does not have APP_GROUP_SCHEDULES role"))
 		}
 

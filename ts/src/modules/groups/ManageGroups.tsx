@@ -24,7 +24,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
 
   const { openConfirm } = useUtil();
 
-  const hasRole = useSecure();
+  const secure = useSecure();
   const navigate = useNavigate();
 
   const [group, setGroup] = useState<IGroup>({});
@@ -96,7 +96,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
       { flex: 1, headerName: 'Code', field: 'code' },
       { flex: 1, headerName: 'Users', field: 'usersCount', renderCell: ({ row }) => row.usersCount || 0 },
       { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.createdOn)) },
-      ...(hasRole([SiteRoles.APP_GROUP_ADMIN]) ? [
+      ...(secure([SiteRoles.APP_GROUP_ADMIN]) ? [
         {
           flex: 1,
           headerName: '',

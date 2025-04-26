@@ -16,6 +16,8 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 var (
@@ -190,4 +192,14 @@ func VerifySigned(name, signedValue string) error {
 	}
 
 	return nil
+}
+
+func StringsToBitmask(roles []string) int32 {
+	bitmask := int32(0)
+	for _, role := range roles {
+		if bit, ok := types.SiteRoles_value[role]; ok {
+			bitmask |= bit
+		}
+	}
+	return int32(bitmask)
 }

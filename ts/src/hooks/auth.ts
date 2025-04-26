@@ -70,17 +70,16 @@ export type DecodedJWTToken = {
  * @category Authorization
  */
 export enum SiteRoles {
-  UNRESTRICTED = 'UNRESTRICTED',
-  APP_ROLE_CALL = 'APP_ROLE_CALL',
-  APP_GROUP_ADMIN = 'APP_GROUP_ADMIN',
-  APP_GROUP_BOOKINGS = 'APP_GROUP_BOOKINGS',
-  APP_GROUP_SCHEDULES = 'APP_GROUP_SCHEDULES',
-  APP_GROUP_SERVICES = 'APP_GROUP_SERVICES',
-  APP_GROUP_SCHEDULE_KEYS = 'APP_GROUP_SCHEDULE_KEYS',
-  APP_GROUP_ROLES = 'APP_GROUP_ROLES',
-  APP_GROUP_USERS = 'APP_GROUP_USERS',
-  APP_GROUP_PERMISSIONS = 'APP_GROUP_PERMISSIONS',
-  // APP_GROUP_FEATURES = 'APP_GROUP_FEATURES',
+  UNRESTRICTED = 0,
+  APP_ROLE_CALL = 1,
+  APP_GROUP_ADMIN = 2,
+  APP_GROUP_BOOKINGS = 4,
+  APP_GROUP_SCHEDULES = 8,
+  APP_GROUP_SERVICES = 16,
+  APP_GROUP_SCHEDULE_KEYS = 32,
+  APP_GROUP_ROLES = 64,
+  APP_GROUP_USERS = 128,
+  APP_GROUP_PERMISSIONS = 256,
 }
 
 export const SiteRoleDetails = {
@@ -144,11 +143,6 @@ export const SiteRoleDetails = {
     resource: '/group/manage/permissions',
     icon: LockIcon,
   },
-  // [SiteRoles.APP_GROUP_FEATURES]: {
-  //   name: 'Features',
-  //   description: 'Edit group service features',
-  //   resource: '/group/manage/services',
-  // },
 }
 
 /**
@@ -162,9 +156,10 @@ export type StrategyUser = {
  * @category Authorization
  */
 
-export const hasRole = function(availableUserGroupRoles?: string[], targetRoles?: string[]): boolean {
-  if (!targetRoles || !availableUserGroupRoles) return false;
-  return availableUserGroupRoles.some(gr => targetRoles.includes(gr))
+export const hasRoleBits = function(userRoleBits: number, targetRoles: SiteRoles[]): boolean {
+  if (!targetRoles || targetRoles.length === 0) return false;
+  const targetBits = targetRoles.reduce((acc, role) => acc | role, 0);
+  return (userRoleBits & targetBits) > 0;
 }
 
 /**

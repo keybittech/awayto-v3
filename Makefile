@@ -375,6 +375,7 @@ docker_up: build
 	${SUDO} docker volume create $(PG_DATA) || true
 	${SUDO} docker volume create $(REDIS_DATA) || true
 	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build
+	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 	
 .PHONY: docker_down
 docker_down:
@@ -393,7 +394,6 @@ docker_build:
 .PHONY: docker_start
 docker_start: docker_build
 	${SUDO} docker $(DOCKER_COMPOSE) up -d
-	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 
 .PHONY: docker_stop
 docker_stop:

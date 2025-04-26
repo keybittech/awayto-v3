@@ -139,7 +139,7 @@ func TestParseHandlerOptions(t *testing.T) {
 			name: "site_role=APP_GROUP_ROLES",
 			md:   getMethodDescriptor(t, "PostGroupRole"),
 			validate: func(got *HandlerOptions) bool {
-				return got.SiteRole == types.SiteRoles_APP_GROUP_ROLES.String()
+				return got.SiteRole == int32(types.SiteRoles_APP_GROUP_ROLES)
 			},
 		},
 	}

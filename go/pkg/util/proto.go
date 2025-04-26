@@ -21,7 +21,7 @@ type IdStruct struct {
 
 type HandlerOptions struct {
 	ServiceMethodURL  string
-	SiteRole          string
+	SiteRole          int32
 	Pattern           string
 	CacheType         types.CacheType
 	CacheDuration     int32
@@ -81,7 +81,8 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	parsedOptions.Pattern = fmt.Sprintf("%s /api%s", serviceMethodMethod, serviceMethodUrl)
 
 	if proto.HasExtension(inputOpts, types.E_SiteRole) {
-		parsedOptions.SiteRole = fmt.Sprint(proto.GetExtension(inputOpts, types.E_SiteRole))
+		roles := strings.Split(fmt.Sprint(proto.GetExtension(inputOpts, types.E_SiteRole)), ",")
+		parsedOptions.SiteRole = StringsToBitmask(roles)
 	}
 
 	if proto.HasExtension(inputOpts, types.E_Cache) {

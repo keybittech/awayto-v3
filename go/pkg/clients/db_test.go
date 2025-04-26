@@ -54,9 +54,6 @@ func BenchmarkDbPgxBatchNoCommit(b *testing.B) {
 	ctx := context.Background()
 	var adminRoleId string
 
-	var emptyString string
-	var setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)`
-
 	reset(b)
 	for c := 0; c < b.N; c++ {
 		tx, err := db.Begin(ctx)
@@ -306,41 +303,6 @@ func Test_extractValue(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if err := extractValue(tt.args.dst, tt.args.src); (err != nil) != tt.wantErr {
 				t.Errorf("extractValue(%v, %v) error = %v, wantErr %v", tt.args.dst, tt.args.src, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestDatabase_BuildSessionQuery(t *testing.T) {
-	type args struct {
-		userSub string
-		groupId string
-		roles   string
-		query   string
-		args    []interface{}
-	}
-	tests := []struct {
-		name    string
-		db      *Database
-		args    args
-		want    string
-		want1   []interface{}
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, got1, err := tt.db.BuildSessionQuery(tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args...)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("Database.BuildSessionQuery(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args, err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("Database.BuildSessionQuery(%v, %v, %v, %v, %v) got = %v, want %v", tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args, got, tt.want)
-			}
-			if !reflect.DeepEqual(got1, tt.want1) {
-				t.Errorf("Database.BuildSessionQuery(%v, %v, %v, %v, %v) got1 = %v, want %v", tt.args.userSub, tt.args.groupId, tt.args.roles, tt.args.query, tt.args.args, got1, tt.want1)
 			}
 		})
 	}

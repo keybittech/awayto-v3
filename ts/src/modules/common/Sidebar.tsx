@@ -21,7 +21,7 @@ const { VITE_REACT_APP_APP_HOST_URL } = import.meta.env;
 import { useSecure, useStyles, keycloak, SiteRoles, targets } from 'awayto/hooks';
 
 export function Sidebar(): React.JSX.Element {
-  const hasRole = useSecure();
+  const secure = useSecure();
   const nav = useNavigate();
   const navigate = (loc: string) => {
     nav(loc);
@@ -47,15 +47,15 @@ export function Sidebar(): React.JSX.Element {
           <ListItemIcon><TtyIcon color={location.pathname === '/exchange' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Exchange</ListItemText>
         </ListItem> */}
-        {/* {hasRole([SiteRoles.APP_GROUP_SERVICES]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/service')} button key={'service'}>
+        {/* {secure([SiteRoles.APP_GROUP_SERVICES]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/service')} button key={'service'}>
           <ListItemIcon><BusinessIcon color={location.pathname === '/service' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Service</ListItemText>
         </ListItem>} */}
-        {hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/schedule')} key={'schedule'}>
+        {secure([SiteRoles.APP_GROUP_SCHEDULES]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/schedule')} key={'schedule'}>
           <ListItemIcon><EventNoteIcon color={location.pathname === '/schedule' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Schedule</ListItemText>
         </ListItem>}
-        {hasRole([SiteRoles.APP_GROUP_BOOKINGS]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/request')} key={'request'}>
+        {secure([SiteRoles.APP_GROUP_BOOKINGS]) && <ListItem sx={classes.menuIcon} onClick={() => navigate('/request')} key={'request'}>
           <ListItemIcon><MoreTimeIcon color={location.pathname === '/request' ? "secondary" : "primary"} /></ListItemIcon>
           <ListItemText sx={classes.menuText}>Request</ListItemText>
         </ListItem>}

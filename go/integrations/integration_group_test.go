@@ -2,7 +2,6 @@ package main
 
 import (
 	"net/http"
-	"slices"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -54,7 +53,7 @@ func testIntegrationGroup(t *testing.T) {
 			t.Error(err)
 		}
 
-		if !slices.Contains(session.AvailableUserGroupRoles, types.SiteRoles_APP_GROUP_ADMIN.String()) {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_ADMIN) == 0 {
 			t.Error("admin doesn't have admin role")
 		}
 

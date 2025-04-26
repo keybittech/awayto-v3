@@ -17,8 +17,7 @@ message UserSession {
   string subGroupExternalId = 11;
   string roleName = 12;
   string anonIp = 13;
-  repeated string availableUserGroupRoles = 14;
-  string roles = 15;
-  string timezone = 16;
-  int64 expiresAt = 17;
+  int32 roleBits = 14;
+  string timezone = 15;
+  int64 expiresAt = 16;
 }

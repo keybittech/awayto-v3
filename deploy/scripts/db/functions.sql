@@ -1,14 +1,14 @@
 CREATE OR REPLACE FUNCTION dbfunc_schema.set_session_vars(
   p_user_sub VARCHAR,
   p_group_id VARCHAR,
-  p_sock_topic VARCHAR,
-  p_role_bits INTEGER DEFAULT 0
+  p_role_bits INTEGER DEFAULT 0,
+  p_sock_topic VARCHAR DEFAULT ''
 ) RETURNS VOID AS $$
 BEGIN
   EXECUTE format('SET SESSION app_session.user_sub = %L', p_user_sub);
   EXECUTE format('SET SESSION app_session.group_id = %L', p_group_id);
-  EXECUTE format('SET SESSION app_session.sock_topic = %L', p_sock_topic);
   EXECUTE format('SET SESSION app_session.role_bits = %L', p_role_bits);
+  EXECUTE format('SET SESSION app_session.sock_topic = %L', p_sock_topic);
 END;
 $$ LANGUAGE PLPGSQL;
 

@@ -21,9 +21,9 @@ func init() {
 	var err error
 	testSocket = InitSocket()
 	testSocketUserSession = &types.UserSession{
-		UserSub:                 "user-sub",
-		GroupId:                 "group-id",
-		AvailableUserGroupRoles: []string{"APP_GROUP_ADMIN"},
+		UserSub:  "user-sub",
+		GroupId:  "group-id",
+		RoleBits: 2, // admin is role 2
 	}
 	testTicket, err = testSocket.GetSocketTicket(testSocketUserSession)
 	if err != nil || testTicket == "" {
@@ -72,7 +72,7 @@ func getClientData(numClients int, commandType int32, requestParams *types.Socke
 		clientIds[userIter] = userClient.UserSession.UserSub
 		requestParams.UserSub = userClient.UserSession.UserSub
 		requestParams.GroupId = userClient.UserSession.GroupId
-		requestParams.Roles = userClient.UserSession.Roles
+		requestParams.RoleBits = userClient.UserSession.RoleBits
 		request := SocketRequest{SocketRequestParams: requestParams}
 		clientCommands[userIter] = func(replyChan chan SocketResponse) SocketCommand {
 			return SocketCommand{

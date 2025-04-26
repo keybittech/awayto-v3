@@ -114,7 +114,7 @@ func InitSocket() *Socket {
 				subscriber = &types.Subscriber{
 					UserSub:          cmd.Request.UserSub,
 					GroupId:          cmd.Request.GroupId,
-					Roles:            cmd.Request.Roles,
+					RoleBits:         cmd.Request.RoleBits,
 					ConnectionId:     connectionId,
 					Tickets:          map[string]string{auth: connectionId},
 					SubscribedTopics: make(map[string]string),
@@ -178,9 +178,9 @@ func InitSocket() *Socket {
 
 				cmd.ReplyChan <- SocketResponse{
 					SocketResponseParams: &types.SocketResponseParams{
-						UserSub: subscriber.UserSub,
-						GroupId: subscriber.GroupId,
-						Roles:   subscriber.Roles,
+						UserSub:  subscriber.UserSub,
+						GroupId:  subscriber.GroupId,
+						RoleBits: subscriber.RoleBits,
 					},
 				}
 			} else {
@@ -427,17 +427,17 @@ func (s *Socket) StoreConn(ticket string, conn net.Conn) (*types.UserSession, er
 	}
 
 	return &types.UserSession{
-		UserSub: res.SocketResponseParams.UserSub,
-		GroupId: res.SocketResponseParams.GroupId,
-		Roles:   res.SocketResponseParams.Roles,
+		UserSub:  res.SocketResponseParams.UserSub,
+		GroupId:  res.SocketResponseParams.GroupId,
+		RoleBits: res.SocketResponseParams.RoleBits,
 	}, nil
 }
 
 func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 	response, err := s.SendCommand(CreateSocketTicketSocketCommand, &types.SocketRequestParams{
-		UserSub: session.UserSub,
-		GroupId: session.GroupId,
-		Roles:   session.Roles,
+		UserSub:  session.UserSub,
+		GroupId:  session.GroupId,
+		RoleBits: session.RoleBits,
 	})
 
 	if err != nil {

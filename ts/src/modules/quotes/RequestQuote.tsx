@@ -35,7 +35,7 @@ const Transition = React.forwardRef(function Transition(
 
 export function RequestQuote(_: IComponent): React.JSX.Element {
 
-  const hasRole = useSecure();
+  const secure = useSecure();
   const classes = useStyles();
   const navigate = useNavigate();
 
@@ -140,7 +140,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
         <Alert
           severity="info"
           action={
-            hasRole([SiteRoles.APP_GROUP_SCHEDULES]) && !groupUserSchedulesRequest?.groupUserSchedules && <Button
+            secure([SiteRoles.APP_GROUP_SCHEDULES]) && !groupUserSchedulesRequest?.groupUserSchedules && <Button
               {...targets(`request quote create personal schedule`, `go to the personal schedule page to create a personal schedule`)}
               variant="text"
               color="info"

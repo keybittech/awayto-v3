@@ -7,13 +7,13 @@ interface GroupSecureProps extends IComponent {
 
 export function GroupSecure({ contentGroupRoles = [SiteRoles.APP_GROUP_ADMIN], children }: GroupSecureProps): React.JSX.Element {
 
-  const hasRole = useSecure();
+  const secure = useSecure();
 
   const [isValid, setIsValid] = useState(false);
 
   useEffect(() => {
-    setIsValid(hasRole(contentGroupRoles));
-  }, [hasRole]);
+    setIsValid(secure(contentGroupRoles));
+  }, [secure]);
 
   return <> {isValid ? children : <></>} </>
 }

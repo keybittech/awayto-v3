@@ -29,16 +29,13 @@ import (
 )
 
 var (
-	colTypes               *ColTypes
-	emptyString            string
-	setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR, $4::VARCHAR)`
+	colTypes *ColTypes
 )
 
 const (
-	sessionVarQuery  = "SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::VARCHAR)"
-	sessionVarPrefix = "WITH session_setup AS (SELECT dbfunc_schema.set_session_vars($"
-	varcharSeparator = "::VARCHAR, $"
-	sessionVarSuffix = "::VARCHAR)) "
+	emptyString            = ""
+	emptyInteger           = 0
+	setSessionVariablesSQL = `SELECT dbfunc_schema.set_session_vars($1::VARCHAR, $2::VARCHAR, $3::INTEGER, $4::VARCHAR)`
 )
 
 type Database struct {
@@ -166,32 +163,6 @@ func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
 	return nil
 }
 
-func (db *Database) BuildSessionQuery(userSub, groupId, roles, query string, args ...interface{}) (string, []interface{}, error) {
-	argLen := len(args)
-
-	allParams := make([]interface{}, argLen+3)
-
-	copy(allParams, args)
-
-	allParams[argLen] = userSub
-	allParams[argLen+1] = groupId
-	allParams[argLen+2] = roles
-
-	var finalQuery strings.Builder
-	finalQuery.Grow(len(sessionVarPrefix) + len(query) + 30)
-
-	finalQuery.WriteString(sessionVarPrefix)
-	finalQuery.WriteString(strconv.Itoa(argLen + 1))
-	finalQuery.WriteString(varcharSeparator)
-	finalQuery.WriteString(strconv.Itoa(argLen + 2))
-	finalQuery.WriteString(varcharSeparator)
-	finalQuery.WriteString(strconv.Itoa(argLen + 3))
-	finalQuery.WriteString(sessionVarSuffix)
-	finalQuery.WriteString(query)
-
-	return finalQuery.String(), allParams, nil
-}
-
 type ColTypes struct {
 	reflectString    reflect.Type
 	reflectInt32     reflect.Type
@@ -249,7 +220,7 @@ type PoolTx struct {
 }
 
 func (ptx *PoolTx) SetSession(ctx context.Context, session *types.UserSession) error {
-	_, err := ptx.Exec(ctx, setSessionVariablesSQL, session.UserSub, session.GroupId, session.Roles, emptyString)
+	_, err := ptx.Exec(ctx, setSessionVariablesSQL, session.UserSub, session.GroupId, session.RoleBits, emptyString)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -257,7 +228,7 @@ func (ptx *PoolTx) SetSession(ctx context.Context, session *types.UserSession) e
 }
 
 func (ptx *PoolTx) UnsetSession(ctx context.Context) error {
-	_, err := ptx.Exec(ctx, setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+	_, err := ptx.Exec(ctx, setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -290,9 +261,9 @@ func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, param
 	batch := batchPool.Get().(*pgx.Batch)
 	batch.QueuedQueries = nil
 
-	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.Roles, ds.Topic)
+	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.RoleBits, ds.Topic)
 	batch.Queue(primaryQuery, params...)
-	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 
 	results := ds.SendBatch(ctx, batch)
 
@@ -371,13 +342,13 @@ func (ds DbSession) SessionOpenBatch(ctx context.Context) *pgx.Batch {
 	batch := batchPool.Get().(*pgx.Batch)
 	batch.QueuedQueries = nil
 
-	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.Roles, ds.Topic)
+	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.RoleBits, ds.Topic)
 
 	return batch
 }
 
 func (ds DbSession) SessionSendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
-	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString, emptyString)
+	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 
 	results := ds.SendBatch(ctx, batch)
 

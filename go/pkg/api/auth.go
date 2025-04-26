@@ -38,14 +38,13 @@ func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*t
 	}
 	if claims, ok := parsedToken.Claims.(*clients.KeycloakUserWithClaims); ok {
 		session := &types.UserSession{
-			UserSub:                 claims.Subject,
-			UserEmail:               claims.Email,
-			SubGroups:               claims.Groups,
-			AvailableUserGroupRoles: claims.ResourceAccess[claims.Azp].Roles,
-			Roles:                   strings.Join(claims.ResourceAccess[claims.Azp].Roles, " "),
-			ExpiresAt:               claims.ExpiresAt,
-			Timezone:                timezone,
-			AnonIp:                  anonIp,
+			UserSub:   claims.Subject,
+			UserEmail: claims.Email,
+			SubGroups: claims.Groups,
+			RoleBits:  util.StringsToBitmask(claims.ResourceAccess[claims.Azp].Roles),
+			ExpiresAt: claims.ExpiresAt,
+			Timezone:  timezone,
+			AnonIp:    anonIp,
 		}
 
 		return session, nil

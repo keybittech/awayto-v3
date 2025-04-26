@@ -88,15 +88,15 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 		userProfile.Groups = extendedGroups
 	}
 
-	userProfile.AvailableUserGroupRoles = session.AvailableUserGroupRoles
+	roleBits := session.RoleBits
+	userProfile.RoleBits = roleBits
 
-	h.Socket.RoleCall(session.UserSub)
+	roleName := session.RoleName
+	userProfile.RoleName = roleName
+
 	// Try to send a request if the user has an active socket connection
-	// if err := h.Socket.RoleCall(session.UserSub); err != nil {
-	// 	return nil, util.ErrCheck(err)
-	// }
-
-	userProfile.RoleName = session.RoleName
+	// but no need to catch errors as they may not yet have a connection
+	h.Socket.RoleCall(session.UserSub)
 
 	return &types.GetUserProfileDetailsResponse{UserProfile: userProfile}, nil
 }

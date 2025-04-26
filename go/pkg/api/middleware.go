@@ -145,7 +145,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			}
 
 			// If role permissions changed, rebuild
-			if slices.Compare(existingSession.AvailableUserGroupRoles, session.AvailableUserGroupRoles) != 0 {
+			if existingSession.RoleBits != session.RoleBits {
 				skipRebuild = false
 			}
 		}
@@ -238,9 +238,10 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 }
 
 func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
+	siteRoleName := types.SiteRoles_name[opts.SiteRole]
 	return func(next SessionHandler) SessionHandler {
 
-		if opts.SiteRole == "" || opts.SiteRole == types.SiteRoles_UNRESTRICTED.String() {
+		if opts.SiteRole == int32(types.SiteRoles_UNRESTRICTED) {
 			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 				next(w, req, session)
 			}
@@ -251,9 +252,9 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 				sb.WriteString(" sub:")
 				sb.WriteString(session.UserSub)
 				sb.WriteString(" role:")
-				sb.WriteString(opts.SiteRole)
+				sb.WriteString(siteRoleName)
 
-				if strings.Index(session.Roles, opts.SiteRole) == -1 {
+				if session.RoleBits&opts.SiteRole == 0 {
 					sb.WriteString(" FAIL")
 					util.AuthLog.Println(sb.String())
 					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
