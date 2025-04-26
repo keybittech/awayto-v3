@@ -31,7 +31,11 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
 
   const handleCheck = useCallback((subgroup: string, action: string, add: boolean) => {
     const newAssignments = { ...assignments };
-    newAssignments[subgroup] = { actions: add ? [...(newAssignments[subgroup]?.actions || []), { name: action }] : newAssignments[subgroup]?.actions?.filter(a => a.name !== action) };
+    newAssignments[subgroup] = {
+      actions: add ?
+        [...(newAssignments[subgroup]?.actions || []), { name: action }] :
+        newAssignments[subgroup]?.actions?.filter(a => a.name !== action)
+    };
     setAssignments(newAssignments);
   }, [assignments]);
 
@@ -92,7 +96,7 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
       const roleNum = parseInt(r)
       if (roleNum > 0 && [SiteRoles.UNRESTRICTED, SiteRoles.APP_ROLE_CALL, SiteRoles.APP_GROUP_ADMIN].indexOf(roleNum) == -1) {
         const rd = SiteRoleDetails[roleNum as SiteRoles];
-        opts.push({ id: r, name: rd.name, description: rd.description });
+        opts.push({ id: SiteRoles[r], name: rd.name, description: rd.description });
       }
     }
     return opts;
