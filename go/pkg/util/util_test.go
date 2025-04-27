@@ -353,19 +353,19 @@ func BenchmarkExeTime(b *testing.B) {
 	}
 }
 
-func BenchmarkExeTimeDeferFunc(b *testing.B) {
-	var buf bytes.Buffer
-	originalLogger := ErrorLog
-	ErrorLog = &CustomLogger{log.New(&buf, "", 0)}
-	defer func() { ErrorLog = originalLogger }()
-	reset(b)
-	for i := 0; i < b.N; i++ {
-		b.StopTimer()
-		start, deferFunc := ExeTime("testFunction")
-		b.StartTimer()
-		deferFunc(start, "test")
-	}
-}
+// func BenchmarkExeTimeDeferFunc(b *testing.B) {
+// 	var buf bytes.Buffer
+// 	originalLogger := ErrorLog
+// 	ErrorLog = &CustomLogger{log.New(&buf, "", 0)}
+// 	defer func() { ErrorLog = originalLogger }()
+// 	reset(b)
+// 	for i := 0; i < b.N; i++ {
+// 		b.StopTimer()
+// 		start, deferFunc := ExeTime("testFunction")
+// 		b.StartTimer()
+// 		deferFunc(start, "test")
+// 	}
+// }
 
 func TestWriteSigned(t *testing.T) {
 	type args struct {

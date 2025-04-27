@@ -184,7 +184,7 @@ func TestParseProtoQueryParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pb := getServiceType(t, tt.method).New().Interface()
-			ParseProtoQueryParams(reflect.ValueOf(pb).Elem(), tt.queryParams)
+			ParseProtoQueryParams(pb, tt.queryParams)
 			if !proto.Equal(pb, tt.want) {
 				t.Errorf("ParseProtoQueryParams() = %v, want %v", pb, tt.want)
 			}
@@ -202,7 +202,7 @@ func BenchmarkParseProtoQueryParamsComplex(b *testing.B) {
 		"role":    []string{"admin"},
 		"active":  []string{"true"},
 	}
-	val := reflect.ValueOf(pb).Elem()
+	val := pb
 	reset(b)
 
 	for i := 0; i < b.N; i++ {
@@ -216,7 +216,7 @@ func BenchmarkParseProtoQueryParams(b *testing.B) {
 	queryParams := url.Values{
 		"sub": []string{"test"},
 	}
-	val := reflect.ValueOf(pb).Elem()
+	val := pb
 	reset(b)
 
 	for i := 0; i < b.N; i++ {
@@ -245,7 +245,7 @@ func TestParseProtoPathParams(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			pb := getServiceType(t, tt.method).New().Interface()
 			ParseProtoPathParams(
-				reflect.ValueOf(pb).Elem(),
+				pb,
 				strings.Split(ParseHandlerOptions(tt.method).ServiceMethodURL, "/"),
 				strings.Split(strings.TrimPrefix(tt.url, "/api"), "/"),
 			)
@@ -262,7 +262,7 @@ func BenchmarkParseProtoPathParams(b *testing.B) {
 	pb := getServiceType(b, md).New().Interface()
 	url := "/api/v1/group/schedules/group-schedule-id/date/date-value"
 	options := ParseHandlerOptions(md)
-	val := reflect.ValueOf(pb).Elem()
+	val := pb
 	reset(b)
 
 	for i := 0; i < b.N; i++ {

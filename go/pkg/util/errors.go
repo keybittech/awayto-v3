@@ -4,13 +4,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"reflect"
 	"runtime"
 	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 const (
@@ -28,21 +29,27 @@ func SnipUserError(err string) string {
 	return result[:len(result)-ErrorForUserLen]
 }
 
-func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []string, pbVal reflect.Value) error {
+func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []string, pbVal proto.Message) error {
 	requestId := uuid.NewString()
 	defaultErr := fmt.Sprintf("%s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
 
 	var reqParams string
-	if pbVal.IsValid() {
-		pbValType := pbVal.Type()
-		for j := 0; j < pbVal.NumField(); j++ {
-			field := pbVal.Field(j)
+	if pbVal != nil {
+		reflectMsg := pbVal.ProtoReflect()
+		descriptor := reflectMsg.Descriptor()
+		fields := descriptor.Fields()
 
-			fName := pbValType.Field(j).Name
+		for i := 0; i < fields.Len(); i++ {
+			field := fields.Get(i)
+			fieldName := string(field.Name())
 
-			if !slices.Contains(ignoreFields, fName) {
-				if runtimeName, ok := field.Interface().(string); ok {
-					reqParams += fName + "=" + runtimeName + " "
+			if !slices.Contains(ignoreFields, fieldName) {
+				// Check if it's a string field
+				if field.Kind() == protoreflect.StringKind {
+					// Get the field value
+					value := reflectMsg.Get(field)
+					strValue := value.String()
+					reqParams += fieldName + "=" + strValue + " "
 				}
 			}
 		}

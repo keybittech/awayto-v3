@@ -56,6 +56,7 @@ JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_TARGET=${PWD}/$(GO_SRC)/$(BINARY_NAME)
+GO_HANDLERS_REGISTER=${PWD}/$(GO_HANDLERS_DIR)/register.go
 # GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
 # GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
 PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
@@ -155,7 +156,7 @@ SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 #           TARGETS             #
 #################################
 
-build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_TARGET)
+build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -241,6 +242,9 @@ working/proto-stamp: $(wildcard proto/*.proto)
 		cd $(GO_GEN_DIR) && go mod init ${PROJECT_REPO}/$(GO_GEN_DIR) && go mod tidy && cd -; \
 	fi
 	touch $@
+
+$(GO_HANDLERS_REGISTER): $(shell find $(GO_HANDLERS_DIR) -type f)
+	go run -C $(GO_SRC) cmd/generate/handlers_register.go
 
 $(GO_TARGET): working/proto-stamp $(shell find $(GO_SRC)/{main.go,pkg} -type f) # $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)

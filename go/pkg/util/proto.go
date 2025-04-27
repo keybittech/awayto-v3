@@ -118,43 +118,57 @@ func parseTag(field reflect.StructField, fieldName string) string {
 	return tagValue
 }
 
-func ParseProtoQueryParams(pbVal reflect.Value, queryParams url.Values) {
-	if len(queryParams) > 0 {
-		for i := 0; i < pbVal.NumField(); i++ {
-			f := pbVal.Type().Field(i)
-			jsonTag := parseTag(f, "json")
+// Common utility function to handle setting field values
+func setProtoFieldValue(msg proto.Message, jsonName string, value string) {
+	reflectMsg := msg.ProtoReflect()
+	descriptor := reflectMsg.Descriptor()
+	fields := descriptor.Fields()
 
-			if values, ok := queryParams[jsonTag]; ok && len(values) > 0 {
-				fv := pbVal.Field(i)
-				if fv.IsValid() && fv.CanSet() && fv.Kind() == reflect.String {
-					fv.SetString(values[0])
-				}
+	for i := 0; i < fields.Len(); i++ {
+		field := fields.Get(i)
+		if field.JSONName() == jsonName && field.Kind() == protoreflect.StringKind {
+			reflectMsg.Set(field, protoreflect.ValueOfString(value))
+			return
+		}
+	}
+}
+
+// ParseProtoQueryParams sets proto message fields from URL query parameters
+func ParseProtoQueryParams(msg proto.Message, queryParams url.Values) {
+	if len(queryParams) == 0 {
+		return
+	}
+
+	reflectMsg := msg.ProtoReflect()
+	descriptor := reflectMsg.Descriptor()
+	fields := descriptor.Fields()
+
+	for i := 0; i < fields.Len(); i++ {
+		field := fields.Get(i)
+		jsonName := field.JSONName()
+
+		if values, ok := queryParams[jsonName]; ok && len(values) > 0 {
+			if field.Kind() == protoreflect.StringKind {
+				reflectMsg.Set(field, protoreflect.ValueOfString(values[0]))
 			}
 		}
 	}
 }
 
-func ParseProtoPathParams(pbVal reflect.Value, methodParameters, requestParameters []string) {
-	if len(methodParameters) > 0 && len(methodParameters) == len(requestParameters) {
-		for i := 0; i < len(methodParameters); i++ {
-			mp := methodParameters[i]
+// ParseProtoPathParams sets proto message fields from path parameters
+func ParseProtoPathParams(msg proto.Message, methodParameters, requestParameters []string) {
+	if len(methodParameters) == 0 || len(methodParameters) != len(requestParameters) {
+		return
+	}
 
-			if strings.HasPrefix(mp, "{") {
-				mp = strings.TrimLeft(mp, "{")
-				mp = strings.TrimRight(mp, "}")
+	for i := 0; i < len(methodParameters); i++ {
+		paramName := methodParameters[i]
+		if strings.HasPrefix(paramName, "{") {
+			// Extract the parameter name without braces
+			paramName = strings.Trim(paramName, "{}")
 
-				for k := 0; k < pbVal.NumField(); k++ {
-					f := pbVal.Type().Field(k)
-					jsonTag := parseTag(f, "json")
-
-					if strings.Split(jsonTag, ",")[0] == mp {
-						fv := pbVal.Field(k)
-						if fv.IsValid() && fv.CanSet() && fv.Kind() == reflect.String {
-							fv.SetString(requestParameters[i])
-						}
-					}
-				}
-			}
+			// Set the field value if it exists
+			setProtoFieldValue(msg, paramName, requestParameters[i])
 		}
 	}
 }

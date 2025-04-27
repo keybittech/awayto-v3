@@ -130,7 +130,7 @@ func (h *Handlers) PatchFileContents(w http.ResponseWriter, req *http.Request, d
 	return &types.PatchFileContentsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest, session *types.UserSession, tx *clients.PoolTx) (*[]byte, error) {
+func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, data *types.GetFileContentsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetFileContentsResponse, error) {
 	var fileContent []byte
 
 	err := tx.QueryRow(req.Context(), `
@@ -141,7 +141,7 @@ func (h *Handlers) GetFileContents(w http.ResponseWriter, req *http.Request, dat
 		return nil, util.ErrCheck(err)
 	}
 
-	return &fileContent, nil
+	return &types.GetFileContentsResponse{Content: fileContent}, nil
 }
 
 func (h *Handlers) PostFile(w http.ResponseWriter, req *http.Request, data *types.PostFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostFileResponse, error) {

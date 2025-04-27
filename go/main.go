@@ -10,7 +10,6 @@ import (
 
 	"github.com/joho/godotenv"
 	"github.com/keybittech/awayto-v3/go/pkg/api"
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -77,13 +76,7 @@ func main() {
 			WriteTimeout: time.Minute,
 			IdleTimeout:  time.Minute,
 		},
-		Handlers: &handlers.Handlers{
-			Ai:       clients.InitAi(),
-			Database: clients.InitDatabase(),
-			Redis:    clients.InitRedis(),
-			Keycloak: clients.InitKeycloak(),
-			Socket:   clients.InitSocket(),
-		},
+		Handlers: handlers.NewHandlers(),
 	}
 
 	go server.InitUnixServer(unixPath)

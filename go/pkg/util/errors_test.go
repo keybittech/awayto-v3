@@ -4,12 +4,12 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestUserError(t *testing.T) {
@@ -77,7 +77,7 @@ func TestRequestError(t *testing.T) {
 		w            http.ResponseWriter
 		givenErr     string
 		ignoreFields []string
-		pbVal        reflect.Value
+		pbVal        proto.Message
 	}
 	tests := []struct {
 		name    string
@@ -90,7 +90,7 @@ func TestRequestError(t *testing.T) {
 				w:            httptest.NewRecorder(),
 				givenErr:     "test error",
 				ignoreFields: DEFAULT_IGNORED_PROTO_FIELDS,
-				pbVal:        reflect.ValueOf(testPbStruct).Elem(),
+				pbVal:        testPbStruct,
 			},
 			wantErr: true,
 		},
@@ -100,7 +100,7 @@ func TestRequestError(t *testing.T) {
 				w:            httptest.NewRecorder(),
 				givenErr:     "test error",
 				ignoreFields: slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}),
-				pbVal:        reflect.ValueOf(testPbStruct).Elem(),
+				pbVal:        testPbStruct,
 			},
 			wantErr: true,
 		},
@@ -145,7 +145,7 @@ func BenchmarkRequestError(b *testing.B) {
 	}
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		RequestError(httptest.NewRecorder(), "test error", slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}), reflect.ValueOf(testPbStruct).Elem())
+		RequestError(httptest.NewRecorder(), "test error", slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}), testPbStruct)
 	}
 }
 

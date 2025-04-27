@@ -11,12 +11,13 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-type BodyParser func(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (protoreflect.ProtoMessage, error)
+type BodyParser func(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error)
 
-func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (protoreflect.ProtoMessage, error) {
+func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error) {
 
 	body, err := io.ReadAll(req.Body)
 	if err != nil {
@@ -24,7 +25,7 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util
 	}
 	defer req.Body.Close()
 
-	pb := serviceType.New().Interface()
+	pb := serviceType.New().Interface().(proto.Message)
 	if len(body) > 0 {
 		err = protojson.Unmarshal(body, pb)
 		if err != nil {
@@ -40,7 +41,7 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util
 	return pb, nil
 }
 
-func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (protoreflect.ProtoMessage, error) {
+func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error) {
 
 	req.Body = http.MaxBytesReader(w, req.Body, 20480000)
 

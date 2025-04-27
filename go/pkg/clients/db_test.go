@@ -63,9 +63,9 @@ func BenchmarkDbPgxBatchNoCommit(b *testing.B) {
 
 		batch := &pgx.Batch{}
 
-		batch.Queue(setSessionVariablesSQL, "worker", "", "")
+		batch.Queue(setSessionVariablesSQL, "worker", emptyString, emptyInteger, emptyString)
 		batch.Queue(selectAdminRoleIdSQL)
-		batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyString)
+		batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 		results := tx.SendBatch(ctx, batch)
 
 		_, _ = results.Exec()

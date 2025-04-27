@@ -1,10 +1,9 @@
 package api
 
 import (
-	"errors"
+	"fmt"
 	"log"
 	"net/http"
-	"reflect"
 	"slices"
 	"strings"
 
@@ -12,6 +11,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
@@ -26,10 +26,9 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		return true
 	})
 
-	serviceName := serviceMethod.Name()
-	handlerFunc := reflect.ValueOf(a.Handlers).MethodByName(string(serviceName))
-
-	if !handlerFunc.IsValid() {
+	serviceName := string(serviceMethod.Name())
+	handlerFunc, ok := a.Handlers.Functions[serviceName]
+	if !ok {
 		log.Printf("Service Method Not Implemented: %s", serviceName)
 		return func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
 			w.WriteHeader(501)
@@ -56,16 +55,20 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 		var deferredError error
-		var pbVal reflect.Value
+		var pb proto.Message
 
-		defer func(us string) {
-			clients.GetGlobalWorkerPool().CleanUpClientMapping(us)
+		defer func() {
 			if p := recover(); p != nil {
-				panic(p)
-			} else if deferredError != nil {
-				util.RequestError(w, deferredError.Error(), ignoreFields, pbVal)
+				util.ErrorLog.Println("ROUTE RECOVERY", fmt.Sprint(p))
 			}
-		}(session.UserSub)
+			go func() {
+				clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
+
+				if deferredError != nil {
+					util.RequestError(w, deferredError.Error(), ignoreFields, pb)
+				}
+			}()
+		}()
 
 		pb, err := bodyParser(w, req, handlerOpts, serviceType)
 		if err != nil {
@@ -73,43 +76,31 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			return
 		}
 
-		pbVal = reflect.ValueOf(pb).Elem()
-
 		// Parse query and path parameters
-		util.ParseProtoQueryParams(pbVal, req.URL.Query())
+		util.ParseProtoQueryParams(pb, req.URL.Query())
 		util.ParseProtoPathParams(
-			pbVal,
+			pb,
 			strings.Split(handlerOpts.ServiceMethodURL, "/"),
 			strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
 		)
 
-		poolTx, err := a.Handlers.Database.DatabaseClient.OpenPoolSessionTx(req.Context(), session)
+		ctx := req.Context()
+
+		poolTx, err := a.Handlers.Database.DatabaseClient.OpenPoolSessionTx(ctx, session)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
-		defer poolTx.Rollback(req.Context())
+		defer poolTx.Rollback(ctx)
 
-		results := handlerFunc.Call([]reflect.Value{
-			reflect.ValueOf(w),
-			reflect.ValueOf(req),
-			reflect.ValueOf(pb),
-			reflect.ValueOf(session),
-			reflect.ValueOf(poolTx),
-		})
-
-		err = a.Handlers.Database.DatabaseClient.ClosePoolSessionTx(req.Context(), poolTx)
+		results, err := handlerFunc(w, req, pb, session, poolTx)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
 
-		if len(results) != 2 {
-			deferredError = util.ErrCheck(errors.New("badly formed handler"))
-			return
-		}
-
-		if err, ok := results[1].Interface().(error); ok {
+		err = a.Handlers.Database.DatabaseClient.ClosePoolSessionTx(ctx, poolTx)
+		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
 		}
