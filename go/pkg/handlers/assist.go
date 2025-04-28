@@ -1,19 +1,17 @@
 package handlers
 
 import (
-	"net/http"
 	"strconv"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *types.PostPromptRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostPromptResponse, error) {
+func (h *Handlers) PostPrompt(info ReqInfo, data *types.PostPromptRequest) (*types.PostPromptResponse, error) {
 
 	// TODO
-	// if rateLimited, err := h.Redis.Client().RateLimitResource(req.Context(), data.UserSub, "prompt", 25, 86400); err != nil || rateLimited {
+	// if rateLimited, err := h.Redis.Client().RateLimitResource(info.Req.Context(), data.UserSub, "prompt", 25, 86400); err != nil || rateLimited {
 	// 	if err != nil {
 	// 		return nil, util.ErrCheck(err)
 	// 	}
@@ -21,7 +19,7 @@ func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *ty
 	// }
 	//
 	// promptParts := strings.Split(data.Prompt, "!$")
-	// response, err := h.AI.UseAI(req.Context(), data.Id, promptParts...)
+	// response, err := h.AI.UseAI(info.Req.Context(), data.Id, promptParts...)
 
 	// if err != nil {
 	// 	return nil, util.ErrCheck(err)
@@ -40,9 +38,9 @@ func (h *Handlers) PostPrompt(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PostPromptResponse{PromptResult: trimmedResults}, nil
 }
 
-func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data *types.GetSuggestionRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetSuggestionResponse, error) {
+func (h *Handlers) GetSuggestion(info ReqInfo, data *types.GetSuggestionRequest) (*types.GetSuggestionResponse, error) {
 
-	if session.GroupAi {
+	if info.Session.GroupAi {
 		promptParts := strings.Split(data.GetPrompt(), "!$")
 		promptType, err := strconv.Atoi(data.GetId())
 		if err != nil {
@@ -53,7 +51,7 @@ func (h *Handlers) GetSuggestion(w http.ResponseWriter, req *http.Request, data 
 
 			for i := 0; i < 3; i++ {
 
-				resp, err := h.Ai.GetPromptResponse(req.Context(), promptParts, types.IPrompts(promptType))
+				resp, err := h.Ai.GetPromptResponse(info.Req.Context(), promptParts, types.IPrompts(promptType))
 				if err != nil {
 					return nil, util.ErrCheck(err)
 				}

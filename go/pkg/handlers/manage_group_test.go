@@ -1,21 +1,16 @@
 package handlers
 
 import (
-	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func TestHandlers_PostManageGroups(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PostManageGroupsRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PostManageGroupsRequest
 	}
 	tests := []struct {
 		name    string
@@ -28,13 +23,13 @@ func TestHandlers_PostManageGroups(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PostManageGroups(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PostManageGroups(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PostManageGroups(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PostManageGroups(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PostManageGroups(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PostManageGroups(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -42,11 +37,8 @@ func TestHandlers_PostManageGroups(t *testing.T) {
 
 func TestHandlers_PatchManageGroups(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PatchManageGroupsRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PatchManageGroupsRequest
 	}
 	tests := []struct {
 		name    string
@@ -59,13 +51,13 @@ func TestHandlers_PatchManageGroups(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PatchManageGroups(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PatchManageGroups(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PatchManageGroups(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PatchManageGroups(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PatchManageGroups(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PatchManageGroups(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -73,11 +65,8 @@ func TestHandlers_PatchManageGroups(t *testing.T) {
 
 func TestHandlers_GetManageGroups(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.GetManageGroupsRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.GetManageGroupsRequest
 	}
 	tests := []struct {
 		name    string
@@ -90,13 +79,13 @@ func TestHandlers_GetManageGroups(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.GetManageGroups(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.GetManageGroups(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.GetManageGroups(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.GetManageGroups(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.GetManageGroups(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.GetManageGroups(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -104,11 +93,8 @@ func TestHandlers_GetManageGroups(t *testing.T) {
 
 func TestHandlers_DeleteManageGroups(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.DeleteManageGroupsRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.DeleteManageGroupsRequest
 	}
 	tests := []struct {
 		name    string
@@ -121,13 +107,13 @@ func TestHandlers_DeleteManageGroups(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.DeleteManageGroups(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.DeleteManageGroups(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.DeleteManageGroups(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.DeleteManageGroups(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.DeleteManageGroups(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.DeleteManageGroups(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}

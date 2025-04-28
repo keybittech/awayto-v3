@@ -311,7 +311,7 @@ func getSocketTicket(userId string) (*types.UserSession, string, string, string)
 	// Get authentication token first
 	token, session, err := getKeycloakToken(userId)
 	if err != nil {
-		log.Fatalf("error getting auth token: %v", err)
+		log.Fatalf("error getting auth token: %v, %s", err, userId)
 	}
 
 	req, err := http.NewRequest("GET", "https://localhost:7443/api/v1/sock/ticket", nil)

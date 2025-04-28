@@ -2,53 +2,51 @@ package handlers
 
 import (
 	"database/sql"
-	"net/http"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (h *Handlers) PostGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PostGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupScheduleResponse, error) {
+func (h *Handlers) PostGroupSchedule(info ReqInfo, data *types.PostGroupScheduleRequest) (*types.PostGroupScheduleResponse, error) {
 
 	var groupScheduleId string
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
-	`, session.GroupId, data.ScheduleId, session.GroupSub).Scan(&groupScheduleId)
+	`, info.Session.GroupId, data.ScheduleId, info.Session.GroupSub).Scan(&groupScheduleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/schedules")
 
 	return &types.PostGroupScheduleResponse{Id: groupScheduleId}, nil
 }
 
-func (h *Handlers) PatchGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.PatchGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupScheduleResponse, error) {
-	scheduleResp, err := h.PatchSchedule(w, req, &types.PatchScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()}, session, tx)
+func (h *Handlers) PatchGroupSchedule(info ReqInfo, data *types.PatchGroupScheduleRequest) (*types.PatchGroupScheduleResponse, error) {
+	scheduleResp, err := h.PatchSchedule(info, &types.PatchScheduleRequest{Schedule: data.GetGroupSchedule().GetSchedule()})
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules/master/"+data.GetGroupSchedule().GetSchedule().GetId())
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/schedules")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/schedules/master/"+data.GetGroupSchedule().GetSchedule().GetId())
 
 	return &types.PatchGroupScheduleResponse{Success: scheduleResp.Success}, nil
 }
 
-func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, data *types.GetGroupSchedulesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupSchedulesResponse, error) {
+func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedulesRequest) (*types.GetGroupSchedulesResponse, error) {
 	var groupSchedules []*types.IGroupSchedule
-	err := h.Database.QueryRows(req.Context(), tx, &groupSchedules, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupSchedules, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbview_schema.enabled_group_schedules egs ON egs."scheduleId" = es.id
 		WHERE egs."groupId" = $1
-	`, session.GroupId)
+	`, info.Session.GroupId)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -57,10 +55,10 @@ func (h *Handlers) GetGroupSchedules(w http.ResponseWriter, req *http.Request, d
 	return &types.GetGroupSchedulesResponse{GroupSchedules: groupSchedules}, nil
 }
 
-func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleMasterByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupScheduleMasterByIdResponse, error) {
+func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroupScheduleMasterByIdRequest) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	groupSchedule := &types.IGroupSchedule{}
 	var scheduleBytes []byte
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT TO_JSONB(ese), ese.name
 		FROM dbview_schema.enabled_schedules_ext ese
 		WHERE ese.id = $1
@@ -82,10 +80,10 @@ func (h *Handlers) GetGroupScheduleMasterById(w http.ResponseWriter, req *http.R
 	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: groupSchedule}, nil
 }
 
-func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Request, data *types.GetGroupScheduleByDateRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupScheduleByDateResponse, error) {
+func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupScheduleByDateRequest) (*types.GetGroupScheduleByDateResponse, error) {
 
 	var scheduleTimeUnitName string
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT tu.name
 		FROM dbtable_schema.schedules s
 		JOIN dbtable_schema.time_units tu ON tu.id = s.schedule_time_unit_id
@@ -94,7 +92,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 
 	var rows pgx.Rows
 	if "week" == scheduleTimeUnitName {
-		rows, err = tx.Query(req.Context(), `
+		rows, err = info.Tx.Query(info.Req.Context(), `
 			WITH times AS (
 				SELECT
 					DISTINCT slot."startTime",
@@ -120,9 +118,9 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 			)
 			SELECT "startTime", "scheduleBracketSlotId", "weekStart", "startDate"
 			FROM times
-		`, data.Date, data.GroupScheduleId, session.Timezone)
+		`, data.Date, data.GroupScheduleId, info.Session.Timezone)
 	} else {
-		rows, err = tx.Query(req.Context(), `
+		rows, err = info.Tx.Query(info.Req.Context(), `
 			WITH times AS (
 				SELECT
 					DISTINCT slot."startTime",
@@ -162,7 +160,7 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 			)
 			SELECT "startTime", "scheduleBracketSlotId", "weekStart", "startDate"
 			FROM times
-		`, data.Date, data.GroupScheduleId, session.Timezone)
+		`, data.Date, data.GroupScheduleId, info.Session.Timezone)
 	}
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -176,17 +174,17 @@ func (h *Handlers) GetGroupScheduleByDate(w http.ResponseWriter, req *http.Reque
 	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: groupScheduleDateSlots}, nil
 }
 
-func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupScheduleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupScheduleResponse, error) {
+func (h *Handlers) DeleteGroupSchedule(info ReqInfo, data *types.DeleteGroupScheduleRequest) (*types.DeleteGroupScheduleResponse, error) {
 
-	groupPoolTx, _, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(req.Context(), session)
+	groupPoolTx, _, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(info.Req.Context(), info.Session)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-	defer groupPoolTx.Rollback(req.Context())
+	defer groupPoolTx.Rollback(info.Req.Context())
 
 	for _, groupScheduleTableId := range strings.Split(data.GetGroupScheduleIds(), ",") {
 		var groupScheduleId string
-		err = groupPoolTx.QueryRow(req.Context(), `
+		err = groupPoolTx.QueryRow(info.Req.Context(), `
 			DELETE FROM dbtable_schema.group_schedules
 			WHERE id = $1
 			RETURNING schedule_id
@@ -196,7 +194,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		var userScheduleIds sql.NullString
-		err = groupPoolTx.QueryRow(req.Context(), `
+		err = groupPoolTx.QueryRow(info.Req.Context(), `
 			SELECT STRING_AGG(user_schedule_id::TEXT, ',')
 			FROM dbtable_schema.group_user_schedules
 			WHERE group_schedule_id = $1
@@ -206,14 +204,14 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		if userScheduleIds.Valid {
-			_, err = h.DeleteSchedule(w, req, &types.DeleteScheduleRequest{Ids: userScheduleIds.String}, session, tx)
+			_, err = h.DeleteSchedule(info, &types.DeleteScheduleRequest{Ids: userScheduleIds.String})
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
 		}
 
 		var userScheduleCount int64
-		err = groupPoolTx.QueryRow(req.Context(), `
+		err = groupPoolTx.QueryRow(info.Req.Context(), `
 			SELECT COUNT(user_schedule_id)
 			FROM dbtable_schema.group_user_schedules
 			WHERE group_schedule_id = $1
@@ -223,7 +221,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 
 		if userScheduleCount > 0 {
-			_, err = groupPoolTx.Exec(req.Context(), `
+			_, err = groupPoolTx.Exec(info.Req.Context(), `
 				UPDATE dbtable_schema.schedules
 				SET enabled = false
 				WHERE id = $1
@@ -232,7 +230,7 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 				return nil, util.ErrCheck(err)
 			}
 		} else {
-			_, err = groupPoolTx.Exec(req.Context(), `
+			_, err = groupPoolTx.Exec(info.Req.Context(), `
 			DELETE FROM dbtable_schema.schedules
 			WHERE dbtable_schema.schedules.id = $1
 		`, groupScheduleId)
@@ -242,13 +240,13 @@ func (h *Handlers) DeleteGroupSchedule(w http.ResponseWriter, req *http.Request,
 		}
 	}
 
-	err = h.Database.DatabaseClient.ClosePoolSessionTx(req.Context(), groupPoolTx)
+	err = h.Database.DatabaseClient.ClosePoolSessionTx(info.Req.Context(), groupPoolTx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"schedules")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/schedules")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"schedules")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/schedules")
 
 	return &types.DeleteGroupScheduleResponse{Success: true}, nil
 }

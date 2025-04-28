@@ -2,68 +2,66 @@ package handlers
 
 import (
 	"fmt"
-	"net/http"
 	"slices"
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostGroupRole(w http.ResponseWriter, req *http.Request, data *types.PostGroupRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupRoleResponse, error) {
-	kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(session.UserSub, session.GroupExternalId, data.GetName())
+func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest) (*types.PostGroupRoleResponse, error) {
+	kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Session.UserSub, info.Session.GroupExternalId, data.GetName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	var groupRoleId string
-	err = tx.QueryRow(req.Context(), `
+	err = info.Tx.QueryRow(info.Req.Context(), `
 		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (group_id, role_id) DO NOTHING
 		RETURNING id
-	`, session.GroupId, data.GetRoleId(), kcSubGroup.Id, time.Now().Local().UTC(), session.UserSub).Scan(&groupRoleId)
+	`, info.Session.GroupId, data.GetRoleId(), kcSubGroup.Id, time.Now().Local().UTC(), info.Session.UserSub).Scan(&groupRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	// update the default role
 	if data.GetDefaultRole() {
-		_, err = tx.Exec(req.Context(), `
+		_, err = info.Tx.Exec(info.Req.Context(), `
 			UPDATE dbtable_schema.groups
 			SET default_role_id = $2
 			WHERE id = $1
-		`, session.GroupId, data.GetRoleId())
+		`, info.Session.GroupId, data.GetRoleId())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/roles")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/assignments")
-	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/roles")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/assignments")
+	h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
 
 	return &types.PostGroupRoleResponse{GroupRoleId: groupRoleId}, nil
 }
 
-func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupRoleResponse, error) {
+func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleRequest) (*types.PatchGroupRoleResponse, error) {
 	var existingRoleExternalId, defaultRoleId string
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT gr.external_id, g.default_role_id FROM dbtable_schema.group_roles gr
 		JOIN dbtable_schema.groups g ON g.id = gr.group_id
 		WHERE gr.group_id = $1 AND gr.role_id = $2
-	`, session.GroupId, data.GetRoleId()).Scan(&existingRoleExternalId, &defaultRoleId)
+	`, info.Session.GroupId, data.GetRoleId()).Scan(&existingRoleExternalId, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	// create new general role or get existing id
-	postRoleResponse, err := h.PostRole(w, req, &types.PostRoleRequest{Name: data.GetName()}, session, tx)
+	postRoleResponse, err := h.PostRole(info, &types.PostRoleRequest{Name: data.GetName()})
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -75,11 +73,11 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 
 	// update the default role
 	if data.GetDefaultRole() {
-		_, err = tx.Exec(req.Context(), `
+		_, err = info.Tx.Exec(info.Req.Context(), `
 			UPDATE dbtable_schema.groups
 			SET default_role_id = $2
 			WHERE id = $1
-		`, session.GroupId, postRoleResponse.GetId())
+		`, info.Session.GroupId, postRoleResponse.GetId())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -87,45 +85,45 @@ func (h *Handlers) PatchGroupRole(w http.ResponseWriter, req *http.Request, data
 
 	if postRoleResponse.GetId() != data.GetRoleId() {
 		// remove the old group role entry and
-		_, err := tx.Exec(req.Context(), `
+		_, err := info.Tx.Exec(info.Req.Context(), `
 			DELETE FROM dbtable_schema.group_roles
 			WHERE group_id = $1 AND role_id = $2
-		`, session.GroupId, data.GetRoleId())
+		`, info.Session.GroupId, data.GetRoleId())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
 		// create a new group_role attachment pointing to the new role id, retaining the keycloak external id
-		_, err = tx.Exec(req.Context(), `
+		_, err = info.Tx.Exec(info.Req.Context(), `
 			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (group_id, role_id) DO NOTHING
-		`, session.GroupId, postRoleResponse.GetId(), existingRoleExternalId, time.Now().Local().UTC(), session.UserSub)
+		`, info.Session.GroupId, postRoleResponse.GetId(), existingRoleExternalId, time.Now().Local().UTC(), info.Session.UserSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
 		// update the name of the keycloak group which controls this role
-		err = h.Keycloak.UpdateGroup(session.UserSub, existingRoleExternalId, data.GetName())
+		err = h.Keycloak.UpdateGroup(info.Session.UserSub, existingRoleExternalId, data.GetName())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
-		h.Redis.Client().Del(req.Context(), session.UserSub+"group/roles")
-		h.Redis.Client().Del(req.Context(), session.UserSub+"group/assignments")
-		h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
+		h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+		h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/roles")
+		h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/assignments")
+		h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
 	}
 
 	return &types.PatchGroupRoleResponse{Success: true}, nil
 }
 
-func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, data *types.PatchGroupRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupRolesResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequest) (*types.PatchGroupRolesResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.groups
 		SET default_role_id = $2, updated_sub = $3, updated_on = $4 
 		WHERE id = $1
-	`, session.GroupId, data.GetDefaultRoleId(), session.UserSub, time.Now().Local().UTC())
+	`, info.Session.GroupId, data.GetDefaultRoleId(), info.Session.UserSub, time.Now().Local().UTC())
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -139,12 +137,12 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 	var diffs []*types.IGroupRole
 
 	// Remove all unused roles from keycloak and the group records
-	rows, err := tx.Query(req.Context(), `
+	rows, err := info.Tx.Query(info.Req.Context(), `
 		SELECT egr.id, egr."roleId", er.name
 		FROM dbview_schema.enabled_group_roles egr
 		JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
 		WHERE er.name != 'Admin' AND egr."groupId" = $1 AND egr."roleId" != ANY($2::uuid[])
-	`, session.GroupId, pq.Array(roleIds))
+	`, info.Session.GroupId, pq.Array(roleIds))
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -165,7 +163,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 
 	if len(diffs) > 0 {
 
-		kcGroup, err := h.Keycloak.GetGroup(session.UserSub, session.GroupExternalId)
+		kcGroup, err := h.Keycloak.GetGroup(info.Session.UserSub, info.Session.GroupExternalId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -180,7 +178,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 		if len(kcGroup.SubGroups) > 0 {
 			for _, subGroup := range kcGroup.SubGroups {
 				if util.StringIn(subGroup.Name, diffRoleNames) {
-					err = h.Keycloak.DeleteGroup(session.UserSub, subGroup.Id)
+					err = h.Keycloak.DeleteGroup(info.Session.UserSub, subGroup.Id)
 					if err != nil {
 						return nil, util.ErrCheck(err)
 					}
@@ -188,7 +186,7 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 			}
 		}
 
-		_, err = tx.Exec(req.Context(), `
+		_, err = info.Tx.Exec(info.Req.Context(), `
 			DELETE FROM dbtable_schema.group_roles
 			WHERE id = ANY($1::uuid[])
 		`, pq.Array(diffIds))
@@ -206,29 +204,29 @@ func (h *Handlers) PatchGroupRoles(w http.ResponseWriter, req *http.Request, dat
 			continue
 		}
 
-		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(session.UserSub, session.GroupExternalId, role.Name)
+		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Session.UserSub, info.Session.GroupExternalId, role.Name)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err = tx.Exec(req.Context(), `
+		_, err = info.Tx.Exec(info.Req.Context(), `
 			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 			VALUES ($1, $2, $3, $4, $5::uuid)
 			ON CONFLICT (group_id, role_id) DO NOTHING
-		`, session.GroupId, roleId, kcSubGroup.Id, time.Now().Local().UTC(), session.UserSub)
+		`, info.Session.GroupId, roleId, kcSubGroup.Id, time.Now().Local().UTC(), info.Session.UserSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
 
 	return &types.PatchGroupRolesResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data *types.GetGroupRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupRolesResponse, error) {
+func (h *Handlers) GetGroupRoles(info ReqInfo, data *types.GetGroupRolesRequest) (*types.GetGroupRolesResponse, error) {
 	var roles []*types.IGroupRole
-	err := h.Database.QueryRows(req.Context(), tx, &roles, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &roles, `
 		SELECT 
 			TO_JSONB(er) as role,
 			egr.id,
@@ -238,7 +236,7 @@ func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data 
 		FROM dbview_schema.enabled_group_roles egr
 		JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
 		WHERE egr."groupId" = $1 AND er.name != 'Admin'
-	`, session.GroupId)
+	`, info.Session.GroupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -246,16 +244,16 @@ func (h *Handlers) GetGroupRoles(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupRolesResponse{GroupRoles: roles}, nil
 }
 
-func (h *Handlers) DeleteGroupRole(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupRoleResponse, error) {
+func (h *Handlers) DeleteGroupRole(info ReqInfo, data *types.DeleteGroupRoleRequest) (*types.DeleteGroupRoleResponse, error) {
 	groupRoleIds := strings.Split(data.GetIds(), ",")
 
 	// handle default role id update
 	var defaultGroupRoleId string
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT gr.id FROM dbtable_schema.group_roles gr
 		JOIN dbtable_schema.groups g ON g.default_role_id = gr.role_id
 		WHERE g.id = $1
-	`, session.GroupId).Scan(&defaultGroupRoleId)
+	`, info.Session.GroupId).Scan(&defaultGroupRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -269,23 +267,23 @@ func (h *Handlers) DeleteGroupRole(w http.ResponseWriter, req *http.Request, dat
 	for _, id := range groupRoleIds {
 		if id != "" {
 			var subGroupExternalId string
-			err := tx.QueryRow(req.Context(), `
+			err := info.Tx.QueryRow(info.Req.Context(), `
 				DELETE FROM dbtable_schema.group_roles
 				WHERE id = $1 AND group_id = $2
 				RETURNING external_id
-			`, id, session.GroupId).Scan(&subGroupExternalId)
+			`, id, info.Session.GroupId).Scan(&subGroupExternalId)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
 
-			err = h.Keycloak.DeleteGroup(session.UserSub, subGroupExternalId)
+			err = h.Keycloak.DeleteGroup(info.Session.UserSub, subGroupExternalId)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
 		}
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"group/roles")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/roles")
 
 	return &types.DeleteGroupRoleResponse{Success: true}, nil
 }

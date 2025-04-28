@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -54,6 +55,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 	}
 
 	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+
 		var deferredError error
 		var pb proto.Message
 
@@ -93,7 +95,14 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		}
 		defer poolTx.Rollback(ctx)
 
-		results, err := handlerFunc(w, req, pb, session, poolTx)
+		reqInfo := handlers.ReqInfo{
+			W:       w,
+			Req:     req,
+			Session: session,
+			Tx:      poolTx,
+		}
+
+		results, err := handlerFunc(reqInfo, pb)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return

@@ -2,15 +2,13 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *types.PostBookingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostBookingResponse, error) {
+func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*types.PostBookingResponse, error) {
 	newBookings := make([]*types.IBooking, 0)
 
 	var scheduleBracketSlotId string
@@ -25,38 +23,38 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 	}
 
 	var isOwner bool
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT EXISTS(
 			SELECT 1 FROM dbtable_schema.schedule_bracket_slots
 			WHERE id = $1 AND created_sub = $2
 		)
-	`, scheduleBracketSlotId, session.UserSub).Scan(&isOwner)
+	`, scheduleBracketSlotId, info.Session.UserSub).Scan(&isOwner)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 	if !isOwner {
-		return nil, util.ErrCheck(errors.New("sub " + session.UserSub + " attempted to approve non-owned sbsid " + scheduleBracketSlotId))
+		return nil, util.ErrCheck(errors.New("sub " + info.Session.UserSub + " attempted to approve non-owned sbsid " + scheduleBracketSlotId))
 	}
 
 	for _, booking := range data.Bookings {
 		var newBooking types.IBooking
-		err := tx.QueryRow(req.Context(), `
+		err := info.Tx.QueryRow(info.Req.Context(), `
 			INSERT INTO dbtable_schema.bookings (quote_id, slot_date, schedule_bracket_slot_id, created_sub)
 			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid)
 			RETURNING id
-		`, booking.Quote.Id, booking.Quote.SlotDate, scheduleBracketSlotId, session.UserSub).Scan(&newBooking.Id)
+		`, booking.Quote.Id, booking.Quote.SlotDate, scheduleBracketSlotId, info.Session.UserSub).Scan(&newBooking.Id)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
 		var quoteUserSub string
-		err = tx.QueryRow(req.Context(), `
+		err = info.Tx.QueryRow(info.Req.Context(), `
 			SELECT created_sub
 			FROM dbtable_schema.quotes
 			WHERE id = $1
 		`, booking.Quote.Id).Scan(&quoteUserSub)
 
-		h.Redis.Client().Del(req.Context(), quoteUserSub+"profile/details")
+		h.Redis.Client().Del(info.Req.Context(), quoteUserSub+"profile/details")
 
 		if err := h.Socket.RoleCall(quoteUserSub); err != nil {
 			return nil, util.ErrCheck(err)
@@ -65,17 +63,17 @@ func (h *Handlers) PostBooking(w http.ResponseWriter, req *http.Request, data *t
 		newBookings = append(newBookings, &newBooking)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
 	return &types.PostBookingResponse{Bookings: newBookings}, nil
 }
 
-func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchBookingResponse, error) {
+func (h *Handlers) PatchBooking(info ReqInfo, data *types.PatchBookingRequest) (*types.PatchBookingResponse, error) {
 	var updatedBookings []*types.IBooking
-	err := h.Database.QueryRows(req.Context(), tx, &updatedBookings, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &updatedBookings, `
 		UPDATE dbtable_schema.bookings
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-	`, data.Booking.Id, data.Booking.Quote.ServiceTierId, session.UserSub, time.Now())
+	`, data.Booking.Id, data.Booking.Quote.ServiceTierId, info.Session.UserSub, time.Now())
 
 	if err != nil || len(updatedBookings) == 0 {
 		return nil, util.ErrCheck(err)
@@ -84,21 +82,21 @@ func (h *Handlers) PatchBooking(w http.ResponseWriter, req *http.Request, data *
 	return &types.PatchBookingResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetBookings(w http.ResponseWriter, req *http.Request, data *types.GetBookingsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetBookingsResponse, error) {
+func (h *Handlers) GetBookings(info ReqInfo, data *types.GetBookingsRequest) (*types.GetBookingsResponse, error) {
 	bookings := []*types.IBooking{}
-	err := h.Database.QueryRows(req.Context(), tx, &bookings, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &bookings, `
 		SELECT eb.*
 		FROM dbview_schema.enabled_bookings eb
 		JOIN dbtable_schema.bookings b ON b.id = eb.id
 		LEFT JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = eb.schedule_bracket_slot_id
 		WHERE b.created_sub = $1 OR sbs.created_sub = $1
-	`, session.UserSub)
+	`, info.Session.UserSub)
 	return &types.GetBookingsResponse{Bookings: bookings}, err
 }
 
-func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data *types.GetBookingByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetBookingByIdResponse, error) {
+func (h *Handlers) GetBookingById(info ReqInfo, data *types.GetBookingByIdRequest) (*types.GetBookingByIdResponse, error) {
 	var bookings []*types.IBooking
-	err := h.Database.QueryRows(req.Context(), tx, &bookings, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &bookings, `
 		SELECT * FROM dbview_schema.enabled_bookings
 		WHERE id = $1
 	`, data.Id)
@@ -113,9 +111,9 @@ func (h *Handlers) GetBookingById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetBookingByIdResponse{Booking: bookings[0]}, err
 }
 
-func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, data *types.GetBookingFilesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetBookingFilesResponse, error) {
+func (h *Handlers) GetBookingFiles(info ReqInfo, data *types.GetBookingFilesRequest) (*types.GetBookingFilesResponse, error) {
 	files := []*types.IFile{}
-	err := h.Database.QueryRows(req.Context(), tx, &files, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &files, `
 		SELECT f.name, f.uuid, f."mimeType"
 		FROM dbview_schema.enabled_files f
 		JOIN dbtable_schema.quote_files qf ON qf.file_id = f.id
@@ -125,8 +123,8 @@ func (h *Handlers) GetBookingFiles(w http.ResponseWriter, req *http.Request, dat
 	return &types.GetBookingFilesResponse{Files: files}, err
 }
 
-func (h *Handlers) PatchBookingRating(w http.ResponseWriter, req *http.Request, data *types.PatchBookingRatingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchBookingRatingResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) PatchBookingRating(info ReqInfo, data *types.PatchBookingRatingRequest) (*types.PatchBookingRatingResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.bookings
 		SET rating = $2
 		WHERE id = $1
@@ -135,24 +133,24 @@ func (h *Handlers) PatchBookingRating(w http.ResponseWriter, req *http.Request, 
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"bookings/"+data.Id)
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"bookings/"+data.Id)
 
 	return &types.PatchBookingRatingResponse{Success: true}, nil
 }
 
-func (h *Handlers) DeleteBooking(w http.ResponseWriter, req *http.Request, data *types.DeleteBookingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteBookingResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DeleteBooking(info ReqInfo, data *types.DeleteBookingRequest) (*types.DeleteBookingResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		DELETE FROM dbtable_schema.bookings
 		WHERE id = $1
 	`, data.GetId())
 	return &types.DeleteBookingResponse{Id: data.Id}, err
 }
 
-func (h *Handlers) DisableBooking(w http.ResponseWriter, req *http.Request, data *types.DisableBookingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableBookingResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DisableBooking(info ReqInfo, data *types.DisableBookingRequest) (*types.DisableBookingResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), session.UserSub)
+	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
 	return &types.DisableBookingResponse{Id: data.Id}, err
 }

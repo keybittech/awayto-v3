@@ -613,3 +613,23 @@ func TestNewNullConn(t *testing.T) {
 		})
 	}
 }
+
+func TestStringsToBitmask(t *testing.T) {
+	type args struct {
+		roles []string
+	}
+	tests := []struct {
+		name string
+		args args
+		want int32
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := StringsToBitmask(tt.args.roles); got != tt.want {
+				t.Errorf("StringsToBitmask(%v) = %v, want %v", tt.args.roles, got, tt.want)
+			}
+		})
+	}
+}

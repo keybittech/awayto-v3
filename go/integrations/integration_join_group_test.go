@@ -19,12 +19,19 @@ func testIntegrationJoinGroup(t *testing.T) {
 			joinViaRegister := c%2 == 0
 			userId := fmt.Sprint(time.Now().UnixNano())
 
-			t.Logf("Registering #%s", userId)
 			if joinViaRegister {
+				t.Logf("Code Registering #%s Code: %s", userId, integrationTest.Group.Code)
 				// This takes care of attach user to group and activate profile on the backend
-				registerKeycloakUserViaForm(userId, integrationTest.Group.Code)
+				_, err := registerKeycloakUserViaForm(userId, integrationTest.Group.Code)
+				if err != nil {
+					t.Fatalf("failed to register with group code %v", err)
+				}
 			} else {
-				registerKeycloakUserViaForm(userId)
+				t.Logf("Normal Registering #%s", userId)
+				_, err := registerKeycloakUserViaForm(userId)
+				if err != nil {
+					t.Fatalf("failed to register without group code %v", err)
+				}
 			}
 
 			session, connection, token, ticket, connId := getUser(userId)

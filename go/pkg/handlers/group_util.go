@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"net/http"
 	"slices"
 	"strings"
 	"time"
@@ -11,12 +10,12 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data *types.CheckGroupNameRequest, session *types.UserSession, tx *clients.PoolTx) (*types.CheckGroupNameResponse, error) {
+func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameRequest) (*types.CheckGroupNameResponse, error) {
 	var count int
 
 	time.Sleep(time.Second)
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT COUNT(*) FROM dbtable_schema.groups WHERE name = $1
 	`, data.GetName()).Scan(&count)
 	if err != nil {
@@ -26,36 +25,36 @@ func (h *Handlers) CheckGroupName(w http.ResponseWriter, req *http.Request, data
 	return &types.CheckGroupNameResponse{IsValid: count == 0}, nil
 }
 
-func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *types.JoinGroupRequest, session *types.UserSession, tx *clients.PoolTx) (*types.JoinGroupResponse, error) {
+func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types.JoinGroupResponse, error) {
 	var userId, allowedDomains, defaultRoleId string
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
-	`, data.GetCode()).Scan(&session.GroupId, &allowedDomains, &defaultRoleId)
+	`, data.GetCode()).Scan(&info.Session.GroupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = tx.QueryRow(req.Context(), `
+	err = info.Tx.QueryRow(info.Req.Context(), `
 		SELECT id
 		FROM dbtable_schema.users
 		WHERE sub = $1
-	`, session.UserSub).Scan(&userId)
+	`, info.Session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	if allowedDomains != "" {
 		allowedDomainsSlice := strings.Split(allowedDomains, ",")
-		if !slices.Contains(allowedDomainsSlice, strings.Split(session.UserEmail, "@")[1]) {
+		if !slices.Contains(allowedDomainsSlice, strings.Split(info.Session.UserEmail, "@")[1]) {
 			return nil, util.ErrCheck(util.UserError("Group access is restricted."))
 		}
 	}
 
-	tx.SetSession(req.Context(), session)
+	info.Tx.SetSession(info.Req.Context(), info.Session)
 
 	var kcSubgroupExternalId string
-	err = tx.QueryRow(req.Context(), `
+	err = info.Tx.QueryRow(info.Req.Context(), `
 		SELECT external_id
 		FROM dbtable_schema.group_roles
 		WHERE role_id = $1
@@ -64,43 +63,43 @@ func (h *Handlers) JoinGroup(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(req.Context(), `
+	_, err = info.Tx.Exec(info.Req.Context(), `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
-	`, userId, session.GroupId, kcSubgroupExternalId, session.UserSub)
+	`, userId, info.Session.GroupId, kcSubgroupExternalId, info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
-	h.Redis.DeleteSession(req.Context(), session.UserSub)
+	h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
+	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
 
 	return &types.JoinGroupResponse{Success: true}, nil
 }
 
-func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *types.LeaveGroupRequest, session *types.UserSession, tx *clients.PoolTx) (*types.LeaveGroupResponse, error) {
+func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*types.LeaveGroupResponse, error) {
 	var userId, groupId, allowedDomains, defaultRoleId string
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
 	`, data.GetCode()).Scan(&groupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = tx.QueryRow(req.Context(), `SELECT id FROM dbtable_schema.users WHERE sub = $1`, session.UserSub).Scan(&userId)
+	err = info.Tx.QueryRow(info.Req.Context(), `SELECT id FROM dbtable_schema.users WHERE sub = $1`, info.Session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(req.Context(), `
+	_, err = info.Tx.Exec(info.Req.Context(), `
 		DELETE FROM dbtable_schema.group_users WHERE user_id = $1 AND group_id = $2
 	`, userId, groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.DeleteUserFromGroup(session.UserSub, session.UserSub, groupId)
+	err = h.Keycloak.DeleteUserFromGroup(info.Session.UserSub, info.Session.UserSub, groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -109,26 +108,26 @@ func (h *Handlers) LeaveGroup(w http.ResponseWriter, req *http.Request, data *ty
 }
 
 // AttachUser
-func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *types.AttachUserRequest, session *types.UserSession, tx *clients.PoolTx) (*types.AttachUserResponse, error) {
+func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*types.AttachUserResponse, error) {
 	var kcRoleSubgroupExternalId, createdSub string
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT g.id
 		FROM dbtable_schema.groups g
 		WHERE g.code = $1
-	`, data.GetCode()).Scan(&session.GroupId)
+	`, data.GetCode()).Scan(&info.Session.GroupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, session)
+	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
-	row, done, err := ds.SessionBatchQueryRow(req.Context(), `
+	row, done, err := ds.SessionBatchQueryRow(info.Req.Context(), `
 		SELECT g.created_sub, gr.external_id
 		FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
 		WHERE g.id = $1
-	`, session.GroupId)
+	`, info.Session.GroupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -139,31 +138,31 @@ func (h *Handlers) AttachUser(w http.ResponseWriter, req *http.Request, data *ty
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(session.UserSub, session.UserSub, kcRoleSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(info.Session.UserSub, info.Session.UserSub, kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if err := h.Socket.RoleCall(session.UserSub); err != nil {
+	if err := h.Socket.RoleCall(info.Session.UserSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
-	h.Redis.Client().Del(req.Context(), createdSub+"profile/details")
-	h.Redis.DeleteSession(req.Context(), session.UserSub)
-	h.Redis.SetGroupSessionVersion(req.Context(), session.GroupId)
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), createdSub+"profile/details")
+	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
+	h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
 
 	return &types.AttachUserResponse{Success: true}, nil
 }
 
-func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, data *types.CompleteOnboardingRequest, session *types.UserSession, tx *clients.PoolTx) (*types.CompleteOnboardingResponse, error) {
+func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardingRequest) (*types.CompleteOnboardingResponse, error) {
 	service := data.GetService()
 	schedule := data.GetSchedule()
 
 	postServiceReq := &types.PostServiceRequest{
 		Service: service,
 	}
-	postServiceRes, err := h.PostService(w, req, postServiceReq, session, tx)
+	postServiceRes, err := h.PostService(info, postServiceReq)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -171,7 +170,7 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 	postGroupServiceReq := &types.PostGroupServiceRequest{
 		ServiceId: postServiceRes.Id,
 	}
-	postGroupServiceRes, err := h.PostGroupService(w, req, postGroupServiceReq, session, tx)
+	postGroupServiceRes, err := h.PostGroupService(info, postGroupServiceReq)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -187,28 +186,29 @@ func (h *Handlers) CompleteOnboarding(w http.ResponseWriter, req *http.Request, 
 		SlotDuration:       schedule.SlotDuration,
 		Brackets:           map[string]*types.IScheduleBracket{},
 	}
-	postScheduleRes, err := h.PostSchedule(w, req, postScheduleReq, session, tx)
+	postScheduleRes, err := h.PostSchedule(info, postScheduleReq)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	postGroupScheduleReq := &types.PostGroupScheduleRequest{
+	postGroupScheduleRes, err := h.PostGroupSchedule(info, &types.PostGroupScheduleRequest{
 		ScheduleId: postScheduleRes.Id,
-	}
-	postGroupScheduleRes, err := h.PostGroupSchedule(w, req, postGroupScheduleReq, session, tx)
+	})
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = h.ActivateProfile(w, req, &types.ActivateProfileRequest{}, session, tx)
+	_, err = h.ActivateProfile(info, nil)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.CompleteOnboardingResponse{
+	onboardingResponse := &types.CompleteOnboardingResponse{
 		ServiceId:       postServiceRes.Id,
 		GroupServiceId:  postGroupServiceRes.Id,
 		ScheduleId:      postScheduleRes.Id,
 		GroupScheduleId: postGroupScheduleRes.Id,
-	}, nil
+	}
+
+	return onboardingResponse, nil
 }

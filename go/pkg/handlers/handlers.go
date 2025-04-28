@@ -10,7 +10,7 @@ import (
 )
 
 type Handlers struct {
-	Functions map[string]HandlerWrapper
+	Functions map[string]ProtoHandler
 	Ai        *clients.Ai
 	Database  *clients.Database
 	Redis     *clients.Redis
@@ -20,11 +20,12 @@ type Handlers struct {
 
 func NewHandlers() *Handlers {
 	h := &Handlers{
-		Ai:       clients.InitAi(),
-		Database: clients.InitDatabase(),
-		Redis:    clients.InitRedis(),
-		Keycloak: clients.InitKeycloak(),
-		Socket:   clients.InitSocket(),
+		Functions: make(map[string]ProtoHandler),
+		Ai:        clients.InitAi(),
+		Database:  clients.InitDatabase(),
+		Redis:     clients.InitRedis(),
+		Keycloak:  clients.InitKeycloak(),
+		Socket:    clients.InitSocket(),
 	}
 
 	h.registerHandlers()
@@ -32,22 +33,24 @@ func NewHandlers() *Handlers {
 	return h
 }
 
-type TypedProtoHandler[
-	Req proto.Message,
-	Res proto.Message,
-] func(w http.ResponseWriter, req *http.Request, message Req, session *types.UserSession, tx *clients.PoolTx) (Res, error)
+type ReqInfo struct {
+	W       http.ResponseWriter
+	Req     *http.Request
+	Session *types.UserSession
+	Tx      *clients.PoolTx
+}
 
-type HandlerWrapper func(w http.ResponseWriter, req *http.Request, message proto.Message, session *types.UserSession, tx *clients.PoolTx) (proto.Message, error)
+type TypedProtoHandler[ReqMsg, ResMsg proto.Message] func(info ReqInfo, message ReqMsg) (ResMsg, error)
 
-func Register[
-	Req, Res proto.Message,
-](handler TypedProtoHandler[Req, Res]) HandlerWrapper {
-	return func(w http.ResponseWriter, req *http.Request, message proto.Message, session *types.UserSession, tx *clients.PoolTx) (proto.Message, error) {
-		msg, ok := message.(Req)
+type ProtoHandler func(info ReqInfo, messages proto.Message) (proto.Message, error)
+
+func Register[ReqMsg, ResMsg proto.Message](handler TypedProtoHandler[ReqMsg, ResMsg]) ProtoHandler {
+	return func(info ReqInfo, message proto.Message) (proto.Message, error) {
+		msg, ok := message.(ReqMsg)
 		if !ok {
 			return nil, errors.New("invalid request type")
 		}
 
-		return handler(w, req, msg, session, tx)
+		return handler(info, msg)
 	}
 }

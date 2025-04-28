@@ -1,21 +1,16 @@
 package handlers
 
 import (
-	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func TestHandlers_PostBooking(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PostBookingRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PostBookingRequest
 	}
 	tests := []struct {
 		name    string
@@ -28,13 +23,13 @@ func TestHandlers_PostBooking(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PostBooking(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PostBooking(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PostBooking(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PostBooking(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PostBooking(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PostBooking(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -42,11 +37,8 @@ func TestHandlers_PostBooking(t *testing.T) {
 
 func TestHandlers_PatchBooking(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PatchBookingRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PatchBookingRequest
 	}
 	tests := []struct {
 		name    string
@@ -59,13 +51,13 @@ func TestHandlers_PatchBooking(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PatchBooking(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PatchBooking(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PatchBooking(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PatchBooking(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PatchBooking(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PatchBooking(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -73,11 +65,8 @@ func TestHandlers_PatchBooking(t *testing.T) {
 
 func TestHandlers_GetBookings(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.GetBookingsRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.GetBookingsRequest
 	}
 	tests := []struct {
 		name    string
@@ -90,13 +79,13 @@ func TestHandlers_GetBookings(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.GetBookings(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.GetBookings(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.GetBookings(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.GetBookings(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.GetBookings(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.GetBookings(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -104,11 +93,8 @@ func TestHandlers_GetBookings(t *testing.T) {
 
 func TestHandlers_GetBookingById(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.GetBookingByIdRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.GetBookingByIdRequest
 	}
 	tests := []struct {
 		name    string
@@ -121,13 +107,13 @@ func TestHandlers_GetBookingById(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.GetBookingById(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.GetBookingById(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.GetBookingById(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.GetBookingById(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.GetBookingById(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.GetBookingById(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -135,11 +121,8 @@ func TestHandlers_GetBookingById(t *testing.T) {
 
 func TestHandlers_GetBookingFiles(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.GetBookingFilesRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.GetBookingFilesRequest
 	}
 	tests := []struct {
 		name    string
@@ -152,13 +135,13 @@ func TestHandlers_GetBookingFiles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.GetBookingFiles(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.GetBookingFiles(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.GetBookingFiles(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.GetBookingFiles(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.GetBookingFiles(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.GetBookingFiles(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -166,11 +149,8 @@ func TestHandlers_GetBookingFiles(t *testing.T) {
 
 func TestHandlers_PatchBookingRating(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PatchBookingRatingRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PatchBookingRatingRequest
 	}
 	tests := []struct {
 		name    string
@@ -183,13 +163,13 @@ func TestHandlers_PatchBookingRating(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PatchBookingRating(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PatchBookingRating(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PatchBookingRating(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PatchBookingRating(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PatchBookingRating(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PatchBookingRating(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -197,11 +177,8 @@ func TestHandlers_PatchBookingRating(t *testing.T) {
 
 func TestHandlers_DeleteBooking(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.DeleteBookingRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.DeleteBookingRequest
 	}
 	tests := []struct {
 		name    string
@@ -214,13 +191,13 @@ func TestHandlers_DeleteBooking(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.DeleteBooking(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.DeleteBooking(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.DeleteBooking(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.DeleteBooking(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.DeleteBooking(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.DeleteBooking(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -228,11 +205,8 @@ func TestHandlers_DeleteBooking(t *testing.T) {
 
 func TestHandlers_DisableBooking(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.DisableBookingRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.DisableBookingRequest
 	}
 	tests := []struct {
 		name    string
@@ -245,13 +219,13 @@ func TestHandlers_DisableBooking(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.DisableBooking(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.DisableBooking(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.DisableBooking(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.DisableBooking(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.DisableBooking(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.DisableBooking(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}

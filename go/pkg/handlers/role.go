@@ -1,17 +1,15 @@
 package handlers
 
 import (
-	"net/http"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *types.PostRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostRoleResponse, error) {
+func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.PostRoleResponse, error) {
 	var role types.IRole
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.roles (name, created_sub)
 			SELECT * FROM input_rows
@@ -30,36 +28,36 @@ func (h *Handlers) PostRole(w http.ResponseWriter, req *http.Request, data *type
 	}
 
 	var userId string
-	err = tx.QueryRow(req.Context(), `
+	err = info.Tx.QueryRow(info.Req.Context(), `
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
-	`, session.UserSub).Scan(&userId)
+	`, info.Session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = tx.Exec(req.Context(), `
+	_, err = info.Tx.Exec(info.Req.Context(), `
 		INSERT INTO dbtable_schema.user_roles (user_id, role_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (user_id, role_id) DO NOTHING
-	`, userId, role.Id, session.UserSub)
+	`, userId, role.Id, info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
 
 	return &types.PostRoleResponse{Id: role.Id}, nil
 }
 
-func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *types.GetRolesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetRolesResponse, error) {
+func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.GetRolesResponse, error) {
 	var roles []*types.IRole
-	err := h.Database.QueryRows(req.Context(), tx, &roles, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &roles, `
 		SELECT eur.id, er.name, eur."createdOn" 
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = eur."userId"
 		WHERE eu.sub = $1
-	`, session.UserSub)
+	`, info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -67,9 +65,9 @@ func (h *Handlers) GetRoles(w http.ResponseWriter, req *http.Request, data *type
 	return &types.GetRolesResponse{Roles: roles}, nil
 }
 
-func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *types.GetRoleByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetRoleByIdResponse, error) {
+func (h *Handlers) GetRoleById(info ReqInfo, data *types.GetRoleByIdRequest) (*types.GetRoleByIdResponse, error) {
 	var role types.IRole
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT * FROM dbview_schema.enabled_roles
 		WHERE id = $1
 	`, data.GetId()).Scan(&role.Id, &role.Name)
@@ -80,11 +78,11 @@ func (h *Handlers) GetRoleById(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetRoleByIdResponse{Role: &role}, nil
 }
 
-func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *types.DeleteRoleRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteRoleResponse, error) {
+func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*types.DeleteRoleResponse, error) {
 	var userId string
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
-	`, session.UserSub).Scan(&userId)
+	`, info.Session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -92,7 +90,7 @@ func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *ty
 	ids := data.GetIds()
 	for _, id := range strings.Split(ids, ",") {
 		if id != "" {
-			_, err = tx.Exec(req.Context(), `
+			_, err = info.Tx.Exec(info.Req.Context(), `
 				DELETE FROM dbtable_schema.user_roles
 				WHERE role_id = $1 AND user_id = $2
 			`, id, userId)
@@ -102,7 +100,7 @@ func (h *Handlers) DeleteRole(w http.ResponseWriter, req *http.Request, data *ty
 		}
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
 
 	return &types.DeleteRoleResponse{Success: true}, nil
 }

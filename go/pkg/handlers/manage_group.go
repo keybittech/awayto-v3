@@ -2,25 +2,23 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, data *types.PostManageGroupsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostManageGroupsResponse, error) {
+func (h *Handlers) PostManageGroups(info ReqInfo, data *types.PostManageGroupsRequest) (*types.PostManageGroupsResponse, error) {
 	var group types.IGroup
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		INSERT INTO dbtable_schema.groups (name, created_on, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id, name
-	`, data.GetName(), time.Now().Local().UTC(), session.UserSub).Scan(&group.Id, &group.Name)
+	`, data.GetName(), time.Now().Local().UTC(), info.Session.UserSub).Scan(&group.Id, &group.Name)
 	if err != nil {
 		var sqlErr *pq.Error
 		if errors.As(err, &sqlErr) && sqlErr.Constraint == "unique_group_owner" {
@@ -30,11 +28,11 @@ func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, da
 	}
 
 	for _, roleId := range data.GetRoles() {
-		_, err := tx.Exec(req.Context(), `
+		_, err := info.Tx.Exec(info.Req.Context(), `
 			INSERT INTO dbtable_schema.uuid_roles (parent_uuid, role_id, created_on, created_sub)
 			VALUES ($1, $2, $3, $4::uuid)
 			ON CONFLICT (parent_uuid, role_id) DO NOTHING
-		`, group.GetId(), roleId, time.Now().Local().UTC(), session.UserSub)
+		`, group.GetId(), roleId, time.Now().Local().UTC(), info.Session.UserSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -43,16 +41,16 @@ func (h *Handlers) PostManageGroups(w http.ResponseWriter, req *http.Request, da
 	return &types.PostManageGroupsResponse{Id: group.GetId(), Name: group.GetName(), Roles: data.GetRoles()}, nil
 }
 
-func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, data *types.PatchManageGroupsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchManageGroupsResponse, error) {
+func (h *Handlers) PatchManageGroups(info ReqInfo, data *types.PatchManageGroupsRequest) (*types.PatchManageGroupsResponse, error) {
 	var group types.IGroup
 
 	// Perform the update operation
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		UPDATE dbtable_schema.groups
 		SET name = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
 		RETURNING id, name
-	`, data.GetId(), data.GetName(), session.UserSub, time.Now().Local().UTC()).Scan(&group.Id, &group.Name)
+	`, data.GetId(), data.GetName(), info.Session.UserSub, time.Now().Local().UTC()).Scan(&group.Id, &group.Name)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -61,7 +59,7 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	existingRoleIDs := make(map[string]struct{})
 	dbRoles := []*types.IGroupRole{}
 
-	err = h.Database.QueryRows(req.Context(), tx, &dbRoles, `
+	err = h.Database.QueryRows(info.Req.Context(), info.Tx, &dbRoles, `
 		SELECT id, role_id as "roleId" FROM uuid_roles WHERE parent_uuid = $1
 	`, group.GetId())
 	if err != nil {
@@ -75,7 +73,7 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	// Deleting unneeded roles
 	for _, role := range dbRoles {
 		if _, exists := data.GetRoles()[role.GetRoleId()]; !exists {
-			_, err = tx.Exec(req.Context(), `DELETE FROM uuid_roles WHERE id = $1`, role.GetId())
+			_, err = info.Tx.Exec(info.Req.Context(), `DELETE FROM uuid_roles WHERE id = $1`, role.GetId())
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -85,11 +83,11 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	// Inserting new roles
 	for roleId := range data.GetRoles() {
 		if _, exists := existingRoleIDs[roleId]; !exists {
-			_, err := tx.Exec(req.Context(), `
+			_, err := info.Tx.Exec(info.Req.Context(), `
 				INSERT INTO dbtable_schema.uuid_roles (parent_uuid, role_id, created_on, created_sub)
 				VALUES ($1, $2, $3, $4::uuid)
 				ON CONFLICT (parent_uuid, role_id) DO NOTHING
-			`, group.Id, roleId, time.Now().Local().UTC(), session.UserSub)
+			`, group.Id, roleId, time.Now().Local().UTC(), info.Session.UserSub)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -99,10 +97,10 @@ func (h *Handlers) PatchManageGroups(w http.ResponseWriter, req *http.Request, d
 	return &types.PatchManageGroupsResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, data *types.GetManageGroupsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetManageGroupsResponse, error) {
+func (h *Handlers) GetManageGroups(info ReqInfo, data *types.GetManageGroupsRequest) (*types.GetManageGroupsResponse, error) {
 	groups := []*types.IGroup{}
 
-	err := h.Database.QueryRows(req.Context(), tx, &groups, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groups, `
 		SELECT * FROM dbview_schema.enabled_groups_ext
 	`)
 	if err != nil {
@@ -112,9 +110,9 @@ func (h *Handlers) GetManageGroups(w http.ResponseWriter, req *http.Request, dat
 	return &types.GetManageGroupsResponse{Groups: groups}, nil
 }
 
-func (h *Handlers) DeleteManageGroups(w http.ResponseWriter, req *http.Request, data *types.DeleteManageGroupsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteManageGroupsResponse, error) {
+func (h *Handlers) DeleteManageGroups(info ReqInfo, data *types.DeleteManageGroupsRequest) (*types.DeleteManageGroupsResponse, error) {
 	for _, id := range strings.Split(data.GetIds(), ",") {
-		_, err := tx.Exec(req.Context(), `
+		_, err := info.Tx.Exec(info.Req.Context(), `
 			DELETE FROM dbtable_schema.groups
 			WHERE id = $1
 		`, id)

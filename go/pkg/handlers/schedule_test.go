@@ -2,21 +2,16 @@ package handlers
 
 import (
 	"context"
-	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func TestHandlers_PostSchedule(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PostScheduleRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PostScheduleRequest
 	}
 	tests := []struct {
 		name    string
@@ -29,13 +24,13 @@ func TestHandlers_PostSchedule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PostSchedule(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PostSchedule(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PostSchedule(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PostSchedule(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PostSchedule(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PostSchedule(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -43,11 +38,8 @@ func TestHandlers_PostSchedule(t *testing.T) {
 
 func TestHandlers_PostScheduleBrackets(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PostScheduleBracketsRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PostScheduleBracketsRequest
 	}
 	tests := []struct {
 		name    string
@@ -60,13 +52,13 @@ func TestHandlers_PostScheduleBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PostScheduleBrackets(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PostScheduleBrackets(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PostScheduleBrackets(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PostScheduleBrackets(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PostScheduleBrackets(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PostScheduleBrackets(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -74,11 +66,8 @@ func TestHandlers_PostScheduleBrackets(t *testing.T) {
 
 func TestHandlers_PatchSchedule(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PatchScheduleRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PatchScheduleRequest
 	}
 	tests := []struct {
 		name    string
@@ -91,13 +80,13 @@ func TestHandlers_PatchSchedule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PatchSchedule(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PatchSchedule(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PatchSchedule(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PatchSchedule(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PatchSchedule(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PatchSchedule(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -105,11 +94,8 @@ func TestHandlers_PatchSchedule(t *testing.T) {
 
 func TestHandlers_GetSchedules(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.GetSchedulesRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.GetSchedulesRequest
 	}
 	tests := []struct {
 		name    string
@@ -122,13 +108,13 @@ func TestHandlers_GetSchedules(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.GetSchedules(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.GetSchedules(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.GetSchedules(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.GetSchedules(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.GetSchedules(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.GetSchedules(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -136,11 +122,8 @@ func TestHandlers_GetSchedules(t *testing.T) {
 
 func TestHandlers_GetScheduleById(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.GetScheduleByIdRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.GetScheduleByIdRequest
 	}
 	tests := []struct {
 		name    string
@@ -153,13 +136,13 @@ func TestHandlers_GetScheduleById(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.GetScheduleById(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.GetScheduleById(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.GetScheduleById(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.GetScheduleById(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.GetScheduleById(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.GetScheduleById(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -167,11 +150,8 @@ func TestHandlers_GetScheduleById(t *testing.T) {
 
 func TestHandlers_DeleteSchedule(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.DeleteScheduleRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.DeleteScheduleRequest
 	}
 	tests := []struct {
 		name    string
@@ -184,13 +164,13 @@ func TestHandlers_DeleteSchedule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.DeleteSchedule(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.DeleteSchedule(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.DeleteSchedule(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.DeleteSchedule(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.DeleteSchedule(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.DeleteSchedule(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -198,11 +178,8 @@ func TestHandlers_DeleteSchedule(t *testing.T) {
 
 func TestHandlers_DisableSchedule(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.DisableScheduleRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.DisableScheduleRequest
 	}
 	tests := []struct {
 		name    string
@@ -215,13 +192,13 @@ func TestHandlers_DisableSchedule(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.DisableSchedule(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.DisableSchedule(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.DisableSchedule(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.DisableSchedule(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.DisableSchedule(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.DisableSchedule(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -232,8 +209,7 @@ func TestHandlers_HandleExistingBrackets(t *testing.T) {
 		ctx                context.Context
 		existingBracketIds []string
 		brackets           map[string]*types.IScheduleBracket
-		tx                 *clients.PoolTx
-		session            *types.UserSession
+		info               ReqInfo
 	}
 	tests := []struct {
 		name    string
@@ -245,8 +221,8 @@ func TestHandlers_HandleExistingBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.h.HandleExistingBrackets(tt.args.ctx, tt.args.existingBracketIds, tt.args.brackets, tt.args.tx, tt.args.session); (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.HandleExistingBrackets(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.existingBracketIds, tt.args.brackets, tt.args.tx, tt.args.session, err, tt.wantErr)
+			if err := tt.h.HandleExistingBrackets(tt.args.ctx, tt.args.existingBracketIds, tt.args.brackets, tt.args.info); (err != nil) != tt.wantErr {
+				t.Errorf("Handlers.HandleExistingBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.existingBracketIds, tt.args.brackets, tt.args.info, err, tt.wantErr)
 			}
 		})
 	}
@@ -257,8 +233,7 @@ func TestHandlers_InsertNewBrackets(t *testing.T) {
 		ctx         context.Context
 		scheduleId  string
 		newBrackets map[string]*types.IScheduleBracket
-		tx          *clients.PoolTx
-		session     *types.UserSession
+		info        ReqInfo
 	}
 	tests := []struct {
 		name    string
@@ -270,8 +245,8 @@ func TestHandlers_InsertNewBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.h.InsertNewBrackets(tt.args.ctx, tt.args.scheduleId, tt.args.newBrackets, tt.args.tx, tt.args.session); (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.InsertNewBrackets(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.scheduleId, tt.args.newBrackets, tt.args.tx, tt.args.session, err, tt.wantErr)
+			if err := tt.h.InsertNewBrackets(tt.args.ctx, tt.args.scheduleId, tt.args.newBrackets, tt.args.info); (err != nil) != tt.wantErr {
+				t.Errorf("Handlers.InsertNewBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.scheduleId, tt.args.newBrackets, tt.args.info, err, tt.wantErr)
 			}
 		})
 	}
@@ -282,7 +257,7 @@ func Test_handleDeletedBrackets(t *testing.T) {
 		ctx                context.Context
 		scheduleId         string
 		existingBracketIds []string
-		tx                 *clients.PoolTx
+		info               ReqInfo
 	}
 	tests := []struct {
 		name    string
@@ -293,8 +268,8 @@ func Test_handleDeletedBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := handleDeletedBrackets(tt.args.ctx, tt.args.scheduleId, tt.args.existingBracketIds, tt.args.tx); (err != nil) != tt.wantErr {
-				t.Errorf("handleDeletedBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.scheduleId, tt.args.existingBracketIds, tt.args.tx, err, tt.wantErr)
+			if err := handleDeletedBrackets(tt.args.ctx, tt.args.scheduleId, tt.args.existingBracketIds, tt.args.info); (err != nil) != tt.wantErr {
+				t.Errorf("handleDeletedBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.scheduleId, tt.args.existingBracketIds, tt.args.info, err, tt.wantErr)
 			}
 		})
 	}
@@ -305,7 +280,7 @@ func Test_disableAndDeleteBrackets(t *testing.T) {
 		ctx               context.Context
 		bracketsToDisable []string
 		bracketsToDelete  []string
-		tx                *clients.PoolTx
+		info              ReqInfo
 	}
 	tests := []struct {
 		name    string
@@ -316,8 +291,8 @@ func Test_disableAndDeleteBrackets(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := disableAndDeleteBrackets(tt.args.ctx, tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.tx); (err != nil) != tt.wantErr {
-				t.Errorf("disableAndDeleteBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.tx, err, tt.wantErr)
+			if err := disableAndDeleteBrackets(tt.args.ctx, tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.info); (err != nil) != tt.wantErr {
+				t.Errorf("disableAndDeleteBrackets(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.bracketsToDisable, tt.args.bracketsToDelete, tt.args.info, err, tt.wantErr)
 			}
 		})
 	}

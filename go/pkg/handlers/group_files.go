@@ -2,22 +2,20 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data *types.PostGroupFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostGroupFileResponse, error) {
+func (h *Handlers) PostGroupFile(info ReqInfo, data *types.PostGroupFileRequest) (*types.PostGroupFileResponse, error) {
 	var groupFileId string
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		INSERT INTO dbtable_schema.group_files (group_id, file_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
-	`, session.GroupId, data.GetFileId(), time.Now().Local().UTC(), session.UserSub).Scan(&groupFileId)
+	`, info.Session.GroupId, data.GetFileId(), time.Now().Local().UTC(), info.Session.UserSub).Scan(&groupFileId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -29,12 +27,12 @@ func (h *Handlers) PostGroupFile(w http.ResponseWriter, req *http.Request, data 
 	return &types.PostGroupFileResponse{Id: groupFileId}, nil
 }
 
-func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data *types.PatchGroupFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchGroupFileResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) PatchGroupFile(info ReqInfo, data *types.PatchGroupFileRequest) (*types.PatchGroupFileResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.group_files
 		SET group_id = $2, file_id = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
-	`, data.GetId(), session.GroupId, data.GetFileId(), session.UserSub, time.Now().Local().UTC())
+	`, data.GetId(), info.Session.GroupId, data.GetFileId(), info.Session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -42,13 +40,13 @@ func (h *Handlers) PatchGroupFile(w http.ResponseWriter, req *http.Request, data
 	return &types.PatchGroupFileResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data *types.GetGroupFilesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFilesResponse, error) {
+func (h *Handlers) GetGroupFiles(info ReqInfo, data *types.GetGroupFilesRequest) (*types.GetGroupFilesResponse, error) {
 	var groupFiles []*types.IGroupFile
 
-	err := h.Database.QueryRows(req.Context(), tx, &groupFiles, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupFiles, `
 		SELECT * FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1
-	`, session.GroupId)
+	`, info.Session.GroupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -56,13 +54,13 @@ func (h *Handlers) GetGroupFiles(w http.ResponseWriter, req *http.Request, data 
 	return &types.GetGroupFilesResponse{Files: groupFiles}, nil
 }
 
-func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, data *types.GetGroupFileByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetGroupFileByIdResponse, error) {
+func (h *Handlers) GetGroupFileById(info ReqInfo, data *types.GetGroupFileByIdRequest) (*types.GetGroupFileByIdResponse, error) {
 	var groupFiles []*types.IGroupFile
 
-	err := h.Database.QueryRows(req.Context(), tx, &groupFiles, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupFiles, `
 		SELECT * FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1 AND id = $2
-	`, session.GroupId, data.GetId())
+	`, info.Session.GroupId, data.GetId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -70,8 +68,8 @@ func (h *Handlers) GetGroupFileById(w http.ResponseWriter, req *http.Request, da
 	return &types.GetGroupFileByIdResponse{File: groupFiles[0]}, nil
 }
 
-func (h *Handlers) DeleteGroupFile(w http.ResponseWriter, req *http.Request, data *types.DeleteGroupFileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteGroupFileResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DeleteGroupFile(info ReqInfo, data *types.DeleteGroupFileRequest) (*types.DeleteGroupFileResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		DELETE FROM dbtable_schema.group_files
 		WHERE id = $1
 	`, data.GetId())

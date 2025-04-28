@@ -2,22 +2,20 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostServiceTier(w http.ResponseWriter, req *http.Request, data *types.PostServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostServiceTierResponse, error) {
+func (h *Handlers) PostServiceTier(info ReqInfo, data *types.PostServiceTierRequest) (*types.PostServiceTierResponse, error) {
 	var serviceTierId string
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		INSERT INTO dbtable_schema.service_tiers (name, serviceId, multiplier, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
-	`, data.GetName(), data.GetServiceId(), data.GetMultiplier(), session.UserSub).Scan(&serviceTierId)
+	`, data.GetName(), data.GetServiceId(), data.GetMultiplier(), info.Session.UserSub).Scan(&serviceTierId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -29,14 +27,14 @@ func (h *Handlers) PostServiceTier(w http.ResponseWriter, req *http.Request, dat
 	return &types.PostServiceTierResponse{Id: serviceTierId}, nil
 }
 
-func (h *Handlers) PatchServiceTier(w http.ResponseWriter, req *http.Request, data *types.PatchServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchServiceTierResponse, error) {
+func (h *Handlers) PatchServiceTier(info ReqInfo, data *types.PatchServiceTierRequest) (*types.PatchServiceTierResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(req.Context(), tx, &serviceTiers, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &serviceTiers, `
 		UPDATE dbtable_schema.service_tiers
 		SET name = $2, multiplier = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
-	`, data.GetId(), data.GetName(), data.GetMultiplier(), session.UserSub, time.Now().Local().UTC())
+	`, data.GetId(), data.GetName(), data.GetMultiplier(), info.Session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -44,10 +42,10 @@ func (h *Handlers) PatchServiceTier(w http.ResponseWriter, req *http.Request, da
 	return &types.PatchServiceTierResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetServiceTiers(w http.ResponseWriter, req *http.Request, data *types.GetServiceTiersRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceTiersResponse, error) {
+func (h *Handlers) GetServiceTiers(info ReqInfo, data *types.GetServiceTiersRequest) (*types.GetServiceTiersResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(req.Context(), tx, &serviceTiers, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers
 	`)
 	if err != nil {
@@ -57,10 +55,10 @@ func (h *Handlers) GetServiceTiers(w http.ResponseWriter, req *http.Request, dat
 	return &types.GetServiceTiersResponse{ServiceTiers: serviceTiers}, nil
 }
 
-func (h *Handlers) GetServiceTierById(w http.ResponseWriter, req *http.Request, data *types.GetServiceTierByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceTierByIdResponse, error) {
+func (h *Handlers) GetServiceTierById(info ReqInfo, data *types.GetServiceTierByIdRequest) (*types.GetServiceTierByIdResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(req.Context(), tx, &serviceTiers, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -77,8 +75,8 @@ func (h *Handlers) GetServiceTierById(w http.ResponseWriter, req *http.Request, 
 	return &types.GetServiceTierByIdResponse{ServiceTier: serviceTier}, nil
 }
 
-func (h *Handlers) DeleteServiceTier(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteServiceTierResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DeleteServiceTier(info ReqInfo, data *types.DeleteServiceTierRequest) (*types.DeleteServiceTierResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		DELETE FROM dbtable_schema.service_tiers
 		WHERE id = $1
 	`, data.GetId())
@@ -89,12 +87,12 @@ func (h *Handlers) DeleteServiceTier(w http.ResponseWriter, req *http.Request, d
 	return &types.DeleteServiceTierResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableServiceTier(w http.ResponseWriter, req *http.Request, data *types.DisableServiceTierRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableServiceTierResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DisableServiceTier(info ReqInfo, data *types.DisableServiceTierRequest) (*types.DisableServiceTierResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), session.UserSub)
+	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

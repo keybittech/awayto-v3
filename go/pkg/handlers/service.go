@@ -2,32 +2,30 @@ package handlers
 
 import (
 	"encoding/json"
-	"net/http"
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"github.com/lib/pq"
 )
 
-func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *types.PostServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostServiceResponse, error) {
+func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*types.PostServiceResponse, error) {
 	service := data.GetService()
 
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		INSERT INTO dbtable_schema.services (name, cost, form_id, survey_id, created_sub)
 		VALUES ($1, $2::integer, $3, $4, $5::uuid)
 		ON CONFLICT (name, created_sub) DO UPDATE
 		SET enabled = true, cost = $2::integer, form_id = $3, survey_id = $4
 		RETURNING id
-	`, service.GetName(), service.Cost, service.FormId, service.SurveyId, session.UserSub).Scan(&service.Id)
+	`, service.GetName(), service.Cost, service.FormId, service.SurveyId, info.Session.UserSub).Scan(&service.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = h.PatchService(w, req, &types.PatchServiceRequest{Service: service}, session, tx)
+	_, err = h.PatchService(info, &types.PatchServiceRequest{Service: service})
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -35,7 +33,7 @@ func (h *Handlers) PostService(w http.ResponseWriter, req *http.Request, data *t
 	return &types.PostServiceResponse{Id: service.Id}, nil
 }
 
-func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *types.PatchServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchServiceResponse, error) {
+func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (*types.PatchServiceResponse, error) {
 	service := data.GetService()
 
 	// insert new tiers, re-enabling if conflicting
@@ -43,7 +41,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	for _, tier := range service.GetTiers() {
 		var tierId string
 
-		err := tx.QueryRow(req.Context(), `
+		err := info.Tx.QueryRow(info.Req.Context(), `
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
 				SELECT * FROM input_rows
@@ -57,7 +55,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 			SELECT st.id
 			FROM input_rows
 			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), service.Id, tier.GetMultiplier(), tier.FormId, tier.SurveyId, session.UserSub, time.Now()).Scan(&tierId)
+		`, tier.GetName(), service.Id, tier.GetMultiplier(), tier.FormId, tier.SurveyId, info.Session.UserSub, time.Now()).Scan(&tierId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -67,12 +65,12 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		// insert new tier addons, enabling on conflict
 		insertedTierAddonIds := make([]string, 0)
 		for _, addon := range tier.GetAddons() {
-			_, err = tx.Exec(req.Context(), `
+			_, err = info.Tx.Exec(info.Req.Context(), `
 				INSERT INTO dbtable_schema.service_tier_addons (service_addon_id, service_tier_id, created_sub)
 				VALUES ($1, $2, $3::uuid)
 				ON CONFLICT (service_addon_id, service_tier_id) DO UPDATE
 				SET enabled = true
-			`, addon.GetId(), tierId, session.UserSub)
+			`, addon.GetId(), tierId, info.Session.UserSub)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -80,7 +78,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 		}
 
 		// delete old addons, never referenced beyond the tier
-		_, err = tx.Exec(req.Context(), `
+		_, err = info.Tx.Exec(info.Req.Context(), `
 			DELETE FROM dbtable_schema.service_tier_addons
 			WHERE service_addon_id IN (
 				SELECT service_addon_id
@@ -96,7 +94,7 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 
 	// disable tiers that were not inserted or re-enabled
 	// may be referenced by a quote, which must show accurate info at the time of the request
-	_, err := tx.Exec(req.Context(), `
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false
 		WHERE id IN (
@@ -111,27 +109,27 @@ func (h *Handlers) PatchService(w http.ResponseWriter, req *http.Request, data *
 	}
 
 	// update service
-	_, err = tx.Exec(req.Context(), `
+	_, err = info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.services
 		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, session.UserSub, time.Now())
+	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, info.Session.UserSub, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"service/"+service.Id)
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service/"+service.Id)
 
 	return &types.PatchServiceResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *types.GetServicesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServicesResponse, error) {
+func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*types.GetServicesResponse, error) {
 	var services []*types.IService
 
-	err := h.Database.QueryRows(req.Context(), tx, &services, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &services, `
 		SELECT * FROM dbtable_schema.services
 		WHERE created_sub = $1
-	`, session.UserSub)
+	`, info.Session.UserSub)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -140,11 +138,11 @@ func (h *Handlers) GetServices(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetServicesResponse{Services: services}, nil
 }
 
-func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data *types.GetServiceByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetServiceByIdResponse, error) {
+func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdRequest) (*types.GetServiceByIdResponse, error) {
 	service := &types.IService{}
 
 	var tierBytes []byte
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT id, name, "formId", "surveyId", "createdOn"::TEXT, tiers
 		FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
@@ -164,10 +162,10 @@ func (h *Handlers) GetServiceById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetServiceByIdResponse{Service: service}, nil
 }
 
-func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data *types.DeleteServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteServiceResponse, error) {
+func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest) (*types.DeleteServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := tx.Exec(req.Context(), `
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		DELETE FROM dbtable_schema.services
 		WHERE id = ANY($1)
 	`, pq.Array(serviceIds))
@@ -176,31 +174,31 @@ func (h *Handlers) DeleteService(w http.ResponseWriter, req *http.Request, data 
 	}
 
 	for _, serviceId := range serviceIds {
-		h.Redis.Client().Del(req.Context(), session.UserSub+"service/"+serviceId)
+		h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service/"+serviceId)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"service")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service")
 
 	return &types.DeleteServiceResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableService(w http.ResponseWriter, req *http.Request, data *types.DisableServiceRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableServiceResponse, error) {
+func (h *Handlers) DisableService(info ReqInfo, data *types.DisableServiceRequest) (*types.DisableServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := tx.Exec(req.Context(), `
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.services
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = ANY($1)
-	`, pq.Array(serviceIds), time.Now(), session.UserSub)
+	`, pq.Array(serviceIds), time.Now(), info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	for _, serviceId := range serviceIds {
-		h.Redis.Client().Del(req.Context(), session.UserSub+"service/"+serviceId)
+		h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service/"+serviceId)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"service")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service")
 
 	return &types.DisableServiceResponse{Success: true}, nil
 }

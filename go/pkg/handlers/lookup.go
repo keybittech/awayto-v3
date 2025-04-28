@@ -1,33 +1,30 @@
 package handlers
 
 import (
-	"net/http"
-
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) GetLookups(w http.ResponseWriter, req *http.Request, data *types.GetLookupsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetLookupsResponse, error) {
+func (h *Handlers) GetLookups(info ReqInfo, data *types.GetLookupsRequest) (*types.GetLookupsResponse, error) {
 	var budgets []*types.ILookup
 	var timelines []*types.ILookup
 	var timeUnits []*types.ITimeUnit
 
-	err := h.Database.QueryRows(req.Context(), tx, &budgets, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &budgets, `
 		SELECT id, name FROM dbtable_schema.budgets
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.QueryRows(req.Context(), tx, &timelines, `
+	err = h.Database.QueryRows(info.Req.Context(), info.Tx, &timelines, `
 		SELECT id, name FROM dbtable_schema.timelines
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.QueryRows(req.Context(), tx, &timeUnits, `
+	err = h.Database.QueryRows(info.Req.Context(), info.Tx, &timeUnits, `
 		SELECT id, name FROM dbtable_schema.time_units
 	`)
 	if err != nil {

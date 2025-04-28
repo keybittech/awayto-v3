@@ -2,19 +2,17 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostUserProfile(w http.ResponseWriter, req *http.Request, data *types.PostUserProfileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostUserProfileResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) PostUserProfile(info ReqInfo, data *types.PostUserProfileRequest) (*types.PostUserProfileResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_on, created_sub, ip_address, timezone)
 		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid, $9, $10)
-	`, session.UserSub, data.GetUsername(), data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC(), session.UserSub, session.AnonIp, session.Timezone)
+	`, info.Session.UserSub, data.GetUsername(), data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC(), info.Session.UserSub, info.Session.AnonIp, info.Session.Timezone)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -23,34 +21,34 @@ func (h *Handlers) PostUserProfile(w http.ResponseWriter, req *http.Request, dat
 	return &types.PostUserProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) PatchUserProfile(w http.ResponseWriter, req *http.Request, data *types.PatchUserProfileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchUserProfileResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRequest) (*types.PatchUserProfileResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.users
 		SET first_name = $2, last_name = $3, email = $4, image = $5, updated_sub = $1, updated_on = $6
 		WHERE sub = $1
-	`, session.UserSub, data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC())
+	`, info.Session.UserSub, data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.UpdateUser(session.UserSub, session.UserSub, data.GetFirstName(), data.GetLastName())
+	err = h.Keycloak.UpdateUser(info.Session.UserSub, info.Session.UserSub, data.GetFirstName(), data.GetLastName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
 
 	return &types.PatchUserProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetUserProfileDetailsResponse, error) {
+func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfileDetailsRequest) (*types.GetUserProfileDetailsResponse, error) {
 	var userProfiles []*types.IUserProfile
 
-	err := h.Database.QueryRows(req.Context(), tx, &userProfiles, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &userProfiles, `
 		SELECT * 
 		FROM dbview_schema.enabled_users_ext
 		WHERE sub = $1
-	`, session.UserSub)
+	`, info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -65,7 +63,7 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 	for _, group := range userProfile.Groups {
 		var groups []*types.IGroup
 
-		err := h.Database.QueryRows(req.Context(), tx, &groups, `
+		err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groups, `
 			SELECT *
 			FROM dbview_schema.enabled_groups_ext
 			WHERE id = $1
@@ -80,7 +78,7 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 		}
 
 		groups[0].Ldr = group.Ldr
-		groups[0].Active = groups[0].Id == session.GroupId
+		groups[0].Active = groups[0].Id == info.Session.GroupId
 		extendedGroups[group.GetId()] = groups[0]
 	}
 
@@ -88,24 +86,24 @@ func (h *Handlers) GetUserProfileDetails(w http.ResponseWriter, req *http.Reques
 		userProfile.Groups = extendedGroups
 	}
 
-	roleBits := session.RoleBits
+	roleBits := info.Session.RoleBits
 	userProfile.RoleBits = roleBits
 
-	roleName := session.RoleName
+	roleName := info.Session.RoleName
 	userProfile.RoleName = roleName
 
 	// Try to send a request if the user has an active socket connection
 	// but no need to catch errors as they may not yet have a connection
-	h.Socket.RoleCall(session.UserSub)
+	h.Socket.RoleCall(info.Session.UserSub)
 
 	return &types.GetUserProfileDetailsResponse{UserProfile: userProfile}, nil
 }
 
-func (h *Handlers) GetUserProfileDetailsBySub(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsBySubRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetUserProfileDetailsBySubResponse, error) {
+func (h *Handlers) GetUserProfileDetailsBySub(info ReqInfo, data *types.GetUserProfileDetailsBySubRequest) (*types.GetUserProfileDetailsBySubResponse, error) {
 
 	var userProfiles []*types.IUserProfile
 
-	err := h.Database.QueryRows(req.Context(), tx, &userProfiles, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &userProfiles, `
     SELECT * FROM dbview_schema.enabled_users
     WHERE sub = $1 
 	`, data.GetSub())
@@ -122,10 +120,10 @@ func (h *Handlers) GetUserProfileDetailsBySub(w http.ResponseWriter, req *http.R
 	return &types.GetUserProfileDetailsBySubResponse{UserProfile: userProfile}, nil
 }
 
-func (h *Handlers) GetUserProfileDetailsById(w http.ResponseWriter, req *http.Request, data *types.GetUserProfileDetailsByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetUserProfileDetailsByIdResponse, error) {
+func (h *Handlers) GetUserProfileDetailsById(info ReqInfo, data *types.GetUserProfileDetailsByIdRequest) (*types.GetUserProfileDetailsByIdResponse, error) {
 	var userProfiles []*types.IUserProfile
 
-	err := h.Database.QueryRows(req.Context(), tx, &userProfiles, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &userProfiles, `
     SELECT * FROM dbview_schema.enabled_users
     WHERE id = $1 
 	`, data.GetId())
@@ -143,12 +141,12 @@ func (h *Handlers) GetUserProfileDetailsById(w http.ResponseWriter, req *http.Re
 	return &types.GetUserProfileDetailsByIdResponse{UserProfile: userProfile}, nil
 }
 
-func (h *Handlers) DisableUserProfile(w http.ResponseWriter, req *http.Request, data *types.DisableUserProfileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableUserProfileResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DisableUserProfile(info ReqInfo, data *types.DisableUserProfileRequest) (*types.DisableUserProfileResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.users
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), session.UserSub)
+	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -156,28 +154,28 @@ func (h *Handlers) DisableUserProfile(w http.ResponseWriter, req *http.Request, 
 	return &types.DisableUserProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) ActivateProfile(w http.ResponseWriter, req *http.Request, data *types.ActivateProfileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.ActivateProfileResponse, error) {
+func (h *Handlers) ActivateProfile(info ReqInfo, data *types.ActivateProfileRequest) (*types.ActivateProfileResponse, error) {
 
-	_, err := tx.Exec(req.Context(), `
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.users
 		SET active = true, updated_on = $2, updated_sub = $1
 		WHERE sub = $1
-	`, session.UserSub, time.Now().Local().UTC())
+	`, info.Session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.DeleteSession(req.Context(), session.UserSub)
+	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
 
 	return &types.ActivateProfileResponse{Success: true}, nil
 }
 
-func (h *Handlers) DeactivateProfile(w http.ResponseWriter, req *http.Request, data *types.DeactivateProfileRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeactivateProfileResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DeactivateProfile(info ReqInfo, data *types.DeactivateProfileRequest) (*types.DeactivateProfileResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.users
 		SET active = false, updated_on = $2, updated_sub = $1
 		WHERE sub = $1
-	`, session.UserSub, time.Now().Local().UTC())
+	`, info.Session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

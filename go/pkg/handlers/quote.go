@@ -2,18 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
-	"net/http"
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *types.PostQuoteRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostQuoteResponse, error) {
+func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types.PostQuoteResponse, error) {
 	var slotReserved bool
-	err := tx.QueryRow(req.Context(), `
+	err := info.Tx.QueryRow(info.Req.Context(), `
 		SELECT dbfunc_schema.is_slot_taken($1, $2)
 	`, data.ScheduleBracketSlotId, data.SlotDate).Scan(&slotReserved)
 	if err != nil {
@@ -33,11 +31,11 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 				return nil, util.ErrCheck(err)
 			}
 
-			err = tx.QueryRow(req.Context(), `
+			err = info.Tx.QueryRow(info.Req.Context(), `
 				INSERT INTO dbtable_schema.form_version_submissions (form_version_id, submission, created_sub)
 				VALUES ($1, $2::jsonb, $3::uuid)
 				RETURNING id
-			`, form.GetFormVersionId(), formSubmission, session.UserSub).Scan(&form.Id)
+			`, form.GetFormVersionId(), formSubmission, info.Session.UserSub).Scan(&form.Id)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -46,24 +44,24 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 
 	var quoteId string
 
-	err = tx.QueryRow(req.Context(), `
+	err = info.Tx.QueryRow(info.Req.Context(), `
 		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub, group_id)
 		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7::uuid)
 		RETURNING id
-	`, data.SlotDate, data.ScheduleBracketSlotId, data.ServiceTierId, util.NewNullString(serviceForm.Id), util.NewNullString(tierForm.Id), session.UserSub, session.GroupId).Scan(&quoteId)
+	`, data.SlotDate, data.ScheduleBracketSlotId, data.ServiceTierId, util.NewNullString(serviceForm.Id), util.NewNullString(tierForm.Id), info.Session.UserSub, info.Session.GroupId).Scan(&quoteId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	for _, file := range data.GetFiles() {
-		fileRes, err := h.PostFile(w, req, &types.PostFileRequest{File: file}, session, tx)
+		fileRes, err := h.PostFile(info, &types.PostFileRequest{File: file})
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-		_, err = tx.Exec(req.Context(), `
+		_, err = info.Tx.Exec(info.Req.Context(), `
 			INSERT INTO dbtable_schema.quote_files (quote_id, file_id, created_sub)
 			VALUES ($1::uuid, $2::uuid, $3::uuid)
-		`, quoteId, fileRes.GetId(), session.UserSub)
+		`, quoteId, fileRes.GetId(), info.Session.UserSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -71,7 +69,7 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 
 	var staffSub string
 
-	err = tx.QueryRow(req.Context(), `
+	err = info.Tx.QueryRow(info.Req.Context(), `
 		SELECT created_sub
 		FROM dbtable_schema.schedule_bracket_slots
 		WHERE id = $1
@@ -81,8 +79,8 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(req.Context(), staffSub+"quotes")
-	h.Redis.Client().Del(req.Context(), staffSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), staffSub+"quotes")
+	h.Redis.Client().Del(info.Req.Context(), staffSub+"profile/details")
 
 	if err := h.Socket.RoleCall(staffSub); err != nil {
 		return nil, util.ErrCheck(err)
@@ -99,12 +97,12 @@ func (h *Handlers) PostQuote(w http.ResponseWriter, req *http.Request, data *typ
 	}, nil
 }
 
-func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *types.PatchQuoteRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchQuoteResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*types.PatchQuoteResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
       UPDATE dbtable_schema.quotes
       SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
       WHERE id = $1
-	`, data.GetId(), data.GetServiceTierId(), session.UserSub, time.Now().Local().UTC())
+	`, data.GetId(), data.GetServiceTierId(), info.Session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -112,14 +110,14 @@ func (h *Handlers) PatchQuote(w http.ResponseWriter, req *http.Request, data *ty
 	return &types.PatchQuoteResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *types.GetQuotesRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetQuotesResponse, error) {
+func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types.GetQuotesResponse, error) {
 	var quotes []*types.IQuote
-	err := h.Database.QueryRows(req.Context(), tx, &quotes, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &quotes, `
 		SELECT q.*
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q.schedule_bracket_slot_id
 		WHERE sbs.created_sub = $1
-	`, session.UserSub)
+	`, info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -127,10 +125,10 @@ func (h *Handlers) GetQuotes(w http.ResponseWriter, req *http.Request, data *typ
 	return &types.GetQuotesResponse{Quotes: quotes}, nil
 }
 
-func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *types.GetQuoteByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetQuoteByIdResponse, error) {
+func (h *Handlers) GetQuoteById(info ReqInfo, data *types.GetQuoteByIdRequest) (*types.GetQuoteByIdResponse, error) {
 	var quotes []*types.IQuote
 
-	err := h.Database.QueryRows(req.Context(), tx, &quotes, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &quotes, `
 		SELECT * FROM dbview_schema.enabled_quotes_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -141,8 +139,8 @@ func (h *Handlers) GetQuoteById(w http.ResponseWriter, req *http.Request, data *
 	return &types.GetQuoteByIdResponse{Quote: quotes[0]}, nil
 }
 
-func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *types.DeleteQuoteRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteQuoteResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DeleteQuote(info ReqInfo, data *types.DeleteQuoteRequest) (*types.DeleteQuoteResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		DELETE FROM dbtable_schema.quotes
 		WHERE id = $1
 	`, data.GetId())
@@ -153,22 +151,22 @@ func (h *Handlers) DeleteQuote(w http.ResponseWriter, req *http.Request, data *t
 	return &types.DeleteQuoteResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableQuote(w http.ResponseWriter, req *http.Request, data *types.DisableQuoteRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableQuoteResponse, error) {
+func (h *Handlers) DisableQuote(info ReqInfo, data *types.DisableQuoteRequest) (*types.DisableQuoteResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := tx.Exec(req.Context(), `
+		_, err := info.Tx.Exec(info.Req.Context(), `
 			UPDATE dbtable_schema.quotes
 			SET enabled = false, updated_on = $2, updated_sub = $3
 			WHERE id = $1
-		`, id, time.Now().Local().UTC(), session.UserSub)
+		`, id, time.Now().Local().UTC(), info.Session.UserSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	h.Redis.Client().Del(req.Context(), session.UserSub+"quotes")
-	h.Redis.Client().Del(req.Context(), session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"quotes")
+	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
 
 	return &types.DisableQuoteResponse{Success: true}, nil
 }

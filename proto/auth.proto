@@ -135,3 +135,7 @@ message OIDCToken {
   int64 notBeforePolicy = 6 [json_name = "not-before-policy"];
   string scope = 7;
 }
+
+message AuthWebhookResponse {
+  string value = 1;
+}

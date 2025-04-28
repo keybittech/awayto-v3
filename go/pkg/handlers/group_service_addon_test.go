@@ -1,21 +1,16 @@
 package handlers
 
 import (
-	"net/http"
 	"reflect"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func TestHandlers_PostGroupServiceAddon(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.PostGroupServiceAddonRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.PostGroupServiceAddonRequest
 	}
 	tests := []struct {
 		name    string
@@ -28,13 +23,13 @@ func TestHandlers_PostGroupServiceAddon(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.PostGroupServiceAddon(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.PostGroupServiceAddon(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.PostGroupServiceAddon(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.PostGroupServiceAddon(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.PostGroupServiceAddon(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.PostGroupServiceAddon(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -42,11 +37,8 @@ func TestHandlers_PostGroupServiceAddon(t *testing.T) {
 
 func TestHandlers_GetGroupServiceAddons(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.GetGroupServiceAddonsRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.GetGroupServiceAddonsRequest
 	}
 	tests := []struct {
 		name    string
@@ -59,13 +51,13 @@ func TestHandlers_GetGroupServiceAddons(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.GetGroupServiceAddons(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.GetGroupServiceAddons(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.GetGroupServiceAddons(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.GetGroupServiceAddons(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.GetGroupServiceAddons(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.GetGroupServiceAddons(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}
@@ -73,11 +65,8 @@ func TestHandlers_GetGroupServiceAddons(t *testing.T) {
 
 func TestHandlers_DeleteGroupServiceAddon(t *testing.T) {
 	type args struct {
-		w       http.ResponseWriter
-		req     *http.Request
-		data    *types.DeleteGroupServiceAddonRequest
-		session *types.UserSession
-		tx      *clients.PoolTx
+		info ReqInfo
+		data *types.DeleteGroupServiceAddonRequest
 	}
 	tests := []struct {
 		name    string
@@ -90,13 +79,13 @@ func TestHandlers_DeleteGroupServiceAddon(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.h.DeleteGroupServiceAddon(tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx)
+			got, err := tt.h.DeleteGroupServiceAddon(tt.args.info, tt.args.data)
 			if (err != nil) != tt.wantErr {
-				t.Errorf("Handlers.DeleteGroupServiceAddon(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, err, tt.wantErr)
+				t.Errorf("Handlers.DeleteGroupServiceAddon(%v, %v) error = %v, wantErr %v", tt.args.info, tt.args.data, err, tt.wantErr)
 				return
 			}
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("Handlers.DeleteGroupServiceAddon(%v, %v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.data, tt.args.session, tt.args.tx, got, tt.want)
+				t.Errorf("Handlers.DeleteGroupServiceAddon(%v, %v) = %v, want %v", tt.args.info, tt.args.data, got, tt.want)
 			}
 		})
 	}

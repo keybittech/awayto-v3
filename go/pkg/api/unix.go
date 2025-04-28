@@ -10,11 +10,11 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"reflect"
 	"sync"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -57,76 +57,71 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 		json.Unmarshal(scanner.Bytes(), &authEvent)
 	}
 
-	handler := reflect.ValueOf(a.Handlers).MethodByName("AuthWebhook_" + authEvent.WebhookName)
+	var deferredError error
 
-	if handler.IsValid() {
-		var deferredError error
-
-		// Create fake context so we can use our regular http handlers
-		fakeReq, err := http.NewRequest("GET", "unix://auth", nil)
-		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
-		}
-
-		session := &types.UserSession{
-			UserSub:   authEvent.UserId,
-			UserEmail: authEvent.Email,
-			AnonIp:    util.AnonIp(authEvent.IpAddress),
-			Timezone:  authEvent.Timezone,
-		}
-
-		defer func() {
-			if p := recover(); p != nil {
-				panic(p)
-			} else if deferredError != nil {
-				util.ErrorLog.Println(deferredError)
-				fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, deferredError))
-			}
-		}()
-
-		ctx, cancel := context.WithTimeout(context.Background(), time.Second)
-		defer cancel()
-
-		tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(ctx)
-		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
-		}
-
-		poolTx := &clients.PoolTx{
-			Tx: tx,
-		}
-
-		workerSession := &types.UserSession{
-			UserSub: "worker",
-		}
-
-		poolTx.SetSession(ctx, workerSession)
-
-		results := []reflect.Value{}
-		results = handler.Call([]reflect.Value{
-			reflect.ValueOf(fakeReq),
-			reflect.ValueOf(authEvent),
-			reflect.ValueOf(session),
-			reflect.ValueOf(poolTx),
-		})
-
-		poolTx.UnsetSession(ctx)
-		poolTx.Commit(ctx)
-
-		if len(results) != 2 {
-			deferredError = util.ErrCheck(errors.New("incorrectly structured auth webhook: " + authEvent.WebhookName))
-			return
-		}
-
-		if !results[1].IsNil() {
-			deferredError = util.ErrCheck(results[1].Interface().(error))
-			return
-		}
-
-		resStr := results[0].Interface().(string)
-
-		fmt.Fprint(conn, resStr)
+	// Create fake context so we can use our regular http handlers
+	fakeReq, err := http.NewRequest("GET", "unix://auth", nil)
+	if err != nil {
+		deferredError = util.ErrCheck(err)
+		return
 	}
+
+	session := &types.UserSession{
+		UserSub:   authEvent.UserId,
+		UserEmail: authEvent.Email,
+		AnonIp:    util.AnonIp(authEvent.IpAddress),
+		Timezone:  authEvent.Timezone,
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			util.ErrorLog.Println(fmt.Sprint(p))
+		} else if deferredError != nil {
+			util.ErrorLog.Println(deferredError)
+			fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, deferredError))
+		}
+	}()
+
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(ctx)
+	if err != nil {
+		deferredError = util.ErrCheck(err)
+		return
+	}
+
+	poolTx := &clients.PoolTx{
+		Tx: tx,
+	}
+
+	workerSession := &types.UserSession{
+		UserSub: "worker",
+	}
+
+	poolTx.SetSession(ctx, workerSession)
+
+	reqInfo := handlers.ReqInfo{
+		W:       nil,
+		Req:     fakeReq,
+		Session: session,
+		Tx:      poolTx,
+	}
+
+	result, err := a.Handlers.Functions["AuthWebhook_"+authEvent.WebhookName](reqInfo, authEvent)
+	if err != nil {
+		deferredError = util.ErrCheck(err)
+		return
+	}
+
+	authResponse, ok := result.(*types.AuthWebhookResponse)
+	if !ok {
+		deferredError = util.ErrCheck(errors.New("bad auth response object during backchannel"))
+		return
+	}
+
+	poolTx.UnsetSession(ctx)
+	poolTx.Commit(ctx)
+
+	fmt.Fprint(conn, authResponse.Value)
 }

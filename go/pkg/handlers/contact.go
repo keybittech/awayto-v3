@@ -2,22 +2,20 @@ package handlers
 
 import (
 	"errors"
-	"net/http"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func (h *Handlers) PostContact(w http.ResponseWriter, req *http.Request, data *types.PostContactRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PostContactResponse, error) {
+func (h *Handlers) PostContact(info ReqInfo, data *types.PostContactRequest) (*types.PostContactResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(req.Context(), tx, &contacts, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &contacts, `
 		INSERT INTO dbtable_schema.contacts (name, email, phone, created_sub)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, email, phone
-	`, data.GetName(), data.GetEmail(), data.GetPhone(), session.UserSub)
+	`, data.GetName(), data.GetEmail(), data.GetPhone(), info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -29,13 +27,13 @@ func (h *Handlers) PostContact(w http.ResponseWriter, req *http.Request, data *t
 	return &types.PostContactResponse{Id: contacts[0].GetId()}, nil
 }
 
-func (h *Handlers) PatchContact(w http.ResponseWriter, req *http.Request, data *types.PatchContactRequest, session *types.UserSession, tx *clients.PoolTx) (*types.PatchContactResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) PatchContact(info ReqInfo, data *types.PatchContactRequest) (*types.PatchContactResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.contacts
 		SET name = $2, email = $3, phone = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
 		RETURNING id, name, email, phone
-	`, data.GetId(), data.GetName(), data.GetEmail(), data.GetPhone(), session.UserSub, time.Now().Local().UTC())
+	`, data.GetId(), data.GetName(), data.GetEmail(), data.GetPhone(), info.Session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -43,10 +41,10 @@ func (h *Handlers) PatchContact(w http.ResponseWriter, req *http.Request, data *
 	return &types.PatchContactResponse{Success: true}, nil
 }
 
-func (h *Handlers) GetContacts(w http.ResponseWriter, req *http.Request, data *types.GetContactsRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetContactsResponse, error) {
+func (h *Handlers) GetContacts(info ReqInfo, data *types.GetContactsRequest) (*types.GetContactsResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(req.Context(), tx, &contacts, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &contacts, `
 		SELECT * FROM dbview_schema.enabled_contacts
 	`)
 
@@ -57,10 +55,10 @@ func (h *Handlers) GetContacts(w http.ResponseWriter, req *http.Request, data *t
 	return &types.GetContactsResponse{Contacts: contacts}, nil
 }
 
-func (h *Handlers) GetContactById(w http.ResponseWriter, req *http.Request, data *types.GetContactByIdRequest, session *types.UserSession, tx *clients.PoolTx) (*types.GetContactByIdResponse, error) {
+func (h *Handlers) GetContactById(info ReqInfo, data *types.GetContactByIdRequest) (*types.GetContactByIdResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(req.Context(), tx, &contacts, `
+	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &contacts, `
 		SELECT * FROM dbview_schema.enabled_contacts
 		WHERE id = $1
 	`, data.GetId())
@@ -76,8 +74,8 @@ func (h *Handlers) GetContactById(w http.ResponseWriter, req *http.Request, data
 	return &types.GetContactByIdResponse{Contact: contacts[0]}, nil
 }
 
-func (h *Handlers) DeleteContact(w http.ResponseWriter, req *http.Request, data *types.DeleteContactRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DeleteContactResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DeleteContact(info ReqInfo, data *types.DeleteContactRequest) (*types.DeleteContactResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		DELETE FROM dbtable_schema.contacts
 		WHERE id = $1
 	`, data.GetId())
@@ -89,12 +87,12 @@ func (h *Handlers) DeleteContact(w http.ResponseWriter, req *http.Request, data 
 	return &types.DeleteContactResponse{Success: true}, nil
 }
 
-func (h *Handlers) DisableContact(w http.ResponseWriter, req *http.Request, data *types.DisableContactRequest, session *types.UserSession, tx *clients.PoolTx) (*types.DisableContactResponse, error) {
-	_, err := tx.Exec(req.Context(), `
+func (h *Handlers) DisableContact(info ReqInfo, data *types.DisableContactRequest) (*types.DisableContactResponse, error) {
+	_, err := info.Tx.Exec(info.Req.Context(), `
 		UPDATE dbtable_schema.contacts
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), session.UserSub)
+	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
