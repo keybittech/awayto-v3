@@ -1,6 +1,7 @@
 syntax = "proto3";
 package types;
 
+import "validate/validate.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -17,7 +18,9 @@ service FeedbackService {
 
 message IFeedback {
   string id = 1;
-  string feedbackMessage = 2;
+  string feedbackMessage = 2 [
+    (buf.validate.field).string.min_len = 1
+  ];
   string createdOn = 3;
 }
 
