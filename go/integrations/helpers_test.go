@@ -117,6 +117,44 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 	return nil
 }
 
+func apiBenchRequest(token, method, path string, body []byte, queryParams map[string]string) (*http.Client, *http.Request, error) {
+	reqURL := "https://localhost:7443" + path
+	if queryParams != nil && len(queryParams) > 0 {
+		values := url.Values{}
+		for k, v := range queryParams {
+			values.Add(k, v)
+		}
+		reqURL = reqURL + "?" + values.Encode()
+	}
+
+	var reqBody io.Reader
+	if body != nil {
+		reqBody = bytes.NewBuffer(body)
+	}
+	req, err := http.NewRequest(method, reqURL, reqBody)
+	if err != nil {
+		return nil, nil, fmt.Errorf("error creating request: %w", err)
+	}
+
+	if body != nil && len(body) > 0 {
+		req.Header.Set("Content-Type", "application/json")
+	}
+	req.Header.Set("Accept", "application/json")
+	req.Header.Add("X-TZ", "America/Los_Angeles")
+
+	req.Header.Add("Authorization", "Bearer "+token)
+
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+		},
+	}
+
+	return client, req, nil
+}
+
 func checkServer() error {
 	ctx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
 	defer cancel()

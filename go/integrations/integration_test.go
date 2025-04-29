@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/http"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -127,4 +128,55 @@ func TestIntegrations(t *testing.T) {
 	testIntegrationUserSchedule(t)
 	testIntegrationQuotes(t)
 	testIntegrationBookings(t)
+}
+
+func BenchmarkProfileDetails(b *testing.B) {
+	user := integrationTest.TestUsers[0]
+
+	client, profileDetailsRequest, err := apiBenchRequest(user.TestToken, http.MethodGet, "/api/v1/profile/details", nil, nil)
+	if err != nil {
+		b.Fatalf("error preparing bench request: %v", err)
+	}
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	for i := 0; i < b.N; i++ {
+		_, err := client.Do(profileDetailsRequest)
+		b.StopTimer()
+		if err != nil {
+			b.Fatalf("error doing bench request: %v", err)
+		}
+		b.StartTimer()
+	}
+}
+
+func BenchmarkProfileDetailsParallel(b *testing.B) {
+	numUsers := int32(len(integrationTest.TestUsers))
+	tokens := make([]string, numUsers)
+	for i := int32(0); i < numUsers; i++ {
+		tokens[i] = integrationTest.TestUsers[i].TestToken
+	}
+
+	b.ResetTimer()
+	b.ReportAllocs()
+
+	b.RunParallel(func(pb *testing.PB) {
+		counter := int32(0)
+
+		for pb.Next() {
+			tokenIndex := counter % numUsers
+			counter++
+
+			profileResponse := &types.GetUserProfileDetailsResponse{}
+			err := apiRequest(tokens[tokenIndex], http.MethodGet, "/api/v1/profile/details", nil, nil, profileResponse)
+
+			if err != nil {
+				b.Fatalf("Failed to get profile details in parallel benchmark: %v", err)
+			}
+
+			if profileResponse.UserProfile == nil || profileResponse.UserProfile.Id == "" {
+				b.Fatalf("Invalid profile response in parallel benchmark: empty or missing ID")
+			}
+		}
+	})
 }
