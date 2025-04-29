@@ -310,11 +310,11 @@ go_test: go_test_bench go_test_integration_long
 
 .PHONY: go_test_gen
 go_test_gen:
-	gotests -i -w -all $(GO_SRC)
-	gotests -i -w -all $(GO_API_DIR)
-	gotests -i -w -all $(GO_CLIENTS_DIR)
-	gotests -i -w -all $(GO_HANDLERS_DIR)
-	gotests -i -w -all $(GO_UTIL_DIR)
+	gotests -i -w -exported $(GO_SRC)
+	gotests -i -w -exported $(GO_API_DIR)
+	gotests -i -w -exported $(GO_CLIENTS_DIR)
+	gotests -i -w -exported $(GO_HANDLERS_DIR)
+	gotests -i -w -exported $(GO_UTIL_DIR)
 
 .PHONY: go_test_ui
 go_test_ui: build $(GO_TARGET)

@@ -21,6 +21,7 @@ ts/src/hooks/api.ts
 ts/openapi.yaml
 go/integrations/integration_results.json
 go/pkg/types/
+go/pkg/handlers/register.go
 go/pkg/interfaces/mocks.go
 go/buf.build/
 go/cpu.prof
