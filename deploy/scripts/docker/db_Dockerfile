@@ -19,16 +19,6 @@ ENV IS_GROUP_ROLES="(current_setting('app_session.role_bits')::int & 64) > 0";
 ENV IS_GROUP_USERS="(current_setting('app_session.role_bits')::int & 128) > 0";
 ENV IS_GROUP_PERMISSIONS="(current_setting('app_session.role_bits')::int & 256) > 0";
 
-# ENV IS_GROUP_ADMIN="current_setting('app_session.roles') LIKE '%APP_GROUP_ADMIN%'";
-# ENV IS_GROUP_BOOKINGS="current_setting('app_session.roles') LIKE '%APP_GROUP_BOOKINGS%'";
-# ENV IS_GROUP_SCHEDULES="current_setting('app_session.roles') LIKE '%APP_GROUP_SCHEDULES%'";
-# ENV IS_GROUP_SERVICES="current_setting('app_session.roles') LIKE '%APP_GROUP_SERVICES%'";
-# ENV IS_GROUP_SCHEDULE_KEYS="current_setting('app_session.roles') LIKE '%APP_GROUP_SCHEDULE_KEYS%'";
-# ENV IS_GROUP_ROLES="current_setting('app_session.roles') LIKE '%APP_GROUP_ROLES%'";
-# ENV IS_GROUP_USERS="current_setting('app_session.roles') LIKE '%APP_GROUP_USERS%'";
-# ENV IS_GROUP_PERMISSIONS="current_setting('app_session.roles') LIKE '%APP_GROUP_PERMISSIONS%'";
-# ENV IS_GROUP_ADMIN="current_setting('app_session.roles') LIKE '%APP_GROUP_SCHEDULES%'";
-
 ENV SCRIPT_DIR="/tmp/init_sql"
 
 COPY ./deploy/scripts/db/*.sql $SCRIPT_DIR/
