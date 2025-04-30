@@ -68,8 +68,10 @@ func (cmd AuthCommand) GetReplyChannel() interface{} {
 }
 
 type Keycloak struct {
-	Client    *KeycloakClient
 	handlerId string
+	Client    *KeycloakClient
+	ticker    *time.Ticker
+	stopChan  chan struct{}
 }
 
 func InitKeycloak() *Keycloak {
@@ -256,6 +258,7 @@ func InitKeycloak() *Keycloak {
 	k := &Keycloak{handlerId: keycloakHandlerId}
 
 	ticker := time.NewTicker(30 * time.Second)
+	k.ticker = ticker
 	go func() {
 		for {
 			select {
@@ -266,6 +269,8 @@ func InitKeycloak() *Keycloak {
 				if err != nil {
 					util.ErrorLog.Println(util.ErrCheck(err))
 				}
+			case <-k.stopChan:
+				return
 			}
 		}
 	}()
@@ -331,6 +336,14 @@ func (s *Keycloak) RouteCommand(cmd AuthCommand) error {
 }
 
 func (s *Keycloak) Close() {
+	if s.ticker != nil {
+		s.ticker.Stop()
+	}
+
+	if s.stopChan != nil {
+		close(s.stopChan)
+	}
+
 	GetGlobalWorkerPool().UnregisterProcessFunction(s.handlerId)
 }
 

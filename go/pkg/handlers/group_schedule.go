@@ -100,7 +100,7 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 					TO_CHAR(DATE_TRUNC('week', week_start::DATE), 'YYYY-MM-DD')::TEXT as "weekStart",
 					TO_CHAR(DATE_TRUNC('week', week_start::DATE) + slot."startTime"::INTERVAL, 'YYYY-MM-DD')::TEXT as "startDate",
 					DATE_TRUNC('week', week_start::DATE) + slot."startTime"::INTERVAL as real_time
-				FROM generate_series($1::DATE, $1::DATE + INTERVAL '1 month', INTERVAL '1 week') AS week_start
+				FROM generate_series($1::DATE, $1::DATE + INTERVAL '5 weeks', INTERVAL '1 week') AS week_start
 				CROSS JOIN dbview_schema.enabled_schedule_bracket_slots slot
 				LEFT JOIN dbtable_schema.bookings booking ON booking.schedule_bracket_slot_id = slot.id
 					AND DATE_TRUNC('week', booking.slot_date) = DATE_TRUNC('week', week_start)

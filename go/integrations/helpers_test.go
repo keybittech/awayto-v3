@@ -173,26 +173,10 @@ func checkServer() error {
 }
 
 func getPublicKey() {
-	kc := &clients.KeycloakClient{
-		Server: os.Getenv("KC_INTERNAL"),
-		Realm:  os.Getenv("KC_REALM"),
-	}
-
-	oidcToken, err := kc.DirectGrantAuthentication()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	kc.Token = oidcToken
-
-	pk, err := kc.FetchPublicKey()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	publicKey = pk
+	kc := clients.InitKeycloak()
+	publicKey = kc.Client.PublicKey
+	kc.Close()
 }
-
 func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 	data := url.Values{}
 	data.Set("client_id", os.Getenv("KC_CLIENT"))
