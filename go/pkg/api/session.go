@@ -2,38 +2,41 @@ package api
 
 import (
 	"crypto/rsa"
+	"errors"
 	"net/http"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/redis/go-redis/v9"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var tokenCache = NewTokenCache()
-
-func CleanupApiTokenCache() {
-	tokenCache.mu.Lock()
-	defer tokenCache.mu.Unlock()
-	tokenCache.sessions = make(map[string]*types.UserSession)
-}
+const (
+	redisTokenPrefix   = "session_tokens:"
+	redisTokenDuration = 55 * time.Second
+)
 
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.UserSession)
 
 type SessionMux struct {
 	publicKey *rsa.PublicKey
 	mux       *http.ServeMux
+	redis     *redis.Client
 }
 
-func NewSessionMux(pk *rsa.PublicKey) *SessionMux {
+func NewSessionMux(pk *rsa.PublicKey, redis *redis.Client) *SessionMux {
 	return &SessionMux{
 		publicKey: pk,
 		mux:       http.NewServeMux(),
+		redis:     redis,
 	}
 }
 
 func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 	sm.mux.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		auth, ok := req.Header["Authorization"]
-		if !ok {
+		if !ok || len(auth) == 0 || auth[0] == "" {
 			return
 		}
 
@@ -42,14 +45,37 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 			return
 		}
 
-		session, ok := tokenCache.Get(auth[0])
-		if !ok {
-			var err error
-			session, err = ValidateToken(sm.publicKey, auth[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
-			if err != nil {
+		ctx := req.Context()
+		redisTokenKey := redisTokenPrefix + auth[0]
+
+		session := &types.UserSession{}
+		sessionBytes, err := sm.redis.Get(ctx, redisTokenKey).Bytes()
+		if err == nil {
+			err = protojson.Unmarshal(sessionBytes, session)
+			if err == nil {
+				handler(w, req, session)
 				return
 			}
-			tokenCache.Set(auth[0], session)
+		} else if !errors.Is(err, redis.Nil) {
+			util.ErrCheck(err)
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		session, err = ValidateToken(sm.publicKey, auth[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+		if err != nil {
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+
+		sessionJson, err := protojson.Marshal(session)
+		if err != nil {
+			util.ErrCheck(err)
+		} else {
+			err = sm.redis.SetEx(ctx, redisTokenKey, sessionJson, redisTokenDuration).Err()
+			if err != nil {
+				util.ErrCheck(err)
+			}
 		}
 
 		handler(w, req, session)

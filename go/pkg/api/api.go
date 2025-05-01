@@ -21,7 +21,7 @@ var (
 )
 
 func (a *API) InitMux() *http.ServeMux {
-	muxWithSession := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey)
+	muxWithSession := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Handlers.Redis.RedisClient)
 
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
 		if fd.Services().Len() == 0 {
