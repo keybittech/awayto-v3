@@ -8,7 +8,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -17,6 +16,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/redis/go-redis/v9"
+	"google.golang.org/protobuf/encoding/protojson"
 
 	"golang.org/x/time/rate"
 )
@@ -102,134 +102,133 @@ func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next Ses
 
 func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-		var deferredErr error
-		var skipRebuild bool
-		gidSelect := req.Header.Get("X-Gid-Select")
+		ctx := req.Context()
+		needsLookup := false
 
-		defer func() {
-			if deferredErr != nil {
-				util.ErrorLog.Println(deferredErr)
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			}
-		}()
-
-		existingSession, err := a.Handlers.Redis.GetSession(req.Context(), session.UserSub)
-		if err != nil && !errors.Is(err, redis.Nil) {
-			deferredErr = util.ErrCheck(err)
+		if len(session.SubGroups) > 0 {
+			session.SubGroupName = session.SubGroups[0]
+		} else if session.GroupSessionVersion > 0 {
+			session.SubGroupName = ""
+			session.GroupName = ""
+			session.RoleName = ""
+			session.GroupExternalId = ""
+			session.SubGroupExternalId = ""
+			session.GroupId = ""
+			session.GroupAi = false
+			session.GroupSub = ""
+			session.GroupSessionVersion = 0
+			next(w, req, session)
 			return
 		}
 
-		// If the group is not changing via client selection and there's an existing session
-		if gidSelect == "" && existingSession != nil {
-
-			// Get the most recent group version (role changes, etc)
-			groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(req.Context(), existingSession.GroupId)
-			if err != nil {
-				deferredErr = util.ErrCheck(err)
-				return
-			}
-
-			// If the group version has not changed
-			if existingSession.GroupSessionVersion == groupVersion {
-
-				// Ignore rebuilding
-				skipRebuild = true
-			}
-		}
-
-		// If we're planning to skip the rebuild, re-use existing session that we now know exists
-		if skipRebuild {
-			// If group membership changed, rebuild
-			if slices.Compare(existingSession.SubGroups, session.SubGroups) != 0 {
-				skipRebuild = false
-			}
-
-			// If role permissions changed, rebuild
-			if existingSession.RoleBits != session.RoleBits {
-				skipRebuild = false
-			}
-		}
-
-		// re-use existing session info if no changes
-		if skipRebuild && existingSession != nil && len(session.SubGroups) > 0 {
-
-			session = existingSession
-
+		if session.GroupId == "" {
+			needsLookup = true
+			session.GroupId = ""
+			session.GroupAi = false
+			session.GroupSub = ""
+			session.GroupExternalId = ""
+			session.SubGroupExternalId = ""
+			session.GroupSessionVersion = 0
 		} else {
+			groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(ctx, session.GroupId)
+			if err != nil && !errors.Is(err, redis.Nil) {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			if groupVersion != session.GroupSessionVersion {
+				needsLookup = true
+			}
+		}
 
-			// If user belongs to a group, get info about it
-			if len(session.SubGroups) > 0 {
+		if needsLookup && session.SubGroupName != "" {
+			splitIdx := strings.LastIndex(session.SubGroupName, "/")
+			if len(session.SubGroupName) < splitIdx {
+				util.ErrorLog.Println(errors.New("bad subgroup name length"))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			session.GroupName = session.SubGroupName[1:splitIdx]
+			session.RoleName = session.SubGroupName[splitIdx+1:]
+			kcGroupName := session.SubGroupName[:splitIdx]
 
-				if gidSelect != "" && slices.Contains(session.SubGroups, gidSelect) {
-					session.SubGroupName = gidSelect
-				} else {
-					session.SubGroupName = fmt.Sprint(session.SubGroups[0])
-				}
-
-				names := strings.Split(session.SubGroupName, "/")
-				session.GroupName = names[1]
-				session.RoleName = names[2]
-				kcGroupName := "/" + session.GroupName
-
-				kcGroups, err := a.Handlers.Keycloak.GetGroupByName(session.UserSub, kcGroupName)
-
-				for _, gr := range kcGroups {
-					if gr.Path == kcGroupName {
-						session.GroupExternalId = gr.Id
-						break
-					}
-				}
-
-				kcSubgroups, err := a.Handlers.Keycloak.GetGroupSubgroups(session.UserSub, session.GroupExternalId)
-
-				for _, gr := range kcSubgroups {
-					if gr.Path == session.SubGroupName {
-						session.SubGroupExternalId = gr.Id
-						break
-					}
-				}
-
-				if session.GroupExternalId == "" || session.SubGroupExternalId == "" {
-					deferredErr = util.ErrCheck(errors.New("could not describe group or subgroup external ids"))
-					return
-				}
-
-				ds := clients.DbSession{
-					Pool:        a.Handlers.Database.DatabaseClient.Pool,
-					UserSession: session,
-				}
-
-				row, done, err := ds.SessionBatchQueryRow(req.Context(), `
-					SELECT id, ai, sub
-					FROM dbtable_schema.groups
-					WHERE external_id = $1
-				`, session.GroupExternalId)
-				if err != nil {
-					deferredErr = util.ErrCheck(err)
-					return
-				}
-
-				err = row.Scan(&session.GroupId, &session.GroupAi, &session.GroupSub)
-				if err != nil {
-					done()
-					deferredErr = util.ErrCheck(err)
-					return
-				}
-				done()
-
-				groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(req.Context(), session.GroupId)
-				if err != nil {
-					deferredErr = util.ErrCheck(err)
-					return
-				}
-
-				session.GroupSessionVersion = groupVersion
+			kcGroups, err := a.Handlers.Keycloak.GetGroupByName(session.UserSub, kcGroupName)
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
 			}
 
-			err = a.Handlers.Redis.SetSession(req.Context(), session)
+			for _, gr := range kcGroups {
+				if gr.Path == kcGroupName {
+					session.GroupExternalId = gr.Id
+					break
+				}
+			}
+
+			kcSubgroups, err := a.Handlers.Keycloak.GetGroupSubgroups(session.UserSub, session.GroupExternalId)
 			if err != nil {
-				deferredErr = util.ErrCheck(err)
+				util.ErrorLog.Println(util.ErrCheck(err))
+				w.WriteHeader(http.StatusInternalServerError)
 				return
+			}
+
+			for _, gr := range kcSubgroups {
+				if gr.Path == session.SubGroupName {
+					session.SubGroupExternalId = gr.Id
+					break
+				}
+			}
+
+			if session.GroupExternalId == "" || session.SubGroupExternalId == "" {
+				util.ErrorLog.Println(util.ErrCheck(errors.New("could not describe group or subgroup external ids" + session.GroupExternalId + "==" + session.SubGroupExternalId)))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			ds := clients.DbSession{
+				Pool:        a.Handlers.Database.DatabaseClient.Pool,
+				UserSession: session,
+			}
+
+			row, done, err := ds.SessionBatchQueryRow(req.Context(), `
+				SELECT id, ai, sub
+				FROM dbtable_schema.groups
+				WHERE external_id = $1
+			`, session.GroupExternalId)
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			err = row.Scan(&session.GroupId, &session.GroupAi, &session.GroupSub)
+			if err != nil {
+				done()
+				util.ErrorLog.Println(util.ErrCheck(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			done()
+
+			groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(req.Context(), session.GroupId)
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+
+			session.GroupSessionVersion = groupVersion
+
+			sessionJson, err := protojson.Marshal(session)
+			if err != nil {
+				util.ErrCheck(err)
+			} else {
+				redisTokenKey := redisTokenPrefix + req.Header.Get("Authorization")
+				err = a.Handlers.Redis.RedisClient.SetEx(ctx, redisTokenKey, sessionJson, redisTokenDuration).Err()
+				if err != nil {
+					util.ErrCheck(err)
+				}
 			}
 		}
 
