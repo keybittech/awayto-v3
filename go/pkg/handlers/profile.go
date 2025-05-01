@@ -43,7 +43,7 @@ func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRe
 }
 
 func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfileDetailsRequest) (*types.GetUserProfileDetailsResponse, error) {
-	rows, err := info.Tx.Query(info.Req.Context(), `
+	profileRows, err := info.Tx.Query(info.Req.Context(), `
 		SELECT 
 			"firstName",
 			"lastName",
@@ -62,14 +62,15 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+	defer profileRows.Close()
 
-	userProfile, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[types.IUserProfile])
+	userProfile, err := pgx.CollectOneRow(profileRows, pgx.RowToAddrOfStructByNameLax[types.IUserProfile])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	if _, ok := userProfile.Groups[info.Session.GroupId]; ok {
-		rows, err = info.Tx.Query(info.Req.Context(), `
+		groupRows, err := info.Tx.Query(info.Req.Context(), `
 			SELECT name, "displayName", purpose, ai, code, "defaultRoleId", "allowedDomains", roles, true as active
 			FROM dbview_schema.enabled_groups_ext
 			WHERE id = $1
@@ -77,8 +78,9 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
+		defer groupRows.Close()
 
-		userProfile.Groups[info.Session.GroupId], err = pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[types.IGroup])
+		userProfile.Groups[info.Session.GroupId], err = pgx.CollectOneRow(groupRows, pgx.RowToAddrOfStructByNameLax[types.IGroup])
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
