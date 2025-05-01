@@ -50,7 +50,7 @@ func InitAi() *Ai {
 		Prompts: aiPrompts,
 	}
 
-	println("Ai Init")
+	util.DebugLog.Println("Ai Init")
 
 	return aic
 }

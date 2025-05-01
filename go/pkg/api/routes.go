@@ -2,7 +2,6 @@ package api
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 	"slices"
 	"strings"
@@ -30,7 +29,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 	serviceName := string(serviceMethod.Name())
 	handlerFunc, ok := a.Handlers.Functions[serviceName]
 	if !ok {
-		log.Printf("Service Method Not Implemented: %s", serviceName)
+		util.DebugLog.Println("Service Method Not Implemented:", serviceName)
 		return func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
 			w.WriteHeader(501)
 			return

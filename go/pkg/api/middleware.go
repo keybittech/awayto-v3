@@ -2,14 +2,13 @@ package api
 
 import (
 	"bytes"
-	"encoding/json"
 	"errors"
-	"fmt"
+	"math"
 	"net"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -159,6 +158,8 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 				return
 			}
 
+			var foundAll bool
+
 			for _, gr := range kcGroups {
 				if gr.Path == kcGroupName {
 					session.GroupExternalId = gr.Id
@@ -176,11 +177,12 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			for _, gr := range kcSubgroups {
 				if gr.Path == session.SubGroupName {
 					session.SubGroupExternalId = gr.Id
+					foundAll = true
 					break
 				}
 			}
 
-			if session.GroupExternalId == "" || session.SubGroupExternalId == "" {
+			if !foundAll {
 				util.ErrorLog.Println(util.ErrCheck(errors.New("could not describe group or subgroup external ids" + session.GroupExternalId + "==" + session.SubGroupExternalId)))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
@@ -286,29 +288,18 @@ type CacheMeta struct {
 	StatusCode int       `json:"status_code"`
 }
 
-const maxCacheBuffer = 1 << 12
-
-var (
-	apiPathLen     = len(os.Getenv("API_PATH"))
-	duration180, _ = time.ParseDuration("180s")
-)
-
-var cacheMiddlewareBufferPool = sync.Pool{
-	New: func() interface{} {
-		var buf bytes.Buffer
-		return &buf
-	},
-}
-
 func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
 	shouldStore := types.CacheType_STORE == opts.CacheType
 
 	return func(next SessionHandler) SessionHandler {
 		return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+			ctx := req.Context()
 			// gives a cache key like absd-asff-asff-asfdgroup/users
 			var cacheKey strings.Builder
 			cacheKey.WriteString(session.UserSub)
 			cacheKey.WriteString(req.URL.String()[apiPathLen:])
+			cacheKeyData := cacheKey.String() + cacheKeySuffixData
+			cacheKeyModTime := cacheKey.String() + cacheKeySuffixModTime
 
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
@@ -319,40 +310,37 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				return
 			}
 
-			// Check if client sent If-Modified-Since header
-			var clientModTime time.Time
-			if req.Header.Get("If-Modified-Since") != "" {
-				if t, err := time.Parse(http.TimeFormat, req.Header.Get("If-Modified-Since")); err == nil {
-					clientModTime = t.Truncate(time.Second)
-				}
-			}
-
 			if types.CacheType_SKIP != opts.CacheType {
 				// Check redis cache for request
-				if cacheData, err := a.Handlers.Redis.Client().Get(req.Context(), cacheKey.String()).Bytes(); err == nil {
+				cachedResponse := a.Handlers.Redis.RedisClient.MGet(ctx, cacheKeyData, cacheKeyModTime).Val()
 
-					var cacheMeta CacheMeta
-					err = json.Unmarshal(cacheData, &cacheMeta)
-					if err != nil {
-						http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-						util.ErrorLog.Println(util.ErrCheck(err))
+				cachedData, dataOk := cachedResponse[0].(string)
+				modTime, modOk := cachedResponse[1].(string)
+
+				if dataOk && modOk && len(cachedData) > 0 && modTime != "" {
+
+					lastMod, err := time.Parse(time.RFC3339Nano, modTime)
+					if err == nil {
+
+						w.Header().Set("Last-Modified", lastMod.Format(http.TimeFormat))
+
+						// Check if client sent If-Modified-Since header
+						if ifModifiedSince := req.Header.Get("If-Modified-Since"); ifModifiedSince != "" {
+							if t, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+								if !lastMod.Truncate(time.Second).After(t.Truncate(time.Second)) {
+									w.Header().Set("X-Cache-Status", "UNMODIFIED")
+									w.WriteHeader(http.StatusNotModified)
+									return
+								}
+							}
+						}
+
+						// Serve cached data if no header interaction
+						w.Header().Set("X-Cache-Status", "HIT")
+						w.Header().Set("Content-Length", strconv.Itoa(len(cachedData)))
+						w.Write([]byte(cachedData))
 						return
 					}
-
-					w.Header().Set("Last-Modified", cacheMeta.LastMod.UTC().Format(http.TimeFormat))
-
-					// If the client has current data
-					if !clientModTime.IsZero() && !cacheMeta.LastMod.Truncate(time.Second).After(clientModTime) {
-						w.Header().Set("X-Cache-Status", "UNMODIFIED")
-						w.WriteHeader(http.StatusNotModified)
-						w.Write([]byte{})
-						return
-					}
-
-					// Serve cached data if no header interaction
-					w.Header().Set("X-Cache-Status", "HIT")
-					w.Write(cacheMeta.Data)
-					return
 				}
 			}
 
@@ -364,6 +352,11 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 			buf := cacheMiddlewareBufferPool.Get().(*bytes.Buffer)
 			buf.Reset()
+			defer func() {
+				if buf.Len() < maxCacheBuffer {
+					cacheMiddlewareBufferPool.Put(buf)
+				}
+			}()
 
 			// Perform the handler request
 			cacheWriter := &CacheWriter{
@@ -374,47 +367,39 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			// Response is written out to client
 			next(cacheWriter, req, session)
 
-			writeLen := cacheWriter.Buffer.Len()
-
 			// Cache any response
-			if writeLen > 0 {
+			if buf.Len() > 0 && types.CacheType_SKIP != opts.CacheType {
+				duration := duration180
+				shouldStore := types.CacheType_STORE == opts.CacheType
 
-				// Prep for redis storage
-				cacheMeta := CacheMeta{
-					Data:    cacheWriter.Buffer.Bytes(),
-					LastMod: timeNow,
-				}
-
-				cacheData, err := json.Marshal(cacheMeta)
-				if err != nil {
-					http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-					util.ErrorLog.Println(util.ErrCheck(err))
-					return
-				}
-
-				if shouldStore {
-
-					// Store the response in redis until restart
-					a.Handlers.Redis.Client().Set(req.Context(), cacheKey.String(), cacheData, 0)
-
-				} else {
-
+				if !shouldStore && opts.CacheDuration > 0 {
 					// Default 3 min cache or as otherwise specified
-					duration := duration180
-					if opts.CacheDuration > 0 {
-						if parsedDuration, err := time.ParseDuration(fmt.Sprintf("%ds", opts.CacheDuration)); err == nil {
+					if opts.CacheDuration > 0 && opts.CacheDuration < math.MaxInt32 {
+						if parsedDuration, err := time.ParseDuration(strconv.Itoa(int(opts.CacheDuration)) + "s"); err == nil {
 							duration = parsedDuration
 						} else {
 							util.ErrorLog.Println(util.ErrCheck(err))
 						}
 					}
-
-					a.Handlers.Redis.Client().SetEx(req.Context(), cacheKey.String(), cacheData, duration)
+				} else if shouldStore {
+					duration = 0
 				}
-			}
 
-			if writeLen < maxCacheBuffer {
-				cacheMiddlewareBufferPool.Put(buf)
+				pipe := a.Handlers.Redis.RedisClient.Pipeline()
+				modTimeStr := timeNow.Format(time.RFC3339Nano)
+
+				if duration > 0 {
+					pipe.SetEx(ctx, cacheKeyData, buf.Bytes(), duration)
+					pipe.SetEx(ctx, cacheKeyModTime, modTimeStr, duration)
+				} else {
+					pipe.Set(ctx, cacheKeyData, buf.Bytes(), 0)
+					pipe.Set(ctx, cacheKeyModTime, modTimeStr, 0)
+				}
+
+				_, err := pipe.Exec(ctx)
+				if err != nil {
+					util.ErrorLog.Println("failed to write middleware cache", err.Error(), cacheKeyData)
+				}
 			}
 		}
 	}

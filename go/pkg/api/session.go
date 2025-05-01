@@ -35,6 +35,7 @@ func NewSessionMux(pk *rsa.PublicKey, redis *redis.Client) *SessionMux {
 
 func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 	sm.mux.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+
 		auth, ok := req.Header["Authorization"]
 		if !ok || len(auth) == 0 || auth[0] == "" {
 			return
