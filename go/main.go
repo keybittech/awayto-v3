@@ -81,7 +81,9 @@ func main() {
 
 	go server.InitUnixServer(unixPath)
 
-	mux := server.InitMux()
+	mux := server.InitMux(
+		api.NewRateLimit("api", 5, 20, time.Duration(5*time.Minute)),
+	)
 
 	server.InitAuthProxy(mux)
 

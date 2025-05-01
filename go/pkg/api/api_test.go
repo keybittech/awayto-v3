@@ -8,9 +8,11 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -35,13 +37,13 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
-func getTestApi() *API {
-	api := &API{
+func getTestApi(rl *RateLimiter) *API {
+	a := &API{
 		Server:   &http.Server{},
 		Handlers: handlers.NewHandlers(),
 	}
-	api.InitMux()
-	return api
+	a.InitMux(rl)
+	return a
 }
 
 func getTestReq(b *testing.B, token, method, url string) *http.Request {
@@ -56,26 +58,35 @@ func getTestReq(b *testing.B, token, method, url string) *http.Request {
 	return testReq
 }
 
-func BenchmarkApiProfileDetails(b *testing.B) {
-	api := getTestApi()
+func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int) {
+	rl := NewRateLimit("api", limit, burst, time.Duration(5*time.Second))
+	api := getTestApi(rl)
 	user := integrationTest.TestUsers[0]
 	req := getTestReq(b, user.TestToken, http.MethodGet, "/api/v1/profile/details")
 	recorder := httptest.NewRecorder()
 	reset(b)
-
 	for i := 0; i < b.N; i++ {
-		b.StopTimer()
 		recorder.Body.Reset()
-		b.StartTimer()
-
 		api.Server.Handler.ServeHTTP(recorder, req)
-
-		b.StopTimer()
-		if recorder.Code != http.StatusOK && recorder.Code != http.StatusNotModified {
-			b.Fatalf("Handler returned unexpected code %d", recorder.Code)
-		}
-		b.StartTimer()
 	}
+}
+
+func BenchmarkApiRateLimit(b *testing.B) {
+	b.Run("1 req per second, 1 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 1, 1)
+	})
+	b.Run("10 req per second, 10 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 10, 10)
+	})
+	b.Run("100 req per second, 100 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 100, 100)
+	})
+	b.Run("1000 req per second, 1000 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 1000, 1000)
+	})
+	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 10000, 10000)
+	})
 }
 
 func TestAPI_InitMux(t *testing.T) {
@@ -88,7 +99,7 @@ func TestAPI_InitMux(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.InitMux(); !reflect.DeepEqual(got, tt.want) {
+			if got := tt.a.InitMux(NewRateLimit("test-init", 5, 5, time.Duration(time.Second))); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("API.InitMux() = %v, want %v", got, tt.want)
 			}
 		})

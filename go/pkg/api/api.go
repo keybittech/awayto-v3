@@ -2,7 +2,6 @@ package api
 
 import (
 	"net/http"
-	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -16,12 +15,8 @@ type API struct {
 	Handlers *handlers.Handlers
 }
 
-var (
-	apiRl = NewRateLimit("api", 5, 20, time.Duration(5*time.Minute))
-)
-
-func (a *API) InitMux() *http.ServeMux {
-	muxWithSession := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Handlers.Redis.RedisClient)
+func (a *API) InitMux(apiRl *RateLimiter) *http.ServeMux {
+	muxWithSession := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Handlers.Redis.RedisClient, apiRl)
 
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
 		if fd.Services().Len() == 0 {

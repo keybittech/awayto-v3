@@ -23,13 +23,15 @@ type SessionMux struct {
 	publicKey *rsa.PublicKey
 	mux       *http.ServeMux
 	redis     *redis.Client
+	rl        *RateLimiter
 }
 
-func NewSessionMux(pk *rsa.PublicKey, redis *redis.Client) *SessionMux {
+func NewSessionMux(pk *rsa.PublicKey, redis *redis.Client, rl *RateLimiter) *SessionMux {
 	return &SessionMux{
 		publicKey: pk,
 		mux:       http.NewServeMux(),
 		redis:     redis,
+		rl:        rl,
 	}
 }
 
@@ -41,7 +43,7 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 			return
 		}
 
-		if apiRl.Limit(auth[0]) {
+		if sm.rl.Limit(auth[0]) {
 			WriteLimit(w)
 			return
 		}
