@@ -8,8 +8,9 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/api"
 )
 
-func setupGc(a *api.API) {
+func setupGc(a *api.API, stopChan chan struct{}) {
 	generalCleanupTicker := time.NewTicker(5 * time.Minute)
+	tokenCleanupTicker := time.NewTicker(55 * time.Second)
 	connLen := 0
 	for {
 		select {
@@ -32,6 +33,10 @@ func setupGc(a *api.API) {
 				connLen = sockLen
 				fmt.Printf("got socket connection list new count :%d %+v\n", len(socketConnections), socketConnections)
 			}
+		case <-tokenCleanupTicker.C:
+			api.CleanupApiTokenCache()
+		case <-stopChan:
+			return
 		}
 	}
 }

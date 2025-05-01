@@ -2,13 +2,19 @@ package api
 
 import (
 	"crypto/rsa"
-	"errors"
-	"net"
 	"net/http"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
+
+var tokenCache = NewTokenCache()
+
+func CleanupApiTokenCache() {
+	tokenCache.mu.Lock()
+	defer tokenCache.mu.Unlock()
+	tokenCache.sessions = make(map[string]*types.UserSession)
+}
 
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.UserSession)
 
@@ -25,64 +31,29 @@ func NewSessionMux(pk *rsa.PublicKey) *SessionMux {
 }
 
 func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
-	handlerFunc := http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		var deferredErr error
-		var didLimit bool
-		userSub := "unknown client"
-
-		startTime, exeTimeDefer := util.ExeTime(pattern)
-
-		defer func() {
-			// if deferredErr, auth token is bad so return unauth
-			if deferredErr != nil {
-				util.ErrorLog.Println(deferredErr)
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-				return
-			}
-
-			if !didLimit {
-				exeTimeDefer(startTime, "sub:"+userSub)
-			}
-		}()
-
-		token, ok := req.Header["Authorization"]
+	sm.mux.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		auth, ok := req.Header["Authorization"]
 		if !ok {
-			// If we can't get auth token from header, use ip to rate limit
-			ip, _, err := net.SplitHostPort(req.RemoteAddr)
-			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			if apiRl.Limit(ip) {
-				didLimit = true
-				WriteLimit(w)
-				return
-			}
-			deferredErr = util.ErrCheck(errors.New("no auth token"))
 			return
 		}
 
-		// validate provided token to return a user struct
-		session, err := ValidateToken(sm.publicKey, token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
-		if err != nil {
-			deferredErr = util.ErrCheck(err)
-			return
-		}
-
-		userSub = session.UserSub
-
-		// rate limit authenticated user
-		if apiRl.Limit(session.UserSub) {
-			didLimit = true
+		if apiRl.Limit(auth[0]) {
 			WriteLimit(w)
 			return
 		}
 
-		handler(w, req, session)
-	})
+		session, ok := tokenCache.Get(auth[0])
+		if !ok {
+			var err error
+			session, err = ValidateToken(sm.publicKey, auth[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+			if err != nil {
+				return
+			}
+			tokenCache.Set(auth[0], session)
+		}
 
-	sm.mux.Handle(pattern, handlerFunc)
+		handler(w, req, session)
+	}))
 }
 
 func (sm *SessionMux) HandleFunc(pattern string, handler http.HandlerFunc) {

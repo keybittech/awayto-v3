@@ -19,9 +19,7 @@ import (
 )
 
 func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*types.UserSession, error) {
-	if strings.Contains(token, "Bearer") {
-		token = strings.Split(token, " ")[1]
-	}
+	token = strings.TrimPrefix(token, "Bearer ")
 
 	parsedToken, err := jwt.ParseWithClaims(token, &clients.KeycloakUserWithClaims{}, func(t *jwt.Token) (interface{}, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
@@ -36,21 +34,23 @@ func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*t
 	if !parsedToken.Valid {
 		return nil, util.ErrCheck(errors.New("invalid token during parse"))
 	}
-	if claims, ok := parsedToken.Claims.(*clients.KeycloakUserWithClaims); ok {
-		session := &types.UserSession{
-			UserSub:   claims.Subject,
-			UserEmail: claims.Email,
-			SubGroups: claims.Groups,
-			RoleBits:  util.StringsToBitmask(claims.ResourceAccess[claims.Azp].Roles),
-			ExpiresAt: claims.ExpiresAt,
-			Timezone:  timezone,
-			AnonIp:    anonIp,
-		}
 
-		return session, nil
+	claims, ok := parsedToken.Claims.(*clients.KeycloakUserWithClaims)
+	if !ok {
+		return nil, util.ErrCheck(errors.New("could not parse claims"))
 	}
 
-	return nil, nil
+	session := &types.UserSession{
+		UserSub:   claims.Subject,
+		UserEmail: claims.Email,
+		SubGroups: claims.Groups,
+		RoleBits:  util.StringsToBitmask(claims.ResourceAccess[claims.Azp].Roles),
+		ExpiresAt: claims.ExpiresAt,
+		Timezone:  timezone,
+		AnonIp:    anonIp,
+	}
+
+	return session, nil
 }
 
 func SetForwardingHeadersAndServe(prox *httputil.ReverseProxy, w http.ResponseWriter, r *http.Request) {

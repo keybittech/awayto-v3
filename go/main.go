@@ -91,9 +91,13 @@ func main() {
 
 	go server.RedirectHTTP(httpPort)
 
-	defer server.Server.Close()
+	stopChan := make(chan struct{}, 1)
+	go setupGc(server, stopChan)
 
-	go setupGc(server)
+	defer func() {
+		close(stopChan)
+		server.Server.Close()
+	}()
 
 	certLoc := os.Getenv("CERT_LOC")
 	keyLoc := os.Getenv("CERT_KEY_LOC")

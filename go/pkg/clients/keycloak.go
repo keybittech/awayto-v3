@@ -255,7 +255,10 @@ func InitKeycloak() *Keycloak {
 		return true
 	})
 
-	k := &Keycloak{handlerId: keycloakHandlerId}
+	k := &Keycloak{
+		handlerId: keycloakHandlerId,
+		stopChan:  make(chan struct{}, 1),
+	}
 
 	ticker := time.NewTicker(30 * time.Second)
 	k.ticker = ticker
