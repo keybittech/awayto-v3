@@ -4,6 +4,7 @@ import (
 	"errors"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -42,10 +43,19 @@ func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRe
 }
 
 func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfileDetailsRequest) (*types.GetUserProfileDetailsResponse, error) {
-	var userProfiles []*types.IUserProfile
-
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &userProfiles, `
-		SELECT * 
+	rows, err := info.Tx.Query(info.Req.Context(), `
+		SELECT 
+			"firstName",
+			"lastName",
+			sub,
+			image,
+			email,
+			locked,
+			active,
+			groups,
+			roles,
+			quotes,
+			bookings
 		FROM dbview_schema.enabled_users_ext
 		WHERE sub = $1
 	`, info.Session.UserSub)
@@ -53,37 +63,25 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 		return nil, util.ErrCheck(err)
 	}
 
-	if len(userProfiles) == 0 {
-		return nil, util.ErrCheck(errors.New("user not found"))
+	userProfile, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[types.IUserProfile])
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	userProfile := userProfiles[0]
-	extendedGroups := make(map[string]*types.IGroup)
-
-	for _, group := range userProfile.Groups {
-		var groups []*types.IGroup
-
-		err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groups, `
-			SELECT *
+	if _, ok := userProfile.Groups[info.Session.GroupId]; ok {
+		rows, err = info.Tx.Query(info.Req.Context(), `
+			SELECT name, "displayName", purpose, ai, code, "defaultRoleId", "allowedDomains", roles, true as active
 			FROM dbview_schema.enabled_groups_ext
 			WHERE id = $1
-		`, group.GetId())
-
+		`, info.Session.GroupId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		if len(groups) == 0 {
-			continue
+		userProfile.Groups[info.Session.GroupId], err = pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[types.IGroup])
+		if err != nil {
+			return nil, util.ErrCheck(err)
 		}
-
-		groups[0].Ldr = group.Ldr
-		groups[0].Active = groups[0].Id == info.Session.GroupId
-		extendedGroups[group.GetId()] = groups[0]
-	}
-
-	if len(extendedGroups) > 0 {
-		userProfile.Groups = extendedGroups
 	}
 
 	roleBits := info.Session.RoleBits
@@ -94,7 +92,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	// Try to send a request if the user has an active socket connection
 	// but no need to catch errors as they may not yet have a connection
-	h.Socket.RoleCall(info.Session.UserSub)
+	go h.Socket.RoleCall(info.Session.UserSub)
 
 	return &types.GetUserProfileDetailsResponse{UserProfile: userProfile}, nil
 }
