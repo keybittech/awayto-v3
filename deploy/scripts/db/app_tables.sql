@@ -125,6 +125,18 @@ CREATE TABLE dbtable_schema.service_addons (
   enabled BOOLEAN NOT NULL DEFAULT true
 );
 
+CREATE TABLE dbtable_schema.group_service_addons (
+  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
+  service_addon_id uuid NOT NULL REFERENCES dbtable_schema.service_addons (id) ON DELETE CASCADE,
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  UNIQUE (group_id, service_addon_id)
+);
+
 CREATE TABLE dbtable_schema.uuid_service_addons (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
   parent_uuid uuid NOT NULL,

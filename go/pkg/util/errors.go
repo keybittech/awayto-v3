@@ -14,18 +14,24 @@ import (
 )
 
 const (
-	ErrorForUser = "ERROR_FOR_USER"
+	ErrorForUser    = "ERROR_FOR_USER"
+	ErrorForUserLen = len(ErrorForUser) + 1
 )
 
 func UserError(err string) error {
-	return errors.New(ErrorForUser + " " + err + " " + ErrorForUser)
+	var sb strings.Builder
+	sb.WriteString(ErrorForUser)
+	sb.WriteString(" ")
+	sb.WriteString(err)
+	sb.WriteString(" ")
+	sb.WriteString(ErrorForUser)
+	return errors.New(sb.String())
 }
 
-const ErrorForUserLen = len(ErrorForUser) + 1
-
 func SnipUserError(err string) string {
-	result := err[ErrorForUserLen:]
-	return result[:len(result)-ErrorForUserLen]
+	userErrIdx := strings.Index(err, ErrorForUser)
+	userErrEndIdx := strings.LastIndex(err, ErrorForUser)
+	return err[userErrIdx+ErrorForUserLen : userErrEndIdx]
 }
 
 func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []protoreflect.Name, pbVal proto.Message) error {

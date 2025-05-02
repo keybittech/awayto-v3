@@ -1,17 +1,17 @@
 package handlers
 
 import (
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (h *Handlers) PostGroupServiceAddon(info ReqInfo, data *types.PostGroupServiceAddonRequest) (*types.PostGroupServiceAddonResponse, error) {
-	// TODO potentially undo the global uuid nature of uuid_service_addons table
 	_, err := info.Tx.Exec(info.Req.Context(), `
-		INSERT INTO dbtable_schema.uuid_service_addons (parent_uuid, service_addon_id, created_sub)
+		INSERT INTO dbtable_schema.group_service_addons (group_id, service_addon_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
-		ON CONFLICT (parent_uuid, service_addon_id) DO NOTHING
-	`, info.Session.GroupId, data.GetServiceAddonId(), info.Session.UserSub)
+		ON CONFLICT (group_id, service_addon_id) DO NOTHING
+	`, info.Session.GroupId, data.ServiceAddonId, info.Session.UserSub)
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -23,14 +23,18 @@ func (h *Handlers) PostGroupServiceAddon(info ReqInfo, data *types.PostGroupServ
 }
 
 func (h *Handlers) GetGroupServiceAddons(info ReqInfo, data *types.GetGroupServiceAddonsRequest) (*types.GetGroupServiceAddonsResponse, error) {
-	var groupServiceAddons []*types.IGroupServiceAddon
-
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupServiceAddons, `
-		SELECT eusa.id, eusa."parentUuid" as "groupId", TO_JSONB(esa.*) as "serviceAddon" 
-		FROM dbview_schema.enabled_uuid_service_addons eusa
-		LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = eusa."serviceAddonId"
-		WHERE eusa."parentUuid" = $1
+	rows, err := info.Tx.Query(info.Req.Context(), `
+		SELECT egsa.id, egsa."groupId", TO_JSONB(esa.*) as "serviceAddon" 
+		FROM dbview_schema.enabled_group_service_addons egsa
+		LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = egsa."serviceAddonId"
+		WHERE egsa."groupId" = $1
 	`, info.Session.GroupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	defer rows.Close()
+
+	groupServiceAddons, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IGroupServiceAddon])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -39,12 +43,27 @@ func (h *Handlers) GetGroupServiceAddons(info ReqInfo, data *types.GetGroupServi
 }
 
 func (h *Handlers) DeleteGroupServiceAddon(info ReqInfo, data *types.DeleteGroupServiceAddonRequest) (*types.DeleteGroupServiceAddonResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
-		DELETE FROM dbtable_schema.uuid_service_addons
-		WHERE parent_uuid = $1 AND service_addon_id = $2
-	`, info.Session.GroupId, data.GetGroupServiceAddonId())
+
+	res, err := info.Tx.Exec(info.Req.Context(), `
+		WITH existing_service_addon AS (
+			SELECT sa.id
+			FROM dbtable_schema.group_services gs
+			LEFT JOIN dbtable_schema.service_tiers st ON st.service_id = gs.service_id
+			LEFT JOIN dbtable_schema.service_tier_addons sta ON sta.service_tier_id = st.id
+			LEFT JOIN dbtable_schema.service_addons sa ON sa.id = sta.service_addon_id
+			WHERE gs.group_id = $1 AND sa.id = $2
+			LIMIT 1
+		)
+		DELETE FROM dbtable_schema.group_service_addons gsa
+		WHERE gsa.group_id = $1 AND gsa.service_addon_id = $2
+		AND (SELECT COUNT(id) FROM existing_service_addon) = 0
+	`, info.Session.GroupId, data.ServiceAddonId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return nil, util.ErrCheck(util.UserError("Deletion was skipped because the record is still associated with a group service."))
 	}
 
 	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/service_addons")

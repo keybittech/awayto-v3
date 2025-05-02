@@ -89,6 +89,19 @@ WHERE
   enabled = true;
 
 CREATE
+OR REPLACE VIEW dbview_schema.enabled_group_service_addons AS
+SELECT
+  id,
+  group_id as "groupId",
+  service_addon_id as "serviceAddonId",
+  created_on as "createdOn",
+  row_number() OVER () as row
+FROM
+  dbtable_schema.group_service_addons
+WHERE
+  enabled = true;
+
+CREATE
 OR REPLACE VIEW dbview_schema.enabled_uuid_service_addons AS
 SELECT
   id,

@@ -53,7 +53,7 @@ message GetGroupServiceAddonsResponse {
 }
 
 message DeleteGroupServiceAddonRequest {
-  string groupServiceAddonId = 1 [(google.api.field_behavior) = REQUIRED];
+  string serviceAddonId = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message DeleteGroupServiceAddonResponse {
