@@ -12,7 +12,7 @@
     "@reduxjs/toolkit": "^2.5.1",
     "better-react-mathjax": "^2.1.0",
     "dayjs": "^1.11.7",
-    "keycloak-js": "26.1.4",
+    "keycloak-js": "26.2.0",
     "mathjax-full": "^3.2.2",
     "pdfjs-dist": "4.4.168",
     "react": "^19.0.0",
