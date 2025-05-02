@@ -71,7 +71,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	if _, ok := userProfile.Groups[info.Session.GroupId]; ok {
 		groupRows, err := info.Tx.Query(info.Req.Context(), `
-			SELECT name, "displayName", purpose, ai, code, "defaultRoleId", "allowedDomains", roles, true as active
+			SELECT name, "displayName", purpose, ai, code, COALESCE("defaultRoleId"::TEXT, '') as "defaultRoleId", "allowedDomains", roles, true as active
 			FROM dbview_schema.enabled_groups_ext
 			WHERE id = $1
 		`, info.Session.GroupId)
