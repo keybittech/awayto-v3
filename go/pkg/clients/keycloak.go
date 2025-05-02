@@ -370,7 +370,7 @@ func (k *Keycloak) SendCommand(cmdType int32, request *types.AuthRequestParams) 
 	res, err := SendCommand(k, createCmd)
 	err = ChannelError(err, res.Error)
 	if err != nil {
-		return AuthResponse{}, util.ErrCheck(err)
+		return res, util.ErrCheck(err)
 	}
 
 	return res, nil
@@ -400,7 +400,7 @@ func (k *Keycloak) GetGroupAdminRoles(userSub string) ([]*types.KeycloakRole, er
 		return nil, util.ErrCheck(err)
 	}
 
-	return response.Roles, nil
+	return response.AuthResponseParams.Roles, nil
 }
 
 func (k *Keycloak) GetGroupSiteRoles(userSub, groupId string) ([]*types.ClientRoleMappingRole, error) {
@@ -413,7 +413,7 @@ func (k *Keycloak) GetGroupSiteRoles(userSub, groupId string) ([]*types.ClientRo
 		return nil, util.ErrCheck(err)
 	}
 
-	return response.Mappings, nil
+	return response.AuthResponseParams.Mappings, nil
 }
 
 func (k *Keycloak) CreateGroup(userSub, name string) (*types.KeycloakGroup, error) {
@@ -426,7 +426,7 @@ func (k *Keycloak) CreateGroup(userSub, name string) (*types.KeycloakGroup, erro
 		return nil, util.ErrCheck(err)
 	}
 
-	return response.Group, nil
+	return response.AuthResponseParams.Group, nil
 }
 
 func (k *Keycloak) GetGroup(userSub, id string) (*types.KeycloakGroup, error) {
@@ -439,7 +439,7 @@ func (k *Keycloak) GetGroup(userSub, id string) (*types.KeycloakGroup, error) {
 		return nil, util.ErrCheck(err)
 	}
 
-	return response.Group, nil
+	return response.AuthResponseParams.Group, nil
 }
 
 func (k *Keycloak) GetGroupByName(userSub, name string) ([]*types.KeycloakGroup, error) {
@@ -452,7 +452,7 @@ func (k *Keycloak) GetGroupByName(userSub, name string) ([]*types.KeycloakGroup,
 		return nil, util.ErrCheck(err)
 	}
 
-	return response.Groups, nil
+	return response.AuthResponseParams.Groups, nil
 }
 
 func (k *Keycloak) GetGroupSubgroups(userSub, groupId string) ([]*types.KeycloakGroup, error) {
@@ -460,12 +460,11 @@ func (k *Keycloak) GetGroupSubgroups(userSub, groupId string) ([]*types.Keycloak
 		UserSub: userSub,
 		GroupId: groupId,
 	})
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return response.Groups, nil
+	return response.AuthResponseParams.Groups, nil
 }
 
 func (k *Keycloak) DeleteGroup(userSub, id string) error {
@@ -501,14 +500,13 @@ func (k *Keycloak) CreateOrGetSubGroup(userSub, groupExternalId, subGroupName st
 		GroupId:   groupExternalId,
 		GroupName: subGroupName,
 	})
-
-	if err != nil {
+	if err != nil && !strings.Contains(err.Error(), "Conflict") && !strings.Contains(err.Error(), "exists") {
 		return nil, util.ErrCheck(err)
 	}
 
-	var kcSubGroup *types.KeycloakGroup
-
-	if kcCreateSubgroup.Error != nil && (strings.Contains(kcCreateSubgroup.Error.Error(), "exists") || strings.Contains(kcCreateSubgroup.Error.Error(), "Conflict")) {
+	if kcCreateSubgroup.AuthResponseParams.Group != nil {
+		return kcCreateSubgroup.AuthResponseParams.Group, nil
+	} else {
 		groupSubgroupsReply, err := k.SendCommand(GetGroupSubgroupsKeycloakCommand, &types.AuthRequestParams{
 			UserSub:   userSub,
 			GroupId:   groupExternalId,
@@ -520,17 +518,12 @@ func (k *Keycloak) CreateOrGetSubGroup(userSub, groupExternalId, subGroupName st
 
 		for _, sg := range groupSubgroupsReply.Groups {
 			if sg.Name == subGroupName {
-				kcSubGroup = sg
-				break
+				return sg, nil
 			}
 		}
-	} else if kcCreateSubgroup.Error != nil || kcCreateSubgroup.Group.Id == "" {
-		return nil, util.ErrCheck(kcCreateSubgroup.Error)
-	} else {
-		kcSubGroup = kcCreateSubgroup.Group
 	}
 
-	return kcSubGroup, nil
+	return nil, util.ErrCheck(errors.New("no subgroup found in get or create"))
 }
 
 func (k *Keycloak) AddRolesToGroup(userSub, id string, roles []*types.KeycloakRole) error {
