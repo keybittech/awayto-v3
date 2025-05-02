@@ -300,12 +300,20 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			cacheKey.WriteString(req.URL.String()[apiPathLen:])
 			cacheKeyData := cacheKey.String() + cacheKeySuffixData
 			cacheKeyModTime := cacheKey.String() + cacheKeySuffixModTime
+			pipe := a.Handlers.Redis.RedisClient.Pipeline()
+			defer func() {
+				_, err := pipe.Exec(ctx)
+				if err != nil {
+					util.ErrorLog.Println("failed to perform cache pipeline", err.Error(), cacheKeyData)
+				}
+			}()
 
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
 				next(w, req, session)
 				if types.CacheType_STORE != opts.CacheType {
-					a.Handlers.Redis.Client().Del(req.Context(), cacheKey.String())
+					pipe.Del(ctx, cacheKeyData)
+					pipe.Del(ctx, cacheKeyModTime)
 				}
 				return
 			}
@@ -394,11 +402,6 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				} else {
 					pipe.Set(ctx, cacheKeyData, buf.Bytes(), 0)
 					pipe.Set(ctx, cacheKeyModTime, modTimeStr, 0)
-				}
-
-				_, err := pipe.Exec(ctx)
-				if err != nil {
-					util.ErrorLog.Println("failed to write middleware cache", err.Error(), cacheKeyData)
 				}
 			}
 		}
