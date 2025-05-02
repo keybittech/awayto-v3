@@ -10,6 +10,7 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func TestUserError(t *testing.T) {
@@ -76,7 +77,7 @@ func TestRequestError(t *testing.T) {
 	type args struct {
 		w            http.ResponseWriter
 		givenErr     string
-		ignoreFields []string
+		ignoreFields []protoreflect.Name
 		pbVal        proto.Message
 	}
 	tests := []struct {
@@ -99,7 +100,7 @@ func TestRequestError(t *testing.T) {
 			args: args{
 				w:            httptest.NewRecorder(),
 				givenErr:     "test error",
-				ignoreFields: slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}),
+				ignoreFields: slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []protoreflect.Name{protoreflect.Name("firstName")}),
 				pbVal:        testPbStruct,
 			},
 			wantErr: true,
@@ -145,7 +146,7 @@ func BenchmarkRequestError(b *testing.B) {
 	}
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		RequestError(httptest.NewRecorder(), "test error", slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []string{"FirstName"}), testPbStruct)
+		RequestError(httptest.NewRecorder(), "test error", slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []protoreflect.Name{protoreflect.Name("firstName")}), testPbStruct)
 	}
 }
 

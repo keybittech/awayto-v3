@@ -5,7 +5,6 @@ import (
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
@@ -30,16 +29,11 @@ func testIntegrationGroup(t *testing.T) {
 			t.Errorf("error posting group: %v", err)
 		}
 
-		if !util.IsUUID(postGroupResponse.Id) {
-			t.Errorf("group id is not a uuid: %s", postGroupResponse.Id)
-		}
-
 		if len(postGroupResponse.Code) != 8 {
-			t.Errorf("group id is not 8 length: %s", postGroupResponse.Code)
+			t.Errorf("group code is not 8 length: %s", postGroupResponse.Code)
 		}
 
 		integrationTest.Group = &types.IGroup{
-			Id:             postGroupResponse.Id,
 			Code:           postGroupResponse.Code,
 			Name:           groupRequest.Name,
 			DisplayName:    groupRequest.DisplayName,
