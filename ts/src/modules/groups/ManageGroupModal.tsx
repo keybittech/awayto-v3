@@ -86,11 +86,11 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
       ai: group.ai
     };
 
-    if (group.id) {
+    if (group.code) {
       await patchGroup({ patchGroupRequest: groupSubmit }).unwrap().catch(console.error);
     } else {
       await postGroup({ postGroupRequest: groupSubmit }).unwrap().then(resp => {
-        group.id = resp.id;
+        group.code = resp.code;
       }).catch(console.error);
     }
 

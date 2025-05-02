@@ -231,7 +231,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
           </Grid>
           <Grid size={{ xs: 12, sm: 'grow' }} order={{ xs: 3, sm: 2 }}>
             <Alert action={
-              !group.id && <Button
+              !group.code && <Button
                 {...targets(`use group code`, `toggle group code entry to join a group instead of creating one`)}
                 sx={{ fontSize: '1rem' }}
                 onClick={() => { setAssist('join_group') }}

@@ -23,6 +23,7 @@ service GroupService {
       patch: "/v1/group"
       body: "*"
     };
+    option (site_role) = APP_GROUP_ADMIN;
     option (throttle) = 1;
   }
 
@@ -39,12 +40,14 @@ service GroupService {
     option (google.api.http) = {
       get: "/v1/group/assignments"
     };
+    option (site_role) = APP_GROUP_PERMISSIONS;
   }
 
   rpc DeleteGroup(DeleteGroupRequest) returns (DeleteGroupResponse) {
     option (google.api.http) = {
       delete: "/v1/group"
     };
+    option (site_role) = APP_GROUP_ADMIN;
   }
 }
 
@@ -109,8 +112,7 @@ message PostGroupRequest {
 }
 
 message PostGroupResponse {
-  string id = 1 [(google.api.field_behavior) = REQUIRED];
-  string code = 2 [(google.api.field_behavior) = REQUIRED];
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchGroupRequest {

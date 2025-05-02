@@ -25,7 +25,7 @@ type HandlerOptions struct {
 	Pattern           string
 	CacheType         types.CacheType
 	CacheDuration     int32
-	NoLogFields       []string
+	NoLogFields       []protoreflect.Name
 	MultipartRequest  bool
 	MultipartResponse bool
 	Throttle          int32
@@ -39,7 +39,7 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 			field := md.Input().Fields().ByNumber(protowire.Number(i + 1))
 
 			if proto.HasExtension(field.Options(), types.E_Nolog) {
-				parsedOptions.NoLogFields = append(parsedOptions.NoLogFields, TitleCase.String(string(field.Name())))
+				parsedOptions.NoLogFields = append(parsedOptions.NoLogFields, field.Name())
 			}
 		}
 	}

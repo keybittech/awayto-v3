@@ -16,14 +16,19 @@ import (
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
+	"google.golang.org/protobuf/reflect/protoreflect"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 var (
-	DEFAULT_IGNORED_PROTO_FIELDS = []string{"state", "sizeCache", "unknownFields"}
-	TitleCase                    cases.Caser
-	SigningToken                 []byte
+	DEFAULT_IGNORED_PROTO_FIELDS = []protoreflect.Name{
+		protoreflect.Name("state"),
+		protoreflect.Name("sizeCache"),
+		protoreflect.Name("unknownFields"),
+	}
+	TitleCase    cases.Caser
+	SigningToken []byte
 )
 
 const (

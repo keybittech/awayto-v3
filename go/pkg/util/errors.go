@@ -2,14 +2,13 @@ package util
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"runtime"
-	"slices"
 	"strconv"
 	"strings"
 
 	"github.com/google/uuid"
+	"google.golang.org/protobuf/encoding/prototext"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -29,49 +28,52 @@ func SnipUserError(err string) string {
 	return result[:len(result)-ErrorForUserLen]
 }
 
-func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []string, pbVal proto.Message) error {
+func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []protoreflect.Name, pbVal proto.Message) error {
 	requestId := uuid.NewString()
-	defaultErr := fmt.Sprintf("%s\nAn error occurred. Please try again later or contact your administrator with the request id provided.", requestId)
 
-	var reqParams string
+	var reqParams strings.Builder
 	if pbVal != nil {
 		reflectMsg := pbVal.ProtoReflect()
-		descriptor := reflectMsg.Descriptor()
-		fields := descriptor.Fields()
+		fields := reflectMsg.Descriptor().Fields()
 
-		for i := 0; i < fields.Len(); i++ {
-			field := fields.Get(i)
-			fieldName := string(field.Name())
-
-			if !slices.Contains(ignoreFields, fieldName) {
-				// Check if it's a string field
-				if field.Kind() == protoreflect.StringKind {
-					// Get the field value
-					value := reflectMsg.Get(field)
-					strValue := value.String()
-					reqParams += fieldName + "=" + strValue + " "
-				}
+		for _, ignoreField := range ignoreFields {
+			if fieldDescriptor := fields.ByName(ignoreField); fieldDescriptor != nil {
+				reflectMsg.Clear(fieldDescriptor)
 			}
 		}
+
+		reqParams.WriteString(prototext.Format(pbVal))
 	}
 
-	reqErr := requestId + " " + givenErr
+	var reqErr strings.Builder
+	reqErr.WriteString("REQUEST_ERROR ")
+	reqErr.WriteString(requestId)
+	reqErr.WriteString(" ")
+	reqErr.WriteString(givenErr)
 
-	if reqParams != "" {
-		reqErr = reqErr + " " + reqParams
+	if reqParams.String() != "" {
+		reqErr.WriteString(" ")
+		reqErr.WriteString(reqParams.String())
 	}
 
-	ErrorLog.Println(reqErr)
+	ErrorLog.Println(reqErr.String())
 
-	errRes := defaultErr
+	reqErrStr := reqErr.String()
 
-	if strings.Contains(reqErr, ErrorForUser) {
-		errRes = "Request Id: " + requestId + "\n" + SnipUserError(reqErr)
+	var userErrRes strings.Builder
+	userErrRes.WriteString("Request Id: ")
+	userErrRes.WriteString(requestId)
+	userErrRes.WriteString("\n")
+
+	if strings.Index(reqErrStr, ErrorForUser) > -1 {
+		userErrRes.WriteString(SnipUserError(reqErrStr))
+	} else {
+		userErrRes.WriteString("An error occurred. Please try again later or contact your administrator with the request id provided.")
 	}
 
-	http.Error(w, errRes, http.StatusInternalServerError)
+	http.Error(w, userErrRes.String(), http.StatusInternalServerError)
 
-	return errors.New(reqErr)
+	return errors.New(reqErr.String())
 }
 
 func ErrCheck(err error) error {
@@ -81,7 +83,13 @@ func ErrCheck(err error) error {
 
 	_, file, line, _ := runtime.Caller(1)
 
-	errStr := err.Error() + " " + file + ":" + strconv.Itoa(line)
+	var errStr strings.Builder
+	errStr.WriteString(err.Error())
+	errStr.WriteString(" ")
+	errStr.WriteString(file)
+	errStr.WriteString(":")
+	errStr.WriteString(strconv.Itoa(line))
+	errStr.WriteString("\n")
 
-	return errors.New(errStr)
+	return errors.New(errStr.String())
 }

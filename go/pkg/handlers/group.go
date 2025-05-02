@@ -156,7 +156,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	h.Socket.RoleCall(info.Session.UserSub)
 
 	undos = nil
-	return &types.PostGroupResponse{Id: groupId, Code: groupCode}, nil
+	return &types.PostGroupResponse{Code: groupCode}, nil
 }
 
 func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*types.PatchGroupResponse, error) {
