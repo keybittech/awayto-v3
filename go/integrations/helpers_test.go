@@ -177,6 +177,7 @@ func getPublicKey() {
 	publicKey = kc.Client.PublicKey
 	kc.Close()
 }
+
 func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 	data := url.Values{}
 	data.Set("client_id", os.Getenv("KC_CLIENT"))
@@ -186,7 +187,7 @@ func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 
 	req, err := http.NewRequest(
 		"POST",
-		"https://localhost:7443/auth/realms/"+os.Getenv("KC_REALM")+"/protocol/openid-connect/token",
+		"http://localhost:8080/auth/realms/"+os.Getenv("KC_REALM")+"/protocol/openid-connect/token",
 		strings.NewReader(data.Encode()),
 	)
 	if err != nil {

@@ -282,25 +282,26 @@ func (cw *CacheWriter) Write(data []byte) (int, error) {
 	return cw.ResponseWriter.Write(data)
 }
 
-type CacheMeta struct {
-	Data       []byte    `json:"data"`
-	LastMod    time.Time `json:"last_modified"`
-	StatusCode int       `json:"status_code"`
-}
-
 func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
 	shouldStore := types.CacheType_STORE == opts.CacheType
+	shouldSkip := types.CacheType_SKIP == opts.CacheType
 
 	return func(next SessionHandler) SessionHandler {
 		return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+			if shouldSkip {
+				next(w, req, session)
+				return
+			}
+
 			ctx := req.Context()
-			// gives a cache key like absd-asff-asff-asfdgroup/users
 			var cacheKey strings.Builder
 			cacheKey.WriteString(session.UserSub)
-			cacheKey.WriteString(req.URL.String()[apiPathLen:])
+			cacheKey.WriteString(req.URL.String())
 			cacheKeyData := cacheKey.String() + cacheKeySuffixData
 			cacheKeyModTime := cacheKey.String() + cacheKeySuffixModTime
+
 			pipe := a.Handlers.Redis.RedisClient.Pipeline()
+
 			defer func() {
 				_, err := pipe.Exec(ctx)
 				if err != nil {
@@ -311,44 +312,42 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
 				next(w, req, session)
-				if types.CacheType_STORE != opts.CacheType {
+				if !shouldStore {
 					pipe.Del(ctx, cacheKeyData)
 					pipe.Del(ctx, cacheKeyModTime)
 				}
 				return
 			}
 
-			if types.CacheType_SKIP != opts.CacheType {
-				// Check redis cache for request
-				cachedResponse := a.Handlers.Redis.RedisClient.MGet(ctx, cacheKeyData, cacheKeyModTime).Val()
+			// Check redis cache for request
+			cachedResponse := a.Handlers.Redis.RedisClient.MGet(ctx, cacheKeyData, cacheKeyModTime).Val()
 
-				cachedData, dataOk := cachedResponse[0].(string)
-				modTime, modOk := cachedResponse[1].(string)
+			cachedData, dataOk := cachedResponse[0].(string)
+			modTime, modOk := cachedResponse[1].(string)
 
-				if dataOk && modOk && len(cachedData) > 0 && modTime != "" {
+			if dataOk && modOk && len(cachedData) > 0 && modTime != "" {
 
-					lastMod, err := time.Parse(time.RFC3339Nano, modTime)
-					if err == nil {
+				lastMod, err := time.Parse(time.RFC3339Nano, modTime)
+				if err == nil {
 
-						w.Header().Set("Last-Modified", lastMod.Format(http.TimeFormat))
+					w.Header().Set("Last-Modified", lastMod.Format(http.TimeFormat))
 
-						// Check if client sent If-Modified-Since header
-						if ifModifiedSince := req.Header.Get("If-Modified-Since"); ifModifiedSince != "" {
-							if t, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
-								if !lastMod.Truncate(time.Second).After(t.Truncate(time.Second)) {
-									w.Header().Set("X-Cache-Status", "UNMODIFIED")
-									w.WriteHeader(http.StatusNotModified)
-									return
-								}
+					// Check if client sent If-Modified-Since header
+					if ifModifiedSince := req.Header.Get("If-Modified-Since"); ifModifiedSince != "" {
+						if t, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
+							if !lastMod.Truncate(time.Second).After(t.Truncate(time.Second)) {
+								w.Header().Set("X-Cache-Status", "UNMODIFIED")
+								w.WriteHeader(http.StatusNotModified)
+								return
 							}
 						}
-
-						// Serve cached data if no header interaction
-						w.Header().Set("X-Cache-Status", "HIT")
-						w.Header().Set("Content-Length", strconv.Itoa(len(cachedData)))
-						w.Write([]byte(cachedData))
-						return
 					}
+
+					// Serve cached data if no header interaction
+					w.Header().Set("X-Cache-Status", "HIT")
+					w.Header().Set("Content-Length", strconv.Itoa(len(cachedData)))
+					w.Write([]byte(cachedData))
+					return
 				}
 			}
 
@@ -376,9 +375,8 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			next(cacheWriter, req, session)
 
 			// Cache any response
-			if buf.Len() > 0 && types.CacheType_SKIP != opts.CacheType {
+			if buf.Len() > 0 {
 				duration := duration180
-				shouldStore := types.CacheType_STORE == opts.CacheType
 
 				if !shouldStore && opts.CacheDuration > 0 {
 					// Default 3 min cache or as otherwise specified

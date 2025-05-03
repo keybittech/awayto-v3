@@ -143,7 +143,7 @@ function FileManager({ uploadId, files, setFiles }: FileManagerProps): React.JSX
       </Grid>
       <Grid container size={12}>
         <Typography variant="caption">
-          <p>Submit up to 5 files. 20MB total size limit.</p>
+          <p>Submit up to 5 files. 32MB total size limit.</p>
           <p>Allowed Extensions: {allowedFileExt}</p>
         </Typography>
       </Grid>

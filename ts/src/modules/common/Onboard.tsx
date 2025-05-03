@@ -1,16 +1,13 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 
 import Grid from '@mui/material/Grid';
 import IconButton from '@mui/material/IconButton';
 import DialogContent from '@mui/material/DialogContent';
-import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
 import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
-import CardActionArea from '@mui/material/CardActionArea';
-import CardHeader from '@mui/material/CardHeader';
 import Tooltip from '@mui/material/Tooltip';
 import Alert from '@mui/material/Alert';
 import Link from '@mui/material/Link';
@@ -27,6 +24,8 @@ import ManageGroupRolesModal from '../roles/ManageGroupRolesModal';
 import ManageServiceModal from '../services/ManageServiceModal';
 import ManageSchedulesModal from '../group_schedules/ManageSchedulesModal';
 import JoinGroupModal from '../groups/JoinGroupModal';
+import ServiceTierAddons from '../services/ServiceTierAddons';
+import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 export function Onboard(_: IComponent): React.JSX.Element {
 
@@ -43,6 +42,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
 
   const validArea = 'onboarding';
 
+  const topRef = useRef<HTMLDivElement>(null);
   const [group, setGroup] = useState({} as IGroup);
   const [groupService, setGroupService] = useState(JSON.parse(localStorage.getItem(`${validArea}_service`) || '{}') as IGroupService);
   const [groupSchedule, setGroupSchedule] = useState(JSON.parse(localStorage.getItem(`${validArea}_schedule`) || '{}') as IGroupSchedule);
@@ -75,6 +75,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
   }
 
   const changePage = (dir: number) => {
+    topRef.current?.scrollIntoView();
     const nextPage = dir + currentPage;
     if (nextPage >= 0 && nextPage < 5) {
       setCurrentPage(nextPage);
@@ -98,7 +99,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
 
     <Grid container spacing={2} p={2} sx={{ justifyContent: 'center', bgcolor: 'secondary.main', height: '100vh', alignContent: 'flex-start', overflow: 'auto' }}>
 
-      <Grid container size={{ xs: 12, md: 10, lg: 9, xl: 8 }}>
+      <Grid ref={topRef} container size={{ xs: 12, md: 10, lg: 9, xl: 8 }}>
 
         <Grid container size="grow" direction="row" sx={{ alignItems: 'center', backgroundColor: '#000', borderRadius: '4px', p: '8px 12px' }}>
           <Grid container size="grow" justifyItems="center">
@@ -170,47 +171,49 @@ export function Onboard(_: IComponent): React.JSX.Element {
               setGroupSchedule({ ...savedSchedule });
             }}
           /> : currentPage == 4 ? <>
-            <Card>
-              <CardHeader title="Review" />
-              <CardContent>
-                <Typography variant="caption">Group Name</Typography> <Typography mb={2} variant="h5">{group.displayName}</Typography>
-                <Typography variant="caption">Roles</Typography> <Typography mb={2} variant="h5">{groupRoleValues.map(r => r.name).join(', ')}</Typography>
-                <Typography variant="caption">Default Role</Typography> <Typography mb={2} variant="h5">{groupRoleValues.find(r => r.id === group.defaultRoleId)?.name || ''}</Typography>
-                <Typography variant="caption">Service Name</Typography> <Typography mb={2} variant="h5">{groupService.service?.name}</Typography>
-                <Typography variant="caption">Schedule Name</Typography> <Typography mb={2} variant="h5">{groupSchedule.schedule?.name}</Typography>
-              </CardContent>
-              <CardActionArea
-                {...targets(`onboard submit group request`, `complete onboarding and submit group creation`)}
-                onClick={() => {
-                  if (!pages[0].complete || !pages[1].complete || !pages[2].complete || !pages[3].complete) {
-                    setSnack({ snackType: 'error', snackOn: 'All pages must be completed' });
-                    return;
-                  }
-                  openConfirm({
-                    isConfirming: true,
-                    confirmEffect: `Create the group ${group.displayName}.`,
-                    confirmAction: submit => {
-                      if (submit) {
-                        completeOnboarding({
-                          completeOnboardingRequest: {
-                            service: groupService.service!,
-                            schedule: groupSchedule.schedule!
-                          }
-                        }).unwrap().then(() => {
-                          localStorage.removeItem('onboarding_service');
-                          localStorage.removeItem('onboarding_schedule');
-                          void reloadProfile();
-                        }).catch(console.error);
-                      }
-                    }
-                  });
-                }}
-              >
-                <Box m={2} sx={{ display: 'flex', alignItems: 'center' }}>
-                  <Typography color="secondary" variant="button">Create Group</Typography>
-                </Box>
-              </CardActionArea>
-            </Card>
+            <Grid container spacing={2} sx={{ p: 2, backgroundColor: 'background.default' }}>
+              <Typography variant="h4">Review Submission</Typography>
+              <Grid size={12}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Grid container>
+                      <Grid size={4}>
+                        <Typography variant="caption">Group Name</Typography>
+                        <Typography variant="h5">{group.displayName}</Typography>
+                      </Grid>
+                      <Grid size={4}>
+                        <Typography variant="caption">Default Role</Typography>
+                        <Typography variant="h5">{groupRoleValues.find(r => r.id === group.defaultRoleId)?.name || ''}</Typography>
+                      </Grid>
+                      <Grid size={4}>
+                        <Typography variant="caption">Roles</Typography>
+                        <Typography variant="h5">{groupRoleValues.map(r => r.name).join(', ')}</Typography>
+                      </Grid>
+                    </Grid>
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={12}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="caption">Service Name</Typography>
+                    <Typography mb={2} variant="h5">{groupService.service?.name}</Typography>
+                    {groupService.service && <ServiceTierAddons service={groupService.service} showFormChips />}
+                  </CardContent>
+                </Card>
+              </Grid>
+
+              <Grid size={12}>
+                <Card variant="outlined">
+                  <CardContent>
+                    <Typography variant="caption">Schedule Name</Typography>
+                    <Typography mb={2} variant="h5">{groupSchedule.schedule?.name}</Typography>
+                    {groupSchedule.schedule && <ScheduleDisplay schedule={groupSchedule.schedule} />}
+                  </CardContent>
+                </Card>
+              </Grid>
+            </Grid>
           </> : <></>}
 
         </Grid>
@@ -251,8 +254,35 @@ export function Onboard(_: IComponent): React.JSX.Element {
               disableRipple
               disableElevation
               variant="contained"
-              disabled={saveToggle > 0 || !pages[currentPage].complete || currentPage + 1 == 5}
-              onClick={() => { setSaveToggle((new Date()).getTime()); }}
+              disabled={saveToggle > 0 || (currentPage < 4 && !pages[currentPage].complete)}
+              onClick={() => {
+                if (currentPage < 4) {
+                  setSaveToggle((new Date()).getTime());
+                } else {
+                  if (!pages[0].complete || !pages[1].complete || !pages[2].complete || !pages[3].complete) {
+                    setSnack({ snackType: 'error', snackOn: 'All pages must be completed' });
+                    return;
+                  }
+                  openConfirm({
+                    isConfirming: true,
+                    confirmEffect: `Create the group ${group.displayName}.`,
+                    confirmAction: submit => {
+                      if (submit) {
+                        completeOnboarding({
+                          completeOnboardingRequest: {
+                            service: groupService.service!,
+                            schedule: groupSchedule.schedule!
+                          }
+                        }).unwrap().then(() => {
+                          localStorage.removeItem('onboarding_service');
+                          localStorage.removeItem('onboarding_schedule');
+                          reloadProfile();
+                        }).catch(console.error);
+                      }
+                    }
+                  });
+                }
+              }}
             >
               {saveToggle == 0 ? 'Next' : <CircularProgress size={16} />}
             </Button>
@@ -266,7 +296,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
       <JoinGroupModal closeModal={(joined: boolean) => {
         setAssist('');
         if (joined) {
-          void reloadProfile();
+          reloadProfile();
         }
       }} />
     </Dialog>

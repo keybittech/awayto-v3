@@ -18,36 +18,39 @@ import (
 type BodyParser func(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error)
 
 func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error) {
-
-	body, err := io.ReadAll(req.Body)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	defer req.Body.Close()
-
 	pb := serviceType.New().Interface().(proto.Message)
-	if len(body) > 0 {
-		err = protojson.Unmarshal(body, pb)
+
+	if req.Body != nil && req.Body != http.NoBody {
+		req.Body = http.MaxBytesReader(w, req.Body, 1<<20)
+		defer req.Body.Close()
+
+		buf, err := io.ReadAll(req.Body)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-	}
 
-	err = protovalidate.Validate(pb)
-	if err != nil {
-		return nil, util.ErrCheck(util.UserError(err.Error()))
+		if len(buf) > 0 {
+			err = protojson.Unmarshal(buf, pb)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+
+			err = protovalidate.Validate(pb)
+			if err != nil {
+				return nil, util.ErrCheck(util.UserError(err.Error()))
+			}
+		}
 	}
 
 	return pb, nil
 }
 
 func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error) {
+	req.Body = http.MaxBytesReader(w, req.Body, 1<<25)
 
-	req.Body = http.MaxBytesReader(w, req.Body, 20480000)
-
-	err := req.ParseMultipartForm(204800000)
+	err := req.ParseMultipartForm(1 << 25)
 	if err != nil {
-		return nil, util.ErrCheck(util.UserError("Attached files may not exceed 20MB."))
+		return nil, util.ErrCheck(util.UserError("Attached files may not exceed 32MB."))
 	}
 
 	pbFiles := &types.PostFileContentsRequest{}

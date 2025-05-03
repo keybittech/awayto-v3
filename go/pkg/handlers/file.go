@@ -113,8 +113,8 @@ func (h *Handlers) PostFileContents(info ReqInfo, data *types.PostFileContentsRe
 		return nil, util.ErrCheck(err)
 	}
 
-	if totalSize > 20480000 {
-		return nil, util.ErrCheck(util.UserError("Total file size must not exceed 20MB."))
+	if totalSize > 1<<25 {
+		return nil, util.ErrCheck(util.UserError("Total file size must not exceed 32MB."))
 	}
 
 	return &types.PostFileContentsResponse{Ids: newUuids}, nil

@@ -258,9 +258,9 @@ export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, clos
           >
             {groupServices.map((gs, i) => {
               return <ToggleButton
+                {...targets(`manage personal schedule modal toggle service ${gs.service?.name}`, `toggle service offered by the schedule`)}
                 key={`bracket_service_toggle_${i}`}
                 value={gs.service?.id || ''}
-                aria-label={gs.service?.name}
               >
                 {gs.service?.name}
               </ToggleButton>;

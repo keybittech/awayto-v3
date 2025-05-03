@@ -1,6 +1,7 @@
 package api
 
 import (
+	"crypto/rsa"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -10,16 +11,19 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/handlers"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"golang.org/x/time/rate"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var integrationTest = &types.IntegrationTest{}
+var (
+	integrationTest = &types.IntegrationTest{}
+	publicKey       *rsa.PublicKey
+)
 
 func init() {
-	jsonBytes, err := os.ReadFile(filepath.Join("..", "..", "integrations", "integration_results.json"))
+	jsonBytes, err := os.ReadFile(filepath.Join(os.Getenv("PROJECT_DIR"), "go", "integrations", "integration_results.json"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -29,45 +33,30 @@ func init() {
 		log.Fatal(err)
 	}
 
+	kc := clients.InitKeycloak()
+	publicKey = kc.Client.PublicKey
+	kc.Close()
+
 	println("init api_test")
-}
-
-func reset(b *testing.B) {
-	b.ReportAllocs()
-	b.ResetTimer()
-}
-
-func getTestApi(rl *RateLimiter) *API {
-	a := &API{
-		Server:   &http.Server{},
-		Handlers: handlers.NewHandlers(),
-	}
-	a.InitMux(rl)
-	return a
-}
-
-func getTestReq(b *testing.B, token, method, url string) *http.Request {
-	testReq, err := http.NewRequest(method, url, nil)
-	if err != nil {
-		b.Fatal(err)
-	}
-	testReq.Header.Set("Authorization", "Bearer "+token)
-	testReq.Header.Set("Accept", "application/json")
-	testReq.Header.Set("X-TZ", "America/Los_Angeles")
-
-	return testReq
 }
 
 func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int) {
 	rl := NewRateLimit("api", limit, burst, time.Duration(5*time.Second))
 	api := getTestApi(rl)
-	user := integrationTest.TestUsers[0]
-	req := getTestReq(b, user.TestToken, http.MethodGet, "/api/v1/profile/details")
+	user := integrationTest.TestUsers[1]
+
+	req := getTestReq(b, user.TestToken, http.MethodGet, "/api/v1/profile/details", nil)
 	recorder := httptest.NewRecorder()
+
 	reset(b)
 	for i := 0; i < b.N; i++ {
 		recorder.Body.Reset()
 		api.Server.Handler.ServeHTTP(recorder, req)
+	}
+
+	good := checkResponseFor(recorder.Body.Bytes(), []byte{'{', 'T'})
+	if !good {
+		b.Errorf("Response body (status %d) did not start with '{'. Got: %s", recorder.Code, string(recorder.Body.Bytes()))
 	}
 }
 

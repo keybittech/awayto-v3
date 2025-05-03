@@ -29,7 +29,7 @@ func reset(b *testing.B) {
 }
 
 func TestMain(m *testing.M) {
-	cmd := exec.Command(filepath.Join("..", os.Getenv("BINARY_NAME")))
+	cmd := exec.Command(filepath.Join(os.Getenv("PROJECT_DIR"), "go", os.Getenv("BINARY_NAME")))
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
@@ -67,10 +67,11 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	jsonBytes, _ := protojson.Marshal(integrationTest)
-	os.WriteFile("integration_results.json", jsonBytes, 0600)
+	integrationTestPath := filepath.Join(os.Getenv("PROJECT_DIR"), "go", "integrations", "integration_results.json")
+	os.WriteFile(integrationTestPath, jsonBytes, 0600)
 
 	if err := cmd.Process.Kill(); err != nil {
-		fmt.Println("Failed to close server:", err)
+		fmt.Printf("Failed to close server: %v", err)
 	}
 
 	os.Exit(code)

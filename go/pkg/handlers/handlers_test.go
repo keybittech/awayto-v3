@@ -19,7 +19,7 @@ import (
 var integrationTest = &types.IntegrationTest{}
 
 func init() {
-	jsonBytes, err := os.ReadFile(filepath.Join("..", "..", "integrations", "integration_results.json"))
+	jsonBytes, err := os.ReadFile(filepath.Join(os.Getenv("PROJECT_DIR"), "go", "integrations", "integration_results.json"))
 	if err != nil {
 		log.Fatal(err)
 	}

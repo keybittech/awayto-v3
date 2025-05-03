@@ -54,7 +54,6 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 	}
 
 	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-
 		var deferredError error
 		var pb proto.Message
 
@@ -62,13 +61,12 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			if p := recover(); p != nil {
 				util.ErrorLog.Println("ROUTE RECOVERY", fmt.Sprint(p))
 			}
-			go func() {
-				clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
 
-				if deferredError != nil {
-					util.RequestError(w, deferredError.Error(), ignoreFields, pb)
-				}
-			}()
+			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
+
+			if deferredError != nil {
+				util.RequestError(w, deferredError.Error(), ignoreFields, pb)
+			}
 		}()
 
 		pb, err := bodyParser(w, req, handlerOpts, serviceType)
