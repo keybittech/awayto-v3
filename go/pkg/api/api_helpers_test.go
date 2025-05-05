@@ -38,6 +38,7 @@ func getTestReq(b *testing.B, token, method, url string, body io.Reader) *http.R
 	if err != nil {
 		b.Fatal(err)
 	}
+	testReq.RemoteAddr = "127.0.0.1:9999"
 	testReq.Header.Set("Authorization", "Bearer "+token)
 	testReq.Header.Set("Accept", "application/json")
 	testReq.Header.Set("X-TZ", "America/Los_Angeles")
