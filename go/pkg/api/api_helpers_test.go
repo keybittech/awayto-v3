@@ -15,7 +15,12 @@ import (
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
+
+func init() {
+	util.MakeLoggers()
+}
 
 func reset(b *testing.B) {
 	b.ReportAllocs()

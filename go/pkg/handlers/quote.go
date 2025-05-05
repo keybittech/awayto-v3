@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -111,13 +112,17 @@ func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*typ
 }
 
 func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types.GetQuotesResponse, error) {
-	var quotes []*types.IQuote
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &quotes, `
+	rows, err := info.Tx.Query(info.Req.Context(), `
 		SELECT q.*
 		FROM dbview_schema.enabled_quotes q
-		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q.schedule_bracket_slot_id
+		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q."scheduleBracketSlotId"
 		WHERE sbs.created_sub = $1
 	`, info.Session.UserSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	quotes, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IQuote])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

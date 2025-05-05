@@ -44,7 +44,7 @@ func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int) {
 	api := getTestApi(rl)
 	user := integrationTest.TestUsers[1]
 
-	req := getTestReq(b, user.TestToken, http.MethodGet, "/api/v1/profile/details", nil)
+	req := getTestReq(b, user.TestToken, http.MethodGet, "/api/v1/quotes", nil)
 	recorder := httptest.NewRecorder()
 
 	reset(b)

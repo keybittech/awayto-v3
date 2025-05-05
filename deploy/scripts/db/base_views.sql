@@ -1,6 +1,5 @@
 CREATE
 OR REPLACE VIEW dbview_schema.enabled_users
-WITH (security_invoker = true)
 AS
 SELECT
   u.id,
@@ -13,8 +12,7 @@ SELECT
   u.active,
   u.created_on as "createdOn",
   u.updated_on as "updatedOn",
-  u.enabled,
-  row_number() OVER () as row
+  u.enabled
 FROM
   dbtable_schema.users u
 WHERE

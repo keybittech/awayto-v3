@@ -251,23 +251,14 @@ func NewGroupDbSession(pool *pgxpool.Pool, session *types.UserSession) DbSession
 	}
 }
 
-var batchPool = &sync.Pool{
-	New: func() interface{} {
-		return &pgx.Batch{}
-	},
-}
-
 func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, params ...interface{}) pgx.BatchResults {
-	batch := batchPool.Get().(*pgx.Batch)
-	batch.QueuedQueries = nil
+	batch := &pgx.Batch{}
 
 	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.RoleBits, ds.Topic)
 	batch.Queue(primaryQuery, params...)
 	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 
 	results := ds.SendBatch(ctx, batch)
-
-	batchPool.Put(batch)
 
 	return results
 }
@@ -339,22 +330,45 @@ func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, para
 }
 
 func (ds DbSession) SessionOpenBatch(ctx context.Context) *pgx.Batch {
-	batch := batchPool.Get().(*pgx.Batch)
-	batch.QueuedQueries = nil
+	batch := &pgx.Batch{}
 
 	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.RoleBits, ds.Topic)
 
 	return batch
 }
 
-func (ds DbSession) SessionSendBatch(ctx context.Context, batch *pgx.Batch) pgx.BatchResults {
+func (ds DbSession) SessionSendBatch(ctx context.Context, batch *pgx.Batch) (pgx.BatchResults, error) {
 	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 
 	results := ds.SendBatch(ctx, batch)
 
-	batchPool.Put(batch)
+	if _, err := results.Exec(); err != nil {
+		results.Close()
+		return nil, util.ErrCheck(err)
+	}
 
-	return results
+	return results, nil
+}
+
+func OpenBatch(ctx context.Context, sub, groupId string, roleBits int32) *pgx.Batch {
+	batch := &pgx.Batch{}
+
+	batch.Queue(setSessionVariablesSQL, sub, groupId, roleBits, "")
+
+	return batch
+}
+
+func SendBatch(ctx context.Context, tx *PoolTx, batch *pgx.Batch) (pgx.BatchResults, error) {
+	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
+
+	results := tx.SendBatch(ctx, batch)
+
+	if _, err := results.Exec(); err != nil {
+		results.Close()
+		return nil, util.ErrCheck(err)
+	}
+
+	return results, nil
 }
 
 func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice interface{}, query string, args ...interface{}) error {
