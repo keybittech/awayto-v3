@@ -33,10 +33,8 @@ var (
 )
 
 const (
-	LOGIN_SIGNATURE_NAME  = "login_signature_name"
-	ForbiddenResponse     = `{ "error": { "status": 403 } }`
-	InternalErrorResponse = `{ "error": { "status": 500 } }`
-	DefaultPadding        = 5
+	LOGIN_SIGNATURE_NAME = "login_signature_name"
+	DefaultPadding       = 5
 )
 
 func init() {

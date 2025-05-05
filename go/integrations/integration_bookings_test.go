@@ -32,8 +32,8 @@ func testIntegrationBookings(t *testing.T) {
 		}
 
 		_, err := postBooking(member1.TestToken, bookingRequests)
-		if err != nil && !strings.Contains(err.Error(), "Forbidden") {
-			t.Errorf("booking post without permissions was not Forbidden, %v", err)
+		if err != nil && !strings.Contains(err.Error(), "403") {
+			t.Errorf("booking post without permissions was not 403, %v", err)
 		}
 	})
 

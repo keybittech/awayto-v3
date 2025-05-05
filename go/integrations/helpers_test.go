@@ -62,7 +62,6 @@ func doAndRead(req *http.Request) ([]byte, error) {
 }
 
 func apiRequest(token, method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
-
 	reqURL := "https://localhost:7443" + path
 	if queryParams != nil && len(queryParams) > 0 {
 		values := url.Values{}
@@ -102,6 +101,10 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 		return fmt.Errorf("error sending request: %w", err)
 	}
 	defer resp.Body.Close()
+
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("unsuccessful api request status code: %d", resp.StatusCode)
+	}
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {

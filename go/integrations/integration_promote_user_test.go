@@ -51,7 +51,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 	t.Run("user cannot change their own role", func(t *testing.T) {
 		t.Log("user attempt to modify their own role to staff")
 		err := patchGroupUser(member1.TestToken, member1.UserSession.UserSub, integrationTest.StaffRole.Id)
-		if err != nil && !strings.Contains(err.Error(), "Forbidden") {
+		if err != nil && !strings.Contains(err.Error(), "403") {
 			t.Errorf("user patches self err %v", err)
 		}
 
@@ -84,8 +84,8 @@ func testIntegrationPromoteUser(t *testing.T) {
 
 	t.Run("APP_GROUP_USERS permission allows user role changes", func(t *testing.T) {
 		err := patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
-		if err != nil && !strings.Contains(err.Error(), "Forbidden") {
-			t.Errorf("staff promotes staff without permissions err %v", err)
+		if err != nil && !strings.Contains(err.Error(), "403") {
+			t.Errorf("staff promotes staff without permissions was not 403: %v", err)
 		}
 
 		_, session, err := getKeycloakToken(staff2.TestUserId)

@@ -10,10 +10,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"testing"
 
-	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
@@ -23,10 +23,11 @@ func reset(b *testing.B) {
 }
 
 func getTestApi(rateLimiter *RateLimiter) *API {
-	a := &API{
-		Server:   &http.Server{},
-		Handlers: handlers.NewHandlers(),
+	httpsPort, err := strconv.Atoi(os.Getenv("GO_HTTPS_PORT"))
+	if err != nil {
+		log.Fatalf("error getting test api %v", err)
 	}
+	a := NewAPI(httpsPort)
 	a.InitProtoHandlers()
 	a.Server.Handler = a.LimitMiddleware(rateLimiter)(a.Server.Handler)
 	return a

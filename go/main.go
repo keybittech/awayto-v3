@@ -19,8 +19,8 @@ var (
 	turnListenerPort       = 7788
 	turnInternalPort       = 3478
 	unixPath               = "/tmp/goapp.sock"
-	requestsPerSecond      = 5
-	requestsPerSecondBurst = 20
+	requestsPerSecond      = 50
+	requestsPerSecondBurst = 50
 )
 
 var (

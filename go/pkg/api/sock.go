@@ -17,7 +17,7 @@ import (
 const (
 	PING                    = "PING"
 	PONG                    = "PONG"
-	socketEventTimeoutAfter = 250 * time.Millisecond
+	socketEventTimeoutAfter = 150 * time.Millisecond
 )
 
 var (

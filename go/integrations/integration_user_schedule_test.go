@@ -53,8 +53,8 @@ func testIntegrationUserSchedule(t *testing.T) {
 
 	t.Run("APP_GROUP_SCHEDULE permission is required to create a personal schedule", func(t *testing.T) {
 		_, err := postSchedule(member1.TestToken, &types.PostScheduleRequest{})
-		if err == nil || !strings.Contains(err.Error(), "Forbidden") {
-			t.Error("user request to create schedule without permissions was not Forbidden")
+		if err == nil || !strings.Contains(err.Error(), "403") {
+			t.Error("user request to create schedule without permissions was not 403")
 		}
 	})
 

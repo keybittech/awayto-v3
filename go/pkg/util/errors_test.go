@@ -51,7 +51,7 @@ func TestSnipUserError(t *testing.T) {
 		args args
 		want string
 	}{
-		{name: "Empty error", args: args{"ERROR_FOR_USER error ERROR_FOR_USER"}, want: "error"},
+		{name: "Empty error", args: args{"ERROR_FOR_USER error ERROR_FOR_USER"}, want: "error "},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

@@ -5,10 +5,10 @@ CREATE OR REPLACE FUNCTION dbfunc_schema.set_session_vars(
   p_sock_topic VARCHAR DEFAULT ''
 ) RETURNS VOID AS $$
 BEGIN
-  EXECUTE format('SET SESSION app_session.user_sub = %L', p_user_sub);
-  EXECUTE format('SET SESSION app_session.group_id = %L', p_group_id);
-  EXECUTE format('SET SESSION app_session.role_bits = %L', p_role_bits);
-  EXECUTE format('SET SESSION app_session.sock_topic = %L', p_sock_topic);
+  PERFORM set_config('app_session.user_sub', p_user_sub, true);
+  PERFORM set_config('app_session.group_id', p_group_id, true);
+  PERFORM set_config('app_session.role_bits', p_role_bits::text, true);
+  PERFORM set_config('app_session.sock_topic', p_sock_topic, true);
 END;
 $$ LANGUAGE PLPGSQL;
 

@@ -48,7 +48,6 @@ GO_UTIL_DIR=$(GO_SRC)/pkg/util
 export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
 DEMOS_DIR=demos/final
 
-
 #################################
 #            TARGETS            #
 #################################
@@ -140,7 +139,6 @@ define clean_logs
   fi)
 endef
 
-
 #################################
 #             FLAGS             #
 #################################
@@ -170,7 +168,9 @@ clean:
 
 $(LOG_DIR):
 ifeq ($(DEPLOYING),false)
-	mkdir -p $(LOG_DIR)
+	mkdir -p $(LOG_DIR)/db
+	setfacl -m g:1000:rwx $(LOG_DIR)/db
+	setfacl -d -m g:1000:rwx $(LOG_DIR)/db
 endif
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
