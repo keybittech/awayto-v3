@@ -1,8 +1,11 @@
 package api
 
 import (
+	"reflect"
 	"strings"
 	"testing"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 var (
@@ -161,4 +164,65 @@ func BenchmarkTokenMissingBearer(b *testing.B) {
 			extractTokenWithTrimPrefix(tokenWithoutBearer)
 		}
 	})
+}
+
+func TestNewTokenCache(t *testing.T) {
+	tests := []struct {
+		name string
+		want *TokenCache
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := NewTokenCache(); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("NewTokenCache() = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
+func TestTokenCache_Set(t *testing.T) {
+	type args struct {
+		token   string
+		session *types.UserSession
+	}
+	tests := []struct {
+		name string
+		tc   *TokenCache
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.tc.Set(tt.args.token, tt.args.session)
+		})
+	}
+}
+
+func TestTokenCache_Get(t *testing.T) {
+	type args struct {
+		token string
+	}
+	tests := []struct {
+		name  string
+		tc    *TokenCache
+		args  args
+		want  *types.UserSession
+		want1 bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, got1 := tt.tc.Get(tt.args.token)
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("TokenCache.Get(%v) got = %v, want %v", tt.args.token, got, tt.want)
+			}
+			if got1 != tt.want1 {
+				t.Errorf("TokenCache.Get(%v) got1 = %v, want %v", tt.args.token, got1, tt.want1)
+			}
+		})
+	}
 }

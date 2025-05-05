@@ -3,31 +3,34 @@ package main
 import (
 	"flag"
 	"fmt"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/keybittech/awayto-v3/go/pkg/api"
-	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"golang.org/x/time/rate"
 )
 
 var (
-	httpPort         = 7080
-	httpsPort        = 7443
-	turnListenerPort = 7788
-	turnInternalPort = 3478
-	unixPath         = "/tmp/goapp.sock"
+	httpPort               = 7080
+	httpsPort              = 7443
+	turnListenerPort       = 7788
+	turnInternalPort       = 3478
+	unixPath               = "/tmp/goapp.sock"
+	requestsPerSecond      = 5
+	requestsPerSecondBurst = 20
 )
 
 var (
-	httpPortFlag         = flag.Int("httpPort", httpPort, "Server HTTP port")
-	httpsPortFlag        = flag.Int("httpsPort", httpsPort, "Server HTTPS port")
-	turnListenerPortFlag = flag.Int("turnListenerPort", turnListenerPort, "Turn listener port")
-	turnInternalPortFlag = flag.Int("turnInternalPort", turnInternalPort, "Turn internal port")
-	unixPathFlag         = flag.String("unixPath", unixPath, "Unix socket path")
+	httpPortFlag               = flag.Int("httpPort", httpPort, "Server HTTP port")
+	httpsPortFlag              = flag.Int("httpsPort", httpsPort, "Server HTTPS port")
+	turnListenerPortFlag       = flag.Int("turnListenerPort", turnListenerPort, "Turn listener port")
+	turnInternalPortFlag       = flag.Int("turnInternalPort", turnInternalPort, "Turn internal port")
+	unixPathFlag               = flag.String("unixPath", unixPath, "Unix socket path")
+	requestsPerSecondFlag      = flag.Int("requestsPerSecond", requestsPerSecond, "Turn internal port")
+	requestsPerSecondBurstFlag = flag.Int("requestsPerSecondBurst", requestsPerSecondBurst, "Turn internal port")
 )
 
 func init() {
@@ -36,10 +39,13 @@ func init() {
 	turnListenerPort = *turnListenerPortFlag
 	turnInternalPort = *turnInternalPortFlag
 	unixPath = *unixPathFlag
+	requestsPerSecond = *requestsPerSecondFlag
+	requestsPerSecondBurst = *requestsPerSecondBurstFlag
 
 	godotenv.Load(os.Getenv("GO_ENVFILE_LOC"))
 
-	if httpPortEnv := os.Getenv("GO_HTTP_PORT"); httpPortEnv != "" && *httpPortFlag == httpPort {
+	httpPortEnv := os.Getenv("GO_HTTP_PORT")
+	if httpPortEnv != "" && *httpPortFlag == httpPort {
 		httpPortEnvI, err := strconv.Atoi(httpPortEnv)
 		if err != nil {
 			fmt.Printf("please set GO_HTTP_PORT as int %s", err.Error())
@@ -49,7 +55,8 @@ func init() {
 		}
 	}
 
-	if httpsPortEnv := os.Getenv("GO_HTTPS_PORT"); httpsPortEnv != "" && *httpsPortFlag == httpsPort {
+	httpsPortEnv := os.Getenv("GO_HTTPS_PORT")
+	if httpsPortEnv != "" && *httpsPortFlag == httpsPort {
 		httpsPortEnvI, err := strconv.Atoi(httpsPortEnv)
 		if err != nil {
 			fmt.Printf("please set GO_HTTPS_PORT as int %s", err.Error())
@@ -59,7 +66,8 @@ func init() {
 		}
 	}
 
-	if unixSockDir, unixSockFile := os.Getenv("UNIX_SOCK_DIR"), os.Getenv("UNIX_SOCK_FILE"); unixPath == unixPath && unixSockDir != "" && unixSockFile != "" {
+	unixSockDir, unixSockFile := os.Getenv("UNIX_SOCK_DIR"), os.Getenv("UNIX_SOCK_FILE")
+	if unixPath == unixPath && unixSockDir != "" && unixSockFile != "" {
 		unixPath = fmt.Sprintf("%s/%s", unixSockDir, unixSockFile)
 		fmt.Printf("set custom path %s\n", unixPath)
 	}
@@ -67,31 +75,21 @@ func init() {
 
 func main() {
 	util.MakeLoggers()
-	// flag.Parse()
 
-	server := &api.API{
-		Server: &http.Server{
-			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
-			ReadTimeout:  time.Minute,
-			WriteTimeout: time.Minute,
-			IdleTimeout:  time.Minute,
-		},
-		Handlers: handlers.NewHandlers(),
-	}
+	server := api.NewAPI(httpsPort)
+
+	go server.RedirectHTTP(httpPort)
 
 	go server.InitUnixServer(unixPath)
 
-	mux := server.InitMux(
-		api.NewRateLimit("api", 5, 20, time.Duration(5*time.Minute)),
-	)
+	server.InitProtoHandlers()
+	server.InitAuthProxy()
+	server.InitSockServer()
+	server.InitStatic()
 
-	server.InitAuthProxy(mux)
-
-	server.InitSockServer(mux)
-
-	server.InitStatic(mux)
-
-	go server.RedirectHTTP(httpPort)
+	rateLimiter := api.NewRateLimit("api", rate.Limit(requestsPerSecond), requestsPerSecondBurst, time.Duration(5*time.Minute))
+	limitMiddleware := server.LimitMiddleware(rateLimiter)(server.Server.Handler)
+	server.Server.Handler = server.AccessRequestMiddleware(limitMiddleware)
 
 	stopChan := make(chan struct{}, 1)
 	go setupGc(server, stopChan)

@@ -22,12 +22,13 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
-func getTestApi(rl *RateLimiter) *API {
+func getTestApi(rateLimiter *RateLimiter) *API {
 	a := &API{
 		Server:   &http.Server{},
 		Handlers: handlers.NewHandlers(),
 	}
-	a.InitMux(rl)
+	a.InitProtoHandlers()
+	a.Server.Handler = a.LimitMiddleware(rateLimiter)(a.Server.Handler)
 	return a
 }
 
@@ -104,7 +105,6 @@ func getKeycloakToken(user *types.TestUser) (string, *types.UserSession, error) 
 }
 
 func checkResponseFor(buf []byte, items []byte) bool {
-
 	if len(buf) == 0 {
 		return false
 	}
@@ -114,5 +114,4 @@ func checkResponseFor(buf []byte, items []byte) bool {
 	}
 
 	return true
-
 }

@@ -23,32 +23,26 @@ type SessionMux struct {
 	publicKey *rsa.PublicKey
 	mux       *http.ServeMux
 	redis     *redis.Client
-	rl        *RateLimiter
 }
 
-func NewSessionMux(pk *rsa.PublicKey, redis *redis.Client, rl *RateLimiter) *SessionMux {
+func NewSessionMux(pk *rsa.PublicKey, redis *redis.Client) *SessionMux {
 	return &SessionMux{
 		publicKey: pk,
 		mux:       http.NewServeMux(),
 		redis:     redis,
-		rl:        rl,
 	}
 }
 
 func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 	sm.mux.Handle(pattern, http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		auth, ok := req.Header["Authorization"]
-		if !ok || len(auth) == 0 || auth[0] == "" {
-			return
-		}
-
-		if sm.rl.Limit(auth[0]) {
-			WriteLimit(w)
+		token := req.Header.Get("Authorization")
+		if token == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
 		ctx := req.Context()
-		redisTokenKey := redisTokenPrefix + auth[0]
+		redisTokenKey := redisTokenPrefix + token
 
 		session := &types.UserSession{}
 		sessionBytes, err := sm.redis.Get(ctx, redisTokenKey).Bytes()
@@ -59,24 +53,25 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 				return
 			}
 		} else if !errors.Is(err, redis.Nil) {
-			util.ErrCheck(err)
-			w.WriteHeader(http.StatusInternalServerError)
+			util.ErrorLog.Println(util.ErrCheck(err))
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
-		session, err = ValidateToken(sm.publicKey, auth[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+		session, err = ValidateToken(sm.publicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 		if err != nil {
-			w.WriteHeader(http.StatusUnauthorized)
+			util.ErrorLog.Println(util.ErrCheck(err))
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
 		sessionJson, err := protojson.Marshal(session)
 		if err != nil {
-			util.ErrCheck(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 		} else {
 			err = sm.redis.SetEx(ctx, redisTokenKey, sessionJson, redisTokenDuration).Err()
 			if err != nil {
-				util.ErrCheck(err)
+				util.ErrorLog.Println(util.ErrCheck(err))
 			}
 		}
 

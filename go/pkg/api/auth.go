@@ -9,6 +9,7 @@ import (
 	"net/http/httputil"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -60,7 +61,7 @@ func SetForwardingHeadersAndServe(prox *httputil.ReverseProxy, w http.ResponseWr
 	prox.ServeHTTP(w, r)
 }
 
-func (a *API) InitAuthProxy(mux *http.ServeMux) {
+func (a *API) InitAuthProxy() {
 	kcRealm := os.Getenv("KC_REALM")
 	kcInternal, err := url.Parse(os.Getenv("KC_INTERNAL"))
 	if err != nil {
@@ -93,47 +94,46 @@ func (a *API) InitAuthProxy(mux *http.ServeMux) {
 		))
 	}
 
-	mux.Handle("/auth/", a.LimitMiddleware(10, 10)(func(w http.ResponseWriter, r *http.Request) {
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		authMux.ServeHTTP(w, r)
 	}))
 
-	mux.Handle("/auth/resources/", http.StripPrefix("/auth",
-		a.LimitMiddleware(10, 20)(
-			func(w http.ResponseWriter, req *http.Request) {
-				SetForwardingHeadersAndServe(authProxy, w, req)
-			},
-		),
-	))
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/resources/", http.StripPrefix("/auth", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		SetForwardingHeadersAndServe(authProxy, w, req)
+	})))
 
-	mux.Handle("/login",
-		a.ValidateTokenMiddleware(1, 1)(
-			func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
-				http.SetCookie(w, &http.Cookie{
-					Name:     "valid_signature",
-					Value:    util.WriteSigned(util.LOGIN_SIGNATURE_NAME, fmt.Sprint(session.ExpiresAt)),
-					Path:     "/",
-					Expires:  time.Now().Add(24 * time.Hour),
-					SameSite: http.SameSiteStrictMode,
-					Secure:   true,
-					HttpOnly: true,
-				})
-			},
-		),
-	)
+	loginStatusHandler := func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+		var cookieVal string
+		var cookieExpires int
 
-	mux.Handle("/logout",
-		a.ValidateTokenMiddleware(1, 1)(
-			func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
-				http.SetCookie(w, &http.Cookie{
-					Name:     "valid_signature",
-					Value:    "",
-					Path:     "/",
-					Expires:  time.Now().Add(-24 * time.Hour),
-					SameSite: http.SameSiteStrictMode,
-					Secure:   true,
-					HttpOnly: true,
-				})
-			},
-		),
-	)
+		if strings.HasSuffix(req.URL.Path, "login") {
+			if !util.CookieExpired(req) {
+				return
+			}
+
+			cookieVal, err = util.WriteSigned(util.LOGIN_SIGNATURE_NAME, strconv.FormatInt(session.ExpiresAt, 10))
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+
+			cookieExpires = 24
+		} else {
+			cookieExpires = -24
+		}
+
+		http.SetCookie(w, &http.Cookie{
+			Name:     "valid_signature",
+			Value:    cookieVal,
+			Path:     "/",
+			Expires:  time.Now().Add(time.Duration(cookieExpires) * time.Hour),
+			SameSite: http.SameSiteStrictMode,
+			Secure:   true,
+			HttpOnly: true,
+		})
+	}
+
+	a.Server.Handler.(*http.ServeMux).Handle("/login", a.ValidateTokenMiddleware()(loginStatusHandler))
+	a.Server.Handler.(*http.ServeMux).Handle("/logout", a.ValidateTokenMiddleware()(loginStatusHandler))
 }

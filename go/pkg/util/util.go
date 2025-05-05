@@ -9,6 +9,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -160,29 +161,32 @@ func StringOut(s string, ss []string) []string {
 	return ns
 }
 
-func ExeTime(name string) (time.Time, func(start time.Time, info string)) {
-	return time.Now(), func(start time.Time, info string) {
-		AccessLog.Println(name + " " + time.Since(start).String() + " " + info)
-	}
-}
-
-func WriteSigned(name, unsignedValue string) string {
+func WriteSigned(name, unsignedValue string) (string, error) {
 	mac := hmac.New(sha256.New, SigningToken)
-	mac.Write([]byte(name))
-	mac.Write([]byte(unsignedValue))
+
+	_, err := mac.Write([]byte(name))
+	if err != nil {
+		return "", ErrCheck(errors.New("invalid base64 signature encoding"))
+	}
+
+	_, err = mac.Write([]byte(unsignedValue))
+	if err != nil {
+		return "", ErrCheck(errors.New("invalid base64 signature encoding"))
+	}
+
 	signature := mac.Sum(nil)
-	return base64.StdEncoding.EncodeToString(signature) + unsignedValue
+	return base64.StdEncoding.EncodeToString(signature) + unsignedValue, nil
 }
 
-func VerifySigned(name, signedValue string) error {
+func VerifySigned(name, signedValue string) (string, error) {
 	if len(signedValue) < sha256.Size {
-		return errors.New("signed value too small")
+		return "", ErrCheck(errors.New("signed value too small"))
 	}
 
 	signatureEncoded := signedValue[:base64.StdEncoding.EncodedLen(sha256.Size)]
 	signature, err := base64.StdEncoding.DecodeString(signatureEncoded)
 	if err != nil {
-		return errors.New("invalid base64 signature encoding")
+		return "", ErrCheck(errors.New("invalid base64 signature encoding"))
 	}
 
 	value := signedValue[base64.StdEncoding.EncodedLen(sha256.Size):]
@@ -193,10 +197,24 @@ func VerifySigned(name, signedValue string) error {
 	expectedSignature := mac.Sum(nil)
 
 	if !hmac.Equal(signature, expectedSignature) {
-		return errors.New("invalid signature equality")
+		return "", ErrCheck(errors.New("invalid signature equality"))
 	}
 
-	return nil
+	return value, nil
+}
+
+func CookieExpired(req *http.Request) bool {
+	cookie, err := req.Cookie("valid_signature")
+	if err == nil && cookie.Value != "" {
+		expiresAtStr, err := VerifySigned(LOGIN_SIGNATURE_NAME, cookie.Value)
+		if err == nil {
+			expiresAt, parseErr := strconv.ParseInt(expiresAtStr, 10, 64)
+			if parseErr == nil && time.Now().Unix() < expiresAt {
+				return false
+			}
+		}
+	}
+	return true
 }
 
 func StringsToBitmask(roles []string) int32 {

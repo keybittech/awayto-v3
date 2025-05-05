@@ -90,7 +90,7 @@ func TestAPI_InitStatic(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.a.InitStatic(tt.args.mux)
+			tt.a.InitStatic()
 		})
 	}
 }

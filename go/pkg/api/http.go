@@ -1,19 +1,20 @@
 package api
 
 import (
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"fmt"
 	"net/http"
 	"os"
 	"strconv"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (a *API) RedirectHTTP(httpPort int) {
 	httpRedirector := &http.Server{
 		Addr:         fmt.Sprintf(":%d", httpPort),
-		ReadTimeout:  1 * time.Second,
-		WriteTimeout: 1 * time.Second,
+		ReadTimeout:  5 * time.Second,
+		WriteTimeout: 5 * time.Second,
 	}
 
 	httpRedirectorMux := http.NewServeMux()

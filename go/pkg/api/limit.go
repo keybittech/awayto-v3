@@ -1,7 +1,6 @@
 package api
 
 import (
-	"net/http"
 	"sync"
 	"time"
 
@@ -9,12 +8,6 @@ import (
 )
 
 // Adapted from https://blog.logrocket.com/rate-limiting-go-application
-
-var limitedClientPool = &sync.Pool{
-	New: func() interface{} {
-		return &LimitedClient{}
-	},
-}
 
 type RateLimiter struct {
 	Name           string
@@ -33,15 +26,12 @@ type LimitedClient struct {
 }
 
 func NewRateLimit(name string, limit rate.Limit, burst int, expiryDuration time.Duration) *RateLimiter {
-	var (
-		mu             sync.Mutex
-		limitedClients = make(map[string]*LimitedClient)
-	)
+	var mu sync.Mutex
 
 	rateLimiter := &RateLimiter{
 		Name:           name,
 		Mu:             &mu,
-		LimitedClients: limitedClients,
+		LimitedClients: make(map[string]*LimitedClient),
 		ExpiryDuration: expiryDuration,
 		LimitNum:       limit,
 		Burst:          burst,
@@ -60,15 +50,9 @@ func (rl *RateLimiter) Limit(identifier string) bool {
 	if existingClient, found := rl.LimitedClients[identifier]; found {
 		client = existingClient
 	} else {
-		client = limitedClientPool.Get().(*LimitedClient)
-
-		if client.Limiter == nil {
-			client.Limiter = rate.NewLimiter(rl.LimitNum, rl.Burst)
-		} else {
-			client.Limiter.SetLimit(rl.LimitNum)
-			client.Limiter.SetBurst(rl.Burst)
+		client = &LimitedClient{
+			Limiter: rate.NewLimiter(rl.LimitNum, rl.Burst),
 		}
-
 		rl.LimitedClients[identifier] = client
 	}
 
@@ -84,13 +68,7 @@ func (rl *RateLimiter) Cleanup() {
 	for id, client := range rl.LimitedClients {
 		if now.Sub(client.LastSeen) > rl.ExpiryDuration {
 			client.LastSeen = time.Time{}
-			limitedClientPool.Put(client)
 			delete(rl.LimitedClients, id)
 		}
 	}
-}
-
-func WriteLimit(w http.ResponseWriter) {
-	w.WriteHeader(http.StatusTooManyRequests)
-	w.Write([]byte(http.StatusText(http.StatusTooManyRequests)))
 }

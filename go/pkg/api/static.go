@@ -59,7 +59,7 @@ func (sr *StaticRedirect) WriteHeader(code int) {
 	sr.StatusCode = code
 }
 
-func (a *API) InitStatic(mux *http.ServeMux) {
+func (a *API) InitStatic() {
 	staticDir := os.Getenv("PROJECT_DIR")
 
 	devServerUrl, err := url.Parse(os.Getenv("TS_DEV_SERVER_URL"))
@@ -69,40 +69,27 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 
 	// Attach landing/ to domain url root /
 	landingFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/landing/public/", staticDir)))
-	mux.Handle("/", http.StripPrefix("/",
-		a.LimitMiddleware(10, 10)(
-			func(w http.ResponseWriter, r *http.Request) {
-				w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
-				w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
-				landingFiles.ServeHTTP(w, r)
-			},
-		),
-	))
+	a.Server.Handler.(*http.ServeMux).Handle("/", http.StripPrefix("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+		w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
+		landingFiles.ServeHTTP(w, r)
+	})))
 
 	// Attach demos
 	demoFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/demos/final/", staticDir)))
-	mux.Handle("/demos/", http.StripPrefix("/demos/",
-		a.LimitMiddleware(.1, 1)(
-			func(w http.ResponseWriter, req *http.Request) {
-				cookieValidation, err := req.Cookie("valid_signature")
-				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(err))
-					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-					return
-				}
+	demoRl := NewRateLimit("demos", .1, 1, time.Duration(5*time.Minute))
+	a.Server.Handler.(*http.ServeMux).Handle("GET /demos/", http.StripPrefix("/demos/",
+		a.LimitMiddleware(demoRl)(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			if util.CookieExpired(req) {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			}
 
-				err = util.VerifySigned(util.LOGIN_SIGNATURE_NAME, cookieValidation.Value)
-				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(err))
-					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-					return
-				}
-				w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
-				w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
+			w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+			w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
 
-				demoFiles.ServeHTTP(w, req)
-			},
-		),
+			demoFiles.ServeHTTP(w, req)
+		})),
 	))
 
 	// use dev server or built for /app
@@ -113,56 +100,52 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 
 		fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", staticDir)))
 
-		mux.Handle("GET /app/", http.StripPrefix("/app",
-			a.LimitMiddleware(10, 20)(
-				func(w http.ResponseWriter, req *http.Request) {
-					redirect := &StaticRedirect{ResponseWriter: w}
+		a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			redirect := &StaticRedirect{ResponseWriter: w}
 
-					if strings.HasSuffix(req.URL.Path, ".js") || strings.HasSuffix(req.URL.Path, ".css") || strings.HasSuffix(req.URL.Path, ".mjs") {
-						w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
-						w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
-						w.Header().Set("Content-Encoding", "gzip")
-						gz := gzip.NewWriter(w)
-						defer gz.Close()
-						gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
-						fileServer.ServeHTTP(gzr, req)
-					} else if strings.HasSuffix(req.URL.Path, ".png") {
-						fileServer.ServeHTTP(redirect, req)
-					} else {
-						req.URL.Path = "/"
+			if strings.HasSuffix(req.URL.Path, ".js") || strings.HasSuffix(req.URL.Path, ".css") || strings.HasSuffix(req.URL.Path, ".mjs") {
+				w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+				w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
+				w.Header().Set("Content-Encoding", "gzip")
+				gz := gzip.NewWriter(w)
+				defer gz.Close()
+				gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
+				fileServer.ServeHTTP(gzr, req)
+			} else if strings.HasSuffix(req.URL.Path, ".png") {
+				fileServer.ServeHTTP(redirect, req)
+			} else {
+				req.URL.Path = "/"
 
-						nonceData := uuid.NewString()
-						nonceB64 := base64.StdEncoding.EncodeToString([]byte(nonceData))
+				nonceData := uuid.NewString()
+				nonceB64 := base64.StdEncoding.EncodeToString([]byte(nonceData))
 
-						w.Header().Set(
-							"Content-Security-Policy",
-							"object-src 'none';"+
-								"script-src 'nonce-"+nonceB64+"' 'strict-dynamic';"+
-								"base-uri 'none';")
-						recorder := httptest.NewRecorder()
+				w.Header().Set(
+					"Content-Security-Policy",
+					"object-src 'none';"+
+						"script-src 'nonce-"+nonceB64+"' 'strict-dynamic';"+
+						"base-uri 'none';")
+				recorder := httptest.NewRecorder()
 
-						fileServer.ServeHTTP(recorder, req)
+				fileServer.ServeHTTP(recorder, req)
 
-						// Read the response body
-						originalBody, err := io.ReadAll(recorder.Body)
-						if err != nil {
-							http.Error(w, "Error reading file", http.StatusInternalServerError)
-							return
-						}
+				// Read the response body
+				originalBody, err := io.ReadAll(recorder.Body)
+				if err != nil {
+					http.Error(w, "Error reading file", http.StatusInternalServerError)
+					return
+				}
 
-						modifiedBody := regexp.MustCompile(`VITE_NONCE`).ReplaceAll(originalBody, []byte(nonceB64))
+				modifiedBody := regexp.MustCompile(`VITE_NONCE`).ReplaceAll(originalBody, []byte(nonceB64))
 
-						w.Write(modifiedBody)
-						return
-					}
+				w.Write(modifiedBody)
+				return
+			}
 
-					if redirect.StatusCode == http.StatusNotFound {
-						w.WriteHeader(http.StatusNotFound)
-						w.Write([]byte(""))
-					}
-				},
-			),
-		))
+			if redirect.StatusCode == http.StatusNotFound {
+				w.WriteHeader(http.StatusNotFound)
+				w.Write([]byte(""))
+			}
+		})))
 	} else {
 		println("Using live reload")
 		var proxy *httputil.ReverseProxy
@@ -171,7 +154,7 @@ func (a *API) InitStatic(mux *http.ServeMux) {
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		}
 
-		mux.Handle("GET /app/", http.StripPrefix("/app/",
+		a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app/",
 			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				proxy.ServeHTTP(w, req)
 			}),

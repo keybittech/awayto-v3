@@ -1,0 +1,25 @@
+[DEFAULT]
+banaction = ufw
+
+[sshd]
+enabled = true
+
+[http-auth]
+enabled = true
+port = http,https
+filter = http-auth
+logpath = /home/dummyuser/project-prefix/log/auth.log
+maxretry = 5
+bantime = 900
+findtime = 600
+ignoreip = 127.0.0.1/8
+
+[http-access]
+enabled = true
+port = http,https
+filter = http-access
+logpath = /home/dummyuser/project-prefix/log/access.log
+maxretry = 30
+bantime = 900
+findtime = 600
+ignoreip = 127.0.0.1/8

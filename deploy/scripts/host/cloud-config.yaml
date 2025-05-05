@@ -1,6 +1,6 @@
 #cloud-config
 bootcmd:
-  - echo 'disable_root: 0' >> /etc/cloud/cloud.cfg
+  - echo 'disable_root: true' >> /etc/cloud/cloud.cfg
 users:
   - name: root
     lock_passwd: true
@@ -8,7 +8,7 @@ users:
     chpasswd: 
       expire: true
     groups: [sudo]
-    sudo: ["ALL=(ALL) NOPASSWD:ALL"]
+    sudo: ["ALL=(ALL) ALL"]
     shell: /bin/bash
     ssh_authorized_keys:
       - id-rsa-pub 
@@ -50,7 +50,15 @@ runcmd:
   - ufw allow ssh-port/tcp
   - ufw allow 44400:44500/udp
   - ufw enable
+  - groupadd --system project-prefixlog
+  - usermod -a -G project-prefixlog dummyuser
   - mkdir /etc/project-prefix
+  - mkdir -p /var/log/project-prefix/db
+  - chown root:project-prefixlog /var/log/project-prefix /var/log/project-prefix/db
+  - chmod 770 /var/log/project-prefix /var/log/project-prefix/db
+  - chmod g+s /var/log/project-prefix /var/log/project-prefix/db
+  - setfacl -m g:1000:rwx /var/log/project-prefix/db
+  - setfacl -d -m g:1000:rwx /var/log/project-prefix/db
   - git clone project-repo /home/dummyuser/project-prefix
   - mkdir -p /home/dummyuser/project-prefix/backups/db
   - mkdir -p /home/dummyuser/project-prefix/working

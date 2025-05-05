@@ -9,6 +9,7 @@ Restart=on-failure
 User=host-operator
 Group=host-operator
 WorkingDirectory=work-dir
+UMask=0027
 
 [Install]
 WantedBy=multi-user.target

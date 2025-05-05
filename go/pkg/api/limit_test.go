@@ -2,8 +2,6 @@ package api
 
 import (
 	"fmt"
-	"net/http"
-	"net/http/httptest"
 	"sync"
 	"sync/atomic"
 	"testing"
@@ -176,51 +174,6 @@ func TestRateLimiter_Cleanup(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.rl.Cleanup()
-		})
-	}
-}
-
-func TestWriteLimit(t *testing.T) {
-	// Create a test ResponseWriter
-	rec := httptest.NewRecorder()
-
-	type args struct {
-		w http.ResponseWriter
-	}
-	tests := []struct {
-		name           string
-		args           args
-		wantStatus     int
-		wantBody       string
-		wantBodyLength int
-	}{
-		{
-			name:           "Write 429 response",
-			args:           args{w: rec},
-			wantStatus:     http.StatusTooManyRequests,
-			wantBody:       http.StatusText(http.StatusTooManyRequests),
-			wantBodyLength: len(http.StatusText(http.StatusTooManyRequests)),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			WriteLimit(tt.args.w)
-
-			// Check status code
-			if rec.Code != tt.wantStatus {
-				t.Errorf("WriteLimit() status = %v, want %v", rec.Code, tt.wantStatus)
-			}
-
-			// Check response body
-			if rec.Body.String() != tt.wantBody {
-				t.Errorf("WriteLimit() body = %v, want %v", rec.Body.String(), tt.wantBody)
-			}
-
-			// Check content length
-			if rec.Body.Len() != tt.wantBodyLength {
-				t.Errorf("WriteLimit() body length = %v, want %v", rec.Body.Len(), tt.wantBodyLength)
-			}
 		})
 	}
 }

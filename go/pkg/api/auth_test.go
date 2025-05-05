@@ -72,7 +72,7 @@ func TestAPI_InitAuthProxy(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.a.InitAuthProxy(tt.args.mux)
+			tt.a.InitAuthProxy()
 		})
 	}
 }

@@ -32,9 +32,8 @@ var (
 // The connection is identified via the ticket, setup in redis and the DB
 // The handler then becomes a long lived process where messages are read from the connection
 // and then parsed into an expected format, then sent through the websocket event router
-func (a *API) InitSockServer(mux *http.ServeMux) {
-
-	sockHandler := func(w http.ResponseWriter, req *http.Request) {
+func (a *API) InitSockServer() {
+	a.Server.Handler.(*http.ServeMux).HandleFunc("GET /sock", func(w http.ResponseWriter, req *http.Request) {
 		if !strings.Contains(req.Header.Get("Connection"), "Upgrade") || req.Header.Get("Upgrade") != "websocket" {
 			w.WriteHeader(http.StatusBadRequest)
 			w.Write([]byte("Bad Request: Expected WebSocket"))
@@ -46,7 +45,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 		w.Header().Set("Sec-WebSocket-Accept", util.ComputeWebSocketAcceptKey(req.Header.Get("Sec-WebSocket-Key")))
 		w.WriteHeader(http.StatusSwitchingProtocols)
 
-		hijacker, ok := w.(http.Hijacker)
+		hijacker, ok := w.(*responseCodeWriter).ResponseWriter.(http.Hijacker)
 		if !ok {
 			http.Error(w, "Websocket upgrade failed", http.StatusInternalServerError)
 			return
@@ -76,7 +75,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 
 		userSession, err := a.Handlers.Socket.StoreConn(ticket, conn)
 		if err != nil {
-			util.ErrorLog.Println(err)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
@@ -96,7 +95,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 
 			err = ds.InitDbSocketConnection(req.Context(), connId)
 			if err != nil {
-				util.ErrorLog.Println(err)
+				util.ErrorLog.Println(util.ErrCheck(err))
 				return
 			}
 		}()
@@ -251,11 +250,7 @@ func (a *API) InitSockServer(mux *http.ServeMux) {
 				errorFlag = true
 			}
 		}
-	}
-
-	mux.HandleFunc("GET /sock",
-		a.LimitMiddleware(1, 2)(sockHandler),
-	)
+	})
 }
 
 func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId string, ds clients.DbSession) {
@@ -322,15 +317,16 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 	wg.Wait()
 
 	if tearDownFailures.Len() > 0 {
-		tearDownFailures.WriteString("TEARDOWN /sock sub:")
-		tearDownFailures.WriteString(ds.UserSession.UserSub)
-		tearDownFailures.WriteString(" socketid:")
-		tearDownFailures.WriteString(socketId)
-		tearDownFailures.WriteString(" connid:")
-		tearDownFailures.WriteString(connId)
-		tearDownFailures.WriteString(" ")
-		tearDownFailures.WriteString(tearDownFailures.String())
-		util.ErrorLog.Println(tearDownFailures.String())
+		var sb strings.Builder
+		sb.WriteString("TEARDOWN /sock sub:")
+		sb.WriteString(ds.UserSession.UserSub)
+		sb.WriteString(" socketid:")
+		sb.WriteString(socketId)
+		sb.WriteString(" connid:")
+		sb.WriteString(connId)
+		sb.WriteString(" ")
+		sb.WriteString(tearDownFailures.String())
+		util.ErrorLog.Println(sb.String())
 	}
 
 	clients.GetGlobalWorkerPool().CleanUpClientMapping(ds.UserSession.UserSub)

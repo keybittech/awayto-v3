@@ -1,14 +1,11 @@
 package util
 
 import (
-	"bytes"
 	"database/sql"
-	"log"
 	"net"
 	"os"
 	"path/filepath"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 )
@@ -320,39 +317,6 @@ func BenchmarkStringOut(b *testing.B) {
 	}
 }
 
-func TestExeTime(t *testing.T) {
-	var buf bytes.Buffer
-	originalLogger := AccessLog
-	AccessLog = &CustomLogger{log.New(&buf, "", 0)}
-	defer func() { AccessLog = originalLogger }()
-
-	t.Run("standard logging", func(t *testing.T) {
-		testName := "testFunction"
-		start, endFunc := ExeTime(testName)
-		testInfo := "test completed"
-		endFunc(start, testInfo)
-
-		logMsg := buf.String()
-		if !strings.Contains(logMsg, testName) {
-			t.Errorf("Log doesn't contain function name and execution time text, got: %s", logMsg)
-		}
-		if !strings.Contains(logMsg, testInfo) {
-			t.Errorf("Log doesn't contain the info text '%s', got: %s", testInfo, logMsg)
-		}
-	})
-}
-
-func BenchmarkExeTime(b *testing.B) {
-	var buf bytes.Buffer
-	originalLogger := ErrorLog
-	ErrorLog = &CustomLogger{log.New(&buf, "", 0)}
-	defer func() { ErrorLog = originalLogger }()
-	reset(b)
-	for i := 0; i < b.N; i++ {
-		_, _ = ExeTime("testFunction")
-	}
-}
-
 // func BenchmarkExeTimeDeferFunc(b *testing.B) {
 // 	var buf bytes.Buffer
 // 	originalLogger := ErrorLog
@@ -382,10 +346,12 @@ func TestWriteSigned(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			signedValue := WriteSigned(tt.args.name, tt.args.unsignedValue)
+			signedValue, err := WriteSigned(tt.args.name, tt.args.unsignedValue)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("VerifySigned.WriteSigned() error = %v, wantErr %v", err, tt.wantErr)
+			}
 
-			err := VerifySigned(tt.args.name, signedValue)
-
+			_, err = VerifySigned(tt.args.name, signedValue)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("VerifySigned() error = %v, wantErr %v", err, tt.wantErr)
 			}
@@ -396,11 +362,13 @@ func TestWriteSigned(t *testing.T) {
 func BenchmarkWriteSigned(b *testing.B) {
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_ = WriteSigned("a", "b")
+		_, _ = WriteSigned("a", "b")
 	}
 }
 
 func TestVerifySigned(t *testing.T) {
+	emptySigned, _ := WriteSigned("", "")
+	validSigned, _ := WriteSigned("validName", "validValue")
 	type args struct {
 		name        string
 		signedValue string
@@ -410,12 +378,12 @@ func TestVerifySigned(t *testing.T) {
 		args    args
 		wantErr bool
 	}{
-		{name: "no value", args: args{"", WriteSigned("", "")}, wantErr: false},
-		{name: "valid signed value", args: args{"validName", WriteSigned("validName", "validValue")}, wantErr: false},
+		{name: "no value", args: args{"", emptySigned}, wantErr: false},
+		{name: "valid signed value", args: args{"validName", validSigned}, wantErr: false},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := VerifySigned(tt.args.name, tt.args.signedValue); (err != nil) != tt.wantErr {
+			if _, err := VerifySigned(tt.args.name, tt.args.signedValue); (err != nil) != tt.wantErr {
 				t.Errorf("VerifySigned() error = %v, wantErr %v", err, tt.wantErr)
 			}
 		})
@@ -423,10 +391,10 @@ func TestVerifySigned(t *testing.T) {
 }
 
 func BenchmarkVerifySigned(b *testing.B) {
-	signedValue := WriteSigned("a", "b")
+	signedValue, _ := WriteSigned("a", "b")
 	reset(b)
 	for i := 0; i < b.N; i++ {
-		_ = VerifySigned("a", signedValue)
+		_, _ = VerifySigned("a", signedValue)
 	}
 }
 

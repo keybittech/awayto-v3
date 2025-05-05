@@ -3,6 +3,7 @@ package util
 import (
 	"io"
 	"log"
+	"net/http"
 	"os"
 	"reflect"
 	"strings"
@@ -105,6 +106,52 @@ func TestMakeLoggers(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			MakeLoggers()
+		})
+	}
+}
+
+func TestWriteAuthRequest(t *testing.T) {
+	type args struct {
+		req  *http.Request
+		sub  string
+		role string
+		ip   []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := WriteAuthRequest(tt.args.req, tt.args.sub, tt.args.role, tt.args.ip...); (err != nil) != tt.wantErr {
+				t.Errorf("WriteAuthRequest(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.req, tt.args.sub, tt.args.role, tt.args.ip, err, tt.wantErr)
+			}
+		})
+	}
+}
+
+func TestWriteAccessRequest(t *testing.T) {
+	type args struct {
+		req        *http.Request
+		duration   int64
+		statusCode int
+		ip         []string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := WriteAccessRequest(tt.args.req, tt.args.duration, tt.args.statusCode, tt.args.ip...); (err != nil) != tt.wantErr {
+				t.Errorf("WriteAccessRequest(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.req, tt.args.duration, tt.args.statusCode, tt.args.ip, err, tt.wantErr)
+			}
 		})
 	}
 }

@@ -6,7 +6,6 @@ import (
 	"math"
 	"net"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -16,81 +15,64 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/redis/go-redis/v9"
 	"google.golang.org/protobuf/encoding/protojson"
-
-	"golang.org/x/time/rate"
 )
 
-func (a *API) LimitMiddleware(limit rate.Limit, burst int) func(next http.HandlerFunc) http.HandlerFunc {
+type responseCodeWriter struct {
+	http.ResponseWriter
+	statusCode int
+}
 
-	rl := NewRateLimit("limit-middleware", limit, burst, time.Duration(5*time.Minute))
+func newResponseWriter(w http.ResponseWriter) *responseCodeWriter {
+	return &responseCodeWriter{w, http.StatusOK}
+}
 
-	return func(next http.HandlerFunc) http.HandlerFunc {
-		return func(w http.ResponseWriter, req *http.Request) {
+func (rw *responseCodeWriter) WriteHeader(code int) {
+	rw.statusCode = code
+	rw.ResponseWriter.WriteHeader(code)
+}
+
+func (a *API) AccessRequestMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		start := time.Now()
+		rw := newResponseWriter(w)
+		next.ServeHTTP(rw, req)
+		util.WriteAccessRequest(req, time.Since(start).Milliseconds(), rw.statusCode)
+	})
+}
+
+func (a *API) LimitMiddleware(rl *RateLimiter) func(next http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			ip, _, err := net.SplitHostPort(req.RemoteAddr)
 			if err != nil {
-				w.WriteHeader(http.StatusInternalServerError)
 				util.ErrorLog.Println(util.ErrCheck(err))
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 				return
 			}
 
 			if rl.Limit(ip) {
-				WriteLimit(w)
+				http.Error(w, http.StatusText(http.StatusTooManyRequests), http.StatusTooManyRequests)
 				return
 			}
 
-			w.Header().Set("Access-Control-Allow-Origin", os.Getenv("APP_HOST_URL"))
-			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-TZ")
-			w.Header().Set("Access-Control-Allow-Methods", "GET,PUT,POST,DELETE,PATCH")
-
-			if req.Method == "OPTIONS" {
-				w.WriteHeader(http.StatusOK)
-				return
-			}
-
-			next(w, req)
-		}
+			next.ServeHTTP(w, req)
+		})
 	}
 }
 
-func (a *API) ValidateTokenMiddleware(limit rate.Limit, burst int) func(next SessionHandler) http.HandlerFunc {
-	rl := NewRateLimit("validate-token", limit, burst, time.Duration(5*time.Minute))
-
+func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFunc {
 	return func(next SessionHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
-			var deferredErr error
-
-			defer func() {
-				if deferredErr != nil {
-					ip, _, err := net.SplitHostPort(req.RemoteAddr)
-					if err != nil {
-						w.WriteHeader(http.StatusInternalServerError)
-						util.ErrorLog.Println(util.ErrCheck(err))
-					}
-
-					if rl.Limit(ip) {
-						WriteLimit(w)
-						return
-					}
-
-					util.ErrorLog.Println(deferredErr)
-					http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-				}
-			}()
-
-			token, ok := req.Header["Authorization"]
-			if !ok {
-				deferredErr = util.ErrCheck(errors.New("no auth token"))
+			token := req.Header.Get("Authorization")
+			if token == "" {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 
-			session, err := ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token[0], req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+			session, err := ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 			if err != nil {
-				deferredErr = util.ErrCheck(err)
-				return
-			}
-
-			if rl.Limit(session.UserSub) {
-				WriteLimit(w)
+				util.ErrorLog.Println(err)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 
@@ -248,22 +230,11 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 			}
 		} else {
 			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-				var sb strings.Builder
-				sb.WriteString(opts.Pattern)
-				sb.WriteString(" sub:")
-				sb.WriteString(session.UserSub)
-				sb.WriteString(" role:")
-				sb.WriteString(siteRoleName)
-
 				if session.RoleBits&opts.SiteRole == 0 {
-					sb.WriteString(" FAIL")
-					util.AuthLog.Println(sb.String())
-					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+					util.WriteAuthRequest(req, session.UserSub, siteRoleName)
+					w.WriteHeader(http.StatusForbidden)
 					return
 				}
-
-				sb.WriteString(" PASS")
-				util.AuthLog.Println(sb.String())
 
 				next(w, req, session)
 			}

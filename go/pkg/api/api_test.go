@@ -7,7 +7,6 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 	"time"
 
@@ -78,19 +77,22 @@ func BenchmarkApiRateLimit(b *testing.B) {
 	})
 }
 
-func TestAPI_InitMux(t *testing.T) {
+func TestNewAPI(t *testing.T) {
+	type args struct {
+		httpsPort int
+	}
 	tests := []struct {
 		name string
-		a    *API
-		want *http.ServeMux
+		args args
+		want *API
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.InitMux(NewRateLimit("test-init", 5, 5, time.Duration(time.Second))); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.InitMux() = %v, want %v", got, tt.want)
-			}
+			// if got := NewAPI(tt.args.httpsPort); !reflect.DeepEqual(got, tt.want) {
+			// 	t.Errorf("NewAPI(%v) = %v, want %v", tt.args.httpsPort, got, tt.want)
+			// }
 		})
 	}
 }

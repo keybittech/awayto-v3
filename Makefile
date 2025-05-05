@@ -117,7 +117,7 @@ endef
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
 CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
-CURRENT_LOG_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${LOG_DIR},${PWD}/${LOG_DIR})
+CURRENT_LOG_DIR=$(call if_deploying,/var/log/${PROJECT_PREFIX},${PWD}/${LOG_DIR})
 CURRENT_HOST_LOCAL_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${HOST_LOCAL_DIR},${PWD}/${HOST_LOCAL_DIR})
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
@@ -169,7 +169,9 @@ clean:
 	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) working/proto-stamp # $(MOCK_TARGET)
 
 $(LOG_DIR):
+ifeq ($(DEPLOYING),false)
 	mkdir -p $(LOG_DIR)
+endif
 
 ${CERT_LOC} ${CERT_KEY_LOC}:
 ifeq ($(DEPLOYING),true)
@@ -472,13 +474,15 @@ host_install:
 	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
 	sudo tailscale up
 	sudo install -d -m 770 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_DIR)
-	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/start.sh > start.sh
-	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' $(DEPLOY_HOST_SCRIPTS)/host.service > $(BINARY_SERVICE)
+	sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/jail.local" > /etc/fail2ban/jail.local
+	sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/logrotate.conf" > /etc/logrotate.d/${PROJECT_PREFIX}
+	sudo cp "$(DEPLOY_HOST_SCRIPTS)/http-auth.conf" "$(DEPLOY_HOST_SCRIPTS)/http-access.conf" /etc/fail2ban/filter.d/
+	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/start.sh" > start.sh
+	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/host.service" > $(BINARY_SERVICE)
 	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} start.sh /usr/local/bin
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
+	sudo systemctl restart fail2ban
 	sudo systemctl enable $(BINARY_SERVICE)
-
-# 	go install github.com/golang/mock/mockgen@v1.6.0
 
 .PHONY: host_reboot
 host_reboot:
@@ -578,6 +582,10 @@ host_update_cert_op:
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo certbot certificates
 	sudo systemctl is-active $(BINARY_SERVICE)
+
+.PHONY: host_run_cron
+host_run_cron:
+	$(SSH) 'run-parts /etc/cron.daily'
 
 #################################
 #            BACKUP             #

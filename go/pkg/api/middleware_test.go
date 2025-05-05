@@ -142,3 +142,42 @@ func TestAPI_CacheMiddleware(t *testing.T) {
 		})
 	}
 }
+
+func Test_responseCodeWriter_WriteHeader(t *testing.T) {
+	type args struct {
+		code int
+	}
+	tests := []struct {
+		name string
+		rw   *responseCodeWriter
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.rw.WriteHeader(tt.args.code)
+		})
+	}
+}
+
+func TestAPI_AccessRequestMiddleware(t *testing.T) {
+	type args struct {
+		next http.Handler
+	}
+	tests := []struct {
+		name string
+		a    *API
+		args args
+		want http.Handler
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.AccessRequestMiddleware(tt.args.next); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("API.AccessRequestMiddleware(%v) = %v, want %v", tt.args.next, got, tt.want)
+			}
+		})
+	}
+}
