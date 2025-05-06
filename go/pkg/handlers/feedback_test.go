@@ -13,7 +13,7 @@ func TestHandlers_PostSiteFeedback(t *testing.T) {
 	if err != nil {
 		t.Fatal(util.ErrCheck(err))
 	}
-	defer info.Tx.Rollback(info.Req.Context())
+	defer info.Tx.Rollback(info.Ctx)
 
 	type args struct {
 		info ReqInfo
@@ -68,7 +68,7 @@ func BenchmarkHandlers_PostSiteFeedback(b *testing.B) {
 	if err != nil {
 		b.Fatal(util.ErrCheck(err))
 	}
-	defer info.Tx.Rollback(info.Req.Context())
+	defer info.Tx.Rollback(info.Ctx)
 
 	// Create a valid feedback request that we'll reuse for benchmarking
 	validRequest := &types.PostSiteFeedbackRequest{

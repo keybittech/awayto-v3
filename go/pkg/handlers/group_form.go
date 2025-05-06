@@ -11,7 +11,7 @@ import (
 func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest) (*types.PostGroupFormResponse, error) {
 	var groupFormExists string
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT f.id FROM dbtable_schema.forms f
 		LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
 		WHERE f.name = $1 AND gf.group_id = $2
@@ -23,11 +23,11 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
 	}
 
-	groupPoolTx, groupSession, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(info.Req.Context(), info.Session)
+	groupPoolTx, groupSession, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(info.Ctx, info.Session)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-	defer groupPoolTx.Tx.Rollback(info.Req.Context())
+	defer groupPoolTx.Tx.Rollback(info.Ctx)
 
 	groupInfo := ReqInfo{
 		W:       info.W,
@@ -41,7 +41,7 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.DatabaseClient.ClosePoolSessionTx(info.Req.Context(), groupPoolTx)
+	err = h.Database.DatabaseClient.ClosePoolSessionTx(info.Ctx, groupPoolTx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -59,7 +59,7 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.group_forms (group_id, form_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (group_id, form_id) DO NOTHING
@@ -68,7 +68,7 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
 
 	return &types.PostGroupFormResponse{Id: groupFormId}, nil
 }
@@ -79,8 +79,8 @@ func (h *Handlers) PostGroupFormVersion(info ReqInfo, data *types.PostGroupFormV
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/forms")
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/forms/"+data.FormId)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms/"+data.FormId)
 
 	return &types.PostGroupFormVersionResponse{Id: formVersionResp.GetId()}, nil
 }
@@ -91,8 +91,8 @@ func (h *Handlers) PatchGroupForm(info ReqInfo, data *types.PatchGroupFormReques
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/forms")
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/forms/"+data.GetGroupForm().GetForm().GetId())
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms/"+data.GetGroupForm().GetForm().GetId())
 
 	return &types.PatchGroupFormResponse{Success: true}, nil
 }
@@ -100,7 +100,7 @@ func (h *Handlers) PatchGroupForm(info ReqInfo, data *types.PatchGroupFormReques
 func (h *Handlers) GetGroupForms(info ReqInfo, data *types.GetGroupFormsRequest) (*types.GetGroupFormsResponse, error) {
 	var forms []*types.IProtoForm
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &forms, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &forms, `
 		SELECT es.*
 		FROM dbview_schema.enabled_group_forms eus
 		LEFT JOIN dbview_schema.enabled_forms es ON es.id = eus."formId"
@@ -121,7 +121,7 @@ func (h *Handlers) GetGroupForms(info ReqInfo, data *types.GetGroupFormsRequest)
 func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRequest) (*types.GetGroupFormByIdResponse, error) {
 	var groupForms []*types.IGroupForm
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupForms, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupForms, `
 		SELECT egfe.*
 		FROM dbview_schema.enabled_group_forms_ext egfe
 		WHERE egfe."groupId" = $1 and egfe."formId" = $2
@@ -140,13 +140,13 @@ func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRe
 func (h *Handlers) DeleteGroupForm(info ReqInfo, data *types.DeleteGroupFormRequest) (*types.DeleteGroupFormResponse, error) {
 
 	for _, formId := range strings.Split(data.GetIds(), ",") {
-		_, err := info.Tx.Exec(info.Req.Context(), `DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)
+		_, err := info.Tx.Exec(info.Ctx, `DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
 
 	return &types.DeleteGroupFormResponse{Success: true}, nil
 }

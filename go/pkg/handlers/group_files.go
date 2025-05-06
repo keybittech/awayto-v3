@@ -11,7 +11,7 @@ import (
 func (h *Handlers) PostGroupFile(info ReqInfo, data *types.PostGroupFileRequest) (*types.PostGroupFileResponse, error) {
 	var groupFileId string
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.group_files (group_id, file_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
@@ -28,7 +28,7 @@ func (h *Handlers) PostGroupFile(info ReqInfo, data *types.PostGroupFileRequest)
 }
 
 func (h *Handlers) PatchGroupFile(info ReqInfo, data *types.PatchGroupFileRequest) (*types.PatchGroupFileResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.group_files
 		SET group_id = $2, file_id = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
@@ -43,7 +43,7 @@ func (h *Handlers) PatchGroupFile(info ReqInfo, data *types.PatchGroupFileReques
 func (h *Handlers) GetGroupFiles(info ReqInfo, data *types.GetGroupFilesRequest) (*types.GetGroupFilesResponse, error) {
 	var groupFiles []*types.IGroupFile
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupFiles, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupFiles, `
 		SELECT * FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1
 	`, info.Session.GroupId)
@@ -57,7 +57,7 @@ func (h *Handlers) GetGroupFiles(info ReqInfo, data *types.GetGroupFilesRequest)
 func (h *Handlers) GetGroupFileById(info ReqInfo, data *types.GetGroupFileByIdRequest) (*types.GetGroupFileByIdResponse, error) {
 	var groupFiles []*types.IGroupFile
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupFiles, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupFiles, `
 		SELECT * FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1 AND id = $2
 	`, info.Session.GroupId, data.GetId())
@@ -69,7 +69,7 @@ func (h *Handlers) GetGroupFileById(info ReqInfo, data *types.GetGroupFileByIdRe
 }
 
 func (h *Handlers) DeleteGroupFile(info ReqInfo, data *types.DeleteGroupFileRequest) (*types.DeleteGroupFileResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.group_files
 		WHERE id = $1
 	`, data.GetId())

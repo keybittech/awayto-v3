@@ -10,21 +10,21 @@ func (h *Handlers) GetLookups(info ReqInfo, data *types.GetLookupsRequest) (*typ
 	var timelines []*types.ILookup
 	var timeUnits []*types.ITimeUnit
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &budgets, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &budgets, `
 		SELECT id, name FROM dbtable_schema.budgets
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.QueryRows(info.Req.Context(), info.Tx, &timelines, `
+	err = h.Database.QueryRows(info.Ctx, info.Tx, &timelines, `
 		SELECT id, name FROM dbtable_schema.timelines
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Database.QueryRows(info.Req.Context(), info.Tx, &timeUnits, `
+	err = h.Database.QueryRows(info.Ctx, info.Tx, &timeUnits, `
 		SELECT id, name FROM dbtable_schema.time_units
 	`)
 	if err != nil {

@@ -11,7 +11,7 @@ import (
 func (h *Handlers) PostServiceTier(info ReqInfo, data *types.PostServiceTierRequest) (*types.PostServiceTierResponse, error) {
 	var serviceTierId string
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.service_tiers (name, serviceId, multiplier, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
@@ -30,7 +30,7 @@ func (h *Handlers) PostServiceTier(info ReqInfo, data *types.PostServiceTierRequ
 func (h *Handlers) PatchServiceTier(info ReqInfo, data *types.PatchServiceTierRequest) (*types.PatchServiceTierResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &serviceTiers, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &serviceTiers, `
 		UPDATE dbtable_schema.service_tiers
 		SET name = $2, multiplier = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
@@ -45,7 +45,7 @@ func (h *Handlers) PatchServiceTier(info ReqInfo, data *types.PatchServiceTierRe
 func (h *Handlers) GetServiceTiers(info ReqInfo, data *types.GetServiceTiersRequest) (*types.GetServiceTiersResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &serviceTiers, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers
 	`)
 	if err != nil {
@@ -58,7 +58,7 @@ func (h *Handlers) GetServiceTiers(info ReqInfo, data *types.GetServiceTiersRequ
 func (h *Handlers) GetServiceTierById(info ReqInfo, data *types.GetServiceTierByIdRequest) (*types.GetServiceTierByIdResponse, error) {
 	var serviceTiers []*types.IServiceTier
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &serviceTiers, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &serviceTiers, `
 		SELECT * FROM dbview_schema.enabled_service_tiers_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -76,7 +76,7 @@ func (h *Handlers) GetServiceTierById(info ReqInfo, data *types.GetServiceTierBy
 }
 
 func (h *Handlers) DeleteServiceTier(info ReqInfo, data *types.DeleteServiceTierRequest) (*types.DeleteServiceTierResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.service_tiers
 		WHERE id = $1
 	`, data.GetId())
@@ -88,7 +88,7 @@ func (h *Handlers) DeleteServiceTier(info ReqInfo, data *types.DeleteServiceTier
 }
 
 func (h *Handlers) DisableServiceTier(info ReqInfo, data *types.DisableServiceTierRequest) (*types.DisableServiceTierResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

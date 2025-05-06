@@ -47,7 +47,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 
 	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
-	_, err = ds.SessionBatchExec(info.Req.Context(), `
+	_, err = ds.SessionBatchExec(info.Ctx, `
 		INSERT INTO dbtable_schema.users (sub, username, created_on, created_sub)
 		VALUES ($1::uuid, $2, $3, $1::uuid)
 	`, info.Session.GroupSub, data.GetName(), time.Now().Local().UTC())
@@ -58,7 +58,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	// Create group in application db
 	// All the repeated $1 (UserSub) at the start are just placeholders until later in the method
 	// group "code" is generated via TRIGGER set_group_code
-	err = info.Tx.QueryRow(info.Req.Context(), `
+	err = info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
 		VALUES ($1::uuid, $1, $1::uuid, $2, $3, $4, $1::uuid, $5, $6, $7)
 		RETURNING id, name
@@ -95,7 +95,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	kcAdminSubgroupExternalId = kcAdminSubgroup.Id
 
 	// Add admin subgroup/role to the app db
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		ON CONFLICT (group_id, role_id) DO NOTHING
@@ -123,7 +123,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 
 	// Update the group with the keycloak reference id and get the group code
 	var groupCode string
-	err = info.Tx.QueryRow(info.Req.Context(), `
+	err = info.Tx.QueryRow(info.Ctx, `
 		UPDATE dbtable_schema.groups 
 		SET external_id = $2, admin_role_external_id = $3, purpose = $4
 		WHERE id = $1
@@ -134,14 +134,14 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	}
 
 	var adminUserId string
-	err = info.Tx.QueryRow(info.Req.Context(), `
+	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT id FROM dbview_schema.enabled_users WHERE sub = $1
 	`, info.Session.UserSub).Scan(&adminUserId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		ON CONFLICT (user_id, group_id) DO NOTHING
@@ -150,9 +150,9 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
-	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
-	h.Redis.SetGroupSessionVersion(info.Req.Context(), groupId)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
+	h.Redis.SetGroupSessionVersion(info.Ctx, groupId)
 	h.Socket.RoleCall(info.Session.UserSub)
 
 	undos = nil
@@ -161,7 +161,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 
 func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*types.PatchGroupResponse, error) {
 
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.groups
 		SET name = $2, purpose = $3, display_name = $4, updated_sub = $5, updated_on = $6, ai = $7
 		WHERE id = $1
@@ -172,7 +172,7 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 
 	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
-	_, err = ds.SessionBatchExec(info.Req.Context(), `
+	_, err = ds.SessionBatchExec(info.Ctx, `
 		UPDATE dbtable_schema.users
 		SET username = $2, updated_sub = $3, updated_on = $4
 		WHERE sub = $1
@@ -183,16 +183,16 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 
 	h.Keycloak.UpdateGroup(info.Session.UserSub, info.Session.GroupExternalId, data.GetName())
 
-	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
 
-	h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
+	h.Redis.SetGroupSessionVersion(info.Ctx, info.Session.GroupId)
 
 	return &types.PatchGroupResponse{Success: true}, nil
 }
 
 func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAssignmentsRequest) (*types.PatchGroupAssignmentsResponse, error) {
-	assignmentsBytes, err := h.Redis.Client().Get(info.Req.Context(), "group_role_assignments:"+info.Session.GroupId).Bytes()
+	assignmentsBytes, err := h.Redis.Client().Get(info.Ctx, "group_role_assignments:"+info.Session.GroupId).Bytes()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, util.ErrCheck(err)
 	}
@@ -269,9 +269,9 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 		}
 	}
 
-	// h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/assignments")
+	// h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/assignments")
 
-	h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
+	h.Redis.SetGroupSessionVersion(info.Ctx, info.Session.GroupId)
 
 	return &types.PatchGroupAssignmentsResponse{Success: true}, nil
 }
@@ -325,7 +325,7 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 
 	defaultDuration, _ := time.ParseDuration("1d")
 
-	h.Redis.Client().Set(info.Req.Context(), "group_role_assignments:"+info.Session.GroupId, assignmentsBytes, defaultDuration)
+	h.Redis.Client().Set(info.Ctx, "group_role_assignments:"+info.Session.GroupId, assignmentsBytes, defaultDuration)
 
 	return &types.GetGroupAssignmentsResponse{Assignments: assignmentsWithoutId}, nil
 }
@@ -334,7 +334,7 @@ func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*t
 	for _, id := range data.GetIds() {
 		var groupExternalId string
 
-		err := info.Tx.QueryRow(info.Req.Context(), `
+		err := info.Tx.QueryRow(info.Ctx, `
 			SELECT external_id FROM dbtable_schema.groups WHERE id = $1
 		`, id).Scan(&groupExternalId)
 		if err != nil || groupExternalId == "" {
@@ -346,7 +346,7 @@ func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*t
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err = info.Tx.Exec(info.Req.Context(), `
+		_, err = info.Tx.Exec(info.Ctx, `
 			DELETE FROM dbtable_schema.group_roles WHERE group_id = $1;
 			DELETE FROM dbtable_schema.groups WHERE id = $1;
 		`, id)

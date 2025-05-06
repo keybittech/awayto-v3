@@ -102,6 +102,7 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 	poolTx.SetSession(ctx, workerSession)
 
 	reqInfo := handlers.ReqInfo{
+		Ctx:     fakeReq.Context(),
 		W:       nil,
 		Req:     fakeReq,
 		Session: session,

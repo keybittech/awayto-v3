@@ -11,7 +11,7 @@ import (
 func (h *Handlers) PostContact(info ReqInfo, data *types.PostContactRequest) (*types.PostContactResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &contacts, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &contacts, `
 		INSERT INTO dbtable_schema.contacts (name, email, phone, created_sub)
 		VALUES ($1, $2, $3, $4)
 		RETURNING id, name, email, phone
@@ -28,7 +28,7 @@ func (h *Handlers) PostContact(info ReqInfo, data *types.PostContactRequest) (*t
 }
 
 func (h *Handlers) PatchContact(info ReqInfo, data *types.PatchContactRequest) (*types.PatchContactResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.contacts
 		SET name = $2, email = $3, phone = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
@@ -44,7 +44,7 @@ func (h *Handlers) PatchContact(info ReqInfo, data *types.PatchContactRequest) (
 func (h *Handlers) GetContacts(info ReqInfo, data *types.GetContactsRequest) (*types.GetContactsResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &contacts, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &contacts, `
 		SELECT * FROM dbview_schema.enabled_contacts
 	`)
 
@@ -58,7 +58,7 @@ func (h *Handlers) GetContacts(info ReqInfo, data *types.GetContactsRequest) (*t
 func (h *Handlers) GetContactById(info ReqInfo, data *types.GetContactByIdRequest) (*types.GetContactByIdResponse, error) {
 	var contacts []*types.Contact
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &contacts, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &contacts, `
 		SELECT * FROM dbview_schema.enabled_contacts
 		WHERE id = $1
 	`, data.GetId())
@@ -75,7 +75,7 @@ func (h *Handlers) GetContactById(info ReqInfo, data *types.GetContactByIdReques
 }
 
 func (h *Handlers) DeleteContact(info ReqInfo, data *types.DeleteContactRequest) (*types.DeleteContactResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.contacts
 		WHERE id = $1
 	`, data.GetId())
@@ -88,7 +88,7 @@ func (h *Handlers) DeleteContact(info ReqInfo, data *types.DeleteContactRequest)
 }
 
 func (h *Handlers) DisableContact(info ReqInfo, data *types.DisableContactRequest) (*types.DisableContactResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.contacts
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

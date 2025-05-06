@@ -23,7 +23,7 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 	}
 
 	var isOwner bool
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT EXISTS(
 			SELECT 1 FROM dbtable_schema.schedule_bracket_slots
 			WHERE id = $1 AND created_sub = $2
@@ -38,7 +38,7 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 
 	for _, booking := range data.Bookings {
 		var newBooking types.IBooking
-		err := info.Tx.QueryRow(info.Req.Context(), `
+		err := info.Tx.QueryRow(info.Ctx, `
 			INSERT INTO dbtable_schema.bookings (quote_id, slot_date, schedule_bracket_slot_id, created_sub)
 			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid)
 			RETURNING id
@@ -48,13 +48,13 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 		}
 
 		var quoteUserSub string
-		err = info.Tx.QueryRow(info.Req.Context(), `
+		err = info.Tx.QueryRow(info.Ctx, `
 			SELECT created_sub
 			FROM dbtable_schema.quotes
 			WHERE id = $1
 		`, booking.Quote.Id).Scan(&quoteUserSub)
 
-		h.Redis.Client().Del(info.Req.Context(), quoteUserSub+"profile/details")
+		h.Redis.Client().Del(info.Ctx, quoteUserSub+"profile/details")
 
 		if err := h.Socket.RoleCall(quoteUserSub); err != nil {
 			return nil, util.ErrCheck(err)
@@ -63,13 +63,13 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 		newBookings = append(newBookings, &newBooking)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
 	return &types.PostBookingResponse{Bookings: newBookings}, nil
 }
 
 func (h *Handlers) PatchBooking(info ReqInfo, data *types.PatchBookingRequest) (*types.PatchBookingResponse, error) {
 	var updatedBookings []*types.IBooking
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &updatedBookings, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &updatedBookings, `
 		UPDATE dbtable_schema.bookings
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
@@ -84,7 +84,7 @@ func (h *Handlers) PatchBooking(info ReqInfo, data *types.PatchBookingRequest) (
 
 func (h *Handlers) GetBookings(info ReqInfo, data *types.GetBookingsRequest) (*types.GetBookingsResponse, error) {
 	bookings := []*types.IBooking{}
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &bookings, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &bookings, `
 		SELECT eb.*
 		FROM dbview_schema.enabled_bookings eb
 		JOIN dbtable_schema.bookings b ON b.id = eb.id
@@ -96,7 +96,7 @@ func (h *Handlers) GetBookings(info ReqInfo, data *types.GetBookingsRequest) (*t
 
 func (h *Handlers) GetBookingById(info ReqInfo, data *types.GetBookingByIdRequest) (*types.GetBookingByIdResponse, error) {
 	var bookings []*types.IBooking
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &bookings, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &bookings, `
 		SELECT * FROM dbview_schema.enabled_bookings
 		WHERE id = $1
 	`, data.Id)
@@ -113,7 +113,7 @@ func (h *Handlers) GetBookingById(info ReqInfo, data *types.GetBookingByIdReques
 
 func (h *Handlers) GetBookingFiles(info ReqInfo, data *types.GetBookingFilesRequest) (*types.GetBookingFilesResponse, error) {
 	files := []*types.IFile{}
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &files, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &files, `
 		SELECT f.name, f.uuid, f."mimeType"
 		FROM dbview_schema.enabled_files f
 		JOIN dbtable_schema.quote_files qf ON qf.file_id = f.id
@@ -124,7 +124,7 @@ func (h *Handlers) GetBookingFiles(info ReqInfo, data *types.GetBookingFilesRequ
 }
 
 func (h *Handlers) PatchBookingRating(info ReqInfo, data *types.PatchBookingRatingRequest) (*types.PatchBookingRatingResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.bookings
 		SET rating = $2
 		WHERE id = $1
@@ -133,13 +133,13 @@ func (h *Handlers) PatchBookingRating(info ReqInfo, data *types.PatchBookingRati
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"bookings/"+data.Id)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"bookings/"+data.Id)
 
 	return &types.PatchBookingRatingResponse{Success: true}, nil
 }
 
 func (h *Handlers) DeleteBooking(info ReqInfo, data *types.DeleteBookingRequest) (*types.DeleteBookingResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.bookings
 		WHERE id = $1
 	`, data.GetId())
@@ -147,7 +147,7 @@ func (h *Handlers) DeleteBooking(info ReqInfo, data *types.DeleteBookingRequest)
 }
 
 func (h *Handlers) DisableBooking(info ReqInfo, data *types.DisableBookingRequest) (*types.DisableBookingResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

@@ -15,7 +15,7 @@ func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameReques
 
 	time.Sleep(time.Second)
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT COUNT(*) FROM dbtable_schema.groups WHERE name = $1
 	`, data.GetName()).Scan(&count)
 	if err != nil {
@@ -28,14 +28,14 @@ func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameReques
 func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types.JoinGroupResponse, error) {
 	var userId, allowedDomains, defaultRoleId string
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
 	`, data.GetCode()).Scan(&info.Session.GroupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = info.Tx.QueryRow(info.Req.Context(), `
+	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT id
 		FROM dbtable_schema.users
 		WHERE sub = $1
@@ -51,10 +51,10 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 		}
 	}
 
-	info.Tx.SetSession(info.Req.Context(), info.Session)
+	info.Tx.SetSession(info.Ctx, info.Session)
 
 	var kcSubgroupExternalId string
-	err = info.Tx.QueryRow(info.Req.Context(), `
+	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT external_id
 		FROM dbtable_schema.group_roles
 		WHERE role_id = $1
@@ -63,7 +63,7 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 	`, userId, info.Session.GroupId, kcSubgroupExternalId, info.Session.UserSub)
@@ -71,8 +71,8 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
-	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
+	h.Redis.SetGroupSessionVersion(info.Ctx, info.Session.GroupId)
+	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
 
 	return &types.JoinGroupResponse{Success: true}, nil
 }
@@ -80,19 +80,19 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*types.LeaveGroupResponse, error) {
 	var userId, groupId, allowedDomains, defaultRoleId string
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
 	`, data.GetCode()).Scan(&groupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = info.Tx.QueryRow(info.Req.Context(), `SELECT id FROM dbtable_schema.users WHERE sub = $1`, info.Session.UserSub).Scan(&userId)
+	err = info.Tx.QueryRow(info.Ctx, `SELECT id FROM dbtable_schema.users WHERE sub = $1`, info.Session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.group_users WHERE user_id = $1 AND group_id = $2
 	`, userId, groupId)
 	if err != nil {
@@ -111,7 +111,7 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*types.AttachUserResponse, error) {
 	var kcRoleSubgroupExternalId, createdSub string
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT g.id
 		FROM dbtable_schema.groups g
 		WHERE g.code = $1
@@ -122,7 +122,7 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 
 	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
-	row, done, err := ds.SessionBatchQueryRow(info.Req.Context(), `
+	row, done, err := ds.SessionBatchQueryRow(info.Ctx, `
 		SELECT g.created_sub, gr.external_id
 		FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
@@ -147,10 +147,10 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
-	h.Redis.Client().Del(info.Req.Context(), createdSub+"profile/details")
-	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
-	h.Redis.SetGroupSessionVersion(info.Req.Context(), info.Session.GroupId)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, createdSub+"profile/details")
+	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
+	h.Redis.SetGroupSessionVersion(info.Ctx, info.Session.GroupId)
 
 	return &types.AttachUserResponse{Success: true}, nil
 }

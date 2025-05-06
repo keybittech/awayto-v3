@@ -137,6 +137,7 @@ define clean_logs
   $(shell if [ $$(ls -1 $(LOG_DIR)/db/*.log 2>/dev/null | wc -l) -gt 1 ]; then \
     ls -t $(LOG_DIR)/db/*.log | tail -n +2 | xargs rm -f; \
   fi)
+	rm -f log/*.log
 endef
 
 #################################

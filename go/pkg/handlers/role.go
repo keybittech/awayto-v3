@@ -9,7 +9,7 @@ import (
 
 func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.PostRoleResponse, error) {
 	var role types.IRole
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.roles (name, created_sub)
 			SELECT * FROM input_rows
@@ -28,14 +28,14 @@ func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.P
 	}
 
 	var userId string
-	err = info.Tx.QueryRow(info.Req.Context(), `
+	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
 	`, info.Session.UserSub).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.user_roles (user_id, role_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (user_id, role_id) DO NOTHING
@@ -44,14 +44,14 @@ func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.P
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
 
 	return &types.PostRoleResponse{Id: role.Id}, nil
 }
 
 func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.GetRolesResponse, error) {
 	var roles []*types.IRole
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &roles, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &roles, `
 		SELECT eur.id, er.name, eur."createdOn" 
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
@@ -67,7 +67,7 @@ func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.G
 
 func (h *Handlers) GetRoleById(info ReqInfo, data *types.GetRoleByIdRequest) (*types.GetRoleByIdResponse, error) {
 	var role types.IRole
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT * FROM dbview_schema.enabled_roles
 		WHERE id = $1
 	`, data.GetId()).Scan(&role.Id, &role.Name)
@@ -80,7 +80,7 @@ func (h *Handlers) GetRoleById(info ReqInfo, data *types.GetRoleByIdRequest) (*t
 
 func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*types.DeleteRoleResponse, error) {
 	var userId string
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
 	`, info.Session.UserSub).Scan(&userId)
 	if err != nil {
@@ -90,7 +90,7 @@ func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*typ
 	ids := data.GetIds()
 	for _, id := range strings.Split(ids, ",") {
 		if id != "" {
-			_, err = info.Tx.Exec(info.Req.Context(), `
+			_, err = info.Tx.Exec(info.Ctx, `
 				DELETE FROM dbtable_schema.user_roles
 				WHERE role_id = $1 AND user_id = $2
 			`, id, userId)
@@ -100,7 +100,7 @@ func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*typ
 		}
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
 
 	return &types.DeleteRoleResponse{Success: true}, nil
 }

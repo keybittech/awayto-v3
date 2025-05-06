@@ -46,7 +46,10 @@ import (
 // For these reasons, the bracket modification process is spread across different focused functions, to help
 // ease the task of debugging and general understanding.
 
-var appGroupSchedulesRole = int64(types.SiteRoles_APP_GROUP_SCHEDULES)
+var (
+	appGroupSchedulesRole      = int64(types.SiteRoles_APP_GROUP_SCHEDULES)
+	onlyOneMasterScheduleError = util.UserError("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it.")
+)
 
 func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (*types.PostScheduleResponse, error) {
 	var scheduleId string
@@ -80,29 +83,24 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 
 		ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 		insertScheduleParams[1] = info.Session.GroupSub
-		row, done, err = ds.SessionBatchQueryRow(info.Req.Context(), insertScheduleQuery, insertScheduleParams...)
-	} else {
-		row = info.Tx.QueryRow(info.Req.Context(), insertScheduleQuery, insertScheduleParams...)
-	}
-	if err != nil {
-		var pgErr *pq.Error
-		if errors.As(err, &pgErr) && pgErr.Constraint == "unique_enabled_name_created_sub" {
-			return nil, util.ErrCheck(util.UserError("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it."))
-		}
-		return nil, util.ErrCheck(err)
-	}
-	if done != nil {
+		row, done, err = ds.SessionBatchQueryRow(info.Ctx, insertScheduleQuery, insertScheduleParams...)
 		defer done()
+	} else {
+		row = info.Tx.QueryRow(info.Ctx, insertScheduleQuery, insertScheduleParams...)
 	}
 
 	err = row.Scan(&scheduleId)
 	if err != nil {
+		var pgErr *pq.Error
+		if errors.As(err, &pgErr) && pgErr.Constraint == "unique_enabled_name_created_sub" {
+			return nil, util.ErrCheck(onlyOneMasterScheduleError)
+		}
 		return nil, util.ErrCheck(err)
 	}
 
 	// Runs when users post their brackets to an existing master schedule
 	if len(data.Brackets) > 0 && data.GroupScheduleId != "" {
-		err := h.InsertNewBrackets(info.Req.Context(), scheduleId, data.Brackets, info)
+		err := h.InsertNewBrackets(info.Ctx, scheduleId, data.Brackets, info)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -134,28 +132,28 @@ func (h *Handlers) PostScheduleBrackets(info ReqInfo, data *types.PostScheduleBr
 		}
 	}
 
-	err := handleDeletedBrackets(info.Req.Context(), data.UserScheduleId, existingBracketIds, info)
+	err := handleDeletedBrackets(info.Ctx, data.UserScheduleId, existingBracketIds, info)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	if len(existingBracketIds) > 0 {
-		err := h.HandleExistingBrackets(info.Req.Context(), existingBracketIds, existingBrackets, info)
+		err := h.HandleExistingBrackets(info.Ctx, existingBracketIds, existingBrackets, info)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
 	if len(newBrackets) > 0 && data.UserScheduleId != "" {
-		err := h.InsertNewBrackets(info.Req.Context(), data.UserScheduleId, newBrackets, info)
+		err := h.InsertNewBrackets(info.Ctx, data.UserScheduleId, newBrackets, info)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"schedules")
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"schedules/"+data.UserScheduleId)
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/user_schedules/"+data.GroupScheduleId)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"schedules/"+data.UserScheduleId)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/user_schedules/"+data.GroupScheduleId)
 
 	return &types.PostScheduleBracketsResponse{Success: true}, nil
 }
@@ -173,7 +171,7 @@ func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest)
 		endTime = &et
 	}
 
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.schedules
 		SET name = $2, start_time = $3, end_time = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
@@ -188,7 +186,7 @@ func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest)
 func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (*types.GetSchedulesResponse, error) {
 	var schedules []*types.ISchedule
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &schedules, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &schedules, `
 		SELECT es.* 
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbtable_schema.schedules s ON s.id = es.id
@@ -204,7 +202,7 @@ func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (
 func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequest) (*types.GetScheduleByIdResponse, error) {
 	var schedules []*types.ISchedule
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &schedules, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &schedules, `
 		SELECT * FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.GetId())
@@ -222,12 +220,12 @@ func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequ
 
 func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleRequest) (*types.DeleteScheduleResponse, error) {
 	for _, scheduleId := range strings.Split(data.GetIds(), ",") {
-		err := handleDeletedBrackets(info.Req.Context(), scheduleId, []string{}, info)
+		err := handleDeletedBrackets(info.Ctx, scheduleId, []string{}, info)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err = info.Tx.Exec(info.Req.Context(), `
+		_, err = info.Tx.Exec(info.Ctx, `
 			UPDATE dbtable_schema.schedules
 			SET enabled = false
 			WHERE id = $1
@@ -236,7 +234,7 @@ func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleReques
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err = info.Tx.Exec(info.Req.Context(), `
+		_, err = info.Tx.Exec(info.Ctx, `
 			DELETE FROM dbtable_schema.schedules
 			WHERE dbtable_schema.schedules.id = $1
 			AND NOT EXISTS (
@@ -249,7 +247,7 @@ func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleReques
 			return nil, util.ErrCheck(err)
 		}
 
-		_, err = info.Tx.Exec(info.Req.Context(), `
+		_, err = info.Tx.Exec(info.Ctx, `
 			DELETE FROM dbtable_schema.group_user_schedules
 			WHERE user_schedule_id = $1
 			AND NOT EXISTS (
@@ -263,14 +261,14 @@ func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleReques
 		}
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"schedules")
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
 
 	return &types.DeleteScheduleResponse{Success: true}, nil
 }
 
 func (h *Handlers) DisableSchedule(info ReqInfo, data *types.DisableScheduleRequest) (*types.DisableScheduleResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.schedules
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

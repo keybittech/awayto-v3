@@ -51,6 +51,7 @@ func setupTestEnv() (*Handlers, ReqInfo, error) {
 	}
 
 	reqInfo := ReqInfo{
+		Ctx:     req.Context(),
 		W:       w,
 		Req:     req,
 		Session: session,

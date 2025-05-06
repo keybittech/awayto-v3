@@ -13,7 +13,7 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 	roleId := data.GetRoleId()
 
 	var userId, oldSubgroupExternalId string
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT gu.external_id as "externalId", gu.user_id as "userId"
 		FROM dbtable_schema.group_users gu
 		JOIN dbtable_schema.users u ON u.id = gu.user_id
@@ -25,7 +25,7 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 	}
 
 	var newSubgroupExternalId string
-	err = info.Tx.QueryRow(info.Req.Context(), `
+	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT external_id as "externalId"
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
@@ -44,7 +44,7 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.group_users
 		SET external_id = $3
 		WHERE group_id = $1 AND user_id = $2
@@ -53,13 +53,13 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"profile/details")
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/users")
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/users/"+userId)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/users")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/users/"+userId)
 
 	// Target user will see their roles persisted through cache with this
-	h.Redis.Client().Del(info.Req.Context(), userSub+"profile/details")
-	h.Redis.DeleteSession(info.Req.Context(), info.Session.UserSub)
+	h.Redis.Client().Del(info.Ctx, userSub+"profile/details")
+	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
 	// response := make([]*types.UserRolePair, 1)
 	// response[0] = &types.UserRolePair{
 	// 	Id:       userId,
@@ -73,7 +73,7 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 func (h *Handlers) GetGroupUsers(info ReqInfo, data *types.GetGroupUsersRequest) (*types.GetGroupUsersResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupUsers, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupUsers, `
 		SELECT TO_JSONB(eu) as "userProfile", egu.id, r.id as "roleId", r.name as "roleName"
 		FROM dbview_schema.enabled_group_users egu
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = egu."userId"
@@ -92,7 +92,7 @@ func (h *Handlers) GetGroupUsers(info ReqInfo, data *types.GetGroupUsersRequest)
 func (h *Handlers) GetGroupUserById(info ReqInfo, data *types.GetGroupUserByIdRequest) (*types.GetGroupUserByIdResponse, error) {
 	var groupUsers []*types.IGroupUser
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupUsers, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupUsers, `
 		SELECT
 			eu.id,
 			egu.groupId,
@@ -126,7 +126,7 @@ func (h *Handlers) DeleteGroupUser(info ReqInfo, data *types.DeleteGroupUserRequ
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := info.Tx.Exec(info.Req.Context(), `
+		_, err := info.Tx.Exec(info.Ctx, `
 			DELETE FROM dbtable_schema.group_users
 			WHERE group_id = $1 AND user_id = $2
 		`, info.Session.GroupId, id)
@@ -142,7 +142,7 @@ func (h *Handlers) LockGroupUser(info ReqInfo, data *types.LockGroupUserRequest)
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := info.Tx.Exec(info.Req.Context(), `
+		_, err := info.Tx.Exec(info.Ctx, `
 			UPDATE dbtable_schema.group_users
 			SET locked = true
 			WHERE group_id = $1 AND user_id = $2
@@ -152,7 +152,7 @@ func (h *Handlers) LockGroupUser(info ReqInfo, data *types.LockGroupUserRequest)
 		}
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/users")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/users")
 
 	return &types.LockGroupUserResponse{Success: true}, nil
 }
@@ -161,7 +161,7 @@ func (h *Handlers) UnlockGroupUser(info ReqInfo, data *types.UnlockGroupUserRequ
 	ids := strings.Split(data.GetIds(), ",")
 
 	for _, id := range ids {
-		_, err := info.Tx.Exec(info.Req.Context(), `
+		_, err := info.Tx.Exec(info.Ctx, `
 			UPDATE dbtable_schema.group_users
 			SET locked = false
 			WHERE group_id = $1 AND user_id = $2
@@ -171,7 +171,7 @@ func (h *Handlers) UnlockGroupUser(info ReqInfo, data *types.UnlockGroupUserRequ
 		}
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/users")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/users")
 
 	return &types.UnlockGroupUserResponse{Success: true}, nil
 }

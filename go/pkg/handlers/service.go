@@ -14,7 +14,7 @@ import (
 func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*types.PostServiceResponse, error) {
 	service := data.GetService()
 
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.services (name, cost, form_id, survey_id, created_sub)
 		VALUES ($1, $2::integer, $3, $4, $5::uuid)
 		ON CONFLICT (name, created_sub) DO UPDATE
@@ -41,7 +41,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 	for _, tier := range service.GetTiers() {
 		var tierId string
 
-		err := info.Tx.QueryRow(info.Req.Context(), `
+		err := info.Tx.QueryRow(info.Ctx, `
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
 				SELECT * FROM input_rows
@@ -65,7 +65,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		// insert new tier addons, enabling on conflict
 		insertedTierAddonIds := make([]string, 0)
 		for _, addon := range tier.GetAddons() {
-			_, err = info.Tx.Exec(info.Req.Context(), `
+			_, err = info.Tx.Exec(info.Ctx, `
 				INSERT INTO dbtable_schema.service_tier_addons (service_addon_id, service_tier_id, created_sub)
 				VALUES ($1, $2, $3::uuid)
 				ON CONFLICT (service_addon_id, service_tier_id) DO UPDATE
@@ -78,7 +78,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		}
 
 		// delete old addons, never referenced beyond the tier
-		_, err = info.Tx.Exec(info.Req.Context(), `
+		_, err = info.Tx.Exec(info.Ctx, `
 			DELETE FROM dbtable_schema.service_tier_addons
 			WHERE service_addon_id IN (
 				SELECT service_addon_id
@@ -94,7 +94,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 
 	// disable tiers that were not inserted or re-enabled
 	// may be referenced by a quote, which must show accurate info at the time of the request
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false
 		WHERE id IN (
@@ -109,7 +109,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 	}
 
 	// update service
-	_, err = info.Tx.Exec(info.Req.Context(), `
+	_, err = info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.services
 		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
@@ -118,7 +118,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service/"+service.Id)
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+service.Id)
 
 	return &types.PatchServiceResponse{Success: true}, nil
 }
@@ -126,7 +126,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*types.GetServicesResponse, error) {
 	var services []*types.IService
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &services, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &services, `
 		SELECT * FROM dbtable_schema.services
 		WHERE created_sub = $1
 	`, info.Session.UserSub)
@@ -142,7 +142,7 @@ func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdReques
 	service := &types.IService{}
 
 	var tierBytes []byte
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT id, name, "formId", "surveyId", "createdOn"::TEXT, tiers
 		FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
@@ -165,7 +165,7 @@ func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdReques
 func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest) (*types.DeleteServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.services
 		WHERE id = ANY($1)
 	`, pq.Array(serviceIds))
@@ -174,10 +174,10 @@ func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest)
 	}
 
 	for _, serviceId := range serviceIds {
-		h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service/"+serviceId)
+		h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+serviceId)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service")
 
 	return &types.DeleteServiceResponse{Success: true}, nil
 }
@@ -185,7 +185,7 @@ func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest)
 func (h *Handlers) DisableService(info ReqInfo, data *types.DisableServiceRequest) (*types.DisableServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.services
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = ANY($1)
@@ -195,10 +195,10 @@ func (h *Handlers) DisableService(info ReqInfo, data *types.DisableServiceReques
 	}
 
 	for _, serviceId := range serviceIds {
-		h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service/"+serviceId)
+		h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+serviceId)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"service")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service")
 
 	return &types.DisableServiceResponse{Success: true}, nil
 }

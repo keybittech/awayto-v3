@@ -10,7 +10,7 @@ import (
 
 func (h *Handlers) PostGroupService(info ReqInfo, data *types.PostGroupServiceRequest) (*types.PostGroupServiceResponse, error) {
 	var groupServiceId string
-	err := info.Tx.QueryRow(info.Req.Context(), `
+	err := info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.group_services (group_id, service_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		ON CONFLICT (group_id, service_id) DO NOTHING
@@ -21,7 +21,7 @@ func (h *Handlers) PostGroupService(info ReqInfo, data *types.PostGroupServiceRe
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/services")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/services")
 
 	return &types.PostGroupServiceResponse{Id: groupServiceId}, nil
 }
@@ -29,7 +29,7 @@ func (h *Handlers) PostGroupService(info ReqInfo, data *types.PostGroupServiceRe
 func (h *Handlers) GetGroupServices(info ReqInfo, data *types.GetGroupServicesRequest) (*types.GetGroupServicesResponse, error) {
 	var groupServices []*types.IGroupService
 
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &groupServices, `
+	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupServices, `
 		SELECT TO_JSONB(es) as service, egs.id, egs."groupId", egs."serviceId"
 		FROM dbview_schema.enabled_group_services egs
 		LEFT JOIN dbview_schema.enabled_services es ON es.id = egs."serviceId"
@@ -46,7 +46,7 @@ func (h *Handlers) GetGroupServices(info ReqInfo, data *types.GetGroupServicesRe
 func (h *Handlers) DeleteGroupService(info ReqInfo, data *types.DeleteGroupServiceRequest) (*types.DeleteGroupServiceResponse, error) {
 
 	serviceIds := strings.Split(data.Ids, ",")
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.group_services
 		WHERE group_id = $1 AND service_id = ANY($2)
 	`, info.Session.GroupId, pq.Array(serviceIds))
@@ -59,7 +59,7 @@ func (h *Handlers) DeleteGroupService(info ReqInfo, data *types.DeleteGroupServi
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Req.Context(), info.Session.UserSub+"group/services")
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/services")
 
 	return &types.DeleteGroupServiceResponse{Success: true}, nil
 }

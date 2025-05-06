@@ -106,12 +106,13 @@ func InitDatabase() *Database {
 	if err != nil {
 		log.Fatal(util.ErrCheck(err))
 	}
-	defer done()
 
 	err = row.Scan(&dbc.DatabaseAdminSub, &dbc.DatabaseAdminRoleId)
 	if err != nil {
+		done()
 		log.Fatal(util.ErrCheck(err))
 	}
+	done()
 
 	_, err = workerDbSession.SessionBatchExec(ctx, `
 		DELETE FROM dbtable_schema.sock_connections
@@ -304,7 +305,6 @@ func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params 
 
 	done := func() {
 		rows.Close()
-		results.Exec()
 		results.Close()
 	}
 
@@ -322,7 +322,6 @@ func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, para
 	row := results.QueryRow()
 
 	done := func() {
-		results.Exec()
 		results.Close()
 	}
 

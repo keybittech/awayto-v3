@@ -28,7 +28,7 @@ func (h *Handlers) DeleteBookingTranscript(info ReqInfo, data *types.DeleteBooki
 }
 
 func (h *Handlers) DisableBookingTranscript(info ReqInfo, data *types.DisableBookingTranscriptRequest) (*types.DisableBookingTranscriptResponse, error) {
-	_, err := info.Tx.Exec(info.Req.Context(), `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1

@@ -10,7 +10,7 @@ import (
 func (h *Handlers) PostPrompt(info ReqInfo, data *types.PostPromptRequest) (*types.PostPromptResponse, error) {
 
 	// TODO
-	// if rateLimited, err := h.Redis.Client().RateLimitResource(info.Req.Context(), data.UserSub, "prompt", 25, 86400); err != nil || rateLimited {
+	// if rateLimited, err := h.Redis.Client().RateLimitResource(info.Ctx, data.UserSub, "prompt", 25, 86400); err != nil || rateLimited {
 	// 	if err != nil {
 	// 		return nil, util.ErrCheck(err)
 	// 	}
@@ -18,7 +18,7 @@ func (h *Handlers) PostPrompt(info ReqInfo, data *types.PostPromptRequest) (*typ
 	// }
 	//
 	// promptParts := strings.Split(data.Prompt, "!$")
-	// response, err := h.AI.UseAI(info.Req.Context(), data.Id, promptParts...)
+	// response, err := h.AI.UseAI(info.Ctx, data.Id, promptParts...)
 
 	// if err != nil {
 	// 	return nil, util.ErrCheck(err)
@@ -50,7 +50,7 @@ func (h *Handlers) GetSuggestion(info ReqInfo, data *types.GetSuggestionRequest)
 
 			for i := 0; i < 3; i++ {
 
-				resp, err := h.Ai.GetPromptResponse(info.Req.Context(), promptParts, types.IPrompts(promptType))
+				resp, err := h.Ai.GetPromptResponse(info.Ctx, promptParts, types.IPrompts(promptType))
 				if err != nil {
 					return nil, util.ErrCheck(err)
 				}
