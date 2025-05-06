@@ -589,7 +589,7 @@ func TestStringsToBitmask(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want int32
+		want int64
 	}{
 		// TODO: Add test cases.
 	}

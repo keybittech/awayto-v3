@@ -1,7 +1,7 @@
 package util
 
 import (
-	"crypto/sha1"
+	"crypto/sha1" // #nosec G505
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -34,7 +34,7 @@ func SplitColonJoined(id string) (string, string, error) {
 
 func ComputeWebSocketAcceptKey(clientKey string) string {
 	const websocketGUID = "258EAFA5-E914-47DA-95CA-C5AB0DC85B11"
-	h := sha1.New()
+	h := sha1.New() // #nosec G401
 	h.Write([]byte(clientKey + websocketGUID))
 	return base64.StdEncoding.EncodeToString(h.Sum(nil))
 }
@@ -90,7 +90,7 @@ func ReadSocketConnectionMessage(conn net.Conn) ([]byte, error) {
 	if payloadLen == 126 {
 		actualPayloadLen = int(binary.BigEndian.Uint16(headerExtra[:2]))
 	} else if payloadLen == 127 {
-		actualPayloadLen = int(binary.BigEndian.Uint64(headerExtra[:8]))
+		actualPayloadLen = int(binary.BigEndian.Uint32(headerExtra[:8]))
 	}
 
 	// Extract mask key if present

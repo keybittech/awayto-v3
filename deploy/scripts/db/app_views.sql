@@ -246,7 +246,7 @@ OR REPLACE VIEW dbview_schema.enabled_quotes AS
 SELECT
   q.id,
   esbs."startTime",
-  q.slot_date as "slotDate",
+  q.slot_date::TEXT as "slotDate",
   q.schedule_bracket_slot_id as "scheduleBracketSlotId",
   q.service_tier_id as "serviceTierId",
   est.name as "serviceTierName",
@@ -268,7 +268,7 @@ OR REPLACE VIEW dbview_schema.enabled_bookings AS
 SELECT
   b.id,
   b.rating,
-  b.slot_date as "slotDate",
+  b.slot_date::TEXT as "slotDate",
   b.quote_id as "quoteId",
   b.schedule_bracket_slot_id as "scheduleBracketSlotId",
   b.tier_survey_version_submission_id as "tierSurveyVersionSubmissionId",

@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"strconv"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -42,7 +41,7 @@ func (h *Handlers) GetSuggestion(info ReqInfo, data *types.GetSuggestionRequest)
 
 	if info.Session.GroupAi {
 		promptParts := strings.Split(data.GetPrompt(), "!$")
-		promptType, err := strconv.Atoi(data.GetId())
+		promptType, err := util.Atoi32(data.Id)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

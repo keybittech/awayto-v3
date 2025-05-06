@@ -2,6 +2,8 @@ package util
 
 import (
 	"fmt"
+	"log"
+	"math"
 	"net/url"
 	"reflect"
 	"strings"
@@ -20,22 +22,27 @@ type IdStruct struct {
 }
 
 type HandlerOptions struct {
-	ServiceMethodURL  string
-	SiteRole          int32
+	CacheDuration     int64
+	CacheType         int64
+	SiteRole          int64
+	Throttle          int64
+	SiteRoleName      string
 	Pattern           string
-	CacheType         types.CacheType
-	CacheDuration     int32
+	ServiceMethodURL  string
 	NoLogFields       []protoreflect.Name
-	MultipartRequest  bool
 	MultipartResponse bool
-	Throttle          int32
+	MultipartRequest  bool
 }
 
 func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	parsedOptions := &HandlerOptions{}
+	fieldsLen, err := Itoi32(md.Input().Fields().Len())
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	if md.Input().Fields().Len() > 0 {
-		for i := 0; i < md.Input().Fields().Len(); i++ {
+		for i := int32(0); i < fieldsLen; i++ {
 			field := md.Input().Fields().ByNumber(protowire.Number(i + 1))
 
 			if proto.HasExtension(field.Options(), types.E_Nolog) {
@@ -81,20 +88,26 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	parsedOptions.Pattern = fmt.Sprintf("%s /api%s", serviceMethodMethod, serviceMethodUrl)
 
 	if proto.HasExtension(inputOpts, types.E_SiteRole) {
-		roles := strings.Split(fmt.Sprint(proto.GetExtension(inputOpts, types.E_SiteRole)), ",")
-		parsedOptions.SiteRole = StringsToBitmask(roles)
+		siteRoles := proto.GetExtension(inputOpts, types.E_SiteRole).(types.SiteRoles)
+		roles := strings.Split(fmt.Sprint(siteRoles), ",")
+		roleBits := StringsToBitmask(roles)
+		parsedOptions.SiteRole = roleBits
+		if roleBits > math.MinInt32 && roleBits < math.MaxInt32 {
+			parsedOptions.SiteRoleName = types.SiteRoles_name[int32(roleBits)]
+		}
 	}
 
 	if proto.HasExtension(inputOpts, types.E_Cache) {
-		parsedOptions.CacheType = proto.GetExtension(inputOpts, types.E_Cache).(types.CacheType)
+		cacheType := proto.GetExtension(inputOpts, types.E_Cache).(types.CacheType)
+		parsedOptions.CacheType = int64(cacheType)
 	}
 
 	if proto.HasExtension(inputOpts, types.E_CacheDuration) {
-		parsedOptions.CacheDuration = proto.GetExtension(inputOpts, types.E_CacheDuration).(int32)
+		parsedOptions.CacheDuration = proto.GetExtension(inputOpts, types.E_CacheDuration).(int64)
 	}
 
 	if proto.HasExtension(inputOpts, types.E_Throttle) {
-		parsedOptions.Throttle = proto.GetExtension(inputOpts, types.E_Throttle).(int32)
+		parsedOptions.Throttle = proto.GetExtension(inputOpts, types.E_Throttle).(int64)
 	}
 
 	if proto.HasExtension(inputOpts, types.E_MultipartRequest) {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5"
+
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -92,8 +93,8 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 			Id:                             quoteId,
 			SlotDate:                       data.SlotDate,
 			ScheduleBracketSlotId:          data.ScheduleBracketSlotId,
-			ServiceFormVersionSubmissionId: serviceForm.GetId(),
-			TierFormVersionSubmissionId:    tierForm.GetId(),
+			ServiceFormVersionSubmissionId: &serviceForm.Id,
+			TierFormVersionSubmissionId:    &tierForm.Id,
 		},
 	}, nil
 }
@@ -112,8 +113,18 @@ func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*typ
 }
 
 func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types.GetQuotesResponse, error) {
-	rows, err := info.Tx.Query(info.Req.Context(), `
-		SELECT q.*
+	rows, err := info.Tx.Query(info.Ctx, `
+		SELECT
+			q.id,
+			q."startTime",
+			q."slotDate"::TEXT,
+			q."scheduleBracketSlotId",
+			q."serviceTierId",
+			q."serviceTierName",
+			q."serviceName",
+			q."serviceFormVersionSubmissionId",
+			q."tierFormVersionSubmissionId",
+			q."createdOn"::TEXT
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q."scheduleBracketSlotId"
 		WHERE sbs.created_sub = $1
@@ -131,17 +142,21 @@ func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types
 }
 
 func (h *Handlers) GetQuoteById(info ReqInfo, data *types.GetQuoteByIdRequest) (*types.GetQuoteByIdResponse, error) {
-	var quotes []*types.IQuote
-
-	err := h.Database.QueryRows(info.Req.Context(), info.Tx, &quotes, `
-		SELECT * FROM dbview_schema.enabled_quotes_ext
+	rows, err := info.Tx.Query(info.Req.Context(), `
+		SELECT id, "slotDate", "serviceFormVersionSubmission", "tierFormVersionSubmission", "createdOn"::TEXT
+		FROM dbview_schema.enabled_quotes_ext
 		WHERE id = $1
-	`, data.GetId())
-	if err != nil || len(quotes) == 0 {
+	`, data.Id)
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetQuoteByIdResponse{Quote: quotes[0]}, nil
+	quote, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[types.IQuote])
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return &types.GetQuoteByIdResponse{Quote: quote}, nil
 }
 
 func (h *Handlers) DeleteQuote(info ReqInfo, data *types.DeleteQuoteRequest) (*types.DeleteQuoteResponse, error) {

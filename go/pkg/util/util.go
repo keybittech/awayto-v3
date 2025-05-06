@@ -6,11 +6,14 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
+	"fmt"
 	"io"
 	"log"
+	"math"
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -75,6 +78,22 @@ func NewNullString(s string) sql.NullString {
 	}
 }
 
+func Atoi32(s string) (int32, error) {
+	i, err := strconv.ParseInt(s, 10, 32)
+	if err != nil {
+		return 0, ErrCheck(err)
+	}
+	return int32(i), nil
+}
+
+func Itoi32(i int) (int32, error) {
+	if i > math.MaxInt32 || i < math.MinInt32 {
+		return 0, ErrCheck(errors.New("int32 conversion overflowed"))
+	}
+
+	return int32(i), nil
+}
+
 func IsUUID(id string) bool {
 	if len(id) != 36 {
 		return false
@@ -119,7 +138,20 @@ func PaddedLen(padTo int, length int) string {
 }
 
 func EnvFile(loc string) (string, error) {
-	envFile, err := os.ReadFile(os.Getenv("PROJECT_DIR") + "/" + loc)
+	cleanLoc := filepath.Clean(loc)
+
+	if strings.Contains(cleanLoc, "..") {
+		return "", fmt.Errorf("invalid file path: path traversal attempt detected")
+	}
+
+	envFilePath := filepath.Join(os.Getenv("PROJECT_DIR"), cleanLoc)
+
+	projectDir := os.Getenv("PROJECT_DIR")
+	if !strings.HasPrefix(filepath.Clean(envFilePath), filepath.Clean(projectDir)) {
+		return "", fmt.Errorf("invalid file path: path is outside of project directory")
+	}
+
+	envFile, err := os.ReadFile(envFilePath)
 	if err != nil {
 		return "", ErrCheck(err)
 	}
@@ -215,11 +247,11 @@ func CookieExpired(req *http.Request) bool {
 	return true
 }
 
-func StringsToBitmask(roles []string) int32 {
-	var bitmask int32
+func StringsToBitmask(roles []string) int64 {
+	var bitmask int64
 	for _, role := range roles {
 		if bit, ok := types.SiteRoles_value[role]; ok {
-			bitmask |= bit
+			bitmask |= int64(bit)
 		}
 	}
 	return bitmask

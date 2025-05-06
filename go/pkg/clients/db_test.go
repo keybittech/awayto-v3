@@ -611,7 +611,13 @@ func TestDbSession_SessionSendBatch(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.ds.SessionSendBatch(tt.args.ctx, tt.args.batch); !reflect.DeepEqual(got, tt.want) {
+			got, err := tt.ds.SessionSendBatch(tt.args.ctx, tt.args.batch)
+
+			if err == nil {
+				t.Errorf("session send batch error %v", err)
+			}
+
+			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DbSession.SessionSendBatch(%v, %v) = %v, want %v", tt.args.ctx, tt.args.batch, got, tt.want)
 			}
 		})

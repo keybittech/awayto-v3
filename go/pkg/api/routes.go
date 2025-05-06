@@ -93,6 +93,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		defer poolTx.Rollback(ctx)
 
 		reqInfo := handlers.ReqInfo{
+			Ctx:     ctx,
 			W:       w,
 			Req:     req,
 			Session: session,
@@ -111,10 +112,12 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			return
 		}
 
-		_, err = responseHandler(w, results)
-		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
+		if results != nil {
+			_, err = responseHandler(w, results)
+			if err != nil {
+				deferredError = util.ErrCheck(err)
+				return
+			}
 		}
 	}
 }

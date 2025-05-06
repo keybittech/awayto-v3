@@ -46,6 +46,8 @@ import (
 // For these reasons, the bracket modification process is spread across different focused functions, to help
 // ease the task of debugging and general understanding.
 
+var appGroupSchedulesRole = int64(types.SiteRoles_APP_GROUP_SCHEDULES)
+
 func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (*types.PostScheduleResponse, error) {
 	var scheduleId string
 
@@ -72,7 +74,7 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 
 	if data.AsGroup {
 		// check to see APP_GROUP_SCHEDULE role is on info.Session.Roles
-		if info.Session.RoleBits&int32(types.SiteRoles_APP_GROUP_SCHEDULES) == 0 {
+		if info.Session.RoleBits&appGroupSchedulesRole == 0 {
 			return nil, util.ErrCheck(errors.New("does not have APP_GROUP_SCHEDULES role"))
 		}
 

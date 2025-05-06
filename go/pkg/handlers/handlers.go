@@ -1,6 +1,7 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -34,6 +35,7 @@ func NewHandlers() *Handlers {
 }
 
 type ReqInfo struct {
+	Ctx     context.Context
 	W       http.ResponseWriter
 	Req     *http.Request
 	Session *types.UserSession

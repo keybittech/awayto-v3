@@ -28,8 +28,8 @@ const (
 
 const (
 	CID_LENGTH                  = 36
-	socketActionHasMoreMessages = int32(types.SocketActions_HAS_MORE_MESSAGES)
-	socketActionRoleCall        = int32(types.SocketActions_ROLE_CALL)
+	socketActionHasMoreMessages = int64(types.SocketActions_HAS_MORE_MESSAGES)
+	socketActionRoleCall        = int64(types.SocketActions_ROLE_CALL)
 	sockHandlerId               = "sock"
 )
 

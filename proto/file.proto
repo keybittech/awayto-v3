@@ -88,7 +88,7 @@ message FileContent {
   string name = 1;
   string mimeType = 2;
   bytes content = 3;
-  int32 contentLength = 4;
+  int64 contentLength = 4;
 }
 
 message PostFileContentsRequest {
@@ -98,7 +98,7 @@ message PostFileContentsRequest {
   ];
   repeated string existingIds = 2 [(google.api.field_behavior) = REQUIRED];
   repeated string overwriteIds = 3 [(google.api.field_behavior) = REQUIRED];
-  int32 totalLength = 4;
+  int64 totalLength = 4;
   string uploadId = 5;
 }
 

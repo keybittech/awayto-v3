@@ -3,7 +3,7 @@ package api
 import (
 	"bytes"
 	"errors"
-	"math"
+	"log"
 	"net"
 	"net/http"
 	"strconv"
@@ -83,7 +83,6 @@ func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFu
 
 func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-		ctx := req.Context()
 		needsLookup := false
 
 		if len(session.SubGroups) > 0 {
@@ -101,6 +100,8 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			next(w, req, session)
 			return
 		}
+
+		ctx := req.Context()
 
 		if session.GroupId == "" {
 			needsLookup = true
@@ -175,7 +176,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 				UserSession: session,
 			}
 
-			row, done, err := ds.SessionBatchQueryRow(req.Context(), `
+			row, done, err := ds.SessionBatchQueryRow(ctx, `
 				SELECT id, ai, sub
 				FROM dbtable_schema.groups
 				WHERE external_id = $1
@@ -195,7 +196,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			}
 			done()
 
-			groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(req.Context(), session.GroupId)
+			groupVersion, err := a.Handlers.Redis.GetGroupSessionVersion(ctx, session.GroupId)
 			if err != nil {
 				util.ErrorLog.Println(util.ErrCheck(err))
 				w.WriteHeader(http.StatusInternalServerError)
@@ -221,17 +222,15 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 }
 
 func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
-	siteRoleName := types.SiteRoles_name[opts.SiteRole]
 	return func(next SessionHandler) SessionHandler {
-
-		if opts.SiteRole == int32(types.SiteRoles_UNRESTRICTED) {
+		if opts.SiteRole == int64(types.SiteRoles_UNRESTRICTED) {
 			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 				next(w, req, session)
 			}
 		} else {
 			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
 				if session.RoleBits&opts.SiteRole == 0 {
-					util.WriteAuthRequest(req, session.UserSub, siteRoleName)
+					util.WriteAuthRequest(req, session.UserSub, opts.SiteRoleName)
 					w.WriteHeader(http.StatusForbidden)
 					return
 				}
@@ -254,8 +253,20 @@ func (cw *CacheWriter) Write(data []byte) (int, error) {
 }
 
 func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
-	shouldStore := types.CacheType_STORE == opts.CacheType
-	shouldSkip := types.CacheType_SKIP == opts.CacheType
+	shouldStore := int64(types.CacheType_STORE) == opts.CacheType
+	shouldSkip := int64(types.CacheType_SKIP) == opts.CacheType
+
+	var parsedDuration time.Duration
+	var hasDuration bool
+	if opts.CacheDuration > 0 {
+		hasDuration = true
+		cacheDuration := strconv.FormatInt(opts.CacheDuration, 10)
+		if d, err := time.ParseDuration(cacheDuration + "s"); err == nil {
+			parsedDuration = d
+		} else {
+			log.Fatalf("incorrect cache duration parsing %s", cacheDuration+"s")
+		}
+	}
 
 	return func(next SessionHandler) SessionHandler {
 		return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
@@ -271,21 +282,17 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			cacheKeyData := cacheKey.String() + cacheKeySuffixData
 			cacheKeyModTime := cacheKey.String() + cacheKeySuffixModTime
 
-			pipe := a.Handlers.Redis.RedisClient.Pipeline()
-
-			defer func() {
-				_, err := pipe.Exec(ctx)
-				if err != nil {
-					util.ErrorLog.Println("failed to perform cache pipeline", err.Error(), cacheKeyData)
-				}
-			}()
-
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
 				next(w, req, session)
 				if !shouldStore {
+					pipe := a.Handlers.Redis.RedisClient.Pipeline()
 					pipe.Del(ctx, cacheKeyData)
 					pipe.Del(ctx, cacheKeyModTime)
+					_, err := pipe.Exec(ctx)
+					if err != nil {
+						util.ErrorLog.Println("failed to perform cache mutation cleanup pipeline", err.Error(), cacheKeyData)
+					}
 				}
 				return
 			}
@@ -349,15 +356,8 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			if buf.Len() > 0 {
 				duration := duration180
 
-				if !shouldStore && opts.CacheDuration > 0 {
-					// Default 3 min cache or as otherwise specified
-					if opts.CacheDuration > 0 && opts.CacheDuration < math.MaxInt32 {
-						if parsedDuration, err := time.ParseDuration(strconv.Itoa(int(opts.CacheDuration)) + "s"); err == nil {
-							duration = parsedDuration
-						} else {
-							util.ErrorLog.Println(util.ErrCheck(err))
-						}
-					}
+				if hasDuration {
+					duration = parsedDuration
 				} else if shouldStore {
 					duration = 0
 				}
@@ -371,6 +371,11 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				} else {
 					pipe.Set(ctx, cacheKeyData, buf.Bytes(), 0)
 					pipe.Set(ctx, cacheKeyModTime, modTimeStr, 0)
+				}
+
+				_, err := pipe.Exec(ctx)
+				if err != nil {
+					util.ErrorLog.Println("failed to perform cache insert pipeline", err.Error(), cacheKeyData)
 				}
 			}
 		}

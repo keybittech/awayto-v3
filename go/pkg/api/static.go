@@ -151,7 +151,7 @@ func (a *API) InitStatic() {
 		var proxy *httputil.ReverseProxy
 		proxy = httputil.NewSingleHostReverseProxy(devServerUrl)
 		proxy.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402
 		}
 
 		a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app/",

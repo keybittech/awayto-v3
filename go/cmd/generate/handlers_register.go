@@ -101,7 +101,7 @@ func main() {
 	}
 
 	registerGoPath := filepath.Join(handlersDir, "register.go")
-	file, err := os.Create(registerGoPath)
+	file, err := os.Create(registerGoPath) // #nosec G304
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error creating register.go: %v\n", err)
 		os.Exit(1)

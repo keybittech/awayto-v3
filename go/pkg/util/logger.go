@@ -1,7 +1,6 @@
 package util
 
 import (
-	"errors"
 	"flag"
 	"fmt"
 	"log"
@@ -47,16 +46,28 @@ func (e *CustomLogger) Println(v ...any) {
 }
 
 func makeLogger(prop string) *CustomLogger {
-	fileName := os.Getenv(prop)
-	if fileName == "" {
-		log.Fatal(errors.New("Empty file path for log file " + prop))
+	loc := os.Getenv(prop)
+	if loc == "" {
+		log.Fatalf("Empty file path for log file %s", prop)
 	}
 
-	filePath := filepath.Join(os.Getenv("LOG_DIR"), fileName)
+	cleanLoc := filepath.Clean(loc)
 
-	logFile, err := os.OpenFile(filePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
+	if strings.Contains(cleanLoc, "..") {
+		log.Fatal("invalid file path: path traversal attempt detected")
+	}
+
+	logDir := os.Getenv("LOG_DIR")
+
+	logFilePath := filepath.Join(logDir, loc)
+
+	if !strings.HasPrefix(filepath.Clean(logFilePath), filepath.Clean(logDir)) {
+		log.Fatalf("invalid file path: path is outside of log directory, %s", logFilePath)
+	}
+
+	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
 	if err != nil {
-		log.Fatal(errors.New("Failed to open " + prop + " log" + err.Error()))
+		log.Fatalf("Failed to open %s log %v", prop, err)
 	}
 
 	return &CustomLogger{log.New(logFile, "", log.Ldate|log.Ltime)}

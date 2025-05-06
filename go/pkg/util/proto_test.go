@@ -97,7 +97,7 @@ func TestParseHandlerOptions(t *testing.T) {
 			name: "cache=STORE",
 			md:   getMethodDescriptor(t, "PostPrompt"),
 			validate: func(got *HandlerOptions) bool {
-				return got.CacheType == types.CacheType_STORE
+				return got.CacheType == int64(types.CacheType_STORE)
 			},
 		},
 		{
@@ -118,7 +118,7 @@ func TestParseHandlerOptions(t *testing.T) {
 			name: "cache=SKIP",
 			md:   getMethodDescriptor(t, "GetFileContents"),
 			validate: func(got *HandlerOptions) bool {
-				return got.CacheType == types.CacheType_SKIP
+				return got.CacheType == int64(types.CacheType_SKIP)
 			},
 		},
 		{
@@ -139,7 +139,7 @@ func TestParseHandlerOptions(t *testing.T) {
 			name: "site_role=APP_GROUP_ROLES",
 			md:   getMethodDescriptor(t, "PostGroupRole"),
 			validate: func(got *HandlerOptions) bool {
-				return got.SiteRole == int32(types.SiteRoles_APP_GROUP_ROLES)
+				return got.SiteRole == int64(types.SiteRoles_APP_GROUP_ROLES)
 			},
 		},
 	}

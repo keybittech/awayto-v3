@@ -23,9 +23,9 @@ func (a *API) InitProtoHandlers() {
 			handlerOpts := util.ParseHandlerOptions(serviceMethod)
 
 			sessionMux.Handle(handlerOpts.Pattern,
-				a.SiteRoleCheckMiddleware(handlerOpts)(
-					a.GroupInfoMiddleware(
-						a.CacheMiddleware(handlerOpts)(
+				a.CacheMiddleware(handlerOpts)(
+					a.SiteRoleCheckMiddleware(handlerOpts)(
+						a.GroupInfoMiddleware(
 							a.HandleRequest(serviceMethod),
 						),
 					),

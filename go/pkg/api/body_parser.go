@@ -100,7 +100,7 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 		fileData.Read(fileBuf)
 		fileData.Close()
 
-		fileLen := int32(len(fileBuf))
+		fileLen := int64(len(fileBuf))
 
 		pbFiles.Contents = append(pbFiles.Contents, &types.FileContent{
 			Name:          f.Filename,

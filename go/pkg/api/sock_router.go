@@ -33,13 +33,13 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 		messageParams[i] = curr
 	}
 
-	actionId, err := strconv.Atoi(messageParams[0])
+	actionId, err := strconv.ParseInt(messageParams[0], 10, 64)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		return nil
 	}
 
-	socketMessage.Action = int32(actionId)
+	socketMessage.Action = actionId
 	socketMessage.Store = messageParams[1] == "t"
 	socketMessage.Historical = messageParams[2] == "t"
 	socketMessage.Timestamp = messageParams[3]
@@ -51,12 +51,12 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 }
 
 const (
-	socketActionPingPong         = int32(types.SocketActions_PING_PONG)
-	socketActionSubscribe        = int32(types.SocketActions_SUBSCRIBE)
-	socketActionUnsubscribe      = int32(types.SocketActions_UNSUBSCRIBE)
-	socketActionUnsubscribeTopic = int32(types.SocketActions_UNSUBSCRIBE_TOPIC)
-	socketActionLoadSubscribers  = int32(types.SocketActions_LOAD_SUBSCRIBERS)
-	socketActionLoadMessages     = int32(types.SocketActions_LOAD_MESSAGES)
+	socketActionPingPong         = int64(types.SocketActions_PING_PONG)
+	socketActionSubscribe        = int64(types.SocketActions_SUBSCRIBE)
+	socketActionUnsubscribe      = int64(types.SocketActions_UNSUBSCRIBE)
+	socketActionUnsubscribeTopic = int64(types.SocketActions_UNSUBSCRIBE_TOPIC)
+	socketActionLoadSubscribers  = int64(types.SocketActions_LOAD_SUBSCRIBERS)
+	socketActionLoadMessages     = int64(types.SocketActions_LOAD_MESSAGES)
 )
 
 func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, sm *types.SocketMessage, ds clients.DbSession) {
