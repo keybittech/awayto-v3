@@ -39,12 +39,12 @@ func init() {
 	println("init api_test")
 }
 
-func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int) {
+func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string) {
 	rl := NewRateLimit("api", limit, burst, time.Duration(5*time.Second))
 	api := getTestApi(rl)
 	user := integrationTest.TestUsers[1]
 
-	req := getTestReq(b, user.TestToken, http.MethodGet, "/api/v1/quotes", nil)
+	req := getTestReq(b, user.TestToken, http.MethodGet, path, nil)
 	recorder := httptest.NewRecorder()
 
 	reset(b)
@@ -59,21 +59,39 @@ func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int) {
 	}
 }
 
-func BenchmarkApiRateLimit(b *testing.B) {
-	b.Run("1 req per second, 1 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 1, 1)
-	})
-	b.Run("10 req per second, 10 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 10, 10)
-	})
+func BenchmarkApiCache(b *testing.B) {
+	// b.Run("1 req per second, 1 burst", func(bb *testing.B) {
+	// 	doBenchmarkRateLimit(bb, 1, 1, "/api/v1/quotes")
+	// })
+	// b.Run("10 req per second, 10 burst", func(bb *testing.B) {
+	// 	doBenchmarkRateLimit(bb, 10, 10, "/api/v1/quotes")
+	// })
 	b.Run("100 req per second, 100 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 100, 100)
+		doBenchmarkRateLimit(bb, 100, 100, "/api/v1/quotes")
 	})
 	b.Run("1000 req per second, 1000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 1000, 1000)
+		doBenchmarkRateLimit(bb, 1000, 1000, "/api/v1/quotes")
 	})
 	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 10000, 10000)
+		doBenchmarkRateLimit(bb, 10000, 10000, "/api/v1/quotes")
+	})
+}
+
+func BenchmarkApiNoCache(b *testing.B) {
+	// b.Run("1 req per second, 1 burst", func(bb *testing.B) {
+	// 	doBenchmarkRateLimit(bb, 1, 1, "/api/v1/sock/ticket")
+	// })
+	// b.Run("10 req per second, 10 burst", func(bb *testing.B) {
+	// 	doBenchmarkRateLimit(bb, 10, 10, "/api/v1/sock/ticket")
+	// })
+	b.Run("100 req per second, 100 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 100, 100, "/api/v1/sock/ticket")
+	})
+	b.Run("1000 req per second, 1000 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 1000, 1000, "/api/v1/sock/ticket")
+	})
+	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 10000, 10000, "/api/v1/sock/ticket")
 	})
 }
 
