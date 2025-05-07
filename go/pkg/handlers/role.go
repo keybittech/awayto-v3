@@ -3,6 +3,7 @@ package handlers
 import (
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -50,14 +51,18 @@ func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.P
 }
 
 func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.GetRolesResponse, error) {
-	var roles []*types.IRole
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &roles, `
-		SELECT eur.id, er.name, eur."createdOn" 
+	rows, err := info.Tx.Query(info.Ctx, `
+		SELECT er.*
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = eur."userId"
 		WHERE eu.sub = $1
 	`, info.Session.UserSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	roles, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IRole])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

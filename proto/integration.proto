@@ -15,12 +15,14 @@ option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 message TestUser {
   string testUserId = 1;
-  string testToken = 2;
-  string testTicket = 3;
-  string testConnId = 4;
-  UserSession userSession = 5;
-  repeated IQuote quotes = 6;
-  repeated IBooking bookings = 7;
+  string testEmail = 2;
+  string testPass = 3;
+  string testToken = 4;
+  string testTicket = 5;
+  string testConnId = 6;
+  UserSession userSession = 7;
+  repeated IQuote quotes = 8;
+  repeated IBooking bookings = 9;
 }
 
 message IntegrationTest {

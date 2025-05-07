@@ -73,9 +73,11 @@ TS_CONFIG_API=ts/openapi-config.json
 
 BACKUP_DIR=backups
 DB_BACKUP_DIR=$(BACKUP_DIR)/db
+DOCKER_REDIS_CID=$(shell ${SUDO} docker ps -aqf "name=redis")
+DOCKER_REDIS_EXEC:=${SUDO} docker exec -i $(DOCKER_REDIS_CID) redis-cli --pass $$(cat $$REDIS_PASS_FILE)
 DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
-DOCKER_DB_EXEC := ${SUDO} docker exec --user postgres -it
-DOCKER_DB_CMD := ${SUDO} docker exec --user postgres -i
+DOCKER_DB_EXEC:=${SUDO} docker exec --user postgres -it
+DOCKER_DB_CMD:=${SUDO} docker exec --user postgres -i
 
 
 #################################
@@ -138,6 +140,12 @@ define clean_logs
     ls -t $(LOG_DIR)/db/*.log | tail -n +2 | xargs rm -f; \
   fi)
 	rm -f log/*.log
+endef
+
+define clean_test
+	$(DOCKER_REDIS_EXEC) FLUSHALL
+	$(call clean_logs)
+	$(call set_local_unix_sock_dir)
 endef
 
 #################################
@@ -323,38 +331,46 @@ go_test_gen:
 	gotests -i -w -exported $(GO_HANDLERS_DIR)
 	gotests -i -w -exported $(GO_UTIL_DIR)
 
-.PHONY: go_test_unit
-go_test_unit: $(GO_TARGET) # $(GO_MOCK_TARGET)
-	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
+.PHONY: go_coverage
+go_coverage:
+	go test -C $(GO_SRC) -coverpkg=./... ./...
+
+.PHONY: go_test_gen_ui
+test_gen:
+	npx playwright codegen --ignore-https-errors https://localhost:${GO_HTTPS_PORT}
+
+.PHONY: go_test_unit_build
+go_test_unit_build:
 	go test -C $(GO_API_DIR) -c -o api.$(BINARY_TEST)
-	$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	go test -C $(GO_CLIENTS_DIR) -c -o clients.$(BINARY_TEST)
-	$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	go test -C $(GO_HANDLERS_DIR) -c -o handlers.$(BINARY_TEST)
-	$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	go test -C $(GO_UTIL_DIR) -c -o util.$(BINARY_TEST)
-	$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+
+.PHONY: go_test_unit
+go_test_unit: $(GO_TARGET) go_test_unit_build
+	@$(call clean_test)
+	-$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	-$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	-$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	-$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_ui
 go_test_ui: $(GO_TARGET)
 	rm -f demos/*.webm
-	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
+	$(call clean_test)
 	go test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
 	$(GO_ENVFILE_FLAG) exec $(GO_PLAYWRIGHT_DIR)/playwright.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
-	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
+	$(call clean_test)
 	go test -C $(GO_INTEGRATIONS_DIR) -short -c -o integration.$(BINARY_TEST)
 	$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
-	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
+	$(call clean_test)
 	go test -C $(GO_INTEGRATIONS_DIR) -c -o integration.long.$(BINARY_TEST)
 	$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.long.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 
@@ -364,8 +380,7 @@ go_test_integration_results:
 
 .PHONY: go_test_bench
 go_test_bench: $(GO_TARGET)
-	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
+	$(call clean_test)
 	go test -C $(GO_API_DIR) -c -o api.bench.$(BINARY_TEST) ./...
 	$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
 	go test -C $(GO_CLIENTS_DIR) -c -o clients.bench.$(BINARY_TEST) ./...
@@ -374,18 +389,6 @@ go_test_bench: $(GO_TARGET)
 	$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
 	go test -C $(GO_UTIL_DIR) -c -o util.bench.$(BINARY_TEST) ./...
 	$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
-
-.PHONY: go_coverage
-go_coverage: # $(GO_MOCK_TARGET)
-	go test -C $(GO_SRC) -coverpkg=./... ./...
-
-.PHONY: test_clean
-test_clean:
-	rm -rf $(PLAYWRIGHT_CACHE_DIR)
-
-.PHONY: test_gen
-test_gen:
-	npx playwright codegen --ignore-https-errors https://localhost:${GO_HTTPS_PORT}
 
 #################################
 #            DOCKER             #

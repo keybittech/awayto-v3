@@ -38,10 +38,10 @@ func getTestApi(rateLimiter *RateLimiter) *API {
 	return a
 }
 
-func getTestReq(b *testing.B, token, method, url string, body io.Reader) *http.Request {
+func getTestReq(token, method, url string, body io.Reader) *http.Request {
 	testReq, err := http.NewRequest(method, url, body)
 	if err != nil {
-		b.Fatal(err)
+		log.Fatal(err)
 	}
 	testReq.RemoteAddr = "127.0.0.1:9999"
 	testReq.Header.Set("Authorization", "Bearer "+token)

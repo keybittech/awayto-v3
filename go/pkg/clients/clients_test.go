@@ -27,8 +27,6 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	println("init clients_test")
 }
 
 func reset(b *testing.B) {

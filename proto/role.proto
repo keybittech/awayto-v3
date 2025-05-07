@@ -4,6 +4,7 @@ package types;
 import "util.proto";
 
 import "google/api/annotations.proto";
+import "google/protobuf/timestamp.proto";
 import "google/api/field_behavior.proto";
 
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
@@ -39,7 +40,7 @@ service RoleService {
 message IRole {
   string id = 1;
   string name = 2;
-  string createdOn = 3;
+  google.protobuf.Timestamp createdOn = 3;
   int32 row = 4;
 }
 

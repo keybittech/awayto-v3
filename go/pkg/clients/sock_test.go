@@ -42,7 +42,6 @@ func init() {
 		Sender:     "sender",
 		Timestamp:  "timestamp",
 	}
-	println("init sock_test")
 }
 
 func TestInitSocket(t *testing.T) {

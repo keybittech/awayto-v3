@@ -1,7 +1,9 @@
 package api
 
 import (
+	"context"
 	"crypto/rsa"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -35,8 +37,6 @@ func init() {
 	kc := clients.InitKeycloak()
 	publicKey = kc.Client.PublicKey
 	kc.Close()
-
-	println("init api_test")
 }
 
 func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string) {
@@ -44,7 +44,7 @@ func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string
 	api := getTestApi(rl)
 	user := integrationTest.TestUsers[1]
 
-	req := getTestReq(b, user.TestToken, http.MethodGet, path, nil)
+	req := getTestReq(user.TestToken, http.MethodGet, path, nil)
 	recorder := httptest.NewRecorder()
 
 	reset(b)
@@ -113,4 +113,39 @@ func TestNewAPI(t *testing.T) {
 			// }
 		})
 	}
+}
+
+func TestRoutes(t *testing.T) {
+	rl := NewRateLimit("api", 1000, 1000, time.Duration(5*time.Second))
+	a := getTestApi(rl)
+
+	tests := []struct {
+		name, method, url string
+		user              *types.TestUser
+		api               *API
+		body              io.Reader
+	}{
+		{"get roles", http.MethodGet, "/api/v1/roles", integrationTest.TestUsers[0], a, nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			token, _, err := getKeycloakToken(tt.user)
+			if err != nil {
+				t.Fatalf("bad token get %v", err)
+			}
+			req := getTestReq(token, tt.method, tt.url, tt.body)
+			recorder := httptest.NewRecorder()
+			a.Handlers.Redis.RedisClient.FlushAll(context.Background())
+			start := time.Now()
+			tt.api.Server.Handler.ServeHTTP(recorder, req)
+			end := time.Since(start)
+			good := checkResponseFor(recorder.Body.Bytes(), []byte{'{'})
+			if !good {
+				t.Errorf("Response body (status %d) did not start with '{'. Got: %s", recorder.Code, string(recorder.Body.Bytes()))
+			} else {
+				t.Logf("TestRoutes(%s %s) finished successfully after %s", tt.method, tt.url, end.String())
+			}
+		})
+	}
+
 }

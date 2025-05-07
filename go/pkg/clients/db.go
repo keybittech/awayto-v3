@@ -57,7 +57,6 @@ func (db *Database) AdminRoleId() string {
 }
 
 func InitDatabase() *Database {
-
 	dbDriver := os.Getenv("DB_DRIVER")
 	pgUser := os.Getenv("PG_WORKER")
 	pgDb := os.Getenv("PG_DB")
@@ -67,8 +66,18 @@ func InitDatabase() *Database {
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	connString2 := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", dbDriver, pgUser, pgPass, pgDb, os.Getenv("UNIX_SOCK_DIR"))
-	dbpool, err := pgxpool.New(context.Background(), connString2)
+	connString := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", dbDriver, pgUser, pgPass, pgDb, os.Getenv("UNIX_SOCK_DIR"))
+	config, err := pgxpool.ParseConfig(connString)
+	if err != nil {
+		log.Fatalf("Unable to parse db config: %v\n", err)
+	}
+
+	config.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
+		util.RegisterTimestamp(c.TypeMap())
+		return nil
+	}
+
+	dbpool, err := pgxpool.NewWithConfig(context.Background(), config)
 	if err != nil {
 		log.Fatalf("Unable to create connection pool: %v\n", err)
 	}
@@ -487,9 +496,9 @@ func (pms *JSONSerializer) Scan(src interface{}) error {
 
 func mapIntTypeToNullType(t uint32) reflect.Type {
 	switch t {
-	case pgtype.TimestamptzOID:
+	case pgtype.TimestamptzOID, pgtype.TimestampOID:
 		return colTypes.reflectTimestamp
-	case pgtype.VarcharOID, pgtype.TimestampOID, pgtype.DateOID, pgtype.IntervalOID, pgtype.TextOID, pgtype.UUIDOID:
+	case pgtype.VarcharOID, pgtype.DateOID, pgtype.IntervalOID, pgtype.TextOID, pgtype.UUIDOID:
 		return colTypes.reflectString
 	case pgtype.Int8OID, pgtype.Int4OID, pgtype.Int2OID:
 		return colTypes.reflectInt32
@@ -506,9 +515,9 @@ func mapIntTypeToNullType(t uint32) reflect.Type {
 
 func mapTypeToNullType(t string) reflect.Type {
 	switch t {
-	case "TIMESTAMPTZ":
+	case "TIMESTAMPTZ", "TIMESTAMP":
 		return colTypes.reflectTimestamp
-	case "VARCHAR", "CHAR", "TIMESTAMP", "DATE", "INTERVAL", "TEXT", "UUID":
+	case "VARCHAR", "CHAR", "DATE", "INTERVAL", "TEXT", "UUID":
 		return colTypes.reflectString
 	case "INT8", "INT4", "INT2":
 		return colTypes.reflectInt32

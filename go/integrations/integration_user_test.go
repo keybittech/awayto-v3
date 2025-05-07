@@ -25,6 +25,8 @@ func testIntegrationUser(t *testing.T) {
 		}
 
 		testUser := &types.TestUser{
+			TestEmail:   "1@" + userId,
+			TestPass:    "1",
 			TestUserId:  userId,
 			TestToken:   token,
 			TestTicket:  ticket,
