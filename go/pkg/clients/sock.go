@@ -378,6 +378,9 @@ func (s *Socket) Connected(userSub string) bool {
 }
 
 func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams) (*types.SocketResponseParams, error) {
+	finish := util.RunTimer(cmdType)
+	defer finish()
+
 	if request.UserSub == "" {
 		return nil, socketCommandMustHaveSub
 	}
@@ -468,6 +471,8 @@ func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) 
 }
 
 func (s *Socket) SendMessage(userSub, targets string, message *types.SocketMessage) error {
+	finish := util.RunTimer()
+	defer finish()
 	if message == nil {
 		return util.ErrCheck(messageRequired)
 	}

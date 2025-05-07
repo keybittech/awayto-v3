@@ -8,8 +8,10 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strconv"
 	"strings"
+	"time"
 )
 
 var (
@@ -29,7 +31,7 @@ func init() {
 }
 
 type CustomLogger struct {
-	Logger *log.Logger
+	*log.Logger
 }
 
 func (e *CustomLogger) Println(v ...any) {
@@ -105,9 +107,7 @@ func getRequestLogString(req *http.Request) *strings.Builder {
 	return &sb
 }
 
-// fail2ban-regex /path/to/your/access.log /path/to/filter/http-access.conf
-
-// ^.* (GET|POST|PUT|DELETE|PATCH) .* (<HOST>)$
+// f2b regex = ^.* (GET|POST|PUT|DELETE|PATCH) .* (<HOST>)$
 func WriteAuthRequest(req *http.Request, sub, role string, ip ...string) error {
 	reqIp, err := getIp(req, ip...)
 	if err != nil {
@@ -139,4 +139,26 @@ func WriteAccessRequest(req *http.Request, duration int64, statusCode int, ip ..
 	sb.WriteString(reqIp)
 	AccessLog.Println(sb.String())
 	return nil
+}
+
+var runTimers bool
+
+func RunTimer(values ...any) func() {
+	if !runTimers {
+		return func() {}
+	}
+	pc, _, _, _ := runtime.Caller(1)
+	start := time.Now()
+
+	return func() {
+		name := runtime.FuncForPC(pc).Name()
+		name = name[strings.LastIndex(name, ".")+1:]
+		duration := time.Since(start)
+		if r := recover(); r != nil {
+			DebugLog.Println(name, "function panicked after", duration, values, r)
+			panic(r)
+		} else {
+			DebugLog.Println(name, "function completed successfully in", duration, values)
+		}
+	}
 }

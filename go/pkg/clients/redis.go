@@ -71,6 +71,8 @@ func (r *Redis) InitKeys(ctx context.Context) {
 }
 
 func (r *Redis) InitRedisSocketConnection(ctx context.Context, socketId string) error {
+	finish := util.RunTimer()
+	defer finish()
 	_, err := r.Client().SAdd(ctx, socketServerConnectionsKey, socketId).Result()
 	if err != nil {
 		return util.ErrCheck(err)
@@ -80,6 +82,8 @@ func (r *Redis) InitRedisSocketConnection(ctx context.Context, socketId string) 
 }
 
 func (r *Redis) HandleUnsub(ctx context.Context, socketId string) (map[string]string, error) {
+	finish := util.RunTimer()
+	defer finish()
 
 	removedTopics := make(map[string]string)
 
@@ -132,6 +136,8 @@ func (r *Redis) HandleUnsub(ctx context.Context, socketId string) (map[string]st
 }
 
 func (r *Redis) RemoveTopicFromConnection(ctx context.Context, socketId, topic string) error {
+	finish := util.RunTimer()
+	defer finish()
 	participantTopicsKey, err := ParticipantTopicsKey(topic)
 	if err != nil {
 		return util.ErrCheck(err)
@@ -156,6 +162,8 @@ func (r *Redis) RemoveTopicFromConnection(ctx context.Context, socketId, topic s
 }
 
 func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targetsOnly bool) (map[string]*types.SocketParticipant, string, error) {
+	finish := util.RunTimer()
+	defer finish()
 	participantTopicsKey, err := ParticipantTopicsKey(topic)
 	if err != nil {
 		return nil, "", util.ErrCheck(err)
@@ -198,6 +206,8 @@ func (r *Redis) GetCachedParticipants(ctx context.Context, topic string, targets
 }
 
 func (r *Redis) TrackTopicParticipant(ctx context.Context, topic, socketId string) error {
+	finish := util.RunTimer()
+	defer finish()
 	participantTopicsKey, err := ParticipantTopicsKey(topic)
 	if err != nil {
 		return util.ErrCheck(err)
@@ -228,6 +238,8 @@ func (r *Redis) TrackTopicParticipant(ctx context.Context, topic, socketId strin
 
 // New function to check if a user is already subscribed to a topic
 func (r *Redis) HasTracking(ctx context.Context, topic, socketId string) (bool, error) {
+	finish := util.RunTimer()
+	defer finish()
 	// Get the key for this socket's subscribed topics
 	socketIdTopicsKey, err := SocketIdTopicsKey(socketId)
 	if err != nil {

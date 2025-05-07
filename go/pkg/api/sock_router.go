@@ -11,7 +11,18 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
+const (
+	socketActionPingPong         = int64(types.SocketActions_PING_PONG)
+	socketActionSubscribe        = int64(types.SocketActions_SUBSCRIBE)
+	socketActionUnsubscribe      = int64(types.SocketActions_UNSUBSCRIBE)
+	socketActionUnsubscribeTopic = int64(types.SocketActions_UNSUBSCRIBE_TOPIC)
+	socketActionLoadSubscribers  = int64(types.SocketActions_LOAD_SUBSCRIBERS)
+	socketActionLoadMessages     = int64(types.SocketActions_LOAD_MESSAGES)
+)
+
 func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
+	finish := util.RunTimer()
+	defer finish()
 	var socketMessage types.SocketMessage
 
 	messageParams := make([]string, 7)
@@ -50,16 +61,10 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 	return &socketMessage
 }
 
-const (
-	socketActionPingPong         = int64(types.SocketActions_PING_PONG)
-	socketActionSubscribe        = int64(types.SocketActions_SUBSCRIBE)
-	socketActionUnsubscribe      = int64(types.SocketActions_UNSUBSCRIBE)
-	socketActionUnsubscribeTopic = int64(types.SocketActions_UNSUBSCRIBE_TOPIC)
-	socketActionLoadSubscribers  = int64(types.SocketActions_LOAD_SUBSCRIBERS)
-	socketActionLoadMessages     = int64(types.SocketActions_LOAD_MESSAGES)
-)
-
 func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, sm *types.SocketMessage, ds clients.DbSession) {
+	finish := util.RunTimer()
+	defer finish()
+
 	if sm.Topic == "" {
 		return
 	}

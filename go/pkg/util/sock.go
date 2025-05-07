@@ -162,6 +162,8 @@ func WriteSocketConnectionMessage(msg []byte, conn net.Conn) error {
 }
 
 func GenerateMessage(padTo int, message *types.SocketMessage) []byte {
+	finish := RunTimer()
+	defer finish()
 	storeStr := "f"
 	if message.Store {
 		storeStr = "t"

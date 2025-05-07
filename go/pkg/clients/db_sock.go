@@ -11,6 +11,8 @@ import (
 )
 
 func (ds DbSession) InitDbSocketConnection(ctx context.Context, connId string) error {
+	finish := util.RunTimer()
+	defer finish()
 	_, err := ds.SessionBatchExec(ctx, `
 		INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
 		VALUES ($1::uuid, $2)
@@ -23,6 +25,8 @@ func (ds DbSession) InitDbSocketConnection(ctx context.Context, connId string) e
 }
 
 func (ds DbSession) RemoveDbSocketConnection(ctx context.Context, connId string) error {
+	finish := util.RunTimer()
+	defer finish()
 	_, err := ds.SessionBatchExec(ctx, `
 		DELETE FROM dbtable_schema.sock_connections
 		USING dbtable_schema.sock_connections sc
@@ -60,6 +64,8 @@ var socketAllowanceQuery = `
 `
 
 func (ds DbSession) GetSocketAllowances(ctx context.Context, bookingId string) (bool, error) {
+	finish := util.RunTimer()
+	defer finish()
 	row, done, err := ds.SessionBatchQueryRow(ctx, socketAllowanceQuery,
 		ds.UserSession.UserSub,
 		bookingId)
@@ -75,6 +81,8 @@ func (ds DbSession) GetSocketAllowances(ctx context.Context, bookingId string) (
 }
 
 func (ds DbSession) GetTopicMessageParticipants(ctx context.Context, participants map[string]*types.SocketParticipant) error {
+	finish := util.RunTimer()
+	defer finish()
 	topicRows, done, err := ds.SessionBatchQuery(ctx, `
 		SELECT
 			created_sub,
@@ -113,6 +121,8 @@ func (ds DbSession) GetTopicMessageParticipants(ctx context.Context, participant
 }
 
 func (ds DbSession) GetSocketParticipantDetails(ctx context.Context, participants map[string]*types.SocketParticipant) error {
+	finish := util.RunTimer()
+	defer finish()
 	lenPart := len(participants)
 	if lenPart == 0 {
 		return nil
@@ -156,16 +166,16 @@ func (ds DbSession) GetSocketParticipantDetails(ctx context.Context, participant
 }
 
 func (ds DbSession) StoreTopicMessage(ctx context.Context, connId string, message *types.SocketMessage) error {
+	finish := util.RunTimer()
+	defer finish()
 	message.Store = false
 	message.Historical = true
 	message.Timestamp = time.Now().Local().String()
 
 	_, err := ds.SessionBatchExec(ctx, `
-		INSERT INTO dbtable_schema.topic_messages (created_sub, topic, message, connection_id)
-		SELECT created_sub, $2, $3, $1
-		FROM dbtable_schema.sock_connections
-		WHERE connection_id = $1
-	`, connId, message.Topic, util.GenerateMessage(util.DefaultPadding, message))
+		INSERT INTO dbtable_schema.topic_messages (created_sub, connection_id, topic, message)
+		VALUES ($1, $2, $3, $4)
+	`, ds.UserSession.UserSub, connId, message.Topic, util.GenerateMessage(util.DefaultPadding, message))
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -174,6 +184,8 @@ func (ds DbSession) StoreTopicMessage(ctx context.Context, connId string, messag
 }
 
 func (ds DbSession) GetTopicMessages(ctx context.Context, page, pageSize int) ([][]byte, error) {
+	finish := util.RunTimer()
+	defer finish()
 	messages := make([][]byte, pageSize)
 
 	paginatedQuery := util.WithPagination(`
