@@ -12,6 +12,7 @@ import (
 
 func BenchmarkLimit(b *testing.B) {
 	rl := NewRateLimit("limit", 0, 0, time.Duration(5*time.Second))
+	reset(b)
 	b.RunParallel(func(pb *testing.PB) {
 		for pb.Next() {
 			rl.Limit("test")

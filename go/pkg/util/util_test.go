@@ -18,6 +18,7 @@ func reset(b *testing.B) {
 
 func BenchmarkMapSyncWrite(b *testing.B) {
 	var m sync.Map
+	reset(b)
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
 		for pb.Next() {
@@ -30,6 +31,7 @@ func BenchmarkMapSyncWrite(b *testing.B) {
 func BenchmarkMapMutexWrite(b *testing.B) {
 	var mu sync.Mutex
 	m := make(map[int]int)
+	reset(b)
 	b.RunParallel(func(pb *testing.PB) {
 		i := 0
 		for pb.Next() {
