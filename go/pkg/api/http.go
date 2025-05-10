@@ -29,7 +29,7 @@ func (a *API) RedirectHTTP(httpPort int) {
 
 	err := httpRedirector.ListenAndServe()
 	if err != nil {
-		util.ErrCheck(err)
+		util.ErrorLog.Println(util.ErrCheck(err))
 		return
 	}
 }

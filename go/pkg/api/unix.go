@@ -10,7 +10,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"sync"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -20,7 +19,10 @@ import (
 )
 
 func (a *API) InitUnixServer(unixPath string) {
-	os.Remove(unixPath)
+	err := os.Remove(unixPath)
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	unixListener, err := net.Listen("unix", unixPath)
 	if err != nil {
@@ -38,26 +40,34 @@ func (a *API) InitUnixServer(unixPath string) {
 			continue
 		}
 
-		var wg sync.WaitGroup
-		wg.Add(1)
-		a.HandleUnixConnection(&wg, conn)
-		wg.Wait()
+		a.HandleUnixConnection(conn)
 	}
 }
 
-func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
-	defer wg.Done()
+func (a *API) HandleUnixConnection(conn net.Conn) {
+	var deferredError error
+	var authEvent *types.AuthEvent
+
 	defer conn.Close()
 
-	var authEvent *types.AuthEvent
+	defer func() {
+		if p := recover(); p != nil {
+			util.ErrorLog.Println(fmt.Sprint(p))
+		} else if deferredError != nil {
+			util.ErrorLog.Println(deferredError)
+			fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, deferredError))
+		}
+	}()
 
 	scanner := bufio.NewScanner(conn)
 
 	for scanner.Scan() {
-		json.Unmarshal(scanner.Bytes(), &authEvent)
+		err := json.Unmarshal(scanner.Bytes(), &authEvent)
+		if err != nil {
+			deferredError = util.ErrCheck(err)
+			return
+		}
 	}
-
-	var deferredError error
 
 	// Create fake context so we can use our regular http handlers
 	fakeReq, err := http.NewRequest("GET", "unix://auth", nil)
@@ -73,16 +83,7 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 		Timezone:  authEvent.Timezone,
 	}
 
-	defer func() {
-		if p := recover(); p != nil {
-			util.ErrorLog.Println(fmt.Sprint(p))
-		} else if deferredError != nil {
-			util.ErrorLog.Println(deferredError)
-			fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, deferredError))
-		}
-	}()
-
-	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
 	tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(ctx)
@@ -90,6 +91,7 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 		deferredError = util.ErrCheck(err)
 		return
 	}
+	defer tx.Rollback(ctx)
 
 	poolTx := &clients.PoolTx{
 		Tx: tx,
@@ -99,7 +101,11 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 		UserSub: "worker",
 	}
 
-	poolTx.SetSession(ctx, workerSession)
+	err = poolTx.SetSession(ctx, workerSession)
+	if err != nil {
+		deferredError = util.ErrCheck(err)
+		return
+	}
 
 	reqInfo := handlers.ReqInfo{
 		Ctx:     fakeReq.Context(),
@@ -121,8 +127,17 @@ func (a *API) HandleUnixConnection(wg *sync.WaitGroup, conn net.Conn) {
 		return
 	}
 
-	poolTx.UnsetSession(ctx)
-	poolTx.Commit(ctx)
+	err = poolTx.UnsetSession(ctx)
+	if err != nil {
+		deferredError = util.ErrCheck(err)
+		return
+	}
+
+	err = poolTx.Commit(ctx)
+	if err != nil {
+		deferredError = util.ErrCheck(err)
+		return
+	}
 
 	fmt.Fprint(conn, authResponse.Value)
 }

@@ -23,7 +23,10 @@ func ProtoResponseHandler(w http.ResponseWriter, results proto.Message) (int, er
 
 	w.Header().Set("Content-Type", "application/json")
 	w.Header().Set("Content-Length", fmt.Sprintf("%d", resLen))
-	w.Write(pbJsonBytes)
+	_, err = w.Write(pbJsonBytes)
+	if err != nil {
+		return 0, util.ErrCheck(err)
+	}
 
 	return resLen, nil
 }

@@ -2,6 +2,7 @@ package api
 
 import (
 	"context"
+	"log"
 	"sync"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -11,7 +12,7 @@ import (
 
 const getGroupDetailsQuery = `SELECT id, external_id, sub, ai FROM dbtable_schema.groups WHERE enabled = true`
 
-func (a *API) InitGroups() error {
+func (a *API) InitGroups() {
 	workerDbSession := &clients.DbSession{
 		Pool: a.Handlers.Database.DatabaseClient.Pool,
 		UserSession: &types.UserSession{
@@ -23,7 +24,7 @@ func (a *API) InitGroups() error {
 
 	rows, done, err := workerDbSession.SessionBatchQuery(ctx, getGroupDetailsQuery)
 	if err != nil {
-		return util.ErrCheck(err)
+		log.Fatal(util.ErrCheck(err))
 	}
 	defer done()
 
@@ -33,7 +34,7 @@ func (a *API) InitGroups() error {
 
 		err := rows.Scan(&dbGroup.Id, &dbGroup.ExternalId, &dbGroup.CreatedSub, &dbGroup.Ai)
 		if err != nil {
-			return util.ErrCheck(err)
+			log.Fatal(util.ErrCheck(err))
 		}
 
 		wg.Add(1)
@@ -64,6 +65,4 @@ func (a *API) InitGroups() error {
 	}
 
 	wg.Wait()
-
-	return nil
 }

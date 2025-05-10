@@ -115,7 +115,11 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		}
 
 		// Update user's topic cids
-		a.Handlers.Redis.TrackTopicParticipant(ctx, sm.Topic, socketId)
+		err = a.Handlers.Redis.TrackTopicParticipant(ctx, sm.Topic, socketId)
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
 
 		// Get Member Info for anyone connected
 		_, cachedParticipantTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, true)
@@ -135,10 +139,14 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, connId, &types.SocketMessage{
+		err = a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, connId, &types.SocketMessage{
 			Action: socketActionSubscribe,
 			Topic:  sm.Topic,
 		})
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
 
 	case socketActionUnsubscribe:
 
@@ -156,13 +164,21 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, cachedParticipantTargets, &types.SocketMessage{
-			Action:  socketActionUnsubscribeTopic,
-			Topic:   sm.Topic,
-			Payload: socketId,
-		})
+		if cachedParticipantTargets != "" {
+			err = a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, cachedParticipantTargets, &types.SocketMessage{
+				Action:  socketActionUnsubscribeTopic,
+				Topic:   sm.Topic,
+				Payload: socketId,
+			})
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+			}
+		}
 
-		a.Handlers.Redis.RemoveTopicFromConnection(ctx, socketId, sm.Topic)
+		err = a.Handlers.Redis.RemoveTopicFromConnection(ctx, socketId, sm.Topic)
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+		}
 
 		_, err = a.Handlers.Socket.SendCommand(ctx, clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
 			UserSub: ds.UserSession.UserSub,
@@ -199,12 +215,16 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-		a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, onlineTargets, &types.SocketMessage{
+		err = a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, onlineTargets, &types.SocketMessage{
 			Action:  socketActionLoadSubscribers,
 			Sender:  connId,
 			Topic:   sm.Topic,
 			Payload: string(participantsBytes),
 		})
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
 
 	case socketActionLoadMessages:
 		var pageInfo map[string]int

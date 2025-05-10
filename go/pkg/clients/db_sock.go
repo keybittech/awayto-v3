@@ -70,12 +70,15 @@ func (ds DbSession) GetSocketAllowances(ctx context.Context, bookingId string) (
 		ds.UserSession.UserSub,
 		bookingId)
 	if err != nil {
-		return false, fmt.Errorf("database function call failed: %w", err)
+		return false, util.ErrCheck(err)
 	}
 	defer done()
 
 	var allowed bool
-	row.Scan(&allowed)
+	err = row.Scan(&allowed)
+	if err != nil {
+		return false, util.ErrCheck(err)
+	}
 
 	return allowed, nil
 }

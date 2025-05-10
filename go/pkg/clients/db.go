@@ -139,38 +139,20 @@ func InitDatabase() *Database {
 }
 
 // Go code
-func (db *Database) BuildInserts(sb *strings.Builder, size, current int) error {
+func (db *Database) BuildInserts(sb *strings.Builder, size, current int) {
 
 	baseIndex := (current / size) * size
 
-	_, err := sb.WriteString("(")
-	if err != nil {
-		return util.ErrCheck(err)
-	}
+	sb.WriteString("(")
 
 	for i := 0; i < size; i++ {
-		_, err = sb.WriteString("$")
-		if err != nil {
-			return util.ErrCheck(err)
-		}
-		_, err = sb.WriteString(strconv.Itoa(baseIndex + i + 1))
-		if err != nil {
-			return err
-		}
+		sb.WriteString("$")
+		sb.WriteString(strconv.Itoa(baseIndex + i + 1))
 		if i < size-1 {
-			_, err = sb.WriteString(", ")
-			if err != nil {
-				return err
-			}
+			sb.WriteString(", ")
 		}
 	}
-
-	_, err = sb.WriteString("),")
-	if err != nil {
-		return err
-	}
-
-	return nil
+	sb.WriteString("),")
 }
 
 type ColTypes struct {
@@ -201,7 +183,10 @@ func (dbc *DatabaseClient) SendBatch(ctx context.Context, batch *pgx.Batch) (pgx
 	results := dbc.Pool.SendBatch(ctx, batch)
 
 	if _, err := results.Exec(); err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 		return nil, util.ErrCheck(err)
 	}
 
@@ -227,7 +212,10 @@ func (dc *DatabaseClient) OpenPoolSessionTx(ctx context.Context, session *types.
 		Tx: tx,
 	}
 
-	poolTx.SetSession(ctx, session)
+	err = poolTx.SetSession(ctx, session)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	return poolTx, nil
 }
@@ -319,18 +307,27 @@ func (ds DbSession) SessionBatchExec(ctx context.Context, query string, params .
 	defer results.Close()
 
 	if _, err := results.Exec(); err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return emptyTag, util.ErrCheck(err)
+		}
 		return emptyTag, util.ErrCheck(err)
 	}
 
 	commandTag, err := results.Exec()
 	if err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return emptyTag, util.ErrCheck(err)
+		}
 		return emptyTag, util.ErrCheck(err)
 	}
 
 	if _, err := results.Exec(); err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return emptyTag, util.ErrCheck(err)
+		}
 		return emptyTag, util.ErrCheck(err)
 	}
 
@@ -341,19 +338,28 @@ func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params 
 	results := ds.SessionBatch(ctx, query, params...)
 
 	if _, err := results.Exec(); err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return nil, nil, util.ErrCheck(err)
+		}
 		return nil, nil, util.ErrCheck(err)
 	}
 
 	rows, err := results.Query()
 	if err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return nil, nil, util.ErrCheck(err)
+		}
 		return nil, nil, util.ErrCheck(err)
 	}
 
 	done := func() {
 		rows.Close()
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+		}
 	}
 
 	return rows, done, nil
@@ -363,14 +369,20 @@ func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, para
 	results := ds.SessionBatch(ctx, query, params...)
 
 	if _, err := results.Exec(); err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return nil, nil, util.ErrCheck(err)
+		}
 		return nil, nil, util.ErrCheck(err)
 	}
 
 	row := results.QueryRow()
 
 	done := func() {
-		results.Close()
+		err := results.Close()
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+		}
 	}
 
 	return row, done, nil
@@ -392,7 +404,10 @@ func (ds DbSession) SessionSendBatch(ctx context.Context, batch *pgx.Batch) (pgx
 	results := ds.SendBatch(ctx, batch)
 
 	if _, err := results.Exec(); err != nil {
-		results.Close()
+		err = results.Close()
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 		return nil, util.ErrCheck(err)
 	}
 

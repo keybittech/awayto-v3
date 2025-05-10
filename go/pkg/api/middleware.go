@@ -241,7 +241,10 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 					// Serve cached data if no header interaction
 					w.Header().Set("X-Cache-Status", "HIT")
 					w.Header().Set("Content-Length", strconv.Itoa(len(cachedData)))
-					w.Write([]byte(cachedData))
+					_, err := w.Write([]byte(cachedData))
+					if err != nil {
+						util.ErrorLog.Println(util.ErrCheck(err))
+					}
 					return
 				}
 			}

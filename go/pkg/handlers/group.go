@@ -82,7 +82,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		undos = append(undos, func() {
 			err = h.Keycloak.DeleteGroup(info.Ctx, info.Session.UserSub, kcGroupExternalId)
 			if err != nil {
-				util.ErrCheck(err)
+				util.ErrorLog.Println(util.ErrCheck(err))
 			}
 		})
 	} else {
@@ -228,7 +228,10 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 
 	groupRoleActions := make(map[string]*types.IGroupRoleAuthActions)
 
-	json.Unmarshal(assignmentsBytes, &groupRoleActions)
+	err = json.Unmarshal(assignmentsBytes, &groupRoleActions)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	adminRoles, err := h.Keycloak.GetGroupAdminRoles(info.Ctx, info.Session.UserSub)
 	if err != nil {
@@ -293,7 +296,10 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 			}
 
 			if len(additions) > 0 {
-				h.Keycloak.AddRolesToGroup(info.Ctx, info.Session.UserSub, sgRoleActions.Id, additions)
+				err = h.Keycloak.AddRolesToGroup(info.Ctx, info.Session.UserSub, sgRoleActions.Id, additions)
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
+				}
 			}
 		}
 	}

@@ -95,7 +95,6 @@ func (a *API) InitStatic() {
 	// use dev server or built for /app
 	_, err = http.Get(devServerUrl.String())
 	if err != nil && !strings.Contains(err.Error(), "failed to verify certificate") {
-		util.ErrCheck(err)
 		println("Using build folder")
 
 		fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", staticDir)))
@@ -137,13 +136,19 @@ func (a *API) InitStatic() {
 
 				modifiedBody := regexp.MustCompile(`VITE_NONCE`).ReplaceAll(originalBody, []byte(nonceB64))
 
-				w.Write(modifiedBody)
+				_, err = w.Write(modifiedBody)
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
+				}
 				return
 			}
 
 			if redirect.StatusCode == http.StatusNotFound {
 				w.WriteHeader(http.StatusNotFound)
-				w.Write([]byte(""))
+				_, err = w.Write([]byte(""))
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
+				}
 			}
 		})))
 	} else {

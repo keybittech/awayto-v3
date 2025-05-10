@@ -6,11 +6,13 @@ import (
 	"hash/fnv"
 	"sync"
 	"time"
+
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 // CommandHandler interface defines a type that can handle commands of a specific type
 type CommandHandler[Command any] interface {
-	RouteCommand(cmd Command) error
+	RouteCommand(ctx context.Context, cmd Command) error
 }
 
 // ClientIdentifier is an interface for commands that have a client ID
@@ -64,7 +66,7 @@ func SendCommand[Command any, Response any](
 	replyChan := make(chan Response, 1)
 	cmd := createCommand(replyChan)
 
-	err := handler.RouteCommand(cmd)
+	err := handler.RouteCommand(ctx, cmd)
 	if err != nil {
 		close(replyChan)
 		return emptyResponse, err
@@ -142,20 +144,20 @@ func (p *WorkerPool) Stop() {
 	p.wg.Wait()
 }
 
+const routingTimeout = 100 * time.Millisecond
+
+var routingTimeoutError = errors.New("timed out when routing command after" + routingTimeout.String())
+
 // RouteCommand routes a command to the appropriate worker queue
-func (p *WorkerPool) RouteCommand(cmd CombinedCommand) error {
+func (p *WorkerPool) RouteCommand(ctx context.Context, cmd CombinedCommand) error {
 	clientId := cmd.GetClientId()
 	queueIdx := p.getQueueForClient(clientId)
-
-	// Try to send with a timeout
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
 
 	select {
 	case p.workerQueues[queueIdx] <- cmd:
 		return nil
 	case <-ctx.Done():
-		return errors.New("timed out when routing command")
+		return routingTimeoutError
 	}
 }
 
@@ -191,7 +193,10 @@ func (p *WorkerPool) getQueueForClient(clientId string) int {
 
 	// Assign based on hash to ensure even distribution
 	h := fnv.New32()
-	h.Write([]byte(clientId))
+	_, err := h.Write([]byte(clientId))
+	if err != nil {
+		util.ErrorLog.Println(util.ErrCheck(err))
+	}
 	queueIdx := int(h.Sum32()) % p.numWorkers
 	p.clientToQueue[clientId] = queueIdx
 	return queueIdx

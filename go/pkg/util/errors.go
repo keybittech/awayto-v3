@@ -34,7 +34,7 @@ func SnipUserError(err string) string {
 	return err[userErrIdx+ErrorForUserLen : userErrEndIdx]
 }
 
-func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []protoreflect.Name, pbVal proto.Message) error {
+func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []protoreflect.Name, pbVal proto.Message) {
 	requestId := uuid.NewString()
 
 	var reqParams strings.Builder
@@ -79,7 +79,7 @@ func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []protore
 
 	http.Error(w, userErrRes.String(), http.StatusInternalServerError)
 
-	return errors.New(reqErr.String())
+	// return errors.New(reqErr.String())
 }
 
 func ErrCheck(err error) error {

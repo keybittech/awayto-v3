@@ -321,7 +321,7 @@ landing_dev: build
 #################################
 
 .PHONY: go_test
-go_test: go_test_bench go_test_integration_long
+go_test: go_test_integration go_test_bench
 
 .PHONY: go_test_gen
 go_test_gen:

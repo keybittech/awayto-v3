@@ -52,7 +52,10 @@ func (h *Handlers) PostFileContents(info ReqInfo, data *types.PostFileContentsRe
 				return nil, util.ErrCheck(err)
 			}
 
-			mw.Close()
+			err = mw.Close()
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
 
 			url := "http://localhost:8000/forms/libreoffice/convert"
 

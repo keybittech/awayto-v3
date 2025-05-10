@@ -2,7 +2,6 @@ package api
 
 import (
 	"net"
-	"sync"
 	"testing"
 )
 
@@ -26,7 +25,6 @@ func TestAPI_InitUnixServer(t *testing.T) {
 
 func TestAPI_HandleUnixConnection(t *testing.T) {
 	type args struct {
-		wg   *sync.WaitGroup
 		conn net.Conn
 	}
 	tests := []struct {
@@ -38,7 +36,7 @@ func TestAPI_HandleUnixConnection(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			tt.a.HandleUnixConnection(tt.args.wg, tt.args.conn)
+			tt.a.HandleUnixConnection(tt.args.conn)
 		})
 	}
 }

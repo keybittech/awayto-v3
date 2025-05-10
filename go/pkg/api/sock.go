@@ -36,7 +36,10 @@ func (a *API) InitSockServer() {
 	a.Server.Handler.(*http.ServeMux).HandleFunc("GET /sock", func(w http.ResponseWriter, req *http.Request) {
 		if !strings.Contains(req.Header.Get("Connection"), "Upgrade") || req.Header.Get("Upgrade") != "websocket" {
 			w.WriteHeader(http.StatusBadRequest)
-			w.Write([]byte("Bad Request: Expected WebSocket"))
+			_, err := w.Write([]byte("Bad Request: Expected WebSocket"))
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+			}
 			return
 		}
 
@@ -59,8 +62,17 @@ func (a *API) InitSockServer() {
 		defer conn.Close()
 		defer bufrw.Flush()
 
-		conn.SetReadDeadline(time.Time{})
-		conn.SetWriteDeadline(time.Time{})
+		err = conn.SetReadDeadline(time.Time{})
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
+
+		err = conn.SetWriteDeadline(time.Time{})
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
 
 		ticket := req.URL.Query().Get("ticket")
 		if ticket == "" {
@@ -279,11 +291,14 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 		}
 
 		for topic, targets := range topics {
-			a.Handlers.Socket.SendMessage(context.Background(), ds.UserSession.UserSub, targets, &types.SocketMessage{
+			err := a.Handlers.Socket.SendMessage(context.Background(), ds.UserSession.UserSub, targets, &types.SocketMessage{
 				Action:  socketActionUnsubscribeTopic,
 				Topic:   topic,
 				Payload: socketId,
 			})
+			if err != nil {
+				continue
+			}
 
 			err = a.Handlers.Redis.RemoveTopicFromConnection(ctx, socketId, topic)
 			if err != nil {

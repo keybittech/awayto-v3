@@ -34,10 +34,7 @@ func getTestApi() *API {
 	}
 	a := NewAPI(httpsPort)
 	a.InitProtoHandlers()
-	err = a.InitGroups()
-	if err != nil {
-		log.Fatalf("error initializing group data %v", err)
-	}
+	a.InitGroups()
 	return a
 }
 

@@ -643,7 +643,10 @@ func handleDeletedBrackets(ctx context.Context, scheduleId string, existingBrack
 		var bracketsToDelete []string
 		for rows.Next() {
 			var bracketId string
-			rows.Scan(&bracketId)
+			err = rows.Scan(&bracketId)
+			if err != nil {
+				continue
+			}
 			bracketsToDelete = append(bracketsToDelete, bracketId)
 		}
 
@@ -672,7 +675,10 @@ func handleDeletedBrackets(ctx context.Context, scheduleId string, existingBrack
 	var bracketsToDisable []string
 	for rows.Next() {
 		var bracketId string
-		rows.Scan(&bracketId)
+		err = rows.Scan(&bracketId)
+		if err != nil {
+			continue
+		}
 		bracketsToDisable = append(bracketsToDisable, bracketId)
 	}
 
@@ -697,7 +703,10 @@ func handleDeletedBrackets(ctx context.Context, scheduleId string, existingBrack
 	var bracketsToDelete []string
 	for rows.Next() {
 		var bracketId string
-		rows.Scan(&bracketId)
+		err = rows.Scan(&bracketId)
+		if err != nil {
+			continue
+		}
 		bracketsToDelete = append(bracketsToDelete, bracketId)
 	}
 

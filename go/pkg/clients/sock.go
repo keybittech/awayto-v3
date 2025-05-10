@@ -292,6 +292,7 @@ func InitSocket() *Socket {
 				cmd.ReplyChan <- SocketResponse{
 					Error: noSubscriberTargets,
 				}
+				break
 			}
 
 			cmd.ReplyChan <- SocketResponse{
@@ -315,6 +316,7 @@ func InitSocket() *Socket {
 					hasSub = true
 				}
 			}
+
 			cmd.ReplyChan <- SocketResponse{
 				SocketResponseParams: &types.SocketResponseParams{
 					HasSub: hasSub,
@@ -360,8 +362,8 @@ func (cmd SocketCommand) GetReplyChannel() interface{} {
 	return cmd.ReplyChan
 }
 
-func (s *Socket) RouteCommand(cmd SocketCommand) error {
-	return GetGlobalWorkerPool().RouteCommand(cmd)
+func (s *Socket) RouteCommand(ctx context.Context, cmd SocketCommand) error {
+	return GetGlobalWorkerPool().RouteCommand(ctx, cmd)
 }
 
 func (s *Socket) Close() {

@@ -97,8 +97,15 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 		fileBuf := make([]byte, f.Size)
 
 		fileData, _ := f.Open()
-		fileData.Read(fileBuf)
-		fileData.Close()
+		_, err := fileData.Read(fileBuf)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		err = fileData.Close()
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 
 		fileLen := int64(len(fileBuf))
 

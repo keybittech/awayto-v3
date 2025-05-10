@@ -202,9 +202,7 @@ func TestDatabase_BuildInserts(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.db.BuildInserts(tt.args.sb, tt.args.size, tt.args.current); (err != nil) != tt.wantErr {
-				t.Errorf("Database.BuildInserts(%v, %v, %v) error = %v, wantErr %v", tt.args.sb, tt.args.size, tt.args.current, err, tt.wantErr)
-			}
+			tt.db.BuildInserts(tt.args.sb, tt.args.size, tt.args.current)
 		})
 	}
 }

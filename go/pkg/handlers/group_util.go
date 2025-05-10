@@ -48,7 +48,10 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 		}
 	}
 
-	info.Tx.SetSession(info.Ctx, info.Session)
+	err = info.Tx.SetSession(info.Ctx, info.Session)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	var kcSubgroupExternalId string
 	err = info.Tx.QueryRow(info.Ctx, `

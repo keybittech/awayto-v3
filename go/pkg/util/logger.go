@@ -83,16 +83,15 @@ func MakeLoggers() {
 	SockLog = makeLogger("GO_SOCK_LOG")
 }
 
-func getIp(req *http.Request, ip ...string) (string, error) {
+func getIp(req *http.Request, ip ...string) string {
 	if len(ip) > 0 {
-		return ip[0], nil
+		return ip[0]
 	} else {
 		reqIp, _, err := net.SplitHostPort(req.RemoteAddr)
 		if err != nil {
-			ErrorLog.Println(ErrCheck(err))
-			return "", err
+			return req.RemoteAddr
 		}
-		return reqIp, nil
+		return reqIp
 	}
 }
 
@@ -108,12 +107,8 @@ func getRequestLogString(req *http.Request) *strings.Builder {
 }
 
 // f2b regex = ^.* (GET|POST|PUT|DELETE|PATCH) .* (<HOST>)$
-func WriteAuthRequest(req *http.Request, sub, role string, ip ...string) error {
-	reqIp, err := getIp(req, ip...)
-	if err != nil {
-		return err
-	}
-
+func WriteAuthRequest(req *http.Request, sub, role string, ip ...string) {
+	reqIp := getIp(req, ip...)
 	sb := getRequestLogString(req)
 	sb.WriteString(sub)
 	sb.WriteString(" ")
@@ -121,16 +116,11 @@ func WriteAuthRequest(req *http.Request, sub, role string, ip ...string) error {
 	sb.WriteString(" ")
 	sb.WriteString(reqIp)
 	AuthLog.Println(sb.String())
-	return nil
 }
 
 // f2b regex = ^.* (GET|POST|PUT|DELETE|PATCH) .* (401|403|429) (<HOST>)$
-func WriteAccessRequest(req *http.Request, duration int64, statusCode int, ip ...string) error {
-	reqIp, err := getIp(req, ip...)
-	if err != nil {
-		return err
-	}
-
+func WriteAccessRequest(req *http.Request, duration int64, statusCode int, ip ...string) {
+	reqIp := getIp(req, ip...)
 	sb := getRequestLogString(req)
 	sb.WriteString(strconv.FormatInt(duration, 10))
 	sb.WriteString("ms ")
@@ -138,7 +128,6 @@ func WriteAccessRequest(req *http.Request, duration int64, statusCode int, ip ..
 	sb.WriteString(" ")
 	sb.WriteString(reqIp)
 	AccessLog.Println(sb.String())
-	return nil
 }
 
 var runTimers bool

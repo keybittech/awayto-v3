@@ -646,7 +646,7 @@ func TestSocket_RouteCommand(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.s.RouteCommand(tt.args.cmd); (err != nil) != tt.wantErr {
+			if err := tt.s.RouteCommand(context.Background(), tt.args.cmd); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.RouteCommand(%v) error = %v, wantErr %v", tt.args.cmd, err, tt.wantErr)
 			}
 		})

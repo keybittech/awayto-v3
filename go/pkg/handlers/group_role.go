@@ -162,7 +162,11 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 
 	for rows.Next() {
 		var groupRoleId, roleId, roleName string
-		rows.Scan(&groupRoleId, &roleId, &roleName)
+		err = rows.Scan(&groupRoleId, &roleId, &roleName)
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			continue
+		}
 		diffs = append(diffs, &types.IGroupRole{
 			Id: groupRoleId,
 			Role: &types.IRole{

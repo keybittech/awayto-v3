@@ -3,6 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strconv"
 	"time"
@@ -42,7 +43,10 @@ func init() {
 	requestsPerSecond = *requestsPerSecondFlag
 	requestsPerSecondBurst = *requestsPerSecondBurstFlag
 
-	godotenv.Load(os.Getenv("GO_ENVFILE_LOC"))
+	err := godotenv.Load(os.Getenv("GO_ENVFILE_LOC"))
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	httpPortEnv := os.Getenv("GO_HTTP_PORT")
 	if httpPortEnv != "" && *httpPortFlag == httpPort {
@@ -97,7 +101,10 @@ func main() {
 
 	defer func() {
 		close(stopChan)
-		server.Server.Close()
+		err := server.Server.Close()
+		if err != nil {
+			log.Fatal(err)
+		}
 	}()
 
 	certLoc := os.Getenv("CERT_LOC")

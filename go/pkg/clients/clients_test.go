@@ -92,9 +92,9 @@ func NewMockHandler(handlerId string) *MockHandler {
 }
 
 // RouteCommand implements the CommandHandler interface
-func (h *MockHandler) RouteCommand(cmd MockCommand) error {
+func (h *MockHandler) RouteCommand(ctx context.Context, cmd MockCommand) error {
 	// Cast to CombinedCommand and route through global worker pool
-	return GetGlobalWorkerPool().RouteCommand(cmd)
+	return GetGlobalWorkerPool().RouteCommand(ctx, cmd)
 }
 
 // Close unregisters the handler's process function
@@ -360,7 +360,7 @@ func TestWorkerPool_RouteCommand(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.p.RouteCommand(tt.args.cmd); (err != nil) != tt.wantErr {
+			if err := tt.p.RouteCommand(context.Background(), tt.args.cmd); (err != nil) != tt.wantErr {
 				t.Errorf("WorkerPool.RouteCommand(%v) error = %v, wantErr %v", tt.args.cmd, err, tt.wantErr)
 			}
 		})
