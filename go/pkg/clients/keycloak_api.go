@@ -13,6 +13,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
 
 	"encoding/json"
@@ -120,11 +121,11 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCTok
 	return nil, util.ErrCheck(errors.New("Authentication failed"))
 }
 
-func (keycloakClient KeycloakClient) FindResource(resource, search string) ([]byte, error) {
+func (keycloakClient KeycloakClient) FindResource(resource, search string, first, last int) ([]byte, error) {
 
 	queryParams := url.Values{}
-	queryParams.Add("first", "0")
-	queryParams.Add("max", "11")
+	queryParams.Add("first", strconv.Itoa(first))
+	queryParams.Add("max", strconv.Itoa(last))
 	queryParams.Add("search", search)
 
 	resp, err := util.GetWithParams(
@@ -308,31 +309,33 @@ func (keycloakClient KeycloakClient) CreateGroup(name string) (string, error) {
 }
 
 func (keycloakClient KeycloakClient) DeleteGroup(groupId string) error {
-	_, err := util.Mutate(
+	deleteGroupRes, err := util.Mutate(
 		"DELETE",
 		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
 		[]byte(""),
 	)
-
 	if err != nil {
 		return util.ErrCheck(err)
 	}
+
+	println("DELETED A GROUP/SUBGROUP RESPONSE", string(deleteGroupRes))
 
 	return nil
 }
 
 func (keycloakClient KeycloakClient) UpdateGroup(groupId, groupName string) error {
-	_, err := util.Mutate(
+	groupResponse, err := util.Mutate(
 		"PUT",
 		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
 		[]byte(`{ "name": "`+groupName+`" }`),
 	)
-
 	if err != nil {
 		return util.ErrCheck(err)
 	}
+
+	println("KEYCLOAK UPDATE GROUP RESPONSE", string(groupResponse))
 
 	return nil
 }

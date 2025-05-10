@@ -9,7 +9,7 @@ import (
 )
 
 func (a *API) InitProtoHandlers() {
-	sessionMux := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Handlers.Redis.RedisClient)
+	sessionMux := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Handlers.Cache)
 
 	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
 		if fd.Services().Len() == 0 {
@@ -37,6 +37,6 @@ func (a *API) InitProtoHandlers() {
 	})
 
 	a.Server.Handler.(*http.ServeMux).Handle("/api/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sessionMux.ServeHTTP(w, r)
+		sessionMux.mux.ServeHTTP(w, r)
 	}))
 }

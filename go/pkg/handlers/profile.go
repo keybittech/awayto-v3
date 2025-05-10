@@ -1,10 +1,11 @@
 package handlers
 
 import (
+	"context"
 	"errors"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -32,7 +33,7 @@ func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRe
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.UpdateUser(info.Session.UserSub, info.Session.UserSub, data.GetFirstName(), data.GetLastName())
+	err = h.Keycloak.UpdateUser(info.Ctx, info.Session.UserSub, info.Session.UserSub, data.GetFirstName(), data.GetLastName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -43,7 +44,7 @@ func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRe
 }
 
 func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfileDetailsRequest) (*types.GetUserProfileDetailsResponse, error) {
-	profileRows, err := info.Tx.Query(info.Ctx, `
+	userProfile, err := clients.QueryProto[types.IUserProfile](info.Ctx, info.Tx, `
 		SELECT 
 			"firstName",
 			"lastName",
@@ -62,25 +63,22 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-	defer profileRows.Close()
-
-	userProfile, err := pgx.CollectOneRow(profileRows, pgx.RowToAddrOfStructByNameLax[types.IUserProfile])
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
 	if _, ok := userProfile.Groups[info.Session.GroupId]; ok {
-		groupRows, err := info.Tx.Query(info.Ctx, `
-			SELECT name, "displayName", purpose, ai, code, COALESCE("defaultRoleId"::TEXT, '') as "defaultRoleId", "allowedDomains", roles, true as active
+		userProfile.Groups[info.Session.GroupId], err = clients.QueryProto[types.IGroup](info.Ctx, info.Tx, `
+			SELECT
+				name,
+				"displayName",
+				purpose,
+				ai,
+				code,
+				COALESCE("defaultRoleId"::TEXT, '') as "defaultRoleId",
+				"allowedDomains",
+				roles,
+				true as active
 			FROM dbview_schema.enabled_groups_ext
 			WHERE id = $1
 		`, info.Session.GroupId)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-		defer groupRows.Close()
-
-		userProfile.Groups[info.Session.GroupId], err = pgx.CollectOneRow(groupRows, pgx.RowToAddrOfStructByNameLax[types.IGroup])
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -94,7 +92,9 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	// Try to send a request if the user has an active socket connection
 	// but no need to catch errors as they may not yet have a connection
-	go h.Socket.RoleCall(info.Session.UserSub)
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	go h.Socket.RoleCall(ctx, info.Session.UserSub)
 
 	return &types.GetUserProfileDetailsResponse{UserProfile: userProfile}, nil
 }
@@ -155,7 +155,6 @@ func (h *Handlers) DisableUserProfile(info ReqInfo, data *types.DisableUserProfi
 }
 
 func (h *Handlers) ActivateProfile(info ReqInfo, data *types.ActivateProfileRequest) (*types.ActivateProfileResponse, error) {
-
 	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.users
 		SET active = true, updated_on = $2, updated_sub = $1
@@ -164,8 +163,6 @@ func (h *Handlers) ActivateProfile(info ReqInfo, data *types.ActivateProfileRequ
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
 
 	return &types.ActivateProfileResponse{Success: true}, nil
 }

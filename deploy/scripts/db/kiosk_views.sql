@@ -1,5 +1,4 @@
-CREATE OR REPLACE VIEW dbview_schema.distinct_schedule_slots AS
-SELECT DISTINCT
+CREATE OR REPLACE VIEW dbview_schema.distinct_schedule_slots AS SELECT DISTINCT
   gus.group_schedule_id,
   sbs.start_time,
   ROW_NUMBER() OVER () as rowNum

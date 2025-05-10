@@ -5,8 +5,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jackc/pgx/v5"
-
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -84,7 +83,7 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 	h.Redis.Client().Del(info.Ctx, staffSub+"quotes")
 	h.Redis.Client().Del(info.Ctx, staffSub+"profile/details")
 
-	if err := h.Socket.RoleCall(staffSub); err != nil {
+	if err := h.Socket.RoleCall(info.Ctx, staffSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
@@ -113,7 +112,7 @@ func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*typ
 }
 
 func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types.GetQuotesResponse, error) {
-	rows, err := info.Tx.Query(info.Ctx, `
+	quotes, err := clients.QueryProtos[types.IQuote](info.Ctx, info.Tx, `
 		SELECT
 			q.id,
 			q."startTime",
@@ -124,7 +123,7 @@ func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types
 			q."serviceName",
 			q."serviceFormVersionSubmissionId",
 			q."tierFormVersionSubmissionId",
-			q."createdOn"::TEXT
+			q."createdOn"
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q."scheduleBracketSlotId"
 		WHERE sbs.created_sub = $1
@@ -133,25 +132,15 @@ func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	quotes, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IQuote])
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	return &types.GetQuotesResponse{Quotes: quotes}, nil
 }
 
 func (h *Handlers) GetQuoteById(info ReqInfo, data *types.GetQuoteByIdRequest) (*types.GetQuoteByIdResponse, error) {
-	rows, err := info.Tx.Query(info.Ctx, `
-		SELECT id, "slotDate", "serviceFormVersionSubmission", "tierFormVersionSubmission", "createdOn"::TEXT
+	quote, err := clients.QueryProto[types.IQuote](info.Ctx, info.Tx, `
+		SELECT id, "slotDate", "serviceFormVersionSubmission", "tierFormVersionSubmission", "createdOn"
 		FROM dbview_schema.enabled_quotes_ext
 		WHERE id = $1
 	`, data.Id)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	quote, err := pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[types.IQuote])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

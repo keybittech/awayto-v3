@@ -54,12 +54,11 @@ var channelTimedOutBeforeResponse = errors.New("timed out when receiving command
 
 // SendCommand sends a command to a handler and waits for a response with timeout
 func SendCommand[Command any, Response any](
+	ctx context.Context,
 	handler CommandHandler[Command],
 	createCommand func(chan Response) Command,
 ) (Response, error) {
 	var emptyResponse Response
-	ctx, cancel := context.WithTimeout(context.Background(), 250*time.Millisecond)
-	defer cancel()
 
 	// Create a buffered channel to avoid leaks if no one reads from it
 	replyChan := make(chan Response, 1)

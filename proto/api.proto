@@ -1,0 +1,18 @@
+syntax = "proto3";
+package types;
+
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+message CachedGroup {
+  string id = 1;
+  string external_id = 2;
+  string sub = 3;
+  string name = 4;
+  bool ai = 5;
+}
+
+message CachedSubGroup {
+  string external_id = 1;
+  string group_path = 2;
+  string name = 3;
+}

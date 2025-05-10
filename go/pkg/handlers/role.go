@@ -3,7 +3,7 @@ package handlers
 import (
 	"strings"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -51,7 +51,7 @@ func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.P
 }
 
 func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.GetRolesResponse, error) {
-	rows, err := info.Tx.Query(info.Ctx, `
+	roles, err := clients.QueryProtos[types.IRole](info.Ctx, info.Tx, `
 		SELECT er.*
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
@@ -62,25 +62,20 @@ func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.G
 		return nil, util.ErrCheck(err)
 	}
 
-	roles, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IRole])
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	return &types.GetRolesResponse{Roles: roles}, nil
 }
 
 func (h *Handlers) GetRoleById(info ReqInfo, data *types.GetRoleByIdRequest) (*types.GetRoleByIdResponse, error) {
-	var role types.IRole
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT * FROM dbview_schema.enabled_roles
+	role, err := clients.QueryProto[types.IRole](info.Ctx, info.Tx, `
+		SELECT *
+		FROM dbview_schema.enabled_roles
 		WHERE id = $1
-	`, data.GetId()).Scan(&role.Id, &role.Name)
+	`, data.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetRoleByIdResponse{Role: &role}, nil
+	return &types.GetRoleByIdResponse{Role: role}, nil
 }
 
 func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*types.DeleteRoleResponse, error) {

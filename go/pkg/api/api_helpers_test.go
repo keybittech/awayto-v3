@@ -27,14 +27,17 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
-func getTestApi(rateLimiter *RateLimiter) *API {
+func getTestApi() *API {
 	httpsPort, err := strconv.Atoi(os.Getenv("GO_HTTPS_PORT"))
 	if err != nil {
 		log.Fatalf("error getting test api %v", err)
 	}
 	a := NewAPI(httpsPort)
 	a.InitProtoHandlers()
-	a.Server.Handler = a.LimitMiddleware(rateLimiter)(a.Server.Handler)
+	err = a.InitGroups()
+	if err != nil {
+		log.Fatalf("error initializing group data %v", err)
+	}
 	return a
 }
 

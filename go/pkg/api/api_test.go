@@ -41,10 +41,17 @@ func init() {
 
 func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string) {
 	rl := NewRateLimit("api", limit, burst, time.Duration(5*time.Second))
-	api := getTestApi(rl)
+
+	api := getTestApi()
+	api.Server.Handler = api.LimitMiddleware(rl)(api.Server.Handler)
+
 	user := integrationTest.TestUsers[1]
 
-	req := getTestReq(user.TestToken, http.MethodGet, path, nil)
+	token, _, err := getKeycloakToken(user)
+	if err != nil {
+		b.Fatal(err)
+	}
+	req := getTestReq(token, http.MethodGet, path, nil)
 	recorder := httptest.NewRecorder()
 
 	reset(b)
@@ -75,23 +82,17 @@ func BenchmarkApiCache(b *testing.B) {
 	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
 		doBenchmarkRateLimit(bb, 10000, 10000, "/api/v1/quotes")
 	})
+	b.Run("100000 req per second, 100000 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 100000, 100000, "/api/v1/quotes")
+	})
 }
 
 func BenchmarkApiNoCache(b *testing.B) {
-	// b.Run("1 req per second, 1 burst", func(bb *testing.B) {
-	// 	doBenchmarkRateLimit(bb, 1, 1, "/api/v1/sock/ticket")
-	// })
-	// b.Run("10 req per second, 10 burst", func(bb *testing.B) {
-	// 	doBenchmarkRateLimit(bb, 10, 10, "/api/v1/sock/ticket")
-	// })
-	b.Run("100 req per second, 100 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 100, 100, "/api/v1/sock/ticket")
-	})
-	b.Run("1000 req per second, 1000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 1000, 1000, "/api/v1/sock/ticket")
+	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 20000, 10000, "/api/v1/sock/ticket")
 	})
 	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 10000, 10000, "/api/v1/sock/ticket")
+		doBenchmarkRateLimit(bb, 20000, 10000, "/api/v1/profile/details")
 	})
 }
 
@@ -116,8 +117,7 @@ func TestNewAPI(t *testing.T) {
 }
 
 func TestRoutes(t *testing.T) {
-	rl := NewRateLimit("api", 1000, 1000, time.Duration(5*time.Second))
-	a := getTestApi(rl)
+	a := getTestApi()
 
 	tests := []struct {
 		name, method, url string
@@ -136,14 +136,13 @@ func TestRoutes(t *testing.T) {
 			req := getTestReq(token, tt.method, tt.url, tt.body)
 			recorder := httptest.NewRecorder()
 			a.Handlers.Redis.RedisClient.FlushAll(context.Background())
-			start := time.Now()
+			startTime := time.Now()
 			tt.api.Server.Handler.ServeHTTP(recorder, req)
-			end := time.Since(start)
+			end := time.Since(startTime)
+			t.Logf("TestRoutes(%s %s) finished after %s", tt.method, tt.url, end.String())
 			good := checkResponseFor(recorder.Body.Bytes(), []byte{'{'})
 			if !good {
 				t.Errorf("Response body (status %d) did not start with '{'. Got: %s", recorder.Code, string(recorder.Body.Bytes()))
-			} else {
-				t.Logf("TestRoutes(%s %s) finished successfully after %s", tt.method, tt.url, end.String())
 			}
 		})
 	}

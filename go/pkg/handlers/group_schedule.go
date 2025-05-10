@@ -4,10 +4,9 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/jackc/pgx/v5"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func (h *Handlers) PostGroupSchedule(info ReqInfo, data *types.PostGroupScheduleRequest) (*types.PostGroupScheduleResponse, error) {
@@ -40,14 +39,12 @@ func (h *Handlers) PatchGroupSchedule(info ReqInfo, data *types.PatchGroupSchedu
 }
 
 func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedulesRequest) (*types.GetGroupSchedulesResponse, error) {
-	var groupSchedules []*types.IGroupSchedule
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupSchedules, `
+	groupSchedules, err := clients.QueryProtos[types.IGroupSchedule](info.Ctx, info.Tx, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbview_schema.enabled_group_schedules egs ON egs."scheduleId" = es.id
 		WHERE egs."groupId" = $1
 	`, info.Session.GroupId)
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -56,28 +53,16 @@ func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedules
 }
 
 func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroupScheduleMasterByIdRequest) (*types.GetGroupScheduleMasterByIdResponse, error) {
-	groupSchedule := &types.IGroupSchedule{}
-	var scheduleBytes []byte
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT TO_JSONB(ese), ese.name
-		FROM dbview_schema.enabled_schedules_ext ese
-		WHERE ese.id = $1
-	`, data.GetGroupScheduleId()).Scan(&scheduleBytes, &groupSchedule.Name)
+	schedule, err := clients.QueryProto[types.ISchedule](info.Ctx, info.Tx, `
+		SELECT *
+		FROM dbview_schema.enabled_schedules_ext
+		WHERE id = $1
+	`, data.GroupScheduleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	schedule := &types.ISchedule{}
-	err = protojson.Unmarshal(scheduleBytes, schedule)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	groupSchedule.Master = true
-	groupSchedule.ScheduleId = schedule.Id
-	groupSchedule.Schedule = schedule
-
-	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: groupSchedule}, nil
+	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: &types.IGroupSchedule{Master: true, ScheduleId: schedule.Id, Schedule: schedule}}, nil
 }
 
 func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupScheduleByDateRequest) (*types.GetGroupScheduleByDateResponse, error) {
@@ -89,10 +74,13 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 		JOIN dbtable_schema.time_units tu ON tu.id = s.schedule_time_unit_id
 		WHERE s.id = $1
 	`, data.GroupScheduleId).Scan(&scheduleTimeUnitName)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	var rows pgx.Rows
+	var query strings.Builder
 	if "week" == scheduleTimeUnitName {
-		rows, err = info.Tx.Query(info.Ctx, `
+		query.WriteString(`
 			WITH times AS (
 				SELECT
 					DISTINCT slot."startTime",
@@ -118,9 +106,9 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 			)
 			SELECT "startTime", "scheduleBracketSlotId", "weekStart", "startDate"
 			FROM times
-		`, data.Date, data.GroupScheduleId, info.Session.Timezone)
+		`)
 	} else {
-		rows, err = info.Tx.Query(info.Ctx, `
+		query.WriteString(`
 			WITH times AS (
 				SELECT
 					DISTINCT slot."startTime",
@@ -160,16 +148,12 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 			)
 			SELECT "startTime", "scheduleBracketSlotId", "weekStart", "startDate"
 			FROM times
-		`, data.Date, data.GroupScheduleId, info.Session.Timezone)
-	}
-	if err != nil {
-		return nil, util.ErrCheck(err)
+		`)
 	}
 
-	groupScheduleDateSlots, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IGroupScheduleDateSlots])
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	groupScheduleDateSlots, err := clients.QueryProtos[types.IGroupScheduleDateSlots](
+		info.Ctx, info.Tx, query.String(), data.Date, data.GroupScheduleId, info.Session.Timezone,
+	)
 
 	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: groupScheduleDateSlots}, nil
 }

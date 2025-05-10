@@ -187,6 +187,27 @@ type DatabaseClient struct {
 	*pgxpool.Pool
 }
 
+// Open a batch with the intention of adding multiple queries
+func (dbc *DatabaseClient) OpenBatch(ctx context.Context, sub, groupId string, roleBits int64) *pgx.Batch {
+	batch := &pgx.Batch{}
+	batch.Queue(setSessionVariablesSQL, sub, groupId, roleBits, "")
+	return batch
+}
+
+// Close a batch opened with OpenBatch. The caller should handle all but the first (session set) queries.
+func (dbc *DatabaseClient) SendBatch(ctx context.Context, batch *pgx.Batch) (pgx.BatchResults, error) {
+	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
+
+	results := dbc.Pool.SendBatch(ctx, batch)
+
+	if _, err := results.Exec(); err != nil {
+		results.Close()
+		return nil, util.ErrCheck(err)
+	}
+
+	return results, nil
+}
+
 func (dc *DatabaseClient) OpenPoolSessionGroupTx(ctx context.Context, session *types.UserSession) (*PoolTx, *types.UserSession, error) {
 	groupSession := &types.UserSession{
 		UserSub: session.GroupSub,
@@ -243,6 +264,24 @@ func (ptx *PoolTx) UnsetSession(ctx context.Context) error {
 		return util.ErrCheck(err)
 	}
 	return nil
+}
+
+func QueryProtos[T any](ctx context.Context, ptx *PoolTx, query string, args ...any) ([]*T, error) {
+	rows, err := ptx.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[T])
+}
+
+func QueryProto[T any](ctx context.Context, ptx *PoolTx, query string, args ...any) (*T, error) {
+	rows, err := ptx.Query(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+
+	return pgx.CollectExactlyOneRow(rows, pgx.RowToAddrOfStructByNameLax[T])
 }
 
 type DbSession struct {
@@ -337,6 +376,7 @@ func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, para
 	return row, done, nil
 }
 
+// Open a session batch with the intention of adding multiple queries
 func (ds DbSession) SessionOpenBatch(ctx context.Context) *pgx.Batch {
 	batch := &pgx.Batch{}
 
@@ -345,31 +385,11 @@ func (ds DbSession) SessionOpenBatch(ctx context.Context) *pgx.Batch {
 	return batch
 }
 
+// Close a batch opened with SessionOpenBatch. The caller should handle all but the first (session set) queries.
 func (ds DbSession) SessionSendBatch(ctx context.Context, batch *pgx.Batch) (pgx.BatchResults, error) {
 	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 
 	results := ds.SendBatch(ctx, batch)
-
-	if _, err := results.Exec(); err != nil {
-		results.Close()
-		return nil, util.ErrCheck(err)
-	}
-
-	return results, nil
-}
-
-func OpenBatch(ctx context.Context, sub, groupId string, roleBits int32) *pgx.Batch {
-	batch := &pgx.Batch{}
-
-	batch.Queue(setSessionVariablesSQL, sub, groupId, roleBits, "")
-
-	return batch
-}
-
-func SendBatch(ctx context.Context, tx *PoolTx, batch *pgx.Batch) (pgx.BatchResults, error) {
-	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
-
-	results := tx.SendBatch(ctx, batch)
 
 	if _, err := results.Exec(); err != nil {
 		results.Close()

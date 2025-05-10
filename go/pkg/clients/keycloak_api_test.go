@@ -88,7 +88,7 @@ func TestKeycloakClient_FindResource(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.keycloakClient.FindResource(tt.args.resource, tt.args.search)
+			got, err := tt.keycloakClient.FindResource(tt.args.resource, tt.args.search, 0, 10)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("KeycloakClient.FindResource(%v, %v) error = %v, wantErr %v", tt.args.resource, tt.args.search, err, tt.wantErr)
 				return

@@ -2,14 +2,12 @@ package api
 
 import (
 	"crypto/rsa"
-	"errors"
 	"net/http"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"github.com/redis/go-redis/v9"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 const (
@@ -20,16 +18,16 @@ const (
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.UserSession)
 
 type SessionMux struct {
-	publicKey *rsa.PublicKey
-	mux       *http.ServeMux
-	redis     *redis.Client
+	publicKey    *rsa.PublicKey
+	mux          *http.ServeMux
+	handlerCache *handlers.HandlerCache
 }
 
-func NewSessionMux(pk *rsa.PublicKey, redis *redis.Client) *SessionMux {
+func NewSessionMux(pk *rsa.PublicKey, handlerCache *handlers.HandlerCache) *SessionMux {
 	return &SessionMux{
-		publicKey: pk,
-		mux:       http.NewServeMux(),
-		redis:     redis,
+		publicKey:    pk,
+		mux:          http.NewServeMux(),
+		handlerCache: handlerCache,
 	}
 }
 
@@ -41,39 +39,19 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 			return
 		}
 
-		ctx := req.Context()
-		redisTokenKey := redisTokenPrefix + token
-
-		session := &types.UserSession{}
-		sessionBytes, err := sm.redis.Get(ctx, redisTokenKey).Bytes()
-		if err == nil {
-			err = protojson.Unmarshal(sessionBytes, session)
-			if err == nil {
-				handler(w, req, session)
-				return
-			}
-		} else if !errors.Is(err, redis.Nil) {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+		if cachedSession := sm.handlerCache.GetSessionToken(token); cachedSession != nil {
+			handler(w, req, cachedSession)
 			return
 		}
 
-		session, err = ValidateToken(sm.publicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+		session, err := ValidateToken(sm.publicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
-		sessionJson, err := protojson.Marshal(session)
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-		} else {
-			err = sm.redis.SetEx(ctx, redisTokenKey, sessionJson, redisTokenDuration).Err()
-			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
-			}
-		}
+		go sm.handlerCache.SetSessionToken(token, session)
 
 		handler(w, req, session)
 	}))

@@ -66,7 +66,7 @@ func testIntegrationService(t *testing.T) {
 
 		tiers[tierId] = &types.IServiceTier{
 			Id:        tierId,
-			CreatedOn: tierId,
+			CreatedOn: "test",
 			Name:      "test tier",
 			Addons:    serviceAddons,
 			Order:     1,

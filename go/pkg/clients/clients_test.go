@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -135,7 +136,7 @@ func TestGlobalWorkerPool(t *testing.T) {
 						ClientId:  cId,
 					}
 				}
-				response, err := SendCommand(handler1, createMockCommand)
+				response, err := SendCommand(context.Background(), handler1, createMockCommand)
 				if err != nil {
 					t.Errorf("SendCommand failed for client %s, command %d: %v", cId, j, err)
 				} else {
@@ -161,7 +162,7 @@ func TestGlobalWorkerPool(t *testing.T) {
 						ClientId:  cId,
 					}
 				}
-				response, err := SendCommand(handler2, createMockCommand)
+				response, err := SendCommand(context.Background(), handler2, createMockCommand)
 				if err != nil {
 					t.Errorf("SendCommand failed for client %s, command %d: %v", cId, j, err)
 				} else {

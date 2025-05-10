@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -59,7 +60,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		defer func() {
 			if p := recover(); p != nil {
-				util.ErrorLog.Println("ROUTE RECOVERY", fmt.Sprint(p))
+				util.ErrorLog.Println("ROUTE RECOVERY", fmt.Sprint(p), string(debug.Stack()))
 			}
 
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
@@ -121,15 +122,3 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		}
 	}
 }
-
-// func (a *API) BuildProtoService(mux *http.ServeMux, fd protoreflect.FileDescriptor) map[string]SessionHandler {
-//
-// 		mux.HandleFunc(handlerOpts.Pattern,
-// 			a.ValidateTokenMiddleware(
-// 				a.GroupInfoMiddleware(
-// 					,
-// 				),
-// 			),
-// 		)
-// 	}
-// }

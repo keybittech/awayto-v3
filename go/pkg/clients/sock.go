@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"log"
@@ -377,7 +378,7 @@ func (s *Socket) Connected(userSub string) bool {
 	return false
 }
 
-func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams) (*types.SocketResponseParams, error) {
+func (s *Socket) SendCommand(ctx context.Context, cmdType int32, request *types.SocketRequestParams) (*types.SocketResponseParams, error) {
 	finish := util.RunTimer(cmdType)
 	defer finish()
 
@@ -397,7 +398,7 @@ func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams) 
 		}
 	}
 
-	res, err := SendCommand(s, createCmd)
+	res, err := SendCommand(ctx, s, createCmd)
 	err = ChannelError(err, res.Error)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -406,7 +407,7 @@ func (s *Socket) SendCommand(cmdType int32, request *types.SocketRequestParams) 
 	return res.SocketResponseParams, nil
 }
 
-func (s *Socket) StoreConn(ticket string, conn net.Conn) (*types.UserSession, error) {
+func (s *Socket) StoreConn(ctx context.Context, ticket string, conn net.Conn) (*types.UserSession, error) {
 	createCmd := func(replyChan chan SocketResponse) SocketCommand {
 		return SocketCommand{
 			WorkerCommandParams: &types.WorkerCommandParams{
@@ -423,7 +424,7 @@ func (s *Socket) StoreConn(ticket string, conn net.Conn) (*types.UserSession, er
 		}
 	}
 
-	res, err := SendCommand(s, createCmd)
+	res, err := SendCommand(ctx, s, createCmd)
 	err = ChannelError(err, res.Error)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -436,8 +437,8 @@ func (s *Socket) StoreConn(ticket string, conn net.Conn) (*types.UserSession, er
 	}, nil
 }
 
-func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
-	response, err := s.SendCommand(CreateSocketTicketSocketCommand, &types.SocketRequestParams{
+func (s *Socket) GetSocketTicket(ctx context.Context, session *types.UserSession) (string, error) {
+	response, err := s.SendCommand(ctx, CreateSocketTicketSocketCommand, &types.SocketRequestParams{
 		UserSub:  session.UserSub,
 		GroupId:  session.GroupId,
 		RoleBits: session.RoleBits,
@@ -450,7 +451,7 @@ func (s *Socket) GetSocketTicket(session *types.UserSession) (string, error) {
 	return response.Ticket, nil
 }
 
-func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) error {
+func (s *Socket) SendMessageBytes(ctx context.Context, userSub, targets string, messageBytes []byte) error {
 	if targets == "" {
 		return util.ErrCheck(noTargetsProvided)
 	}
@@ -458,7 +459,7 @@ func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) 
 		return util.ErrCheck(subRequiredToSend)
 	}
 
-	_, err := s.SendCommand(SendSocketMessageSocketCommand, &types.SocketRequestParams{
+	_, err := s.SendCommand(ctx, SendSocketMessageSocketCommand, &types.SocketRequestParams{
 		UserSub:      userSub,
 		Targets:      targets,
 		MessageBytes: messageBytes,
@@ -470,21 +471,21 @@ func (s *Socket) SendMessageBytes(userSub, targets string, messageBytes []byte) 
 	return nil
 }
 
-func (s *Socket) SendMessage(userSub, targets string, message *types.SocketMessage) error {
+func (s *Socket) SendMessage(ctx context.Context, userSub, targets string, message *types.SocketMessage) error {
 	finish := util.RunTimer()
 	defer finish()
 	if message == nil {
 		return util.ErrCheck(messageRequired)
 	}
-	return s.SendMessageBytes(userSub, targets, util.GenerateMessage(util.DefaultPadding, message))
+	return s.SendMessageBytes(ctx, userSub, targets, util.GenerateMessage(util.DefaultPadding, message))
 }
 
-func (s *Socket) RoleCall(userSub string) error {
+func (s *Socket) RoleCall(ctx context.Context, userSub string) error {
 	if connected := s.Connected(userSub); !connected {
 		return nil
 	}
 
-	response, err := s.SendCommand(GetSubscribedTargetsSocketCommand, &types.SocketRequestParams{
+	response, err := s.SendCommand(ctx, GetSubscribedTargetsSocketCommand, &types.SocketRequestParams{
 		UserSub: userSub,
 	})
 	if err != nil {
@@ -492,7 +493,7 @@ func (s *Socket) RoleCall(userSub string) error {
 	}
 
 	if len(response.Targets) > 0 {
-		err := s.SendMessage(userSub, response.Targets, &types.SocketMessage{
+		err := s.SendMessage(ctx, userSub, response.Targets, &types.SocketMessage{
 			Action: socketActionRoleCall,
 		})
 		if err != nil {

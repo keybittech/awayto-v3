@@ -3,7 +3,6 @@ package handlers
 import (
 	"slices"
 	"strings"
-	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -12,8 +11,6 @@ import (
 
 func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameRequest) (*types.CheckGroupNameResponse, error) {
 	var count int
-
-	time.Sleep(time.Second)
 
 	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT COUNT(*) FROM dbtable_schema.groups WHERE name = $1
@@ -71,8 +68,7 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.SetGroupSessionVersion(info.Ctx, info.Session.GroupId)
-	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.JoinGroupResponse{Success: true}, nil
 }
@@ -99,7 +95,7 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.DeleteUserFromGroup(info.Session.UserSub, info.Session.UserSub, groupId)
+	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.UserSub, info.Session.UserSub, groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -138,19 +134,18 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(info.Session.UserSub, info.Session.UserSub, kcRoleSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.UserSub, info.Session.UserSub, kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if err := h.Socket.RoleCall(info.Session.UserSub); err != nil {
+	if err := h.Socket.RoleCall(info.Ctx, info.Session.UserSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
 	h.Redis.Client().Del(info.Ctx, createdSub+"profile/details")
-	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
-	h.Redis.SetGroupSessionVersion(info.Ctx, info.Session.GroupId)
 
 	return &types.AttachUserResponse{Success: true}, nil
 }

@@ -11,7 +11,7 @@ import (
 
 type RateLimiter struct {
 	Name           string
-	Mu             *sync.Mutex
+	Mu             sync.Mutex
 	LimitedClients map[string]*LimitedClient
 	ExpiryDuration time.Duration
 	LimitNum       rate.Limit
@@ -26,11 +26,8 @@ type LimitedClient struct {
 }
 
 func NewRateLimit(name string, limit rate.Limit, burst int, expiryDuration time.Duration) *RateLimiter {
-	var mu sync.Mutex
-
 	rateLimiter := &RateLimiter{
 		Name:           name,
-		Mu:             &mu,
 		LimitedClients: make(map[string]*LimitedClient),
 		ExpiryDuration: expiryDuration,
 		LimitNum:       limit,

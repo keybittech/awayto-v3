@@ -13,7 +13,7 @@ func mockServer() *httptest.Server {
 
 	handler.HandleFunc("/test", func(w http.ResponseWriter, r *http.Request) {
 		if len(r.URL.Query()) > 0 {
-			w.Write([]byte("response"))
+			w.Write([]byte("has_query"))
 		} else {
 			w.Write([]byte("OK"))
 		}
@@ -103,7 +103,8 @@ func TestGetWithParams(t *testing.T) {
 		want    []byte
 		wantErr bool
 	}{
-		{name: "valid URL with query params", url: "/test", headers: nil, params: url.Values{"key": {"value"}}, want: []byte("OK"), wantErr: false},
+		{name: "valid URL with query params", url: "/test", headers: nil, params: url.Values{"key": {"value"}}, want: []byte("has_query"), wantErr: false},
+		{name: "valid URL with query params", url: "/test", headers: nil, params: nil, want: []byte("OK"), wantErr: false},
 		{name: "invalid URL with query params", url: "/error", headers: nil, params: url.Values{"key": {"value"}}, want: nil, wantErr: true},
 	}
 
@@ -120,7 +121,7 @@ func TestGetWithParams(t *testing.T) {
 				return
 			}
 			if !bytes.Equal(got, tt.want) {
-				t.Errorf("GetWithParams() = %v, want %v", got, tt.want)
+				t.Errorf("GetWithParams() = %v, want %v", string(got), string(tt.want))
 			}
 		})
 	}

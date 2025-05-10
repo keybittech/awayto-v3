@@ -3,7 +3,7 @@ OR REPLACE VIEW dbview_schema.enabled_budgets AS
 SELECT
   id,
   name,
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.budgets
@@ -15,7 +15,7 @@ OR REPLACE VIEW dbview_schema.enabled_timelines AS
 SELECT
   id,
   name,
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.timelines
@@ -27,7 +27,7 @@ OR REPLACE VIEW dbview_schema.enabled_forms AS
 SELECT
   id,
   name,
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.forms
@@ -40,7 +40,7 @@ SELECT
   id,
   group_id as "groupId",
   form_id as "formId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.group_forms
@@ -53,7 +53,7 @@ SELECT
   id,
   form,
   form_id as "formId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.form_versions
@@ -66,7 +66,7 @@ SELECT
   id,
   submission,
   form_version_id as "formVersionId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.form_version_submissions
@@ -81,7 +81,7 @@ SELECT
   cost,
   form_id as "formId",
   survey_id as "surveyId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.services
@@ -94,7 +94,7 @@ SELECT
   id,
   group_id as "groupId",
   service_addon_id as "serviceAddonId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.group_service_addons
@@ -107,7 +107,7 @@ SELECT
   id,
   parent_uuid as "parentUuid",
   service_addon_id as "serviceAddonId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.uuid_service_addons
@@ -120,7 +120,7 @@ SELECT
   id,
   group_id as "groupId",
   service_id as "serviceId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.group_services
@@ -132,7 +132,7 @@ OR REPLACE VIEW dbview_schema.enabled_service_addons AS
 SELECT
   id,
   name,
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.service_addons
@@ -148,7 +148,7 @@ SELECT
   survey_id as "surveyId",
   name,
   multiplier,
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.service_tiers
@@ -162,7 +162,7 @@ SELECT
   name,
   email,
   phone,
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.contacts
@@ -181,7 +181,7 @@ SELECT
   bracket_time_unit_id as "bracketTimeUnitId",
   slot_time_unit_id as "slotTimeUnitId",
   slot_duration as "slotDuration",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.schedules
@@ -194,7 +194,7 @@ SELECT
   id,
   group_id as "groupId",
   schedule_id as "scheduleId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.group_schedules
@@ -207,7 +207,7 @@ SELECT
   id,
   group_schedule_id as "groupScheduleId",
   user_schedule_id as "userScheduleId",
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.group_user_schedules
@@ -222,7 +222,7 @@ SELECT
   sb.duration,
   sb.multiplier,
   sb.automatic,
-  sb.created_on as "createdOn",
+  sb.created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.schedule_brackets sb
@@ -253,7 +253,7 @@ SELECT
   es.name as "serviceName",
   q.service_form_version_submission_id as "serviceFormVersionSubmissionId",
   q.tier_form_version_submission_id as "tierFormVersionSubmissionId",
-  q.created_on as "createdOn",
+  q.created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.quotes q
@@ -273,7 +273,7 @@ SELECT
   b.schedule_bracket_slot_id as "scheduleBracketSlotId",
   b.tier_survey_version_submission_id as "tierSurveyVersionSubmissionId",
   b.service_survey_version_submission_id as "serviceSurveyVersionSubmissionId",
-  b.created_on as "createdOn",
+  b.created_on::TEXT as "createdOn",
   ROW_TO_JSON(q.*) as quote,
   ROW_TO_JSON(es.*) as service,
   ROW_TO_JSON(esbs.*) as "scheduleBracketSlot",
@@ -294,7 +294,7 @@ SELECT
   id,
   contact_id as "contactId",
   details,
-  created_on as "createdOn",
+  created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM
   dbtable_schema.payments
@@ -315,8 +315,7 @@ FROM
       (
         SELECT
           esa.id,
-          esa.name,
-          sta.created_on as "createdOn"
+          esa.name
         FROM
           dbtable_schema.service_tier_addons sta
           LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = sta.service_addon_id

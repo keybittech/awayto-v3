@@ -73,11 +73,14 @@ func (a *API) InitSockServer() {
 			return
 		}
 
-		userSession, err := a.Handlers.Socket.StoreConn(ticket, conn)
+		connCtx, cancelConnCtx := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
+		userSession, err := a.Handlers.Socket.StoreConn(connCtx, ticket, conn)
 		if err != nil {
+			cancelConnCtx()
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
+		cancelConnCtx()
 
 		socketId := util.GetColonJoined(userSession.UserSub, connId)
 
@@ -93,7 +96,9 @@ func (a *API) InitSockServer() {
 				UserSession: userSession,
 			}
 
-			err = ds.InitDbSocketConnection(req.Context(), connId)
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
+			defer cancel()
+			err = ds.InitDbSocketConnection(ctx, connId)
 			if err != nil {
 				util.ErrorLog.Println(util.ErrCheck(err))
 				return
@@ -108,7 +113,9 @@ func (a *API) InitSockServer() {
 				UserSession: userSession,
 			}
 
-			a.TearDownSocketConnection(req.Context(), socketId, connId, ds)
+			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
+			defer cancel()
+			a.TearDownSocketConnection(ctx, socketId, connId, ds)
 		}()
 
 		err = a.Handlers.Redis.InitRedisSocketConnection(req.Context(), socketId)
@@ -177,7 +184,9 @@ func (a *API) InitSockServer() {
 					return
 				}
 
-				err := a.Handlers.Socket.SendMessage(userSession.UserSub, connId, &types.SocketMessage{
+				ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
+				defer cancel()
+				err := a.Handlers.Socket.SendMessage(ctx, userSession.UserSub, connId, &types.SocketMessage{
 					Action:  socketActionPingPong,
 					Payload: PING,
 				})
@@ -261,6 +270,7 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
+		ctx := context.Background()
 
 		topics, err := a.Handlers.Redis.HandleUnsub(ctx, socketId)
 		if err != nil {
@@ -269,7 +279,7 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 		}
 
 		for topic, targets := range topics {
-			a.Handlers.Socket.SendMessage(ds.UserSession.UserSub, targets, &types.SocketMessage{
+			a.Handlers.Socket.SendMessage(context.Background(), ds.UserSession.UserSub, targets, &types.SocketMessage{
 				Action:  socketActionUnsubscribeTopic,
 				Topic:   topic,
 				Payload: socketId,
@@ -305,7 +315,7 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 	go func() {
 		defer wg.Done()
 
-		_, err := a.Handlers.Socket.SendCommand(clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
+		_, err := a.Handlers.Socket.SendCommand(context.Background(), clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
 			UserSub: ds.UserSession.UserSub,
 			ConnId:  connId,
 		})

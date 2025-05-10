@@ -34,12 +34,12 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.DeleteUserFromGroup(info.Session.UserSub, userSub, oldSubgroupExternalId)
+	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.UserSub, userSub, oldSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(info.Session.UserSub, userSub, newSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.UserSub, userSub, newSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -59,13 +59,6 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 
 	// Target user will see their roles persisted through cache with this
 	h.Redis.Client().Del(info.Ctx, userSub+"profile/details")
-	h.Redis.DeleteSession(info.Ctx, info.Session.UserSub)
-	// response := make([]*types.UserRolePair, 1)
-	// response[0] = &types.UserRolePair{
-	// 	Id:       userId,
-	// 	RoleId:   roleId,
-	// 	RoleName: roleName,
-	// }
 
 	return &types.PatchGroupUserResponse{Success: true}, nil
 }

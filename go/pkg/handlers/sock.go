@@ -6,7 +6,7 @@ import (
 )
 
 func (h *Handlers) GetSocketTicket(info ReqInfo, data *types.GetSocketTicketRequest) (*types.GetSocketTicketResponse, error) {
-	ticket, err := h.Socket.GetSocketTicket(info.Session)
+	ticket, err := h.Socket.GetSocketTicket(info.Ctx, info.Session)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

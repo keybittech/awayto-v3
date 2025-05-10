@@ -1,10 +1,10 @@
 package handlers
 
 import (
-	"encoding/json"
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -139,25 +139,14 @@ func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*t
 }
 
 func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdRequest) (*types.GetServiceByIdResponse, error) {
-	service := &types.IService{}
-
-	var tierBytes []byte
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT id, name, "formId", "surveyId", "createdOn"::TEXT, tiers
+	service, err := clients.QueryProto[types.IService](info.Ctx, info.Tx, `
+		SELECT id, name, "formId", "surveyId", "createdOn", tiers
 		FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
-	`, data.GetId()).Scan(&service.Id, &service.Name, &service.FormId, &service.SurveyId, &service.CreatedOn, &tierBytes)
+	`, data.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	serviceTiers := make(map[string]*types.IServiceTier)
-	err = json.Unmarshal(tierBytes, &serviceTiers)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	service.Tiers = serviceTiers
 
 	return &types.GetServiceByIdResponse{Service: service}, nil
 }

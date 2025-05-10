@@ -17,6 +17,7 @@ type Handlers struct {
 	Redis     *clients.Redis
 	Keycloak  *clients.Keycloak
 	Socket    *clients.Socket
+	Cache     *HandlerCache
 }
 
 func NewHandlers() *Handlers {
@@ -27,6 +28,7 @@ func NewHandlers() *Handlers {
 		Redis:     clients.InitRedis(),
 		Keycloak:  clients.InitKeycloak(),
 		Socket:    clients.InitSocket(),
+		Cache:     &HandlerCache{},
 	}
 
 	h.registerHandlers()

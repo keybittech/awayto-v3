@@ -16,6 +16,7 @@ message AuthRequestParams {
   string lastName = 8;
   string token = 9;
   repeated KeycloakRole roles = 10;
+  string path = 11;
 }
 
 message AuthResponseParams {
@@ -23,10 +24,11 @@ message AuthResponseParams {
   UserSession userSession = 2;
   repeated KeycloakUser users = 3;
   KeycloakGroup group = 4;
-  repeated KeycloakGroup groups = 5;
-  repeated KeycloakRole roles = 6;
-  repeated ClientRoleMappingRole mappings = 7;
-  bool valid = 8;
+  KeycloakGroup subGroup = 5;
+  repeated KeycloakGroup groups = 6;
+  repeated KeycloakRole roles = 7;
+  repeated ClientRoleMappingRole mappings = 8;
+  bool valid = 9;
 }
 
 message AuthEventDetails {

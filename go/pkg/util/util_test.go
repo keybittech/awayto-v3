@@ -6,6 +6,7 @@ import (
 	"os"
 	"path/filepath"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 )
@@ -13,6 +14,31 @@ import (
 func reset(b *testing.B) {
 	b.ReportAllocs()
 	b.ResetTimer()
+}
+
+func BenchmarkMapSyncWrite(b *testing.B) {
+	var m sync.Map
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			m.Store(i, i)
+			i++
+		}
+	})
+}
+
+func BenchmarkMapMutexWrite(b *testing.B) {
+	var mu sync.Mutex
+	m := make(map[int]int)
+	b.RunParallel(func(pb *testing.PB) {
+		i := 0
+		for pb.Next() {
+			mu.Lock()
+			m[i] = i
+			mu.Unlock()
+			i++
+		}
+	})
 }
 
 func TestNewNullString(t *testing.T) {

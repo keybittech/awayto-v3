@@ -53,10 +53,11 @@ func Get(url string, headers http.Header) ([]byte, error) {
 
 func GetWithParams(url string, headers http.Header, queryParams url.Values) ([]byte, error) {
 	client := &http.Client{}
-	req, err := http.NewRequest("GET", url, strings.NewReader(queryParams.Encode()))
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return nil, ErrCheck(err)
 	}
+	req.URL.RawQuery = queryParams.Encode()
 
 	for key, values := range headers {
 		for _, value := range values {
@@ -68,7 +69,6 @@ func GetWithParams(url string, headers http.Header, queryParams url.Values) ([]b
 	if err != nil {
 		return nil, ErrCheck(err)
 	}
-
 	defer resp.Body.Close()
 
 	if !successStatus(resp.StatusCode) {

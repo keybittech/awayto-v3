@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"log"
 	"net"
 	"reflect"
@@ -25,7 +26,7 @@ func init() {
 		GroupId:  "group-id",
 		RoleBits: 2, // admin is role 2
 	}
-	testTicket, err = testSocket.GetSocketTicket(testSocketUserSession)
+	testTicket, err = testSocket.GetSocketTicket(context.Background(), testSocketUserSession)
 	if err != nil || testTicket == "" {
 		log.Fatal(err)
 	}
@@ -103,7 +104,7 @@ func doSendCommandBench(clientCount int, b *testing.B) {
 		clientIndex := int32((int(atomic.AddInt32(new(int32), 1)-1) % clientCount) % 6)
 
 		for pb.Next() {
-			_, err := SendCommand(socket, createCommands[clientIndex])
+			_, err := SendCommand(context.Background(), socket, createCommands[clientIndex])
 			if err != nil {
 				b.Errorf("send command error %v", err)
 			}
@@ -145,7 +146,7 @@ func TestSocket_GetSocketTicket(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := testSocket.GetSocketTicket(tt.args.session)
+			got, err := testSocket.GetSocketTicket(context.Background(), tt.args.session)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Socket.GetSocketTicket(%v) error = %v, wantErr %v", tt.args.session, err, tt.wantErr)
 				return
@@ -172,7 +173,7 @@ func TestSocket_GetSocketTicket(t *testing.T) {
 func TestSocket_InitConnection(t *testing.T) {
 	initSession := testSocketUserSession
 	initSession.UserSub = "user-init-conn"
-	ticket, err := testSocket.GetSocketTicket(initSession)
+	ticket, err := testSocket.GetSocketTicket(context.Background(), initSession)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -197,7 +198,7 @@ func TestSocket_InitConnection(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 
-			_, err := testSocket.SendCommand(CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
+			_, err := testSocket.SendCommand(context.Background(), CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
 				UserSub: tt.args.userSub,
 				Ticket:  tt.args.ticket,
 			})
@@ -233,12 +234,12 @@ func TestSocket_InitConnection(t *testing.T) {
 func getNewConnection(t *testing.T, userSub string) (*types.UserSession, string, string) {
 	newSession := testSocketUserSession
 	newSession.UserSub = userSub
-	ticket, err := testSocket.GetSocketTicket(newSession)
+	ticket, err := testSocket.GetSocketTicket(context.Background(), newSession)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	_, err = testSocket.StoreConn(ticket, &util.NullConn{})
+	_, err = testSocket.StoreConn(context.Background(), ticket, &util.NullConn{})
 	if err != nil {
 		t.Errorf("failed to store connection err %v", err)
 	}
@@ -270,7 +271,7 @@ func TestSocket_SendMessageBytes(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := testSocket.SendMessageBytes(tt.args.userSub, tt.args.targets, tt.args.messageBytes); (err != nil) != tt.wantErr {
+			if err := testSocket.SendMessageBytes(context.Background(), tt.args.userSub, tt.args.targets, tt.args.messageBytes); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.SendMessageBytes(%v, %v) error = %v, wantErr %v", tt.args.messageBytes, tt.args.targets, err, tt.wantErr)
 			}
 		})
@@ -297,7 +298,7 @@ func TestSocket_SendMessage(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := testSocket.SendMessage(tt.args.userSub, tt.args.targets, tt.args.message); (err != nil) != tt.wantErr {
+			if err := testSocket.SendMessage(context.Background(), tt.args.userSub, tt.args.targets, tt.args.message); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.SendMessage(%v, %v) error = %v, wantErr %v", tt.args.message, tt.args.targets, err, tt.wantErr)
 			}
 		})
@@ -317,7 +318,7 @@ func TestSocket_RoleCall(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := testSocket.RoleCall(tt.args.userSub); (err != nil) != tt.wantErr {
+			if err := testSocket.RoleCall(context.Background(), tt.args.userSub); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.RoleCall(%v) error = %v, wantErr %v", tt.args.userSub, err, tt.wantErr)
 			}
 		})
@@ -737,7 +738,7 @@ func TestSocket_SendCommand(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.s.SendCommand(tt.args.cmdType, tt.args.request)
+			got, err := tt.s.SendCommand(context.Background(), tt.args.cmdType, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Socket.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.request, err, tt.wantErr)
 				return

@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"github.com/jackc/pgx/v5"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -23,18 +23,12 @@ func (h *Handlers) PostGroupServiceAddon(info ReqInfo, data *types.PostGroupServ
 }
 
 func (h *Handlers) GetGroupServiceAddons(info ReqInfo, data *types.GetGroupServiceAddonsRequest) (*types.GetGroupServiceAddonsResponse, error) {
-	rows, err := info.Tx.Query(info.Ctx, `
+	groupServiceAddons, err := clients.QueryProtos[types.IGroupServiceAddon](info.Ctx, info.Tx, `
 		SELECT egsa.id, egsa."groupId", TO_JSONB(esa.*) as "serviceAddon" 
 		FROM dbview_schema.enabled_group_service_addons egsa
 		LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = egsa."serviceAddonId"
 		WHERE egsa."groupId" = $1
 	`, info.Session.GroupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	defer rows.Close()
-
-	groupServiceAddons, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IGroupServiceAddon])
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

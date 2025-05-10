@@ -1,9 +1,9 @@
 package handlers
 
 import (
-	"database/sql"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -65,10 +65,9 @@ func (h *Handlers) PatchForm(info ReqInfo, data *types.PatchFormRequest) (*types
 }
 
 func (h *Handlers) GetForms(info ReqInfo, data *types.GetFormsRequest) (*types.GetFormsResponse, error) {
-	var forms []*types.IProtoForm
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &forms, `
-		SELECT * FROM dbview_schema.enabled_forms
+	forms, err := clients.QueryProtos[types.IProtoForm](info.Ctx, info.Tx, `
+		SELECT *
+		FROM dbview_schema.enabled_forms
 	`)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -78,21 +77,16 @@ func (h *Handlers) GetForms(info ReqInfo, data *types.GetFormsRequest) (*types.G
 }
 
 func (h *Handlers) GetFormById(info ReqInfo, data *types.GetFormByIdRequest) (*types.GetFormByIdResponse, error) {
-	var forms []*types.IProtoForm
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &forms, `
-		SELECT * FROM dbview_schema.enabled_forms
+	form, err := clients.QueryProto[types.IProtoForm](info.Ctx, info.Tx, `
+		SELECT *
+		FROM dbview_schema.enabled_forms
 		WHERE id = $1
 	`, data.GetId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if len(forms) == 0 {
-		return nil, sql.ErrNoRows
-	}
-
-	return &types.GetFormByIdResponse{Form: forms[0]}, nil
+	return &types.GetFormByIdResponse{Form: form}, nil
 }
 
 func (h *Handlers) DeleteForm(info ReqInfo, data *types.DeleteFormRequest) (*types.DeleteFormResponse, error) {

@@ -134,4 +134,10 @@ func RegisterTimestamp(tm *pgtype.Map) {
 		OID:   pgtype.TimestampOID,
 		Codec: &TimestampCodec{},
 	})
+
+	tm.RegisterType(&pgtype.Type{
+		Name:  "timestamptz",
+		OID:   pgtype.TimestamptzOID,
+		Codec: &TimestampCodec{},
+	})
 }

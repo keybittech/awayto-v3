@@ -1,6 +1,7 @@
 package clients
 
 import (
+	"context"
 	"reflect"
 	"testing"
 
@@ -24,7 +25,7 @@ func TestKeycloak_UpdateUser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.k.UpdateUser("test", tt.args.id, tt.args.firstName, tt.args.lastName); (err != nil) != tt.wantErr {
+			if err := tt.k.UpdateUser(context.Background(), "test", tt.args.id, tt.args.firstName, tt.args.lastName); (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.UpdateUser(%v, %v, %v) error = %v, wantErr %v", tt.args.id, tt.args.firstName, tt.args.lastName, err, tt.wantErr)
 			}
 		})
@@ -41,7 +42,7 @@ func TestKeycloak_GetGroupAdminRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := tt.k.GetGroupAdminRoles("test"); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := tt.k.GetGroupAdminRoles(context.Background(), "test"); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Keycloak.GetGroupAdminRoles() = %v, want %v", got, tt.want)
 			}
 		})
@@ -62,7 +63,7 @@ func TestKeycloak_GetGroupSiteRoles(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got, _ := tt.k.GetGroupSiteRoles("test", tt.args.groupId); !reflect.DeepEqual(got, tt.want) {
+			if got, _ := tt.k.GetGroupSiteRoles(context.Background(), "test", tt.args.groupId); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("Keycloak.GetGroupSiteRoles(%v) = %v, want %v", tt.args.groupId, got, tt.want)
 			}
 		})
@@ -84,7 +85,7 @@ func TestKeycloak_CreateGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.k.CreateGroup("test", tt.args.name)
+			got, err := tt.k.CreateGroup(context.Background(), "test", tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.CreateGroup(%v) error = %v, wantErr %v", tt.args.name, err, tt.wantErr)
 				return
@@ -111,7 +112,7 @@ func TestKeycloak_GetGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.k.GetGroup("test", tt.args.id)
+			got, err := tt.k.GetGroup(context.Background(), "test", tt.args.id)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.GetGroup(%v) error = %v, wantErr %v", tt.args.id, err, tt.wantErr)
 				return
@@ -138,7 +139,7 @@ func TestKeycloak_GetGroupByName(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.k.GetGroupByName("test", tt.args.name)
+			got, err := tt.k.GetGroupByName(context.Background(), "test", tt.args.name)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.GetGroupByName(%v) error = %v, wantErr %v", tt.args.name, err, tt.wantErr)
 				return
@@ -165,7 +166,7 @@ func TestKeycloak_GetGroupSubgroups(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.k.GetGroupSubgroups("test", tt.args.groupId)
+			got, err := tt.k.GetGroupSubGroups(context.Background(), "test", tt.args.groupId)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.GetGroupSubgroups(%v) error = %v, wantErr %v", tt.args.groupId, err, tt.wantErr)
 				return
@@ -191,7 +192,7 @@ func TestKeycloak_DeleteGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.k.DeleteGroup("test", tt.args.id); (err != nil) != tt.wantErr {
+			if err := tt.k.DeleteGroup(context.Background(), "test", tt.args.id); (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.DeleteGroup(%v) error = %v, wantErr %v", tt.args.id, err, tt.wantErr)
 			}
 		})
@@ -213,7 +214,7 @@ func TestKeycloak_UpdateGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.k.UpdateGroup("test", tt.args.id, tt.args.name); (err != nil) != tt.wantErr {
+			if err := tt.k.UpdateGroup(context.Background(), "test", tt.args.id, tt.args.name); (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.UpdateGroup(%v, %v) error = %v, wantErr %v", tt.args.id, tt.args.name, err, tt.wantErr)
 			}
 		})
@@ -236,7 +237,7 @@ func TestKeycloak_CreateOrGetSubGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.k.CreateOrGetSubGroup("test", tt.args.groupExternalId, tt.args.subGroupName)
+			got, err := tt.k.CreateOrGetSubGroup(context.Background(), "test", tt.args.groupExternalId, tt.args.subGroupName)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.CreateOrGetSubGroup(%v, %v) error = %v, wantErr %v", tt.args.groupExternalId, tt.args.subGroupName, err, tt.wantErr)
 				return
@@ -263,7 +264,7 @@ func TestKeycloak_AddRolesToGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.k.AddRolesToGroup("test", tt.args.id, tt.args.roles); (err != nil) != tt.wantErr {
+			if err := tt.k.AddRolesToGroup(context.Background(), "test", tt.args.id, tt.args.roles); (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.AddRolesToGroup(%v, %v) error = %v, wantErr %v", tt.args.id, tt.args.roles, err, tt.wantErr)
 			}
 		})
@@ -285,7 +286,7 @@ func TestKeycloak_AddUserToGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.k.AddUserToGroup("test", tt.args.userId, tt.args.groupId); (err != nil) != tt.wantErr {
+			if err := tt.k.AddUserToGroup(context.Background(), "test", tt.args.userId, tt.args.groupId); (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.AddUserToGroup(%v, %v) error = %v, wantErr %v", tt.args.userId, tt.args.groupId, err, tt.wantErr)
 			}
 		})
@@ -307,7 +308,7 @@ func TestKeycloak_DeleteUserFromGroup(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.k.DeleteUserFromGroup("test", tt.args.userId, tt.args.groupId); (err != nil) != tt.wantErr {
+			if err := tt.k.DeleteUserFromGroup(context.Background(), "test", tt.args.userId, tt.args.groupId); (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.DeleteUserFromGroup(%v, %v) error = %v, wantErr %v", tt.args.userId, tt.args.groupId, err, tt.wantErr)
 			}
 		})
@@ -451,7 +452,7 @@ func TestKeycloak_SendCommand(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.k.SendCommand(tt.args.cmdType, tt.args.request)
+			got, err := tt.k.SendCommand(context.Background(), tt.args.cmdType, tt.args.request)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("Keycloak.SendCommand(%v, %v) error = %v, wantErr %v", tt.args.cmdType, tt.args.request, err, tt.wantErr)
 				return

@@ -56,7 +56,7 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 
 		h.Redis.Client().Del(info.Ctx, quoteUserSub+"profile/details")
 
-		if err := h.Socket.RoleCall(quoteUserSub); err != nil {
+		if err := h.Socket.RoleCall(info.Ctx, quoteUserSub); err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
