@@ -2,7 +2,7 @@ package clients
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json"
 	"errors"
 	"fmt"
 	"net/http"

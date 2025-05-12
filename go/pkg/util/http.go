@@ -2,7 +2,7 @@ package util
 
 import (
 	"bytes"
-	"encoding/json"
+	json "encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -116,7 +116,7 @@ func Mutate(method string, url string, headers http.Header, dataBody []byte) ([]
 		return respBody, nil
 	}
 
-	if json.Valid(respBody) {
+	if len(respBody) > 2 {
 		var errRes ErrRes
 
 		err = json.Unmarshal(respBody, &errRes)

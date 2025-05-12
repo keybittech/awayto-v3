@@ -88,11 +88,11 @@ func BenchmarkApiCache(b *testing.B) {
 }
 
 func BenchmarkApiNoCache(b *testing.B) {
-	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 20000, 10000, "/api/v1/sock/ticket")
+	b.Run("sock_ticket", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 100000, 100000, "/api/v1/sock/ticket")
 	})
-	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 20000, 10000, "/api/v1/profile/details")
+	b.Run("profile_details", func(bb *testing.B) {
+		doBenchmarkRateLimit(bb, 100000, 100000, "/api/v1/profile/details")
 	})
 }
 

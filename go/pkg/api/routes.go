@@ -54,13 +54,13 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		responseHandler = ProtoResponseHandler
 	}
 
-	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-		var deferredError error
+	ReadHandler := func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+		var deferredError, err error
 		var pb proto.Message
 
 		defer func() {
 			if p := recover(); p != nil {
-				util.ErrorLog.Println("ROUTE RECOVERY", fmt.Sprint(p), string(debug.Stack()))
+				util.ErrorLog.Println("Reader Panic Recovery:", fmt.Sprint(p), string(debug.Stack()))
 			}
 
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
@@ -70,7 +70,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			}
 		}()
 
-		pb, err := bodyParser(w, req, handlerOpts, serviceType)
+		pb, err = bodyParser(w, req, handlerOpts, serviceType)
 		if err != nil {
 			deferredError = util.ErrCheck(err)
 			return
@@ -81,7 +81,63 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		util.ParseProtoPathParams(
 			pb,
 			strings.Split(handlerOpts.ServiceMethodURL, "/"),
-			strings.Split(strings.TrimPrefix(req.URL.Path, "/api"), "/"),
+			strings.Split(req.URL.Path[4:], "/"), // remove /api
+		)
+
+		ctx := req.Context()
+
+		reqInfo := handlers.ReqInfo{
+			Ctx:     ctx,
+			W:       w,
+			Req:     req,
+			Session: session,
+			Batch:   a.Handlers.Database.DatabaseClient.OpenBatch(session.UserSub, session.GroupId, session.RoleBits),
+		}
+
+		results, err := handlerFunc(reqInfo, pb)
+		if err != nil {
+			deferredError = util.ErrCheck(err)
+			return
+		}
+
+		if results != nil {
+			_, err = responseHandler(w, results)
+			if err != nil {
+				deferredError = util.ErrCheck(err)
+				return
+			}
+		}
+
+	}
+
+	WriteHandler := func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+		var deferredError, err error
+		var pb proto.Message
+
+		defer func() {
+			if p := recover(); p != nil {
+				util.ErrorLog.Println("Writer Panic Recovery:", fmt.Sprint(p), string(debug.Stack()))
+			}
+
+			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
+
+			if deferredError != nil {
+				util.RequestError(w, deferredError.Error(), ignoreFields, pb)
+			}
+		}()
+
+		pb, err = bodyParser(w, req, handlerOpts, serviceType)
+		if err != nil {
+			deferredError = util.ErrCheck(err)
+			return
+		}
+
+		// Parse query and path parameters
+		util.ParseProtoQueryParams(pb, req.URL.Query())
+		util.ParseProtoPathParams(
+			pb,
+			strings.Split(handlerOpts.ServiceMethodURL, "/"),
+			strings.Split(req.URL.Path[4:], "/"), // remove /api
 		)
 
 		ctx := req.Context()
@@ -120,5 +176,11 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 				return
 			}
 		}
+	}
+
+	if strings.HasPrefix(handlerOpts.Pattern, "GET") {
+		return ReadHandler
+	} else {
+		return WriteHandler
 	}
 }

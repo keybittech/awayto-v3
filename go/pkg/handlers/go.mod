@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go/pkg/handlers
 
-go 1.24.0
+go 1.24.3
 
 require (
 	github.com/bufbuild/protovalidate-go v0.10.0

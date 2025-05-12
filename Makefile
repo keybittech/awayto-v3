@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-GO_VERSION=go1.24.0.linux-amd64
+GO_VERSION=go1.24.3.linux-amd64
 NODE_VERSION=v22.13.1
 
 # manually manage path for makefile use
@@ -157,10 +157,11 @@ RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 GO_ENVFILE_FLAG=GO_ENVFILE_LOC=${PROJECT_DIR}/.env
 GO_DEV_FLAGS=$(GO_ENVFILE_FLAG) LOG_LEVEL=debug
 GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1} -v=$${V:-false}
-GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false}
+GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false}
 GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} # -cpuprofile=cpu.prof
-GO_BENCH_EXEC_FLAGS=-test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} # $${PROF:-} # -cpuprofile=cpu.prof
+GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} # $${PROF:-} # -cpuprofile=cpu.prof
 
+GO=GOEXPERIMENT=jsonv2 gotip# go
 SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 
 #################################
@@ -263,7 +264,7 @@ $(GO_HANDLERS_REGISTER): $(shell find $(GO_HANDLERS_DIR) -type f)
 
 $(GO_TARGET): working/proto-stamp $(shell find $(GO_SRC)/{main.go,pkg} -type f) # $(GO_MOCK_TARGET)
 	$(call set_local_unix_sock_dir)
-	go build -C $(GO_SRC) -o $(GO_TARGET) .
+	$(GO) build -C $(GO_SRC) -o $(GO_TARGET) .
 
 # $(GO_MOCK_TARGET): $(GO_INTERFACES_FILE)
 # 	@mkdir -p $(@D)
@@ -341,10 +342,10 @@ test_gen:
 
 .PHONY: go_test_unit_build
 go_test_unit_build:
-	go test -C $(GO_API_DIR) -c -o api.$(BINARY_TEST)
-	go test -C $(GO_CLIENTS_DIR) -c -o clients.$(BINARY_TEST)
-	go test -C $(GO_HANDLERS_DIR) -c -o handlers.$(BINARY_TEST)
-	go test -C $(GO_UTIL_DIR) -c -o util.$(BINARY_TEST)
+	$(GO) test -C $(GO_API_DIR) -c -o api.$(BINARY_TEST)
+	$(GO) test -C $(GO_CLIENTS_DIR) -c -o clients.$(BINARY_TEST)
+	$(GO) test -C $(GO_HANDLERS_DIR) -c -o handlers.$(BINARY_TEST)
+	$(GO) test -C $(GO_UTIL_DIR) -c -o util.$(BINARY_TEST)
 
 .PHONY: go_test_unit
 go_test_unit: $(GO_TARGET) go_test_unit_build
@@ -359,36 +360,43 @@ go_test_unit: $(GO_TARGET) go_test_unit_build
 go_test_ui: $(GO_TARGET)
 	rm -f demos/*.webm
 	$(call clean_test)
-	go test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
-	$(GO_ENVFILE_FLAG) exec $(GO_PLAYWRIGHT_DIR)/playwright.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
+	-$(GO_ENVFILE_FLAG) exec $(GO_PLAYWRIGHT_DIR)/playwright.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_integration
 go_test_integration: $(GO_TARGET)
 	$(call clean_test)
-	go test -C $(GO_INTEGRATIONS_DIR) -short -c -o integration.$(BINARY_TEST)
-	$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO) test -C $(GO_INTEGRATIONS_DIR) -short -c -o integration.$(BINARY_TEST)
+	-$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_integration_long
 go_test_integration_long: $(GO_TARGET)
 	$(call clean_test)
-	go test -C $(GO_INTEGRATIONS_DIR) -c -o integration.long.$(BINARY_TEST)
-	$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.long.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO) test -C $(GO_INTEGRATIONS_DIR) -c -o integration.long.$(BINARY_TEST)
+	-$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.long.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_integration_results
 go_test_integration_results:
 	less $(GO_INTEGRATIONS_DIR)/integration_results.json
 
+.PHONY: go_test_bench_build
+go_test_bench_build:
+	$(GO) test -C $(GO_API_DIR) -c -o api.bench.$(BINARY_TEST) ./...
+	$(GO) test -C $(GO_CLIENTS_DIR) -c -o clients.bench.$(BINARY_TEST) ./...
+	$(GO) test -C $(GO_HANDLERS_DIR) -c -o handlers.bench.$(BINARY_TEST) ./...
+	$(GO) test -C $(GO_UTIL_DIR) -c -o util.bench.$(BINARY_TEST) ./...
+
 .PHONY: go_test_bench
-go_test_bench: $(GO_TARGET)
+go_test_bench: $(GO_TARGET) go_test_bench_build
 	$(call clean_test)
-	go test -C $(GO_API_DIR) -c -o api.bench.$(BINARY_TEST) ./...
-	$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
-	go test -C $(GO_CLIENTS_DIR) -c -o clients.bench.$(BINARY_TEST) ./...
-	$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
-	go test -C $(GO_HANDLERS_DIR) -c -o handlers.bench.$(BINARY_TEST) ./...
-	$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
-	go test -C $(GO_UTIL_DIR) -c -o util.bench.$(BINARY_TEST) ./...
-	$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
+	-$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
+	-$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
+	-$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
+	-$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
 
 #################################
 #            DOCKER             #

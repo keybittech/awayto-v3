@@ -66,7 +66,7 @@ func getClientData(numClients int, commandType int32, requestParams *types.Socke
 	}
 	clientIds := make([]string, numClients)
 	clientCommands := make([]func(replyChan chan SocketResponse) SocketCommand, numClients)
-	for i := 0; i < numClients; i++ {
+	for i := range numClients {
 		userIter := int32(i % 6)
 		userClient := integrationTest.TestUsers[userIter]
 		clientIds[userIter] = userClient.UserSession.UserSub
@@ -318,7 +318,7 @@ func TestSocket_RoleCall(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if err := testSocket.RoleCall(context.Background(), tt.args.userSub); (err != nil) != tt.wantErr {
+			if err := testSocket.RoleCall(tt.args.userSub); (err != nil) != tt.wantErr {
 				t.Errorf("Socket.RoleCall(%v) error = %v, wantErr %v", tt.args.userSub, err, tt.wantErr)
 			}
 		})
@@ -688,7 +688,7 @@ func TestSocketCommand_GetReplyChannel(t *testing.T) {
 	tests := []struct {
 		name string
 		cmd  SocketCommand
-		want interface{}
+		want any
 	}{
 		// TODO: Add test cases.
 	}

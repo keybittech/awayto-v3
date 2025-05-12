@@ -200,22 +200,15 @@ func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (
 }
 
 func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequest) (*types.GetScheduleByIdResponse, error) {
-	var schedules []*types.ISchedule
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &schedules, `
+	schedule, err := clients.QueryProto[types.ISchedule](info.Ctx, info.Tx, `
 		SELECT * FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.GetId())
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if len(schedules) == 0 {
-		return nil, util.ErrCheck(util.UserError("No schedules found."))
-	}
-
-	return &types.GetScheduleByIdResponse{Schedule: schedules[0]}, nil
+	return &types.GetScheduleByIdResponse{Schedule: schedule}, nil
 }
 
 func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleRequest) (*types.DeleteScheduleResponse, error) {

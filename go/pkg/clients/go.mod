@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go/pkg/clients
 
-go 1.24.0
+go 1.24.3
 
 require (
 	github.com/golang-jwt/jwt v3.2.2+incompatible

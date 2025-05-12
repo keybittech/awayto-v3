@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go/pkg/api
 
-go 1.24.0
+go 1.24.3
 
 require (
 	github.com/bufbuild/protovalidate-go v0.10.0
@@ -10,7 +10,6 @@ require (
 	github.com/keybittech/awayto-v3/go/pkg/handlers v0.0.0-20250413170509-b98baad0beed
 	github.com/keybittech/awayto-v3/go/pkg/types v0.0.0-00010101000000-000000000000
 	github.com/keybittech/awayto-v3/go/pkg/util v0.0.0-20250413170509-b98baad0beed
-	github.com/redis/go-redis/v9 v9.7.3
 	golang.org/x/time v0.11.0
 	google.golang.org/protobuf v1.36.6
 )
@@ -28,6 +27,7 @@ require (
 	github.com/jackc/pgx/v5 v5.7.4 // indirect
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/lib/pq v1.10.9 // indirect
+	github.com/redis/go-redis/v9 v9.7.3 // indirect
 	github.com/sashabaranov/go-openai v1.38.0 // indirect
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	golang.org/x/crypto v0.31.0 // indirect

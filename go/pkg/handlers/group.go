@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	json "encoding/json"
 	"errors"
 	"slices"
 	"strings"
@@ -159,7 +159,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	h.Cache.SetCachedGroup(newGroupPath, groupId, kcGroupExternalId, groupSub.String(), data.Name, data.Ai)
 	h.Cache.SetCachedSubGroup(kcAdminSubGroup.Path, kcAdminSubGroup.Id, kcAdminSubGroup.Name, newGroupPath)
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
-	_ = h.Socket.RoleCall(info.Ctx, info.Session.UserSub)
+	_ = h.Socket.RoleCall(info.Session.UserSub)
 
 	undos = nil
 	return &types.PostGroupResponse{Code: groupCode}, nil

@@ -142,7 +142,7 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	if err := h.Socket.RoleCall(info.Ctx, info.Session.UserSub); err != nil {
+	if err := h.Socket.RoleCall(info.Session.UserSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 

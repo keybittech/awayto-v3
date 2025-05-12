@@ -2,7 +2,7 @@ package clients
 
 import (
 	"context"
-	"encoding/json"
+	json "encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -145,7 +145,7 @@ func (db *Database) BuildInserts(sb *strings.Builder, size, current int) {
 
 	sb.WriteString("(")
 
-	for i := 0; i < size; i++ {
+	for i := range size {
 		sb.WriteString("$")
 		sb.WriteString(strconv.Itoa(baseIndex + i + 1))
 		if i < size-1 {
@@ -170,7 +170,7 @@ type DatabaseClient struct {
 }
 
 // Open a batch with the intention of adding multiple queries
-func (dbc *DatabaseClient) OpenBatch(ctx context.Context, sub, groupId string, roleBits int64) *pgx.Batch {
+func (dbc *DatabaseClient) OpenBatch(sub, groupId string, roleBits int64) *pgx.Batch {
 	batch := &pgx.Batch{}
 	batch.Queue(setSessionVariablesSQL, sub, groupId, roleBits, "")
 	return batch
@@ -288,7 +288,7 @@ func NewGroupDbSession(pool *pgxpool.Pool, session *types.UserSession) DbSession
 	}
 }
 
-func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, params ...interface{}) pgx.BatchResults {
+func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, params ...any) pgx.BatchResults {
 	batch := &pgx.Batch{}
 
 	batch.Queue(setSessionVariablesSQL, ds.UserSession.UserSub, ds.UserSession.GroupId, ds.UserSession.RoleBits, ds.Topic)
@@ -302,7 +302,7 @@ func (ds DbSession) SessionBatch(ctx context.Context, primaryQuery string, param
 
 var emptyTag = pgconn.CommandTag{}
 
-func (ds DbSession) SessionBatchExec(ctx context.Context, query string, params ...interface{}) (pgconn.CommandTag, error) {
+func (ds DbSession) SessionBatchExec(ctx context.Context, query string, params ...any) (pgconn.CommandTag, error) {
 	results := ds.SessionBatch(ctx, query, params...)
 	defer results.Close()
 
@@ -334,7 +334,7 @@ func (ds DbSession) SessionBatchExec(ctx context.Context, query string, params .
 	return commandTag, nil
 }
 
-func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params ...interface{}) (pgx.Rows, func(), error) {
+func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params ...any) (pgx.Rows, func(), error) {
 	results := ds.SessionBatch(ctx, query, params...)
 
 	if _, err := results.Exec(); err != nil {
@@ -365,7 +365,7 @@ func (ds DbSession) SessionBatchQuery(ctx context.Context, query string, params 
 	return rows, done, nil
 }
 
-func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, params ...interface{}) (pgx.Row, func(), error) {
+func (ds DbSession) SessionBatchQueryRow(ctx context.Context, query string, params ...any) (pgx.Row, func(), error) {
 	results := ds.SessionBatch(ctx, query, params...)
 
 	if _, err := results.Exec(); err != nil {
@@ -414,7 +414,7 @@ func (ds DbSession) SessionSendBatch(ctx context.Context, batch *pgx.Batch) (pgx
 	return results, nil
 }
 
-func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice interface{}, query string, args ...interface{}) error {
+func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice any, query string, args ...any) error {
 
 	protoValue := reflect.ValueOf(protoStructSlice)
 	if protoValue.Kind() != reflect.Ptr || protoValue.Elem().Kind() != reflect.Slice {
@@ -446,7 +446,7 @@ func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice 
 
 	for rows.Next() {
 		newElem := reflect.New(protoType.Elem())
-		var values []interface{}
+		var values []any
 		deferrals := make([]func() error, 0)
 
 		for i, column := range columns {
@@ -458,7 +458,7 @@ func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice 
 					return extractValue(newElem.Elem().Field(index), safeVal)
 				})
 			} else {
-				var noMatch interface{}
+				var noMatch any
 				values = append(values, &noMatch)
 			}
 		}
@@ -483,7 +483,7 @@ func (db *Database) QueryRows(ctx context.Context, tx *PoolTx, protoStructSlice 
 // fieldIndexes returns a map of database column name to struct field index.
 func fieldIndexes(structType reflect.Type) map[string]int {
 	indexes := make(map[string]int)
-	for i := 0; i < structType.NumField(); i++ {
+	for i := range structType.NumField() {
 		field := structType.Field(i)
 		tag := strings.Split(field.Tag.Get("json"), ",")[0]
 		if tag != "" {
@@ -509,7 +509,7 @@ func cachedFieldIndexes(structType reflect.Type) map[string]int {
 
 type JSONSerializer []byte
 
-func (pms *JSONSerializer) Scan(src interface{}) error {
+func (pms *JSONSerializer) Scan(src any) error {
 
 	var source []byte
 
@@ -603,7 +603,7 @@ func extractValue(dst, src reflect.Value) error {
 
 				dstMap := reflect.MakeMap(dstType)
 
-				var tmpMap map[string]json.RawMessage
+				var tmpMap map[string][]byte
 				err := json.Unmarshal(src.Bytes(), &tmpMap)
 				if err != nil {
 					return util.ErrCheck(err)

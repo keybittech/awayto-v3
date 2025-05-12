@@ -8,6 +8,7 @@ import (
 	"net"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -482,7 +483,10 @@ func (s *Socket) SendMessage(ctx context.Context, userSub, targets string, messa
 	return s.SendMessageBytes(ctx, userSub, targets, util.GenerateMessage(util.DefaultPadding, message))
 }
 
-func (s *Socket) RoleCall(ctx context.Context, userSub string) error {
+func (s *Socket) RoleCall(userSub string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
 	if connected := s.Connected(userSub); !connected {
 		return nil
 	}

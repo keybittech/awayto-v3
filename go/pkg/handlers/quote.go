@@ -1,7 +1,7 @@
 package handlers
 
 import (
-	"encoding/json"
+	json "encoding/json"
 	"strings"
 	"time"
 
@@ -83,7 +83,7 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 	h.Redis.Client().Del(info.Ctx, staffSub+"quotes")
 	h.Redis.Client().Del(info.Ctx, staffSub+"profile/details")
 
-	if err := h.Socket.RoleCall(info.Ctx, staffSub); err != nil {
+	if err := h.Socket.RoleCall(staffSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
