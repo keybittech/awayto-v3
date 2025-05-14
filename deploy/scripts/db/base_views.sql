@@ -36,6 +36,7 @@ SELECT
   id,
   role_id as "roleId",
   user_id as "userId",
+  created_sub as sub,
   created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM

@@ -53,30 +53,38 @@ func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedules
 }
 
 func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroupScheduleMasterByIdRequest) (*types.GetGroupScheduleMasterByIdResponse, error) {
-	schedule, err := clients.QueryProto[types.ISchedule](info.Ctx, info.Tx, `
+	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
 		SELECT *
 		FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.GroupScheduleId)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: &types.IGroupSchedule{Master: true, ScheduleId: schedule.Id, Schedule: schedule}}, nil
+	s := *schedule
+
+	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: &types.IGroupSchedule{Master: true, ScheduleId: s.Id, Schedule: s}}, nil
 }
 
 func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupScheduleByDateRequest) (*types.GetGroupScheduleByDateResponse, error) {
-
-	var scheduleTimeUnitName string
-	err := info.Tx.QueryRow(info.Ctx, `
+	scheduleTimeUnitLookup := util.BatchQueryRow[types.ILookup](info.Batch, `
 		SELECT tu.name
 		FROM dbtable_schema.schedules s
 		JOIN dbtable_schema.time_units tu ON tu.id = s.schedule_time_unit_id
 		WHERE s.id = $1
-	`, data.GroupScheduleId).Scan(&scheduleTimeUnitName)
+	`, data.GroupScheduleId)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	scheduleTimeUnitName := (*scheduleTimeUnitLookup).Name
+
+	info.Batch.Reset()
 
 	var query strings.Builder
 	if "week" == scheduleTimeUnitName {
@@ -151,11 +159,13 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 		`)
 	}
 
-	groupScheduleDateSlots, err := clients.QueryProtos[types.IGroupScheduleDateSlots](
-		info.Ctx, info.Tx, query.String(), data.Date, data.GroupScheduleId, info.Session.Timezone,
-	)
+	groupScheduleDateSlots := util.BatchQuery[types.IGroupScheduleDateSlots](info.Batch, query.String(), data.Date, data.GroupScheduleId, info.Session.Timezone)
+	err = info.Batch.Send(info.Ctx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: groupScheduleDateSlots}, nil
+	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: *groupScheduleDateSlots}, nil
 }
 
 func (h *Handlers) DeleteGroupSchedule(info ReqInfo, data *types.DeleteGroupScheduleRequest) (*types.DeleteGroupScheduleResponse, error) {
@@ -166,7 +176,7 @@ func (h *Handlers) DeleteGroupSchedule(info ReqInfo, data *types.DeleteGroupSche
 	}
 	defer groupPoolTx.Rollback(info.Ctx)
 
-	for _, groupScheduleTableId := range strings.Split(data.GetGroupScheduleIds(), ",") {
+	for groupScheduleTableId := range strings.SplitSeq(data.GetGroupScheduleIds(), ",") {
 		var groupScheduleId string
 		err = groupPoolTx.QueryRow(info.Ctx, `
 			DELETE FROM dbtable_schema.group_schedules

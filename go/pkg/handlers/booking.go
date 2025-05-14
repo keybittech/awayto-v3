@@ -37,26 +37,26 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 	}
 
 	for _, booking := range data.Bookings {
-		var newBooking types.IBooking
-		err := info.Tx.QueryRow(info.Ctx, `
-			INSERT INTO dbtable_schema.bookings (quote_id, slot_date, schedule_bracket_slot_id, created_sub)
-			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid)
-			RETURNING id
-		`, booking.Quote.Id, booking.Quote.SlotDate, scheduleBracketSlotId, info.Session.UserSub).Scan(&newBooking.Id)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
-		var quoteUserSub string
+		var quoteCreatedSub string
 		err = info.Tx.QueryRow(info.Ctx, `
 			SELECT created_sub
 			FROM dbtable_schema.quotes
 			WHERE id = $1
-		`, booking.Quote.Id).Scan(&quoteUserSub)
+		`, booking.Quote.Id).Scan(&quoteCreatedSub)
 
-		h.Redis.Client().Del(info.Ctx, quoteUserSub+"profile/details")
+		var newBooking types.IBooking
+		err := info.Tx.QueryRow(info.Ctx, `
+			INSERT INTO dbtable_schema.bookings (quote_id, slot_date, schedule_bracket_slot_id, created_sub, quote_created_sub)
+			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid, $5::uuid)
+			RETURNING id
+		`, booking.Quote.Id, booking.Quote.SlotDate, scheduleBracketSlotId, info.Session.UserSub, quoteCreatedSub).Scan(&newBooking.Id)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 
-		if err := h.Socket.RoleCall(quoteUserSub); err != nil {
+		h.Redis.Client().Del(info.Ctx, quoteCreatedSub+"profile/details")
+
+		if err := h.Socket.RoleCall(quoteCreatedSub); err != nil {
 			return nil, util.ErrCheck(err)
 		}
 

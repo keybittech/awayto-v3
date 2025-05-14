@@ -254,6 +254,8 @@ SELECT
   q.service_form_version_submission_id as "serviceFormVersionSubmissionId",
   q.tier_form_version_submission_id as "tierFormVersionSubmissionId",
   q.created_on::TEXT as "createdOn",
+  q.created_sub as "createdSub",
+  q.slot_created_sub as "slotCreatedSub",
   row_number() OVER () as row
 FROM
   dbtable_schema.quotes q
@@ -274,6 +276,8 @@ SELECT
   b.tier_survey_version_submission_id as "tierSurveyVersionSubmissionId",
   b.service_survey_version_submission_id as "serviceSurveyVersionSubmissionId",
   b.created_on::TEXT as "createdOn",
+  b.created_sub as "createdSub",
+  b.quote_created_sub as "quoteCreatedSub",
   ROW_TO_JSON(q.*) as quote,
   ROW_TO_JSON(es.*) as service,
   ROW_TO_JSON(esbs.*) as "scheduleBracketSlot",

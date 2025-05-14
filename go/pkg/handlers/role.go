@@ -3,7 +3,6 @@ package handlers
 import (
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -51,31 +50,35 @@ func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.P
 }
 
 func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.GetRolesResponse, error) {
-	roles, err := clients.QueryProtos[types.IRole](info.Ctx, info.Tx, `
+	roles := util.BatchQuery[types.IRole](info.Batch, `
 		SELECT er.*
 		FROM dbview_schema.enabled_roles er
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = eur."userId"
 		WHERE eu.sub = $1
 	`, info.Session.UserSub)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetRolesResponse{Roles: roles}, nil
+	return &types.GetRolesResponse{Roles: *roles}, nil
 }
 
 func (h *Handlers) GetRoleById(info ReqInfo, data *types.GetRoleByIdRequest) (*types.GetRoleByIdResponse, error) {
-	role, err := clients.QueryProto[types.IRole](info.Ctx, info.Tx, `
+	role := util.BatchQueryRow[types.IRole](info.Batch, `
 		SELECT *
 		FROM dbview_schema.enabled_roles
 		WHERE id = $1
 	`, data.Id)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetRoleByIdResponse{Role: role}, nil
+	return &types.GetRoleByIdResponse{Role: *role}, nil
 }
 
 func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*types.DeleteRoleResponse, error) {
@@ -88,7 +91,7 @@ func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*typ
 	}
 
 	ids := data.GetIds()
-	for _, id := range strings.Split(ids, ",") {
+	for id := range strings.SplitSeq(ids, ",") {
 		if id != "" {
 			_, err = info.Tx.Exec(info.Ctx, `
 				DELETE FROM dbtable_schema.user_roles

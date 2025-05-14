@@ -55,7 +55,7 @@ func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string
 	recorder := httptest.NewRecorder()
 
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		recorder.Body.Reset()
 		api.Server.Handler.ServeHTTP(recorder, req)
 	}

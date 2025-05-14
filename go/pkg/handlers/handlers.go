@@ -5,9 +5,9 @@ import (
 	"errors"
 	"net/http"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -43,7 +43,7 @@ type ReqInfo struct {
 	Req     *http.Request
 	Session *types.UserSession
 	Tx      *clients.PoolTx
-	Batch   *pgx.Batch
+	Batch   *util.Batchable
 }
 
 type TypedProtoHandler[ReqMsg, ResMsg proto.Message] func(info ReqInfo, message ReqMsg) (ResMsg, error)

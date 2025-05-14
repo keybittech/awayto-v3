@@ -4,7 +4,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -139,16 +138,18 @@ func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*t
 }
 
 func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdRequest) (*types.GetServiceByIdResponse, error) {
-	service, err := clients.QueryProto[types.IService](info.Ctx, info.Tx, `
+	service := util.BatchQueryRow[types.IService](info.Batch, `
 		SELECT id, name, "formId", "surveyId", "createdOn", tiers
 		FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
 	`, data.Id)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetServiceByIdResponse{Service: service}, nil
+	return &types.GetServiceByIdResponse{Service: *service}, nil
 }
 
 func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest) (*types.DeleteServiceResponse, error) {

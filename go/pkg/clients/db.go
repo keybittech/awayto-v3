@@ -169,30 +169,6 @@ type DatabaseClient struct {
 	*pgxpool.Pool
 }
 
-// Open a batch with the intention of adding multiple queries
-func (dbc *DatabaseClient) OpenBatch(sub, groupId string, roleBits int64) *pgx.Batch {
-	batch := &pgx.Batch{}
-	batch.Queue(setSessionVariablesSQL, sub, groupId, roleBits, "")
-	return batch
-}
-
-// Close a batch opened with OpenBatch. The caller should handle all but the first (session set) queries.
-func (dbc *DatabaseClient) SendBatch(ctx context.Context, batch *pgx.Batch) (pgx.BatchResults, error) {
-	batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
-
-	results := dbc.Pool.SendBatch(ctx, batch)
-
-	if _, err := results.Exec(); err != nil {
-		err = results.Close()
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-		return nil, util.ErrCheck(err)
-	}
-
-	return results, nil
-}
-
 func (dc *DatabaseClient) OpenPoolSessionGroupTx(ctx context.Context, session *types.UserSession) (*PoolTx, *types.UserSession, error) {
 	groupSession := &types.UserSession{
 		UserSub: session.GroupSub,

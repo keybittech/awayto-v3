@@ -14,7 +14,7 @@ func setupGc(a *api.API, stopChan chan struct{}) {
 	for {
 		select {
 		case <-generalCleanupTicker.C:
-			api.RateLimiters.Range(func(_, value interface{}) bool {
+			api.RateLimiters.Range(func(_, value any) bool {
 				rl := value.(*api.RateLimiter)
 				rl.Cleanup()
 				return true

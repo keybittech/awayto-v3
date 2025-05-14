@@ -86,12 +86,14 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		ctx := req.Context()
 
+		batch := util.NewBatchable(a.Handlers.Database.DatabaseClient.Pool, session.UserSub, session.GroupId, session.RoleBits)
+
 		reqInfo := handlers.ReqInfo{
 			Ctx:     ctx,
 			W:       w,
 			Req:     req,
 			Session: session,
-			Batch:   a.Handlers.Database.DatabaseClient.OpenBatch(session.UserSub, session.GroupId, session.RoleBits),
+			Batch:   batch,
 		}
 
 		results, err := handlerFunc(reqInfo, pb)

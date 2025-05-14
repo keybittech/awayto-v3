@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"strings"
 	"time"
 
@@ -200,19 +201,21 @@ func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (
 }
 
 func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequest) (*types.GetScheduleByIdResponse, error) {
-	schedule, err := clients.QueryProto[types.ISchedule](info.Ctx, info.Tx, `
+	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
 		SELECT * FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
-	`, data.GetId())
+	`, data.Id)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetScheduleByIdResponse{Schedule: schedule}, nil
+	return &types.GetScheduleByIdResponse{Schedule: *schedule}, nil
 }
 
 func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleRequest) (*types.DeleteScheduleResponse, error) {
-	for _, scheduleId := range strings.Split(data.GetIds(), ",") {
+	for scheduleId := range strings.SplitSeq(data.GetIds(), ",") {
 		err := handleDeletedBrackets(info.Ctx, scheduleId, []string{}, info)
 		if err != nil {
 			return nil, util.ErrCheck(err)
@@ -335,7 +338,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 		(schedule_bracket_id, start_time, created_sub, group_id)
 		VALUES
 	`)
-	slotsValues := []interface{}{}
+	slotsValues := []any{}
 
 	var servicesQuery strings.Builder
 	servicesQuery.WriteString(`
@@ -343,7 +346,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 		(schedule_bracket_id, service_id, created_sub, group_id)
 		VALUES
 	`)
-	servicesValues := []interface{}{}
+	servicesValues := []any{}
 
 	for bracketId, bracket := range brackets {
 
@@ -364,12 +367,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 			// Check if this service already exists for this bracket
 			found := false
 			if services, ok := existingBracketServiceIds[bracketId]; ok {
-				for _, existing := range services {
-					if existing == serviceId {
-						found = true
-						break
-					}
-				}
+				found = slices.Contains(services, serviceId)
 			}
 
 			if !found {
@@ -386,14 +384,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 		// Find slots to potentially delete
 		slotsToCheck := make([]string, 0)
 		for _, id := range allExistingSlotIds {
-			keep := false
-			for _, keepId := range slotsToKeep {
-				if id == keepId {
-					keep = true
-					break
-				}
-			}
-			if !keep {
+			if !slices.Contains(slotsToKeep, id) {
 				slotsToCheck = append(slotsToCheck, id)
 			}
 		}
@@ -435,14 +426,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 			// Delete slots without quotes
 			slotsToDelete := make([]string, 0)
 			for _, id := range slotsToCheck {
-				hasQuote := false
-				for _, quoteSlotId := range slotsWithQuotes {
-					if id == quoteSlotId {
-						hasQuote = true
-						break
-					}
-				}
-				if !hasQuote {
+				if !slices.Contains(slotsWithQuotes, id) {
 					slotsToDelete = append(slotsToDelete, id)
 				}
 			}
@@ -539,7 +523,7 @@ func (h *Handlers) InsertNewBrackets(ctx context.Context, scheduleId string, new
 		(schedule_bracket_id, start_time, created_sub, group_id)
 		VALUES
 	`)
-	slotsValues := []interface{}{}
+	slotsValues := []any{}
 
 	var servicesQuery strings.Builder
 	servicesQuery.WriteString(`
@@ -547,7 +531,7 @@ func (h *Handlers) InsertNewBrackets(ctx context.Context, scheduleId string, new
 		(schedule_bracket_id, service_id, created_sub, group_id)
 		VALUES
 	`)
-	servicesValues := []interface{}{}
+	servicesValues := []any{}
 
 	for _, bracket := range newBrackets {
 		err := info.Tx.QueryRow(ctx, `

@@ -250,23 +250,17 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			}
 
 			// No cached data, create it on this request
-			timeNow := time.Now().UTC()
+			timeNow := time.Now()
 
 			w.Header().Set("X-Cache-Status", "MISS")
 			w.Header().Set("Last-Modified", timeNow.Format(http.TimeFormat))
 
-			buf := cacheMiddlewareBufferPool.Get().(*bytes.Buffer)
-			buf.Reset()
-			defer func() {
-				if buf.Len() < maxCacheBuffer {
-					cacheMiddlewareBufferPool.Put(buf)
-				}
-			}()
+			var buf bytes.Buffer
 
 			// Perform the handler request
 			cacheWriter := &CacheWriter{
 				ResponseWriter: w,
-				Buffer:         buf,
+				Buffer:         &buf,
 			}
 
 			// Response is written out to client

@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -43,13 +42,19 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		}
 	}
 
-	var quoteId string
+	var slotCreatedSub, quoteId string
 
 	err = info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub, group_id)
-		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7::uuid)
+		SELECT created_sub
+		FROM dbtable_schema.schedule_bracket_slots
+		WHERE id = $1
+	`, data.ScheduleBracketSlotId).Scan(&slotCreatedSub)
+
+	err = info.Tx.QueryRow(info.Ctx, `
+		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub, group_id, slot_created_sub)
+		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7::uuid, $8::uuid)
 		RETURNING id
-	`, data.SlotDate, data.ScheduleBracketSlotId, data.ServiceTierId, util.NewNullString(serviceForm.Id), util.NewNullString(tierForm.Id), info.Session.UserSub, info.Session.GroupId).Scan(&quoteId)
+	`, data.SlotDate, data.ScheduleBracketSlotId, data.ServiceTierId, util.NewNullString(serviceForm.Id), util.NewNullString(tierForm.Id), info.Session.UserSub, info.Session.GroupId, slotCreatedSub).Scan(&quoteId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -100,9 +105,9 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 
 func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*types.PatchQuoteResponse, error) {
 	_, err := info.Tx.Exec(info.Ctx, `
-      UPDATE dbtable_schema.quotes
-      SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
-      WHERE id = $1
+		UPDATE dbtable_schema.quotes
+		SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
+		WHERE id = $1
 	`, data.GetId(), data.GetServiceTierId(), info.Session.UserSub, time.Now().Local().UTC())
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -112,40 +117,34 @@ func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*typ
 }
 
 func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types.GetQuotesResponse, error) {
-	quotes, err := clients.QueryProtos[types.IQuote](info.Ctx, info.Tx, `
-		SELECT
-			q.id,
-			q."startTime",
-			q."slotDate"::TEXT,
-			q."scheduleBracketSlotId",
-			q."serviceTierId",
-			q."serviceTierName",
-			q."serviceName",
-			q."serviceFormVersionSubmissionId",
-			q."tierFormVersionSubmissionId",
-			q."createdOn"
+	quotes := util.BatchQuery[types.IQuote](info.Batch, `
+		SELECT q.id, q."startTime", q."scheduleBracketSlotId", q."serviceTierId", q."serviceTierName", q."serviceName", q."serviceFormVersionSubmissionId", q."tierFormVersionSubmissionId", q."createdOn"
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q."scheduleBracketSlotId"
 		WHERE sbs.created_sub = $1
 	`, info.Session.UserSub)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetQuotesResponse{Quotes: quotes}, nil
+	return &types.GetQuotesResponse{Quotes: *quotes}, nil
 }
 
 func (h *Handlers) GetQuoteById(info ReqInfo, data *types.GetQuoteByIdRequest) (*types.GetQuoteByIdResponse, error) {
-	quote, err := clients.QueryProto[types.IQuote](info.Ctx, info.Tx, `
+	quote := util.BatchQueryRow[types.IQuote](info.Batch, `
 		SELECT id, "slotDate", "serviceFormVersionSubmission", "tierFormVersionSubmission", "createdOn"
 		FROM dbview_schema.enabled_quotes_ext
 		WHERE id = $1
 	`, data.Id)
+
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetQuoteByIdResponse{Quote: quote}, nil
+	return &types.GetQuoteByIdResponse{Quote: *quote}, nil
 }
 
 func (h *Handlers) DeleteQuote(info ReqInfo, data *types.DeleteQuoteRequest) (*types.DeleteQuoteResponse, error) {
@@ -161,9 +160,7 @@ func (h *Handlers) DeleteQuote(info ReqInfo, data *types.DeleteQuoteRequest) (*t
 }
 
 func (h *Handlers) DisableQuote(info ReqInfo, data *types.DisableQuoteRequest) (*types.DisableQuoteResponse, error) {
-	ids := strings.Split(data.GetIds(), ",")
-
-	for _, id := range ids {
+	for id := range strings.SplitSeq(data.Ids, ",") {
 		_, err := info.Tx.Exec(info.Ctx, `
 			UPDATE dbtable_schema.quotes
 			SET enabled = false, updated_on = $2, updated_sub = $3

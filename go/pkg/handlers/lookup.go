@@ -6,34 +6,18 @@ import (
 )
 
 func (h *Handlers) GetLookups(info ReqInfo, data *types.GetLookupsRequest) (*types.GetLookupsResponse, error) {
-	var budgets []*types.ILookup
-	var timelines []*types.ILookup
-	var timeUnits []*types.ITimeUnit
+	budgets := util.BatchQuery[types.ILookup](info.Batch, `SELECT id, name FROM dbtable_schema.budgets`)
+	timelines := util.BatchQuery[types.ILookup](info.Batch, `SELECT id, name FROM dbtable_schema.timelines`)
+	timeUnits := util.BatchQuery[types.ITimeUnit](info.Batch, `SELECT id, name FROM dbtable_schema.time_units`)
 
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &budgets, `
-		SELECT id, name FROM dbtable_schema.budgets
-	`)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	err = h.Database.QueryRows(info.Ctx, info.Tx, &timelines, `
-		SELECT id, name FROM dbtable_schema.timelines
-	`)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	err = h.Database.QueryRows(info.Ctx, info.Tx, &timeUnits, `
-		SELECT id, name FROM dbtable_schema.time_units
-	`)
+	err := info.Batch.Send(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	return &types.GetLookupsResponse{
-		Budgets:   budgets,
-		Timelines: timelines,
-		TimeUnits: timeUnits,
+		Budgets:   *budgets,
+		Timelines: *timelines,
+		TimeUnits: *timeUnits,
 	}, nil
 }
