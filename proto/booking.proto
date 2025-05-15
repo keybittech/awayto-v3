@@ -21,6 +21,7 @@ service BookingService {
     };
     // schedule users confirm quotes into bookings
     option (site_role) = APP_GROUP_SCHEDULES;
+    option (use_tx) = true;
   }
 
   rpc PatchBooking(PatchBookingRequest) returns (PatchBookingResponse) {

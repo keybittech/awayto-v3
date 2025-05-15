@@ -1,76 +1,63 @@
 package handlers
 
 import (
-	"errors"
+	"database/sql"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/lib/pq"
 )
 
 func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest) (*types.PostGroupFormResponse, error) {
-	var groupFormExists string
+	groupFormExists := util.BatchQueryRow[sql.NullBool](info.Batch, `
+		SELECT EXISTS (
+			SELECT 1
+			FROM dbtable_schema.forms f
+			LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
+			WHERE f.name = $1 AND gf.group_id = $2
+		)
+	`, data.Name, info.Session.GroupId)
 
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT f.id FROM dbtable_schema.forms f
-		LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
-		WHERE f.name = $1 AND gf.group_id = $2
-	`, data.GetName(), info.Session.GroupId).Scan(&groupFormExists)
-	if groupFormExists != "" && err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	if groupFormExists != "" {
+	info.Batch.Send(info.Ctx)
+
+	if (*groupFormExists).Bool {
 		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
 	}
 
-	groupPoolTx, groupSession, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(info.Ctx, info.Session)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	defer groupPoolTx.Tx.Rollback(info.Ctx)
+	info.Batch.Reset()
 
 	groupInfo := ReqInfo{
-		W:       info.W,
-		Req:     info.Req,
-		Session: groupSession,
-		Tx:      groupPoolTx,
+		W:   info.W,
+		Req: info.Req,
+		Session: &types.UserSession{
+			UserSub: info.Session.GroupSub,
+			GroupId: info.Session.GroupId,
+		},
+		Batch: util.NewBatchable(h.Database.DatabaseClient.Pool, info.Session.GroupSub, info.Session.GroupId, info.Session.RoleBits),
 	}
 
-	formResp, err := h.PostForm(groupInfo, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()})
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	formResp, _ := h.PostForm(groupInfo, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()})
 
-	err = h.Database.DatabaseClient.ClosePoolSessionTx(info.Ctx, groupPoolTx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	groupFormId := formResp.GetId()
-
-	_, err = h.PostFormVersion(info, &types.PostFormVersionRequest{
+	h.PostFormVersion(info, &types.PostFormVersionRequest{
 		Name: data.GetGroupForm().GetForm().GetName(),
 		Version: &types.IProtoFormVersion{
-			FormId: groupFormId,
+			FormId: formResp.Id,
 			Form:   data.GetGroupForm().GetForm().GetVersion().GetForm(),
 		},
 	})
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	_, err = info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		INSERT INTO dbtable_schema.group_forms (group_id, form_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (group_id, form_id) DO NOTHING
-	`, info.Session.GroupId, groupFormId, info.Session.GroupSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, info.Session.GroupId, formResp.Id, info.Session.GroupSub)
+
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
 
-	return &types.PostGroupFormResponse{Id: groupFormId}, nil
+	return &types.PostGroupFormResponse{Id: formResp.Id}, nil
 }
 
 func (h *Handlers) PostGroupFormVersion(info ReqInfo, data *types.PostGroupFormVersionRequest) (*types.PostGroupFormVersionResponse, error) {
@@ -98,53 +85,49 @@ func (h *Handlers) PatchGroupForm(info ReqInfo, data *types.PatchGroupFormReques
 }
 
 func (h *Handlers) GetGroupForms(info ReqInfo, data *types.GetGroupFormsRequest) (*types.GetGroupFormsResponse, error) {
-	var forms []*types.IProtoForm
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &forms, `
-		SELECT es.*
-		FROM dbview_schema.enabled_group_forms eus
-		LEFT JOIN dbview_schema.enabled_forms es ON es.id = eus."formId"
-		WHERE eus."groupId" = $1
+	forms := util.BatchQuery[types.IProtoForm](info.Batch, `
+		SELECT ef.id, ef.name, ef."createdOn"
+		FROM dbview_schema.enabled_group_forms egf
+		LEFT JOIN dbview_schema.enabled_forms ef ON ef.id = egf."formId"
+		WHERE egf."groupId" = $1
 	`, info.Session.GroupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+
+	info.Batch.Send(info.Ctx)
 
 	var groupForms []*types.IGroupForm
-	for _, f := range forms {
-		groupForms = append(groupForms, &types.IGroupForm{FormId: f.GetId(), Form: f})
+	for _, f := range *forms {
+		groupForms = append(groupForms, &types.IGroupForm{FormId: f.Id, Form: f})
 	}
 
 	return &types.GetGroupFormsResponse{GroupForms: groupForms}, nil
 }
 
 func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRequest) (*types.GetGroupFormByIdResponse, error) {
-	var groupForms []*types.IGroupForm
+	groupForm := util.BatchQueryRow[types.IGroupForm](info.Batch, `
+		SELECT "formId", "groupId", form
+		FROM dbview_schema.enabled_group_forms_ext 
+		WHERE "groupId" = $1 AND "formId" = $2
+	`, info.Session.GroupId, data.FormId)
 
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupForms, `
-		SELECT egfe.*
-		FROM dbview_schema.enabled_group_forms_ext egfe
-		WHERE egfe."groupId" = $1 and egfe."formId" = $2
-	`, info.Session.GroupId, data.GetFormId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
-	if len(groupForms) == 0 {
-		return nil, util.ErrCheck(errors.New("group form not found"))
-	}
-
-	return &types.GetGroupFormByIdResponse{GroupForm: groupForms[0]}, nil
+	return &types.GetGroupFormByIdResponse{GroupForm: *groupForm}, nil
 }
 
 func (h *Handlers) DeleteGroupForm(info ReqInfo, data *types.DeleteGroupFormRequest) (*types.DeleteGroupFormResponse, error) {
+	formIds := strings.Split(data.Ids, ",")
 
-	for _, formId := range strings.Split(data.GetIds(), ",") {
-		_, err := info.Tx.Exec(info.Ctx, `DELETE FROM dbtable_schema.forms WHERE id = $1`, formId)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-	}
+	util.BatchExec(info.Batch, `
+		DELETE FROM dbtable_schema.group_forms
+		WHERE form_id = ANY($1)
+	`, pq.Array(formIds))
+
+	util.BatchExec(info.Batch, `
+		DELETE FROM dbtable_schema.forms
+		WHERE id = ANY($1)
+	`, pq.Array(formIds))
+
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
 

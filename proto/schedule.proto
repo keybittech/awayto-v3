@@ -19,6 +19,7 @@ service ScheduleService {
       body: "*"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
+    option (use_tx) = true;
   }
 
   rpc PostScheduleBrackets(PostScheduleBracketsRequest) returns (PostScheduleBracketsResponse) {
@@ -27,6 +28,7 @@ service ScheduleService {
       body: "*"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
+    option (use_tx) = true;
   }
 
   rpc PatchSchedule(PatchScheduleRequest) returns (PatchScheduleResponse) {
@@ -56,6 +58,7 @@ service ScheduleService {
       delete: "/v1/schedules/{ids}"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
+    option (use_tx) = true;
   }
 
   rpc DisableSchedule(DisableScheduleRequest) returns (DisableScheduleResponse) {
@@ -63,6 +66,7 @@ service ScheduleService {
       patch: "/v1/schedules/{id}/disable"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
+    option (use_tx) = true;
   }
 }
 

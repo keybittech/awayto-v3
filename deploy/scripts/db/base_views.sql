@@ -104,6 +104,7 @@ SELECT
   f.uuid,
   f.name,
   f.mime_type as "mimeType",
+  f.created_sub as "createdSub",
   f.created_on::TEXT as "createdOn",
   row_number() OVER () as row
 FROM

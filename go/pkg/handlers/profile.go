@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"errors"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -10,10 +9,9 @@ import (
 
 func (h *Handlers) PostUserProfile(info ReqInfo, data *types.PostUserProfileRequest) (*types.PostUserProfileResponse, error) {
 	_, err := info.Tx.Exec(info.Ctx, `
-		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_on, created_sub, ip_address, timezone)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8::uuid, $9, $10)
-	`, info.Session.UserSub, data.GetUsername(), data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC(), info.Session.UserSub, info.Session.AnonIp, info.Session.Timezone)
-
+		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_sub, ip_address, timezone)
+		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::uuid, $8, $9)
+	`, info.Session.UserSub, data.Username, data.FirstName, data.LastName, data.Email, data.Image, info.Session.UserSub, info.Session.AnonIp, info.Session.Timezone)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -22,16 +20,15 @@ func (h *Handlers) PostUserProfile(info ReqInfo, data *types.PostUserProfileRequ
 }
 
 func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRequest) (*types.PatchUserProfileResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.users
 		SET first_name = $2, last_name = $3, email = $4, image = $5, updated_sub = $1, updated_on = $6
 		WHERE sub = $1
-	`, info.Session.UserSub, data.GetFirstName(), data.GetLastName(), data.GetEmail(), data.GetImage(), time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, info.Session.UserSub, data.FirstName, data.LastName, data.Email, data.Image, time.Now())
 
-	err = h.Keycloak.UpdateUser(info.Ctx, info.Session.UserSub, info.Session.UserSub, data.GetFirstName(), data.GetLastName())
+	info.Batch.Send(info.Ctx)
+
+	err := h.Keycloak.UpdateUser(info.Ctx, info.Session.UserSub, info.Session.UserSub, data.FirstName, data.LastName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -73,10 +70,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 		WHERE "createdSub" = $1 OR "quoteCreatedSub" = $1
 	`, info.Session.UserSub)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	up := *upReq
 	up.Groups = *groupsReq
@@ -97,57 +91,14 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	return &types.GetUserProfileDetailsResponse{UserProfile: up}, nil
 }
 
-func (h *Handlers) GetUserProfileDetailsBySub(info ReqInfo, data *types.GetUserProfileDetailsBySubRequest) (*types.GetUserProfileDetailsBySubResponse, error) {
-
-	var userProfiles []*types.IUserProfile
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &userProfiles, `
-    SELECT * FROM dbview_schema.enabled_users
-    WHERE sub = $1 
-	`, data.GetSub())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	if len(userProfiles) == 0 {
-		return nil, util.ErrCheck(errors.New("user not found"))
-	}
-
-	userProfile := userProfiles[0]
-
-	return &types.GetUserProfileDetailsBySubResponse{UserProfile: userProfile}, nil
-}
-
-func (h *Handlers) GetUserProfileDetailsById(info ReqInfo, data *types.GetUserProfileDetailsByIdRequest) (*types.GetUserProfileDetailsByIdResponse, error) {
-	var userProfiles []*types.IUserProfile
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &userProfiles, `
-    SELECT * FROM dbview_schema.enabled_users
-    WHERE id = $1 
-	`, data.GetId())
-
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	if len(userProfiles) == 0 {
-		return nil, util.ErrCheck(errors.New("user not found"))
-	}
-
-	userProfile := userProfiles[0]
-
-	return &types.GetUserProfileDetailsByIdResponse{UserProfile: userProfile}, nil
-}
-
 func (h *Handlers) DisableUserProfile(info ReqInfo, data *types.DisableUserProfileRequest) (*types.DisableUserProfileResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.users
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id, time.Now(), info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.DisableUserProfileResponse{Success: true}, nil
 }
@@ -157,23 +108,22 @@ func (h *Handlers) ActivateProfile(info ReqInfo, data *types.ActivateProfileRequ
 		UPDATE dbtable_schema.users
 		SET active = true, updated_on = $2, updated_sub = $1
 		WHERE sub = $1
-	`, info.Session.UserSub, time.Now().Local().UTC())
+	`, info.Session.UserSub, time.Now())
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		util.ErrCheck(err)
 	}
 
 	return &types.ActivateProfileResponse{Success: true}, nil
 }
 
 func (h *Handlers) DeactivateProfile(info ReqInfo, data *types.DeactivateProfileRequest) (*types.DeactivateProfileResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.users
 		SET active = false, updated_on = $2, updated_sub = $1
 		WHERE sub = $1
-	`, info.Session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, info.Session.UserSub, time.Now())
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.DeactivateProfileResponse{Success: true}, nil
 }

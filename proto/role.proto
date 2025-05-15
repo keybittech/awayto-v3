@@ -15,6 +15,7 @@ service RoleService {
       body: "*"
     };
     option (throttle) = 1;
+    option (use_tx) = true;
   }
 
   rpc GetRoles(GetRolesRequest) returns (GetRolesResponse) {

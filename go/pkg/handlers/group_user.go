@@ -1,45 +1,42 @@
 package handlers
 
 import (
-	"errors"
 	"strings"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/lib/pq"
 )
 
 func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserRequest) (*types.PatchGroupUserResponse, error) {
-	userSub := data.GetUserSub()
-	roleId := data.GetRoleId()
-
 	var userId, oldSubgroupExternalId string
 	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT gu.external_id as "externalId", gu.user_id as "userId"
+		SELECT gu.external_id, gu.user_id
 		FROM dbtable_schema.group_users gu
 		JOIN dbtable_schema.users u ON u.id = gu.user_id
-		JOIN dbtable_schema.groups g ON g.id = gu.group_id
-		WHERE g.id = $1 AND u.sub = $2
-	`, info.Session.GroupId, userSub).Scan(&oldSubgroupExternalId, &userId)
+		WHERE gu.group_id = $1 AND u.sub = $2
+	`, info.Session.GroupId, data.UserSub).Scan(&oldSubgroupExternalId, &userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	var newSubgroupExternalId string
 	err = info.Tx.QueryRow(info.Ctx, `
-		SELECT external_id as "externalId"
+		SELECT external_id
 		FROM dbtable_schema.group_roles
 		WHERE group_id = $1 AND role_id = $2
-	`, info.Session.GroupId, roleId).Scan(&newSubgroupExternalId)
+	`, info.Session.GroupId, data.RoleId).Scan(&newSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.UserSub, userSub, oldSubgroupExternalId)
+	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.UserSub, data.UserSub, oldSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.UserSub, userSub, newSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.UserSub, data.UserSub, newSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -58,15 +55,15 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/users/"+userId)
 
 	// Target user will see their roles persisted through cache with this
-	h.Redis.Client().Del(info.Ctx, userSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, data.UserSub+"profile/details")
+
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.PatchGroupUserResponse{Success: true}, nil
 }
 
 func (h *Handlers) GetGroupUsers(info ReqInfo, data *types.GetGroupUsersRequest) (*types.GetGroupUsersResponse, error) {
-	var groupUsers []*types.IGroupUser
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupUsers, `
+	groupUsers := util.BatchQuery[types.IGroupUser](info.Batch, `
 		SELECT TO_JSONB(eu) as "userProfile", egu.id, r.id as "roleId", r.name as "roleName"
 		FROM dbview_schema.enabled_group_users egu
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = egu."userId"
@@ -75,96 +72,94 @@ func (h *Handlers) GetGroupUsers(info ReqInfo, data *types.GetGroupUsersRequest)
 		JOIN dbtable_schema.roles r ON gr.role_id = r.id
 		WHERE egu."groupId" = $1
 	`, info.Session.GroupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	return &types.GetGroupUsersResponse{GroupUsers: groupUsers}, nil
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetGroupUsersResponse{GroupUsers: *groupUsers}, nil
 }
 
 func (h *Handlers) GetGroupUserById(info ReqInfo, data *types.GetGroupUserByIdRequest) (*types.GetGroupUserByIdResponse, error) {
-	var groupUsers []*types.IGroupUser
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &groupUsers, `
-		SELECT
-			eu.id,
-			egu.groupId,
-			egu.userId,
-			eu.firstName,
-			eu.lastName,
-			eu.locked,
-			eu.image,
-			eu.email,
-			er.id as "roleId",
-			er.name as "roleName"
+	groupUser := util.BatchQueryRow[types.IGroupUser](info.Batch, `
+		SELECT gu.id, egu.groupId, egu.userId, er.id as "roleId", er.name as "roleName"
 		FROM dbview_schema.enabled_group_users egu
-		JOIN dbview_schema.enabled_users eu ON eu.id = egu.userId
 		JOIN dbtable_schema.group_users gu ON gu.id = egu.id
 		JOIN dbtable_schema.group_roles gr ON gr.external_id = gu.external_id
 		JOIN dbview_schema.enabled_roles er ON er.id = gr.role_id
 		WHERE egu.groupId = $1 and egu.userId = $2
-	`, info.Session.GroupId, data.GetUserId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, info.Session.GroupId, data.UserId)
 
-	if len(groupUsers) == 0 {
-		return nil, util.ErrCheck(errors.New("group user not found"))
-	}
+	info.Batch.Send(info.Ctx)
 
-	return &types.GetGroupUserByIdResponse{GroupUser: groupUsers[0]}, nil
+	return &types.GetGroupUserByIdResponse{GroupUser: *groupUser}, nil
 }
 
 func (h *Handlers) DeleteGroupUser(info ReqInfo, data *types.DeleteGroupUserRequest) (*types.DeleteGroupUserResponse, error) {
 	ids := strings.Split(data.GetIds(), ",")
 
-	for _, id := range ids {
-		_, err := info.Tx.Exec(info.Ctx, `
-			DELETE FROM dbtable_schema.group_users
-			WHERE group_id = $1 AND user_id = $2
-		`, info.Session.GroupId, id)
+	rows, err := info.Tx.Query(info.Ctx, `
+		SELECT u.sub as "userSub", gu.external_id as "externalId"
+		FROM dbtable_schema.users u
+		JOIN dbtable_schema.group_users gu ON gu.user_id = u.id
+		WHERE gu.user_id = ANY($1)
+	`, pq.Array(ids))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	usersInfo, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IGroupUser])
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = info.Tx.Exec(info.Ctx, `
+		DELETE FROM dbtable_schema.group_users
+		WHERE group_id = $1 AND user_id = ANY($2)
+	`, info.Session.GroupId, pq.Array(ids))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	for _, u := range usersInfo {
+		err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.UserSub, u.UserSub, u.ExternalId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
+		h.Redis.Client().Del(info.Ctx, u.UserSub+"profile/details")
 	}
+
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.DeleteGroupUserResponse{Success: true}, nil
 }
 
 func (h *Handlers) LockGroupUser(info ReqInfo, data *types.LockGroupUserRequest) (*types.LockGroupUserResponse, error) {
-	ids := strings.Split(data.GetIds(), ",")
+	util.BatchExec(info.Batch, `
+		UPDATE dbtable_schema.group_users
+		SET locked = true
+		WHERE group_id = $1 AND user_id = $2
+	`, info.Session.GroupId, pq.Array(strings.Split(data.Ids, ",")))
 
-	for _, id := range ids {
-		_, err := info.Tx.Exec(info.Ctx, `
-			UPDATE dbtable_schema.group_users
-			SET locked = true
-			WHERE group_id = $1 AND user_id = $2
-		`, info.Session.GroupId, id)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-	}
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/users")
+
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.LockGroupUserResponse{Success: true}, nil
 }
 
 func (h *Handlers) UnlockGroupUser(info ReqInfo, data *types.UnlockGroupUserRequest) (*types.UnlockGroupUserResponse, error) {
-	ids := strings.Split(data.GetIds(), ",")
+	util.BatchExec(info.Batch, `
+		UPDATE dbtable_schema.group_users
+		SET locked = false
+		WHERE group_id = $1 AND user_id = $2
+	`, info.Session.GroupId, pq.Array(strings.Split(data.Ids, ",")))
 
-	for _, id := range ids {
-		_, err := info.Tx.Exec(info.Ctx, `
-			UPDATE dbtable_schema.group_users
-			SET locked = false
-			WHERE group_id = $1 AND user_id = $2
-		`, info.Session.GroupId, id)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-	}
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/users")
+
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.UnlockGroupUserResponse{Success: true}, nil
 }

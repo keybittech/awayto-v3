@@ -9,11 +9,11 @@ import (
 )
 
 func TestHandlers_PostSiteFeedback(t *testing.T) {
-	h, info, err := setupTestEnv()
+	h, info, done, err := setupTestEnv(false)
 	if err != nil {
 		t.Fatal(util.ErrCheck(err))
 	}
-	defer info.Tx.Rollback(info.Ctx)
+	defer done()
 
 	type args struct {
 		info ReqInfo
@@ -64,11 +64,11 @@ func TestHandlers_PostSiteFeedback(t *testing.T) {
 }
 
 func BenchmarkHandlers_PostSiteFeedback(b *testing.B) {
-	h, info, err := setupTestEnv()
+	h, info, done, err := setupTestEnv(false)
 	if err != nil {
 		b.Fatal(util.ErrCheck(err))
 	}
-	defer info.Tx.Rollback(info.Ctx)
+	defer done()
 
 	// Create a valid feedback request that we'll reuse for benchmarking
 	validRequest := &types.PostSiteFeedbackRequest{
@@ -76,16 +76,18 @@ func BenchmarkHandlers_PostSiteFeedback(b *testing.B) {
 			FeedbackMessage: "This is a benchmark test feedback message",
 		},
 	}
+	response := &types.PostSiteFeedbackResponse{}
 
 	reset(b)
 
-	for i := 0; i < b.N; i++ {
-		response, err := h.PostSiteFeedback(info, validRequest)
-		if err != nil {
-			b.Fatal(util.ErrCheck(err))
-		}
-		if !response.Success {
-			b.Fatal("Expected successful response")
-		}
+	for b.Loop() {
+		info.Batch.Reset()
+		response, err = h.PostSiteFeedback(info, validRequest)
+	}
+	if err != nil {
+		b.Fatal(util.ErrCheck(err))
+	}
+	if !response.Success {
+		b.Fatal("Expected successful response")
 	}
 }

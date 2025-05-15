@@ -36,10 +36,10 @@ func getMethodDescriptorOp(methodName string) protoreflect.MethodDescriptor {
 			return true
 		}
 
-		for s := 0; s < fd.Services().Len(); s++ {
+		for s := range fd.Services().Len() {
 			service := fd.Services().Get(s)
 
-			for i := 0; i < service.Methods().Len(); i++ {
+			for i := range service.Methods().Len() {
 				method := service.Methods().Get(i)
 
 				if string(method.Name()) == methodName {
@@ -54,7 +54,7 @@ func getMethodDescriptorOp(methodName string) protoreflect.MethodDescriptor {
 	return md
 }
 
-func getServiceType(testModule interface{}, inputDescriptor protoreflect.MethodDescriptor) protoreflect.MessageType {
+func getServiceType(testModule any, inputDescriptor protoreflect.MethodDescriptor) protoreflect.MessageType {
 	st := getServiceTypeOp(inputDescriptor)
 
 	if st == nil {
@@ -142,6 +142,13 @@ func TestParseHandlerOptions(t *testing.T) {
 				return got.SiteRole == int64(types.SiteRoles_APP_GROUP_ROLES)
 			},
 		},
+		{
+			name: "use_tx=true",
+			md:   getMethodDescriptor(t, "PostGroupRole"),
+			validate: func(got *HandlerOptions) bool {
+				return got.UseTx == true
+			},
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -179,10 +186,10 @@ func TestParseProtoQueryParams(t *testing.T) {
 	}{
 		{
 			name:   "serializes query paramaters into pb struct",
-			method: getMethodDescriptor(t, "GetUserProfileDetailsBySub"),
-			req:    makeParseTestReq("/blah?sub=test"),
-			want: &types.GetUserProfileDetailsBySubRequest{
-				Sub: "test",
+			method: getMethodDescriptor(t, "CheckGroupName"),
+			req:    makeParseTestReq("/blah?name=test"),
+			want: &types.CheckGroupNameRequest{
+				Name: "test",
 			},
 		},
 	}
@@ -199,9 +206,9 @@ func TestParseProtoQueryParams(t *testing.T) {
 }
 
 func BenchmarkParseProtoQueryParamsComplex(b *testing.B) {
-	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
+	md := getMethodDescriptor(b, "PostQuote")
 	pb := getServiceType(b, md).New().Interface()
-	req := makeParseTestReq("/blah?sub=test&user_id=12345&role=admin&active=true")
+	req := makeParseTestReq("/blah?scheduleBracketSlotId=12351235&serviceTierId=64236432&slotDate=04-12-2025")
 	reset(b)
 
 	for b.Loop() {
@@ -210,9 +217,9 @@ func BenchmarkParseProtoQueryParamsComplex(b *testing.B) {
 }
 
 func BenchmarkParseProtoQueryParams(b *testing.B) {
-	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
+	md := getMethodDescriptor(b, "GetQuoteById")
 	pb := getServiceType(b, md).New().Interface()
-	req := makeParseTestReq("/blah?sub=test")
+	req := makeParseTestReq("/blah?id=0283743241")
 	reset(b)
 
 	for b.Loop() {

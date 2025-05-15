@@ -3,6 +3,7 @@ package api
 import (
 	"fmt"
 	"net/http"
+	"runtime/debug"
 	"slices"
 	"strings"
 
@@ -72,7 +73,14 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		defer func() {
 			if p := recover(); p != nil {
-				util.RequestError(w, fmt.Sprint(p), ignoreFields, pb)
+				// ErrCheck handled errors will already have a trace
+				// If there is no trace file hint, print the full stack
+				errStr := fmt.Sprint(p)
+				if !strings.Contains(errStr, ".go:") {
+					util.ErrorLog.Println(string(debug.Stack()))
+				}
+
+				util.RequestError(w, errStr, ignoreFields, pb)
 			}
 
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)

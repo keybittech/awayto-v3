@@ -68,70 +68,64 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 }
 
 func (h *Handlers) PatchBooking(info ReqInfo, data *types.PatchBookingRequest) (*types.PatchBookingResponse, error) {
-	var updatedBookings []*types.IBooking
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &updatedBookings, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.bookings
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
 	`, data.Booking.Id, data.Booking.Quote.ServiceTierId, info.Session.UserSub, time.Now())
 
-	if err != nil || len(updatedBookings) == 0 {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.PatchBookingResponse{Success: true}, nil
 }
 
 func (h *Handlers) GetBookings(info ReqInfo, data *types.GetBookingsRequest) (*types.GetBookingsResponse, error) {
-	bookings := []*types.IBooking{}
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &bookings, `
+	bookings := util.BatchQuery[types.IBooking](info.Batch, `
 		SELECT eb.*
 		FROM dbview_schema.enabled_bookings eb
 		JOIN dbtable_schema.bookings b ON b.id = eb.id
 		LEFT JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = eb.schedule_bracket_slot_id
 		WHERE b.created_sub = $1 OR sbs.created_sub = $1
 	`, info.Session.UserSub)
-	return &types.GetBookingsResponse{Bookings: bookings}, err
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetBookingsResponse{Bookings: *bookings}, nil
 }
 
 func (h *Handlers) GetBookingById(info ReqInfo, data *types.GetBookingByIdRequest) (*types.GetBookingByIdResponse, error) {
-	var bookings []*types.IBooking
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &bookings, `
+	booking := util.BatchQueryRow[types.IBooking](info.Batch, `
 		SELECT * FROM dbview_schema.enabled_bookings
 		WHERE id = $1
 	`, data.Id)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	if len(bookings) == 0 {
-		return nil, util.ErrCheck(util.UserError("No booking found."))
-	}
+	info.Batch.Send(info.Ctx)
 
-	return &types.GetBookingByIdResponse{Booking: bookings[0]}, err
+	return &types.GetBookingByIdResponse{Booking: *booking}, nil
 }
 
 func (h *Handlers) GetBookingFiles(info ReqInfo, data *types.GetBookingFilesRequest) (*types.GetBookingFilesResponse, error) {
-	files := []*types.IFile{}
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &files, `
+	files := util.BatchQuery[types.IFile](info.Batch, `
 		SELECT f.name, f.uuid, f."mimeType"
 		FROM dbview_schema.enabled_files f
 		JOIN dbtable_schema.quote_files qf ON qf.file_id = f.id
 		JOIN dbtable_schema.bookings b ON b.quote_id = qf.quote_id
 		WHERE b.id = $1
 	`, data.Id)
-	return &types.GetBookingFilesResponse{Files: files}, err
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetBookingFilesResponse{Files: *files}, nil
 }
 
 func (h *Handlers) PatchBookingRating(info ReqInfo, data *types.PatchBookingRatingRequest) (*types.PatchBookingRatingResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.bookings
 		SET rating = $2
 		WHERE id = $1
 	`, data.Id, data.Rating)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"bookings/"+data.Id)
 
@@ -139,18 +133,24 @@ func (h *Handlers) PatchBookingRating(info ReqInfo, data *types.PatchBookingRati
 }
 
 func (h *Handlers) DeleteBooking(info ReqInfo, data *types.DeleteBookingRequest) (*types.DeleteBookingResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		DELETE FROM dbtable_schema.bookings
 		WHERE id = $1
-	`, data.GetId())
-	return &types.DeleteBookingResponse{Id: data.Id}, err
+	`, data.Id)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.DeleteBookingResponse{Id: data.Id}, nil
 }
 
 func (h *Handlers) DisableBooking(info ReqInfo, data *types.DisableBookingRequest) (*types.DisableBookingResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
-	return &types.DisableBookingResponse{Id: data.Id}, err
+	`, data.Id, time.Now(), info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.DisableBookingResponse{Id: data.Id}, nil
 }

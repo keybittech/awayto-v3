@@ -16,14 +16,15 @@ service GroupUtilService {
       get: "/v1/group/valid/{name}"
     };
     option (cache) = SKIP; 
+    option (use_tx) = true;
   }
 
-  rpc InviteGroupUsers(InviteGroupUsersRequest) returns (InviteGroupUsersResponse) {
-    option (google.api.http) = {
-      post: "/v1/group/users/invite"
-      body: "*"
-    };
-  }
+  // rpc InviteGroupUsers(InviteGroupUsersRequest) returns (InviteGroupUsersResponse) {
+  //   option (google.api.http) = {
+  //     post: "/v1/group/users/invite"
+  //     body: "*"
+  //   };
+  // }
 
   rpc JoinGroup(JoinGroupRequest) returns (JoinGroupResponse) {
     option (google.api.http) = {
@@ -31,6 +32,7 @@ service GroupUtilService {
       body: "*"
     };
     option (cache) = SKIP;
+    option (use_tx) = true;
   }
 
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse) {
@@ -39,6 +41,7 @@ service GroupUtilService {
       body: "*"
     };
     option (cache) = SKIP;
+    option (use_tx) = true;
   }
 
   rpc AttachUser(AttachUserRequest) returns (AttachUserResponse) {
@@ -47,6 +50,7 @@ service GroupUtilService {
       body: "*"
     };
     option (cache) = SKIP;
+    option (use_tx) = true;
   }
 
   rpc CompleteOnboarding(CompleteOnboardingRequest) returns (CompleteOnboardingResponse) {
@@ -55,6 +59,7 @@ service GroupUtilService {
       body: "*"
     };
     option (cache) = SKIP;
+    option (use_tx) = true;
   }
 }
 
@@ -67,17 +72,17 @@ message CheckGroupNameResponse {
   bool isValid = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message UserEmail {
-  string email = 1 [(google.api.field_behavior) = REQUIRED];
-}
-
-message InviteGroupUsersRequest {
-  repeated UserEmail users = 1 [(google.api.field_behavior) = REQUIRED];
-}
-
-message InviteGroupUsersResponse {
-  repeated UserEmail users = 1 [(google.api.field_behavior) = REQUIRED];
-}
+// message UserEmail {
+//   string email = 1 [(google.api.field_behavior) = REQUIRED];
+// }
+//
+// message InviteGroupUsersRequest {
+//   repeated UserEmail users = 1 [(google.api.field_behavior) = REQUIRED];
+// }
+//
+// message InviteGroupUsersResponse {
+//   repeated UserEmail users = 1 [(google.api.field_behavior) = REQUIRED];
+// }
 
 message JoinGroupRequest {
   string code = 1 [(google.api.field_behavior) = REQUIRED];

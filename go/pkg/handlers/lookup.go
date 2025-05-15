@@ -10,10 +10,7 @@ func (h *Handlers) GetLookups(info ReqInfo, data *types.GetLookupsRequest) (*typ
 	timelines := util.BatchQuery[types.ILookup](info.Batch, `SELECT id, name FROM dbtable_schema.timelines`)
 	timeUnits := util.BatchQuery[types.ITimeUnit](info.Batch, `SELECT id, name FROM dbtable_schema.time_units`)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.GetLookupsResponse{
 		Budgets:   *budgets,

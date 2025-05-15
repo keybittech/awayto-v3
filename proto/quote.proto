@@ -17,6 +17,7 @@ service QuoteService {
       body: "*"
     };
     option (site_role) = APP_GROUP_BOOKINGS;
+    option (use_tx) = true;
   }
 
   rpc PatchQuote(PatchQuoteRequest) returns (PatchQuoteResponse) {

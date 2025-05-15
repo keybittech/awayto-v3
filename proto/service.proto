@@ -2,6 +2,7 @@ syntax = "proto3";
 package types;
 
 import "service_tier.proto";
+import "util.proto";
 
 import "validate/validate.proto";
 import "google/api/annotations.proto";
@@ -15,6 +16,7 @@ service ServiceService {
       post: "/v1/services"
       body: "*"
     };
+    option (use_tx) = true;
   }
 
   rpc PatchService(PatchServiceRequest) returns (PatchServiceResponse) {
@@ -22,6 +24,7 @@ service ServiceService {
       patch: "/v1/services"
       body: "*"
     };
+    option (use_tx) = true;
   }
 
   rpc GetServices(GetServicesRequest) returns (GetServicesResponse) {

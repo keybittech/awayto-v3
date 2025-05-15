@@ -7,6 +7,7 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/lib/pq"
 )
 
 func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types.PostQuoteResponse, error) {
@@ -104,14 +105,13 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 }
 
 func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*types.PatchQuoteResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.quotes
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
 		WHERE id = $1
-	`, data.GetId(), data.GetServiceTierId(), info.Session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id, data.ServiceTierId, info.Session.UserSub, time.Now())
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.PatchQuoteResponse{Success: true}, nil
 }
@@ -124,10 +124,7 @@ func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types
 		WHERE sbs.created_sub = $1
 	`, info.Session.UserSub)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.GetQuotesResponse{Quotes: *quotes}, nil
 }
@@ -139,37 +136,30 @@ func (h *Handlers) GetQuoteById(info ReqInfo, data *types.GetQuoteByIdRequest) (
 		WHERE id = $1
 	`, data.Id)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.GetQuoteByIdResponse{Quote: *quote}, nil
 }
 
 func (h *Handlers) DeleteQuote(info ReqInfo, data *types.DeleteQuoteRequest) (*types.DeleteQuoteResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		DELETE FROM dbtable_schema.quotes
 		WHERE id = $1
-	`, data.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id)
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.DeleteQuoteResponse{Success: true}, nil
 }
 
 func (h *Handlers) DisableQuote(info ReqInfo, data *types.DisableQuoteRequest) (*types.DisableQuoteResponse, error) {
-	for id := range strings.SplitSeq(data.Ids, ",") {
-		_, err := info.Tx.Exec(info.Ctx, `
-			UPDATE dbtable_schema.quotes
-			SET enabled = false, updated_on = $2, updated_sub = $3
-			WHERE id = $1
-		`, id, time.Now().Local().UTC(), info.Session.UserSub)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-	}
+	util.BatchExec(info.Batch, `
+		UPDATE dbtable_schema.quotes
+		SET enabled = false, updated_on = $2, updated_sub = $3
+		WHERE id = ANY($1)
+	`, pq.Array(strings.Split(data.Ids, ",")), time.Now(), info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"quotes")
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")

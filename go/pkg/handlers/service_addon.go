@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -9,9 +8,7 @@ import (
 )
 
 func (h *Handlers) PostServiceAddon(info ReqInfo, data *types.PostServiceAddonRequest) (*types.PostServiceAddonResponse, error) {
-	var serviceAddons []*types.IServiceAddon
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &serviceAddons, `
+	serviceAddon := util.BatchQueryRow[types.IServiceAddon](info.Batch, `
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.service_addons (name, created_sub)
 			SELECT * FROM input_rows
@@ -25,28 +22,22 @@ func (h *Handlers) PostServiceAddon(info ReqInfo, data *types.PostServiceAddonRe
 		FROM input_rows
 		JOIN dbtable_schema.service_addons sa USING (name);
 	`, data.GetName(), info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	if len(serviceAddons) == 0 {
-		return nil, util.ErrCheck(sql.ErrNoRows)
-	}
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
 
-	return &types.PostServiceAddonResponse{Id: serviceAddons[0].GetId()}, nil
+	return &types.PostServiceAddonResponse{Id: (*serviceAddon).Id}, nil
 }
 
 func (h *Handlers) PatchServiceAddon(info ReqInfo, data *types.PatchServiceAddonRequest) (*types.PatchServiceAddonResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.service_addons
 		SET name = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-	`, data.GetId(), data.GetName(), info.Session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id, data.Name, info.Session.UserSub, time.Now())
+
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
 
@@ -54,44 +45,36 @@ func (h *Handlers) PatchServiceAddon(info ReqInfo, data *types.PatchServiceAddon
 }
 
 func (h *Handlers) GetServiceAddons(info ReqInfo, data *types.GetServiceAddonsRequest) (*types.GetServiceAddonsResponse, error) {
-	var serviceAddons []*types.IServiceAddon
+	serviceAddons := util.BatchQuery[types.IServiceAddon](info.Batch, `
+		SELECT id, name, "createdOn"
+		FROM dbview_schema.enabled_service_addons
+		WHERE "createdSub" = $1
+	`, info.Session.UserSub)
 
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &serviceAddons, `
-		SELECT * FROM dbview_schema.enabled_service_addons
-	`)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
-	return &types.GetServiceAddonsResponse{ServiceAddons: serviceAddons}, nil
+	return &types.GetServiceAddonsResponse{ServiceAddons: *serviceAddons}, nil
 }
 
 func (h *Handlers) GetServiceAddonById(info ReqInfo, data *types.GetServiceAddonByIdRequest) (*types.GetServiceAddonByIdResponse, error) {
-	var serviceAddons []*types.IServiceAddon
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &serviceAddons, `
-		SELECT * FROM dbview_schema.enabled_service_addons
+	serviceAddon := util.BatchQueryRow[types.IServiceAddon](info.Batch, `
+		SELECT *
+		FROM dbview_schema.enabled_service_addons
 		WHERE id = $1
-	`, data.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id)
 
-	if len(serviceAddons) == 0 {
-		return nil, util.ErrCheck(sql.ErrNoRows)
-	}
+	info.Batch.Send(info.Ctx)
 
-	return &types.GetServiceAddonByIdResponse{ServiceAddon: serviceAddons[0]}, nil
+	return &types.GetServiceAddonByIdResponse{ServiceAddon: *serviceAddon}, nil
 }
 
 func (h *Handlers) DeleteServiceAddon(info ReqInfo, data *types.DeleteServiceAddonRequest) (*types.DeleteServiceAddonResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		DELETE FROM dbtable_schema.service_addons
 		WHERE id = $1
-	`, data.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id)
+
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
 
@@ -99,14 +82,13 @@ func (h *Handlers) DeleteServiceAddon(info ReqInfo, data *types.DeleteServiceAdd
 }
 
 func (h *Handlers) DisableServiceAddon(info ReqInfo, data *types.DisableServiceAddonRequest) (*types.DisableServiceAddonResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.service_addons
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id, time.Now(), info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.DisableServiceAddonResponse{Success: true}, nil
 }

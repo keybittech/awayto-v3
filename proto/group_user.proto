@@ -15,31 +15,38 @@ service GroupUsersService {
       body: "*"
     };
     option (site_role) = APP_GROUP_USERS;
+    option (use_tx) = true;
   }
   rpc GetGroupUsers(GetGroupUsersRequest) returns (GetGroupUsersResponse) {
     option (google.api.http) = {
       get: "/v1/group/users"
     };
+    option (site_role) = APP_GROUP_USERS;
   }
   rpc GetGroupUserById(GetGroupUserByIdRequest) returns (GetGroupUserByIdResponse) {
     option (google.api.http) = {
       get: "/v1/group/users/{userId}"
     };
+    option (site_role) = APP_GROUP_USERS;
   }
   rpc DeleteGroupUser(DeleteGroupUserRequest) returns (DeleteGroupUserResponse) {
     option (google.api.http) = {
       delete: "/v1/group/users/{ids}"
     };
+    option (site_role) = APP_GROUP_USERS;
+    option (use_tx) = true;
   }
   rpc LockGroupUser(LockGroupUserRequest) returns (LockGroupUserResponse) {
     option (google.api.http) = {
       patch: "/v1/group/users/{ids}/lock"
     };
+    option (site_role) = APP_GROUP_USERS;
   }
   rpc UnlockGroupUser(UnlockGroupUserRequest) returns (UnlockGroupUserResponse) {
     option (google.api.http) = {
       patch: "/v1/group/users/{ids}/unlock"
     };
+    option (site_role) = APP_GROUP_USERS;
   }
 }
 

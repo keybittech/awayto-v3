@@ -5,7 +5,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -246,22 +245,16 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 }
 
 func (h *Handlers) GetGroupRoles(info ReqInfo, data *types.GetGroupRolesRequest) (*types.GetGroupRolesResponse, error) {
-	roles, err := clients.QueryProtos[types.IGroupRole](info.Ctx, info.Tx, `
-		SELECT 
-			TO_JSONB(er) as role,
-			egr.id,
-			egr."roleId",
-			egr."groupId",
-			egr."createdOn"
+	roles := util.BatchQuery[types.IGroupRole](info.Batch, `
+		SELECT TO_JSONB(er) as role, egr.id, egr."roleId", egr."groupId", egr."createdOn"
 		FROM dbview_schema.enabled_group_roles egr
 		JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
 		WHERE egr."groupId" = $1 AND er.name != 'Admin'
 	`, info.Session.GroupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	return &types.GetGroupRolesResponse{GroupRoles: roles}, nil
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetGroupRolesResponse{GroupRoles: *roles}, nil
 }
 
 func (h *Handlers) DeleteGroupRole(info ReqInfo, data *types.DeleteGroupRoleRequest) (*types.DeleteGroupRoleResponse, error) {

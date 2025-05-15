@@ -128,10 +128,6 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			session.GroupSessionVersion = a.Handlers.Cache.GetGroupSessionVersion(session.GroupId)
 
 			a.Handlers.Cache.SetSessionToken(req.Header.Get("Authorization"), session)
-			// go func(token string, s *types.UserSession) {
-			// 	s.GroupSessionVersion = a.Handlers.Cache.GetGroupSessionVersion(session.GroupId)
-			// 	a.Handlers.Cache.SetSessionToken(token, s)
-			// }(req.Header.Get("Authorization"), session)
 		}
 
 		next(w, req, session)

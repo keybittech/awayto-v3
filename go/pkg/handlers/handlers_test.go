@@ -35,28 +35,33 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
-func setupTestEnv() (*Handlers, ReqInfo, error) {
+func setupTestEnv(useTx bool) (*Handlers, ReqInfo, func(), error) {
 	h := NewHandlers()
 
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/test", nil)
 
 	session := integrationTest.TestUsers[0].UserSession
-
-	poolTx, err := h.Database.DatabaseClient.OpenPoolSessionTx(req.Context(), session)
-	if err != nil {
-		return nil, ReqInfo{}, util.ErrCheck(err)
-	}
+	ctx := req.Context()
 
 	reqInfo := ReqInfo{
-		Ctx:     req.Context(),
+		Ctx:     ctx,
 		W:       w,
 		Req:     req,
 		Session: session,
-		Tx:      poolTx,
 	}
 
-	return h, reqInfo, nil
+	if useTx {
+		poolTx, err := h.Database.DatabaseClient.OpenPoolSessionTx(ctx, session)
+		if err != nil {
+			return nil, ReqInfo{}, nil, util.ErrCheck(err)
+		}
+		reqInfo.Tx = poolTx
+		return h, reqInfo, func() { poolTx.Rollback(ctx) }, nil
+	} else {
+		reqInfo.Batch = util.NewBatchable(h.Database.DatabaseClient.Pool, session.UserSub, session.GroupId, session.RoleBits)
+		return h, reqInfo, func() {}, nil
+	}
 }
 
 func validateData(t *testing.T, data proto.Message, name string, expectErr bool) bool {

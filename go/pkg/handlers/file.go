@@ -133,79 +133,87 @@ func (h *Handlers) PatchFileContents(info ReqInfo, data *types.PatchFileContents
 }
 
 func (h *Handlers) GetFileContents(info ReqInfo, data *types.GetFileContentsRequest) (*types.GetFileContentsResponse, error) {
-	var fileContent []byte
-
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT content FROM dbtable_schema.file_contents
-		WHERE uuid = $1
-	`, data.FileId).Scan(&fileContent)
-	if err != nil {
-		return nil, util.ErrCheck(err)
+	type FileContents struct {
+		content []byte
 	}
 
-	return &types.GetFileContentsResponse{Content: fileContent}, nil
+	fileContents := util.BatchQueryRow[FileContents](info.Batch, `
+		SELECT content FROM dbtable_schema.file_contents
+		WHERE uuid = $1
+	`, data.FileId)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetFileContentsResponse{Content: (*fileContents).content}, nil
 }
 
 func (h *Handlers) PostFile(info ReqInfo, data *types.PostFileRequest) (*types.PostFileResponse, error) {
-	file := data.GetFile()
-	var fileID string
-	err := info.Tx.QueryRow(info.Ctx, `
+	fileInsert := util.BatchQueryRow[types.ILookup](info.Batch, `
 		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		RETURNING id
-	`, file.GetUuid(), file.GetName(), file.GetMimeType(), time.Now(), info.Session.UserSub).Scan(&fileID)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	return &types.PostFileResponse{Id: fileID, Uuid: file.GetUuid()}, nil
+	`, data.File.Uuid, data.File.Name, data.File.MimeType, time.Now(), info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.PostFileResponse{Id: (*fileInsert).Id, Uuid: data.File.Uuid}, nil
 }
 
 func (h *Handlers) PatchFile(info ReqInfo, data *types.PatchFileRequest) (*types.PatchFileResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.files
 		SET name = $2, updated_on = $3, updated_sub = $4
 		WHERE id = $1
-	`, data.GetId(), data.GetName(), time.Now(), info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id, data.Name, time.Now(), info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
+
 	return &types.PatchFileResponse{Success: true}, nil
 }
 
 func (h *Handlers) GetFiles(info ReqInfo, data *types.GetFilesRequest) (*types.GetFilesResponse, error) {
-	var files []*types.IFile
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &files, "SELECT * FROM dbview_schema.enabled_files")
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	return &types.GetFilesResponse{Files: files}, nil
+	files := util.BatchQuery[types.IFile](info.Batch, `
+		SELECT id, uuid, name, "mimeType", "createdOn"
+		FROM dbview_schema.enabled_files
+		WHERE "createdSub" = $1
+	`, info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetFilesResponse{Files: *files}, nil
 }
 
 func (h *Handlers) GetFileById(info ReqInfo, data *types.GetFileByIdRequest) (*types.GetFileByIdResponse, error) {
-	var files []*types.IFile
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &files, "SELECT * FROM dbview_schema.enabled_files WHERE id = $1", data.GetId())
-	if err != nil || len(files) == 0 {
-		return nil, util.ErrCheck(err)
-	}
-	return &types.GetFileByIdResponse{File: files[0]}, nil
+	file := util.BatchQueryRow[types.IFile](info.Batch, `
+		SELECT id, uuid, name, "mimeType", "createdOn"
+		FROM dbview_schema.enabled_files
+		WHERE id = $1
+	`, data.Id)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetFileByIdResponse{File: *file}, nil
 }
 
 func (h *Handlers) DeleteFile(info ReqInfo, data *types.DeleteFileRequest) (*types.DeleteFileResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `DELETE FROM dbtable_schema.files WHERE id = $1`, data.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	return &types.DeleteFileResponse{Id: data.GetId()}, nil
+	util.BatchExec(info.Batch, `
+		DELETE FROM dbtable_schema.files
+		WHERE id = $1
+	`, data.Id)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.DeleteFileResponse{Id: data.Id}, nil
 }
 
 func (h *Handlers) DisableFile(info ReqInfo, data *types.DisableFileRequest) (*types.DisableFileResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.files
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
 	`, data.GetId(), time.Now(), info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+
+	info.Batch.Send(info.Ctx)
+
 	return &types.DisableFileResponse{Id: data.GetId()}, nil
 }

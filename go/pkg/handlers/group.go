@@ -21,20 +21,19 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	var undos []func()
 
 	defer func() {
-		recover()
-		if len(undos) > 0 {
+		if undos != nil && len(undos) > 0 {
 			for _, undo := range undos {
 				undo()
 			}
 		}
 	}()
 
-	check, err := h.CheckGroupName(info, &types.CheckGroupNameRequest{Name: data.GetName()})
+	check, err := h.CheckGroupName(info, &types.CheckGroupNameRequest{Name: data.Name})
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if !check.GetIsValid() {
+	if !check.IsValid {
 		return nil, util.ErrCheck(groupNameInUseError)
 	}
 
@@ -51,9 +50,9 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
 	_, err = ds.SessionBatchExec(info.Ctx, `
-		INSERT INTO dbtable_schema.users (sub, username, created_on, created_sub)
-		VALUES ($1::uuid, $2, $3, $1::uuid)
-	`, info.Session.GroupSub, data.GetName(), time.Now().Local().UTC())
+		INSERT INTO dbtable_schema.users (sub, created_sub, username, created_on)
+		VALUES ($1::uuid, $1::uuid, $2, $3)
+	`, info.Session.GroupSub, data.Name, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -62,10 +61,10 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	// All the repeated $1 (UserSub) at the start are just placeholders until later in the method
 	// group "code" is generated via TRIGGER set_group_code
 	err = info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, name, purpose, allowed_domains, created_sub, display_name, ai, sub)
-		VALUES ($1::uuid, $1, $1::uuid, $2, $3, $4, $1::uuid, $5, $6, $7)
+		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, created_sub, name, purpose, allowed_domains, display_name, ai, sub)
+		VALUES ($1::uuid, $1, $1::uuid, $1::uuid, $2, $3, $4, $5, $6, $7)
 		RETURNING id, name
-	`, info.Session.UserSub, data.GetName(), data.GetPurpose(), data.GetAllowedDomains(), data.GetDisplayName(), data.GetAi(), info.Session.GroupSub).Scan(&groupId, &groupName)
+	`, info.Session.UserSub, data.Name, data.Purpose, data.AllowedDomains, data.DisplayName, data.Ai, info.Session.GroupSub).Scan(&groupId, &groupName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -102,7 +101,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		ON CONFLICT (group_id, role_id) DO NOTHING
-	`, groupId, h.Database.AdminRoleId(), kcAdminSubGroupExternalId, time.Now().Local().UTC(), info.Session.UserSub)
+	`, groupId, h.Database.AdminRoleId(), kcAdminSubGroupExternalId, time.Now(), info.Session.UserSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -131,7 +130,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		SET external_id = $2, admin_role_external_id = $3, purpose = $4
 		WHERE id = $1
 		RETURNING code
-	`, groupId, kcGroupExternalId, kcAdminSubGroupExternalId, data.GetPurpose()).Scan(&groupCode)
+	`, groupId, kcGroupExternalId, kcAdminSubGroupExternalId, data.Purpose).Scan(&groupCode)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -191,7 +190,7 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 		UPDATE dbtable_schema.users
 		SET username = $2, updated_sub = $3, updated_on = $4
 		WHERE sub = $1
-	`, info.Session.GroupSub, data.GetName(), info.Session.UserSub, time.Now())
+	`, info.Session.GroupSub, data.Name, info.Session.UserSub, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -366,7 +365,7 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 }
 
 func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*types.DeleteGroupResponse, error) {
-	for _, id := range data.GetIds() {
+	for _, id := range data.Ids {
 		var groupExternalId string
 
 		err := info.Tx.QueryRow(info.Ctx, `

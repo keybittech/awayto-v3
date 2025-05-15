@@ -123,18 +123,14 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 }
 
 func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*types.GetServicesResponse, error) {
-	var services []*types.IService
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &services, `
+	services := util.BatchQuery[types.IService](info.Batch, `
 		SELECT * FROM dbtable_schema.services
 		WHERE created_sub = $1
 	`, info.Session.UserSub)
 
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
-	return &types.GetServicesResponse{Services: services}, nil
+	return &types.GetServicesResponse{Services: *services}, nil
 }
 
 func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdRequest) (*types.GetServiceByIdResponse, error) {
@@ -144,10 +140,7 @@ func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdReques
 		WHERE id = $1
 	`, data.Id)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.GetServiceByIdResponse{Service: *service}, nil
 }
@@ -155,13 +148,12 @@ func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdReques
 func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest) (*types.DeleteServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		DELETE FROM dbtable_schema.services
 		WHERE id = ANY($1)
 	`, pq.Array(serviceIds))
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+
+	info.Batch.Send(info.Ctx)
 
 	for _, serviceId := range serviceIds {
 		h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+serviceId)
@@ -175,14 +167,13 @@ func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest)
 func (h *Handlers) DisableService(info ReqInfo, data *types.DisableServiceRequest) (*types.DisableServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.services
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = ANY($1)
 	`, pq.Array(serviceIds), time.Now(), info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+
+	info.Batch.Send(info.Ctx)
 
 	for _, serviceId := range serviceIds {
 		h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+serviceId)

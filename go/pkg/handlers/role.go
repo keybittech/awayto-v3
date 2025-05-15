@@ -5,6 +5,7 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/lib/pq"
 )
 
 func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.PostRoleResponse, error) {
@@ -58,10 +59,7 @@ func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.G
 		WHERE eu.sub = $1
 	`, info.Session.UserSub)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.GetRolesResponse{Roles: *roles}, nil
 }
@@ -73,35 +71,18 @@ func (h *Handlers) GetRoleById(info ReqInfo, data *types.GetRoleByIdRequest) (*t
 		WHERE id = $1
 	`, data.Id)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.GetRoleByIdResponse{Role: *role}, nil
 }
 
 func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*types.DeleteRoleResponse, error) {
-	var userId string
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT id FROM dbtable_schema.users WHERE sub = $1
-	`, info.Session.UserSub).Scan(&userId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	util.BatchExec(info.Batch, `
+		DELETE FROM dbtable_schema.user_roles
+		WHERE role_id = ANY($1) AND created_sub = $2
+	`, pq.Array(strings.Split(data.Ids, ",")), info.Session.UserSub)
 
-	ids := data.GetIds()
-	for id := range strings.SplitSeq(ids, ",") {
-		if id != "" {
-			_, err = info.Tx.Exec(info.Ctx, `
-				DELETE FROM dbtable_schema.user_roles
-				WHERE role_id = $1 AND user_id = $2
-			`, id, userId)
-			if err != nil {
-				return nil, util.ErrCheck(err)
-			}
-		}
-	}
+	info.Batch.Send(info.Ctx)
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
 

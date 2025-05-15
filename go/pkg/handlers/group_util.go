@@ -26,7 +26,9 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 	var userId, allowedDomains, defaultRoleId string
 
 	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT id, allowed_domains, default_role_id FROM dbtable_schema.groups WHERE code = $1
+		SELECT id, allowed_domains, default_role_id
+		FROM dbtable_schema.groups
+		WHERE code = $1
 	`, data.GetCode()).Scan(&info.Session.GroupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
@@ -102,6 +104,8 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.LeaveGroupResponse{Success: true}, nil
 }

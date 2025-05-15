@@ -19,6 +19,7 @@ service UserProfileService {
       post: "/v1/profile"
       body: "*"
     };
+    option (use_tx) = true;
   }
 
   rpc PatchUserProfile(PatchUserProfileRequest) returns (PatchUserProfileResponse) {
@@ -35,18 +36,6 @@ service UserProfileService {
     option (cache) = SKIP;
   }
 
-  rpc GetUserProfileDetailsBySub(GetUserProfileDetailsBySubRequest) returns (GetUserProfileDetailsBySubResponse) {
-    option (google.api.http) = {
-      get: "/v1/profile/details/sub/{sub}"
-    };
-  }
-
-  rpc GetUserProfileDetailsById(GetUserProfileDetailsByIdRequest) returns (GetUserProfileDetailsByIdResponse) {
-    option (google.api.http) = {
-      get: "/v1/profile/details/id/{id}"
-    };
-  }
-
   rpc DisableUserProfile(DisableUserProfileRequest) returns (DisableUserProfileResponse) {
     option (google.api.http) = {
       patch: "/v1/profile/{id}/disable"
@@ -57,6 +46,7 @@ service UserProfileService {
     option (google.api.http) = {
       patch: "/v1/profile/activate"
     };
+    option (use_tx) = true;
   }
 
   rpc DeactivateProfile(DeactivateProfileRequest) returns (DeactivateProfileResponse) {
@@ -120,21 +110,6 @@ message PatchUserProfileResponse {
 message GetUserProfileDetailsRequest {}
 
 message GetUserProfileDetailsResponse {
-  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
-}
-
-message GetUserProfileDetailsBySubRequest {
-  string sub = 1 [(google.api.field_behavior) = REQUIRED];
-}
-message GetUserProfileDetailsBySubResponse {
-  IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
-}
-
-message GetUserProfileDetailsByIdRequest {
-  string id = 1 [(google.api.field_behavior) = REQUIRED];
-}
-
-message GetUserProfileDetailsByIdResponse {
   IUserProfile userProfile = 1 [(google.api.field_behavior) = REQUIRED, (types.nolog) = true];
 }
 

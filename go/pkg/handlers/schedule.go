@@ -172,32 +172,28 @@ func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest)
 		endTime = &et
 	}
 
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.schedules
 		SET name = $2, start_time = $3, end_time = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-		`, schedule.GetId(), schedule.GetName(), &startTime, &endTime, info.Session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, schedule.GetId(), schedule.GetName(), &startTime, &endTime, info.Session.UserSub, time.Now())
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.PatchScheduleResponse{Success: true}, nil
 }
 
 func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (*types.GetSchedulesResponse, error) {
-	var schedules []*types.ISchedule
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &schedules, `
+	schedules := util.BatchQuery[types.ISchedule](info.Batch, `
 		SELECT es.* 
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbtable_schema.schedules s ON s.id = es.id
 		WHERE s.created_sub = $1
 	`, info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	return &types.GetSchedulesResponse{Schedules: schedules}, nil
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetSchedulesResponse{Schedules: *schedules}, nil
 }
 
 func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequest) (*types.GetScheduleByIdResponse, error) {
@@ -206,10 +202,7 @@ func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequ
 		WHERE id = $1
 	`, data.Id)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	return &types.GetScheduleByIdResponse{Schedule: *schedule}, nil
 }

@@ -135,49 +135,52 @@ func (b *Batchable) Reset(knownOpSize ...int32) {
 	b.outerSlice = make([]any, 0, opSize)
 }
 
-func (b *Batchable) BatchOp(op batchOp, query string, params ...any) int {
+func (b *Batchable) batchOp(op batchOp, query string, params ...any) int {
 	b.batch.Queue(query, params...)
 	b.ops = append(b.ops, op)
 	b.outerSlice = append(b.outerSlice, nil)
 	return len(b.outerSlice) - 1
 }
 
-func BatchExec[T any](b *Batchable, query string, params ...any) *pgconn.CommandTag {
+// Returns pointer to the future value. Must call Batchable.Send to populate values. Value must be *dereferenced.
+func BatchExec(b *Batchable, query string, params ...any) *pgconn.CommandTag {
 	var result pgconn.CommandTag
 	resultPtr := &result
-	idx := b.BatchOp(batchOpExec, query, params...)
+	idx := b.batchOp(batchOpExec, query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
 
+// Returns pointer to the future value. Must call Batchable.Send to populate values. Value must be *dereferenced.
 func BatchQuery[T any](b *Batchable, query string, params ...any) *[]*T {
 	var result []*T
 	resultPtr := &result
-	idx := b.BatchOp(batchOpQuery[T], query, params...)
+	idx := b.batchOp(batchOpQuery[T], query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
 
+// Returns pointer to the future value. Must call Batchable.Send to populate values. Value must be *dereferenced.
 func BatchQueryRow[T any](b *Batchable, query string, params ...any) **T {
 	var result *T
 	resultPtr := &result
-	idx := b.BatchOp(batchOpQueryRow[T], query, params...)
+	idx := b.batchOp(batchOpQueryRow[T], query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
 
+// Returns pointer to the future value. Must call Batchable.Send to populate values. Value must be *dereferenced.
 func BatchQueryMap[T any](b *Batchable, mapKey, query string, params ...any) *map[string]*T {
 	var result map[string]*T
 	resultPtr := &result
-	idx := b.BatchOp(batchOpQueryMap[T](mapKey), query, params...)
+	idx := b.batchOp(batchOpQueryMap[T](mapKey), query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
 
-// Close a batch opened with NewBatchable. The caller needs to infer types of response slice
-// Results will exclude the first and last operation, which correspond to set session ops
-func (b *Batchable) Send(ctx context.Context) error {
-	// Unset session vars after all queries
+// Panics on error!
+// Close a batch opened with NewBatchable. The caller needs to dereference values returned by BatchOpX
+func (b *Batchable) Send(ctx context.Context) {
 	b.batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
 	b.ops = append(b.ops, batchOpExec)
 
@@ -204,14 +207,12 @@ func (b *Batchable) Send(ctx context.Context) error {
 		if closeErr != nil {
 			ErrorLog.Println(ErrCheck(closeErr))
 		}
-		return ErrCheck(opErr)
+		panic(ErrCheck(opErr))
 	}
 
 	if closeErr != nil {
-		return ErrCheck(closeErr)
+		panic(ErrCheck(closeErr))
 	}
-
-	return nil
 }
 
 func WithPagination(query string, page, pageSize int) string {

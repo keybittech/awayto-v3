@@ -16,6 +16,7 @@ service FileService {
     };
     option (throttle) = 1;
     option (multipart_request) = true;
+    option (use_tx) = true;
   }
   
   rpc PatchFileContents(PatchFileContentsRequest) returns (PatchFileContentsResponse) {
@@ -80,6 +81,7 @@ message IFile {
   string mimeType = 4;
   string url = 5;
   BufferResponse bufferResponse = 6;
+  string createdOn = 7;
 }
 
 // FILE CONTENTS, byte array stored somewhere

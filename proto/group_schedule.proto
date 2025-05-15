@@ -16,44 +16,41 @@ service GroupScheduleService {
       post: "/v1/group/schedules"
       body: "*"
     };
+    option (use_tx) = true;
   }
-
   rpc PatchGroupSchedule(PatchGroupScheduleRequest) returns (PatchGroupScheduleResponse) {
     option (google.api.http) = {
       patch: "/v1/group/schedules"
       body: "*"
     };
   }
-
   rpc GetGroupSchedules(GetGroupSchedulesRequest) returns (GetGroupSchedulesResponse) {
     option (google.api.http) = {
       get: "/v1/group/schedules"
     };
   }
-
   rpc GetGroupKioskSchedules(GetGroupKioskSchedulesRequest) returns (GetGroupKioskSchedulesResponse) {
     option (google.api.http) = {
       get: "/v1/group/schedules/kiosk"
     };
   }
-
   rpc GetGroupScheduleMasterById(GetGroupScheduleMasterByIdRequest) returns (GetGroupScheduleMasterByIdResponse) {
     option (google.api.http) = {
       get: "/v1/group/schedules/master/{groupScheduleId}"
     };
   }
-
   rpc GetGroupScheduleByDate(GetGroupScheduleByDateRequest) returns (GetGroupScheduleByDateResponse) {
     option (google.api.http) = {
       get: "/v1/group/schedules/{groupScheduleId}/date/{date}"
     };
     option (cache) = SKIP; 
+    option (use_tx) = true;
   }
-
   rpc DeleteGroupSchedule(DeleteGroupScheduleRequest) returns (DeleteGroupScheduleResponse) {
     option (google.api.http) = {
       delete: "/v1/group/schedules/{groupScheduleIds}"
     };
+    option (use_tx) = true;
   }
 }
 

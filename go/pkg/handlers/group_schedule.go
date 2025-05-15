@@ -4,13 +4,12 @@ import (
 	"database/sql"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func (h *Handlers) PostGroupSchedule(info ReqInfo, data *types.PostGroupScheduleRequest) (*types.PostGroupScheduleResponse, error) {
-
 	var groupScheduleId string
 	err := info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
@@ -39,30 +38,27 @@ func (h *Handlers) PatchGroupSchedule(info ReqInfo, data *types.PatchGroupSchedu
 }
 
 func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedulesRequest) (*types.GetGroupSchedulesResponse, error) {
-	groupSchedules, err := clients.QueryProtos[types.IGroupSchedule](info.Ctx, info.Tx, `
+	groupSchedules := util.BatchQuery[types.IGroupSchedule](info.Batch, `
 		SELECT TO_JSONB(es) as schedule, es.name, egs.id, egs."groupId"
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbview_schema.enabled_group_schedules egs ON egs."scheduleId" = es.id
 		WHERE egs."groupId" = $1
 	`, info.Session.GroupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
 
-	return &types.GetGroupSchedulesResponse{GroupSchedules: groupSchedules}, nil
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetGroupSchedulesResponse{GroupSchedules: *groupSchedules}, nil
 }
 
 func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroupScheduleMasterByIdRequest) (*types.GetGroupScheduleMasterByIdResponse, error) {
+	// The schedule master is the root ISchedule, not an IGroupSchedule
 	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
 		SELECT *
 		FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.GroupScheduleId)
 
-	err := info.Batch.Send(info.Ctx)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	info.Batch.Send(info.Ctx)
 
 	s := *schedule
 
@@ -70,25 +66,21 @@ func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroup
 }
 
 func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupScheduleByDateRequest) (*types.GetGroupScheduleByDateResponse, error) {
-	scheduleTimeUnitLookup := util.BatchQueryRow[types.ILookup](info.Batch, `
+	var scheduleTimeUnitName string
+
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT tu.name
 		FROM dbtable_schema.schedules s
 		JOIN dbtable_schema.time_units tu ON tu.id = s.schedule_time_unit_id
 		WHERE s.id = $1
-	`, data.GroupScheduleId)
-
-	err := info.Batch.Send(info.Ctx)
+	`, data.GroupScheduleId).Scan(&scheduleTimeUnitName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	scheduleTimeUnitName := (*scheduleTimeUnitLookup).Name
-
-	info.Batch.Reset()
-
-	var query strings.Builder
+	var query string
 	if "week" == scheduleTimeUnitName {
-		query.WriteString(`
+		query = `
 			WITH times AS (
 				SELECT
 					DISTINCT slot."startTime",
@@ -114,9 +106,9 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 			)
 			SELECT "startTime", "scheduleBracketSlotId", "weekStart", "startDate"
 			FROM times
-		`)
+		`
 	} else {
-		query.WriteString(`
+		query = ` 
 			WITH times AS (
 				SELECT
 					DISTINCT slot."startTime",
@@ -156,20 +148,23 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 			)
 			SELECT "startTime", "scheduleBracketSlotId", "weekStart", "startDate"
 			FROM times
-		`)
+		`
 	}
 
-	groupScheduleDateSlots := util.BatchQuery[types.IGroupScheduleDateSlots](info.Batch, query.String(), data.Date, data.GroupScheduleId, info.Session.Timezone)
-	err = info.Batch.Send(info.Ctx)
+	rows, err := info.Tx.Query(info.Ctx, query, data.Date, data.GroupScheduleId, info.Session.Timezone)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: *groupScheduleDateSlots}, nil
+	groupScheduleDateSlots, err := pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[types.IGroupScheduleDateSlots])
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return &types.GetGroupScheduleByDateResponse{GroupScheduleDateSlots: groupScheduleDateSlots}, nil
 }
 
 func (h *Handlers) DeleteGroupSchedule(info ReqInfo, data *types.DeleteGroupScheduleRequest) (*types.DeleteGroupScheduleResponse, error) {
-
 	groupPoolTx, _, err := h.Database.DatabaseClient.OpenPoolSessionGroupTx(info.Ctx, info.Session)
 	if err != nil {
 		return nil, util.ErrCheck(err)
