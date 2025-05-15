@@ -28,7 +28,7 @@ func TestWithPagination(t *testing.T) {
 
 func BenchmarkWithPagination(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = WithPagination("SELECT * FROM products WHERE category = 'test'", 3, 15)
 	}
 }

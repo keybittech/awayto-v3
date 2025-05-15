@@ -34,14 +34,14 @@ func TestGetColonJoined(t *testing.T) {
 
 func BenchmarkGetSocketId(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = GetColonJoined("a", "b")
 	}
 }
 
 func BenchmarkGetSocketIdNegative(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = GetColonJoined("", "")
 	}
 }
@@ -85,21 +85,21 @@ func TestSplitColonJoined(t *testing.T) {
 
 func BenchmarkSplitColonJoined(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, _ = SplitColonJoined("a:b")
 	}
 }
 
 func BenchmarkSplitColonJoinedNegative(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, _ = SplitColonJoined("")
 	}
 }
 
 func BenchmarkSplitColonJoinedNegativeColon(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, _ = SplitColonJoined("a:")
 	}
 }
@@ -127,7 +127,7 @@ func TestComputeWebSocketAcceptKey(t *testing.T) {
 
 func BenchmarkComputeWebSocketAcceptKey(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ComputeWebSocketAcceptKey("test")
 	}
 }
@@ -218,7 +218,7 @@ func BenchmarkReadSocketConnectionMessage(b *testing.B) {
 		},
 	}
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = ReadSocketConnectionMessage(conn)
 	}
 }
@@ -296,7 +296,7 @@ func BenchmarkWriteSocketConnectionMessage(b *testing.B) {
 	data := []byte("test")
 	conn := &MockConn{}
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = WriteSocketConnectionMessage(data, conn)
 	}
 }
@@ -305,7 +305,7 @@ func BenchmarkWriteSocketConnectionMessageLarge(b *testing.B) {
 	data := make([]byte, 70000)
 	conn := &MockConn{}
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = WriteSocketConnectionMessage(data, conn)
 	}
 }
@@ -314,7 +314,7 @@ func BenchmarkWriteSocketConnectionMessageError(b *testing.B) {
 	data := []byte("test")
 	conn := &MockErrConn{}
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = WriteSocketConnectionMessage(data, conn)
 	}
 }
@@ -379,7 +379,7 @@ func BenchmarkGenerateMessage(b *testing.B) {
 		Timestamp:  "timestamp",
 	}
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = GenerateMessage(padTo, testMessage)
 	}
 }
@@ -520,7 +520,7 @@ func BenchmarkParseMessage(b *testing.B) {
 	cursor := 0
 	message := []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _, _ = ParseMessage(padTo, cursor, message)
 	}
 }

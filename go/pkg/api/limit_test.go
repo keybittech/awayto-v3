@@ -10,7 +10,7 @@ import (
 	"golang.org/x/time/rate"
 )
 
-func BenchmarkLimit(b *testing.B) {
+func BenchmarkRateLimit(b *testing.B) {
 	rl := NewRateLimit("limit", 0, 0, time.Duration(5*time.Second))
 	reset(b)
 	b.RunParallel(func(pb *testing.PB) {
@@ -201,14 +201,14 @@ func TestParallelRateLimiters(t *testing.T) {
 	dbLimited := int32(0)
 	cacheLimited := int32(0)
 
-	for i := 0; i < numClients; i++ {
+	for i := range numClients {
 		clientID := fmt.Sprintf("client-%d", i)
 		wg.Add(1)
 
 		go func(clientID string) {
 			defer wg.Done()
 
-			for j := 0; j < requestsPerClient; j++ {
+			for range requestsPerClient {
 				if apiRl.Limit(clientID) {
 					atomic.AddInt32(&apiLimited, 1)
 				}
@@ -266,11 +266,11 @@ func TestRateLimiterRace(t *testing.T) {
 	concurrency := 100
 	var wg sync.WaitGroup
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		rl.Limit(fmt.Sprintf("client-%d", i))
 	}
 
-	for i := 0; i < concurrency; i++ {
+	for i := range concurrency {
 		runLimit(i, rl, &wg)
 	}
 
@@ -290,12 +290,12 @@ func BenchmarkRateLimiterRace(b *testing.B) {
 	concurrency := 100
 	var wg sync.WaitGroup
 
-	for i := 0; i < 5; i++ {
+	for i := range 5 {
 		rl.Limit(fmt.Sprintf("client-%d", i))
 	}
 
 	reset(b)
-	for i := 0; i < concurrency; i++ {
+	for i := range b.N / concurrency {
 		runLimit(i, rl, &wg)
 	}
 

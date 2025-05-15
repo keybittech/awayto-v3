@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"log"
 	"math"
-	"net/url"
+	"net/http"
 	"reflect"
 	"strings"
 
@@ -17,10 +17,6 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-type IdStruct struct {
-	Id string `json:"id"`
-}
-
 type HandlerOptions struct {
 	NoLogFields       []protoreflect.Name
 	SiteRoleName      string
@@ -30,8 +26,11 @@ type HandlerOptions struct {
 	CacheType         int64
 	SiteRole          int64
 	Throttle          int64
+	HasQueryParams    bool
+	HasPathParams     bool
 	MultipartResponse bool
 	MultipartRequest  bool
+	UseTx             bool
 }
 
 func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
@@ -87,6 +86,14 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	// attach /api to /v1 /v2, etc -- resulting in /api/v1/ which is the standard API_PATH
 	parsedOptions.Pattern = fmt.Sprintf("%s /api%s", serviceMethodMethod, serviceMethodUrl)
 
+	if strings.Contains(serviceMethodUrl, "?") {
+		parsedOptions.HasQueryParams = true
+	}
+
+	if strings.Contains(serviceMethodUrl, "{") {
+		parsedOptions.HasPathParams = true
+	}
+
 	if proto.HasExtension(inputOpts, types.E_SiteRole) {
 		siteRoles := proto.GetExtension(inputOpts, types.E_SiteRole).(types.SiteRoles)
 		roles := strings.Split(fmt.Sprint(siteRoles), ",")
@@ -118,6 +125,10 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		parsedOptions.MultipartResponse = proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool)
 	}
 
+	if proto.HasExtension(inputOpts, types.E_UseTx) {
+		parsedOptions.UseTx = proto.GetExtension(inputOpts, types.E_UseTx).(bool)
+	}
+
 	return parsedOptions
 }
 
@@ -137,7 +148,7 @@ func setProtoFieldValue(msg proto.Message, jsonName string, value string) {
 	descriptor := reflectMsg.Descriptor()
 	fields := descriptor.Fields()
 
-	for i := 0; i < fields.Len(); i++ {
+	for i := range fields.Len() {
 		field := fields.Get(i)
 		if field.JSONName() == jsonName && field.Kind() == protoreflect.StringKind {
 			reflectMsg.Set(field, protoreflect.ValueOfString(value))
@@ -147,7 +158,8 @@ func setProtoFieldValue(msg proto.Message, jsonName string, value string) {
 }
 
 // ParseProtoQueryParams sets proto message fields from URL query parameters
-func ParseProtoQueryParams(msg proto.Message, queryParams url.Values) {
+func ParseProtoQueryParams(msg proto.Message, req *http.Request) {
+	queryParams := req.URL.Query()
 	if len(queryParams) == 0 {
 		return
 	}
@@ -156,7 +168,7 @@ func ParseProtoQueryParams(msg proto.Message, queryParams url.Values) {
 	descriptor := reflectMsg.Descriptor()
 	fields := descriptor.Fields()
 
-	for i := 0; i < fields.Len(); i++ {
+	for i := range fields.Len() {
 		field := fields.Get(i)
 		jsonName := field.JSONName()
 
@@ -169,19 +181,20 @@ func ParseProtoQueryParams(msg proto.Message, queryParams url.Values) {
 }
 
 // ParseProtoPathParams sets proto message fields from path parameters
-func ParseProtoPathParams(msg proto.Message, methodParameters, requestParameters []string) {
-	if len(methodParameters) == 0 || len(methodParameters) != len(requestParameters) {
+func ParseProtoPathParams(msg proto.Message, methodParams []string, req *http.Request) {
+	requestParams := strings.Split(req.URL.Path[4:], "/")
+	if len(methodParams) == 0 || len(methodParams) != len(requestParams) {
 		return
 	}
 
-	for i := 0; i < len(methodParameters); i++ {
-		paramName := methodParameters[i]
+	for i := range len(methodParams) {
+		paramName := methodParams[i]
 		if strings.HasPrefix(paramName, "{") {
 			// Extract the parameter name without braces
 			paramName = strings.Trim(paramName, "{}")
 
 			// Set the field value if it exists
-			setProtoFieldValue(msg, paramName, requestParameters[i])
+			setProtoFieldValue(msg, paramName, requestParams[i])
 		}
 	}
 }

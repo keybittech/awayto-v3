@@ -1,7 +1,7 @@
 package util
 
 import (
-	"net/url"
+	"net/http"
 	"reflect"
 	"strings"
 	"testing"
@@ -12,7 +12,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
-func getMethodDescriptor(testModule interface{}, methodName string) protoreflect.MethodDescriptor {
+func getMethodDescriptor(testModule any, methodName string) protoreflect.MethodDescriptor {
 
 	md := getMethodDescriptorOp(methodName)
 
@@ -157,24 +157,30 @@ func BenchmarkParseHandlerOptions(b *testing.B) {
 	md := getMethodDescriptor(b, "PostPrompt")
 	reset(b)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ParseHandlerOptions(md)
 	}
 }
 
+func makeParseTestReq(pathOrQuery string) *http.Request {
+	newReq, err := http.NewRequest("GET", pathOrQuery, nil)
+	if err != nil {
+		panic(err)
+	}
+	return newReq
+}
+
 func TestParseProtoQueryParams(t *testing.T) {
 	tests := []struct {
-		name        string
-		method      protoreflect.MethodDescriptor
-		queryParams url.Values
-		want        proto.Message
+		name   string
+		method protoreflect.MethodDescriptor
+		req    *http.Request
+		want   proto.Message
 	}{
 		{
 			name:   "serializes query paramaters into pb struct",
 			method: getMethodDescriptor(t, "GetUserProfileDetailsBySub"),
-			queryParams: url.Values{
-				"sub": []string{"test"},
-			},
+			req:    makeParseTestReq("/blah?sub=test"),
 			want: &types.GetUserProfileDetailsBySubRequest{
 				Sub: "test",
 			},
@@ -184,7 +190,7 @@ func TestParseProtoQueryParams(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			pb := getServiceType(t, tt.method).New().Interface()
-			ParseProtoQueryParams(pb, tt.queryParams)
+			ParseProtoQueryParams(pb, tt.req)
 			if !proto.Equal(pb, tt.want) {
 				t.Errorf("ParseProtoQueryParams() = %v, want %v", pb, tt.want)
 			}
@@ -195,32 +201,22 @@ func TestParseProtoQueryParams(t *testing.T) {
 func BenchmarkParseProtoQueryParamsComplex(b *testing.B) {
 	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
 	pb := getServiceType(b, md).New().Interface()
-	// More complex query with multiple parameters
-	queryParams := url.Values{
-		"sub":     []string{"test-subject"},
-		"user_id": []string{"123456"},
-		"role":    []string{"admin"},
-		"active":  []string{"true"},
-	}
-	val := pb
+	req := makeParseTestReq("/blah?sub=test&user_id=12345&role=admin&active=true")
 	reset(b)
 
-	for i := 0; i < b.N; i++ {
-		ParseProtoQueryParams(val, queryParams)
+	for b.Loop() {
+		ParseProtoQueryParams(pb, req)
 	}
 }
 
 func BenchmarkParseProtoQueryParams(b *testing.B) {
 	md := getMethodDescriptor(b, "GetUserProfileDetailsBySub")
 	pb := getServiceType(b, md).New().Interface()
-	queryParams := url.Values{
-		"sub": []string{"test"},
-	}
-	val := pb
+	req := makeParseTestReq("/blah?sub=test")
 	reset(b)
 
-	for i := 0; i < b.N; i++ {
-		ParseProtoQueryParams(val, queryParams)
+	for b.Loop() {
+		ParseProtoQueryParams(pb, req)
 	}
 }
 
@@ -228,13 +224,13 @@ func TestParseProtoPathParams(t *testing.T) {
 	tests := []struct {
 		name   string
 		method protoreflect.MethodDescriptor
-		url    string
+		req    *http.Request
 		want   proto.Message
 	}{
 		{
 			name:   "serializes path parameters into pb struct",
 			method: getMethodDescriptor(t, "GetGroupScheduleByDate"),
-			url:    "/api/v1/group/schedules/group-schedule-id/date/date-value",
+			req:    makeParseTestReq("/api/v1/group/schedules/group-schedule-id/date/date-value"),
 			want: &types.GetGroupScheduleByDateRequest{
 				GroupScheduleId: "group-schedule-id",
 				Date:            "date-value",
@@ -247,7 +243,7 @@ func TestParseProtoPathParams(t *testing.T) {
 			ParseProtoPathParams(
 				pb,
 				strings.Split(ParseHandlerOptions(tt.method).ServiceMethodURL, "/"),
-				strings.Split(strings.TrimPrefix(tt.url, "/api"), "/"),
+				tt.req,
 			)
 
 			if !proto.Equal(pb, tt.want) {
@@ -260,13 +256,11 @@ func TestParseProtoPathParams(t *testing.T) {
 func BenchmarkParseProtoPathParams(b *testing.B) {
 	md := getMethodDescriptor(b, "GetGroupScheduleByDate")
 	pb := getServiceType(b, md).New().Interface()
-	url := "/api/v1/group/schedules/group-schedule-id/date/date-value"
-	options := ParseHandlerOptions(md)
-	val := pb
+	req := makeParseTestReq("/api/v1/group/schedules/group-schedule-id/date/date-value")
+	methodParams := strings.Split(ParseHandlerOptions(md).ServiceMethodURL, "/")
 	reset(b)
-
-	for i := 0; i < b.N; i++ {
-		ParseProtoPathParams(val, strings.Split(options.ServiceMethodURL, "/"), strings.Split(strings.TrimLeft(url, "/api"), "/"))
+	for b.Loop() {
+		ParseProtoPathParams(pb, methodParams, req)
 	}
 }
 
@@ -306,7 +300,7 @@ func Benchmark_parseTag(b *testing.B) {
 
 	reset(b)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = parseTag(field, "json")
 	}
 }
@@ -320,7 +314,7 @@ func Benchmark_parseTagParsed(b *testing.B) {
 
 	reset(b)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = parseTag(field, "other")
 	}
 }

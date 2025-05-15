@@ -367,23 +367,6 @@ func TestWorkerPool_RouteCommand(t *testing.T) {
 	}
 }
 
-func TestWorkerPool_QueueLength(t *testing.T) {
-	tests := []struct {
-		name string
-		p    *WorkerPool
-		want int
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.p.QueueLength(); got != tt.want {
-				t.Errorf("WorkerPool.QueueLength() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestWorkerPool_CleanUpClientMapping(t *testing.T) {
 	type args struct {
 		clientId string

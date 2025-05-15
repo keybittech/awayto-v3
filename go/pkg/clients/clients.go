@@ -10,6 +10,19 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
+const (
+	routingTimeout = 100 * time.Millisecond
+	cleanupTimeout = 5 * time.Second
+)
+
+var (
+	globalWorkerPool              *WorkerPool
+	globalWorkerPoolOnce          sync.Once
+	channelClosedWithoutResponse  = errors.New("reply channel closed without response")
+	channelTimedOutBeforeResponse = errors.New("timed out when receiving command")
+	routingTimeoutError           = errors.New("timed out when routing command after" + routingTimeout.String())
+)
+
 // CommandHandler interface defines a type that can handle commands of a specific type
 type CommandHandler[Command any] interface {
 	RouteCommand(ctx context.Context, cmd Command) error
@@ -21,7 +34,7 @@ type IdentifiedCommand interface {
 }
 
 type ResponseCommand interface {
-	GetReplyChannel() interface{}
+	GetReplyChannel() any
 }
 
 type CombinedCommand interface {
@@ -29,16 +42,40 @@ type CombinedCommand interface {
 	ResponseCommand
 }
 
-// GlobalWorkerPool is a singleton instance of worker pool
-var (
-	globalWorkerPool     *WorkerPool
-	globalWorkerPoolOnce sync.Once
-)
-
-// ProcessFunction is a type for command processing functions
 type ProcessFunction func(cmd CombinedCommand) bool
 
-// InitGlobalWorkerPool initializes the global worker pool
+// WorkerPool manages a pool of workers to process commands
+type WorkerPool struct {
+	clientCleanup map[string]*time.Timer
+	clientToQueue map[string]int
+	processFuncs  sync.Map // map[string]ProcessFunction
+	wg            sync.WaitGroup
+	queueMutex    sync.RWMutex
+	workerQueues  []chan CombinedCommand
+	numWorkers    int
+}
+
+// newWorkerPool creates a new worker pool with the specified number of workers
+func newWorkerPool(numWorkers int, bufferSize int) *WorkerPool {
+	if numWorkers <= 0 {
+		numWorkers = 1
+	}
+
+	pool := &WorkerPool{
+		numWorkers:    numWorkers,
+		workerQueues:  make([]chan CombinedCommand, numWorkers),
+		clientToQueue: make(map[string]int),
+		clientCleanup: make(map[string]*time.Timer),
+	}
+
+	// Initialize worker queues
+	for i := range numWorkers {
+		pool.workerQueues[i] = make(chan CombinedCommand, bufferSize)
+	}
+
+	return pool
+}
+
 func InitGlobalWorkerPool(numWorkers, bufferSize int) {
 	globalWorkerPoolOnce.Do(func() {
 		globalWorkerPool = newWorkerPool(numWorkers, bufferSize)
@@ -46,13 +83,9 @@ func InitGlobalWorkerPool(numWorkers, bufferSize int) {
 	})
 }
 
-// GetGlobalWorkerPool returns the global worker pool instance
 func GetGlobalWorkerPool() *WorkerPool {
 	return globalWorkerPool
 }
-
-var channelClosedWithoutResponse = errors.New("reply channel closed without response")
-var channelTimedOutBeforeResponse = errors.New("timed out when receiving command")
 
 // SendCommand sends a command to a handler and waits for a response with timeout
 func SendCommand[Command any, Response any](
@@ -87,68 +120,45 @@ func SendCommand[Command any, Response any](
 	}
 }
 
-// WorkerPool manages a pool of workers to process commands
-type WorkerPool struct {
-	numWorkers    int
-	workerQueues  []chan CombinedCommand
-	wg            sync.WaitGroup
-	clientToQueue map[string]int
-	queueMutex    sync.RWMutex
-	processFuncs  sync.Map // map[string]ProcessFunction
-}
-
-// newWorkerPool creates a new worker pool with the specified number of workers
-func newWorkerPool(numWorkers int, bufferSize int) *WorkerPool {
-	if numWorkers <= 0 {
-		numWorkers = 1
-	}
-
-	pool := &WorkerPool{
-		numWorkers:    numWorkers,
-		workerQueues:  make([]chan CombinedCommand, numWorkers),
-		clientToQueue: make(map[string]int),
-	}
-
-	// Initialize worker queues
-	for i := 0; i < numWorkers; i++ {
-		pool.workerQueues[i] = make(chan CombinedCommand, bufferSize)
-	}
-
-	return pool
-}
-
-// RegisterProcessFunction registers a process function with a given ID
 func (p *WorkerPool) RegisterProcessFunction(id string, fn ProcessFunction) {
 	p.processFuncs.Store(id, fn)
 }
 
-// UnregisterProcessFunction removes a process function
 func (p *WorkerPool) UnregisterProcessFunction(id string) {
 	p.processFuncs.Delete(id)
 }
 
-// Start launches the worker pool
+// worker processes commands from its assigned queue
+func (p *WorkerPool) worker(queue <-chan CombinedCommand) {
+	defer p.wg.Done()
+	for cmd := range queue {
+		// Try each process function until one succeeds
+		p.processFuncs.Range(func(_, value any) bool {
+			if processFunc, ok := value.(ProcessFunction); ok {
+				// If the process function returns true, it means it handled the command
+				if processFunc(cmd) {
+					return false
+				}
+			}
+			return true
+		})
+	}
+}
+
 func (p *WorkerPool) Start() {
-	// Start workers
 	p.wg.Add(p.numWorkers)
-	for i := 0; i < p.numWorkers; i++ {
+	for i := range p.numWorkers {
 		go p.worker(p.workerQueues[i])
 	}
 }
 
-// Stop gracefully shuts down the worker pool
 func (p *WorkerPool) Stop() {
-	for i := 0; i < p.numWorkers; i++ {
+	for i := range p.numWorkers {
 		close(p.workerQueues[i])
 	}
 	p.wg.Wait()
 }
 
-const routingTimeout = 100 * time.Millisecond
-
-var routingTimeoutError = errors.New("timed out when routing command after" + routingTimeout.String())
-
-// RouteCommand routes a command to the appropriate worker queue
 func (p *WorkerPool) RouteCommand(ctx context.Context, cmd CombinedCommand) error {
 	clientId := cmd.GetClientId()
 	queueIdx := p.getQueueForClient(clientId)
@@ -161,16 +171,24 @@ func (p *WorkerPool) RouteCommand(ctx context.Context, cmd CombinedCommand) erro
 	}
 }
 
-func (p *WorkerPool) QueueLength() int {
-	p.queueMutex.Lock()
-	defer p.queueMutex.Unlock()
-	return len(p.clientToQueue)
-}
-
 func (p *WorkerPool) CleanUpClientMapping(clientId string) {
 	p.queueMutex.Lock()
 	defer p.queueMutex.Unlock()
-	delete(p.clientToQueue, clientId)
+
+	if timer, ok := p.clientCleanup[clientId]; ok {
+		timer.Reset(cleanupTimeout)
+		return
+	}
+
+	timer := time.AfterFunc(cleanupTimeout, func() {
+		p.queueMutex.Lock()
+		defer p.queueMutex.Unlock()
+
+		delete(p.clientToQueue, clientId)
+		delete(p.clientCleanup, clientId)
+	})
+
+	p.clientCleanup[clientId] = timer
 }
 
 // getQueueForClient determines which queue to use for a given client
@@ -200,31 +218,6 @@ func (p *WorkerPool) getQueueForClient(clientId string) int {
 	queueIdx := int(h.Sum32()) % p.numWorkers
 	p.clientToQueue[clientId] = queueIdx
 	return queueIdx
-}
-
-// worker processes commands from its assigned queue
-func (p *WorkerPool) worker(queue <-chan CombinedCommand) {
-	defer p.wg.Done()
-	for cmd := range queue {
-		// Try each process function until one succeeds
-		var handled bool
-		p.processFuncs.Range(func(_, value interface{}) bool {
-			if processFunc, ok := value.(ProcessFunction); ok {
-				// If the process function returns true, it means it handled the command
-				if processFunc(cmd) {
-					handled = true
-					return false // Stop iterating through process functions
-				}
-			}
-			return true // Continue to next process function
-		})
-
-		if !handled {
-			// No process function handled this command
-			// We could log this or handle it in some way
-			// For now, we'll just continue to the next command
-		}
-	}
 }
 
 func ChannelError(general, response error) error {

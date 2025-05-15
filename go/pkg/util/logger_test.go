@@ -69,7 +69,7 @@ func BenchmarkCustomLogger_Println(b *testing.B) {
 
 	reset(b)
 
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		errLogger.Println("test")
 	}
 	b.StopTimer()

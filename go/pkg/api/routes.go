@@ -3,12 +3,10 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"runtime/debug"
 	"slices"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -37,152 +35,81 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 		}
 	}
 
-	var bodyParser BodyParser
-	var responseHandler ResponseHandler
 	handlerOpts := util.ParseHandlerOptions(serviceMethod)
 	ignoreFields := slices.Concat(util.DEFAULT_IGNORED_PROTO_FIELDS, handlerOpts.NoLogFields)
 
+	var queryParser = func(msg proto.Message, req *http.Request) {}
+	if handlerOpts.HasQueryParams {
+		queryParser = util.ParseProtoQueryParams
+	}
+
+	var pathParser = func(msg proto.Message, req *http.Request) {}
+	if handlerOpts.HasPathParams {
+		pathParams := strings.Split(handlerOpts.ServiceMethodURL, "/")
+		pathParser = func(msg proto.Message, req *http.Request) {
+			util.ParseProtoPathParams(msg, pathParams, req)
+		}
+	}
+
+	var bodyParser BodyParser = ProtoBodyParser
 	if handlerOpts.MultipartRequest {
 		bodyParser = MultipartBodyParser
-	} else {
-		bodyParser = ProtoBodyParser
 	}
 
+	var requestExecutor RequestExecutor = BatchExecutor
+	if handlerOpts.UseTx {
+		requestExecutor = TxExecutor
+	}
+
+	var responseHandler ResponseHandler = ProtoResponseHandler
 	if handlerOpts.MultipartResponse {
 		responseHandler = MultipartResponseHandler
-	} else {
-		responseHandler = ProtoResponseHandler
 	}
 
-	ReadHandler := func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-		var deferredError, err error
+	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+		var err error
 		var pb proto.Message
 
 		defer func() {
 			if p := recover(); p != nil {
-				util.ErrorLog.Println("Reader Panic Recovery:", fmt.Sprint(p), string(debug.Stack()))
+				util.RequestError(w, fmt.Sprint(p), ignoreFields, pb)
 			}
 
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
-
-			if deferredError != nil {
-				util.RequestError(w, deferredError.Error(), ignoreFields, pb)
-			}
 		}()
 
 		pb, err = bodyParser(w, req, handlerOpts, serviceType)
 		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
+			panic(util.ErrCheck(err))
 		}
 
-		// Parse query and path parameters
-		util.ParseProtoQueryParams(pb, req.URL.Query())
-		util.ParseProtoPathParams(
-			pb,
-			strings.Split(handlerOpts.ServiceMethodURL, "/"),
-			strings.Split(req.URL.Path[4:], "/"), // remove /api
-		)
+		queryParser(pb, req)
+
+		pathParser(pb, req)
 
 		ctx := req.Context()
 
-		batch := util.NewBatchable(a.Handlers.Database.DatabaseClient.Pool, session.UserSub, session.GroupId, session.RoleBits)
-
-		reqInfo := handlers.ReqInfo{
-			Ctx:     ctx,
-			W:       w,
-			Req:     req,
-			Session: session,
-			Batch:   batch,
+		reqInfo, done, err := requestExecutor(ctx, a.Handlers.Database.DatabaseClient, session)
+		if err != nil {
+			panic(util.ErrCheck(err))
 		}
+		defer done()
+
+		reqInfo.Ctx = ctx
+		reqInfo.W = w
+		reqInfo.Req = req
+		reqInfo.Session = session
 
 		results, err := handlerFunc(reqInfo, pb)
 		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
+			panic(util.ErrCheck(err))
 		}
 
 		if results != nil {
 			_, err = responseHandler(w, results)
 			if err != nil {
-				deferredError = util.ErrCheck(err)
-				return
+				panic(util.ErrCheck(err))
 			}
 		}
-
-	}
-
-	WriteHandler := func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-		var deferredError, err error
-		var pb proto.Message
-
-		defer func() {
-			if p := recover(); p != nil {
-				util.ErrorLog.Println("Writer Panic Recovery:", fmt.Sprint(p), string(debug.Stack()))
-			}
-
-			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
-
-			if deferredError != nil {
-				util.RequestError(w, deferredError.Error(), ignoreFields, pb)
-			}
-		}()
-
-		pb, err = bodyParser(w, req, handlerOpts, serviceType)
-		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
-		}
-
-		// Parse query and path parameters
-		util.ParseProtoQueryParams(pb, req.URL.Query())
-		util.ParseProtoPathParams(
-			pb,
-			strings.Split(handlerOpts.ServiceMethodURL, "/"),
-			strings.Split(req.URL.Path[4:], "/"), // remove /api
-		)
-
-		ctx := req.Context()
-
-		poolTx, err := a.Handlers.Database.DatabaseClient.OpenPoolSessionTx(ctx, session)
-		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
-		}
-		defer poolTx.Rollback(ctx)
-
-		reqInfo := handlers.ReqInfo{
-			Ctx:     ctx,
-			W:       w,
-			Req:     req,
-			Session: session,
-			Tx:      poolTx,
-		}
-
-		results, err := handlerFunc(reqInfo, pb)
-		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
-		}
-
-		err = a.Handlers.Database.DatabaseClient.ClosePoolSessionTx(ctx, poolTx)
-		if err != nil {
-			deferredError = util.ErrCheck(err)
-			return
-		}
-
-		if results != nil {
-			_, err = responseHandler(w, results)
-			if err != nil {
-				deferredError = util.ErrCheck(err)
-				return
-			}
-		}
-	}
-
-	if strings.HasPrefix(handlerOpts.Pattern, "GET") {
-		return ReadHandler
-	} else {
-		return WriteHandler
 	}
 }

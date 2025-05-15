@@ -37,7 +37,7 @@ func TestUserError(t *testing.T) {
 
 func BenchmarkUserError(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = UserError("error")
 	}
 }
@@ -64,7 +64,7 @@ func TestSnipUserError(t *testing.T) {
 
 func BenchmarkSnipUserError(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = SnipUserError("ERROR_FOR_USER error ERROR_FOR_USER")
 	}
 }
@@ -141,7 +141,7 @@ func BenchmarkRequestError(b *testing.B) {
 		RoleName:  "role",
 	}
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		RequestError(httptest.NewRecorder(), "test error", slices.Concat(DEFAULT_IGNORED_PROTO_FIELDS, []protoreflect.Name{protoreflect.Name("firstName")}), testPbStruct)
 	}
 }
@@ -169,7 +169,7 @@ func TestErrCheck(t *testing.T) {
 
 func BenchmarkErrCheck(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = ErrCheck(errors.New("test error"))
 	}
 }

@@ -66,7 +66,7 @@ func TestNewNullString(t *testing.T) {
 
 func BenchmarkNewNullString(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = NewNullString("test error")
 	}
 }
@@ -95,7 +95,7 @@ func TestIsUUID(t *testing.T) {
 func BenchmarkIsUUID(b *testing.B) {
 	str := "00000000-0000-0000-0000-000000000000"
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = IsUUID(str)
 	}
 }
@@ -103,7 +103,7 @@ func BenchmarkIsUUID(b *testing.B) {
 func BenchmarkIsUUIDNegative(b *testing.B) {
 	str := "test"
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = IsUUID(str)
 	}
 }
@@ -132,7 +132,7 @@ func TestIsEpoch(t *testing.T) {
 func BenchmarkIsEpoch(b *testing.B) {
 	var goodId = "0123456789"
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = IsEpoch(goodId)
 	}
 }
@@ -140,7 +140,7 @@ func BenchmarkIsEpoch(b *testing.B) {
 func BenchmarkIsEpochNegative(b *testing.B) {
 	var badId = "test"
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = IsEpoch(badId)
 	}
 }
@@ -172,14 +172,14 @@ func TestPaddedLen(t *testing.T) {
 
 func BenchmarkPaddedLen(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = PaddedLen(5, 3)
 	}
 }
 
 func BenchmarkPaddedLenNegative(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = PaddedLen(-5, -3)
 	}
 }
@@ -245,7 +245,7 @@ func BenchmarkEnvFile(b *testing.B) {
 	err = os.WriteFile(filePath, []byte("test content\n\n"), 0644)
 
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = EnvFile("test.txt")
 	}
 }
@@ -273,14 +273,14 @@ func TestAnonIp(t *testing.T) {
 
 func BenchmarkAnonIp(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = AnonIp("1.1.1.1")
 	}
 }
 
 func BenchmarkAnonIpNegative(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = AnonIp("1.1.1")
 	}
 }
@@ -309,7 +309,7 @@ func TestStringIn(t *testing.T) {
 
 func BenchmarkStringIn(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = StringIn("test", []string{"test"})
 	}
 }
@@ -340,7 +340,7 @@ func TestStringOut(t *testing.T) {
 
 func BenchmarkStringOut(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_ = StringOut("test", []string{"test", "case"})
 	}
 }
@@ -351,7 +351,7 @@ func BenchmarkStringOut(b *testing.B) {
 // 	ErrorLog = &CustomLogger{log.New(&buf, "", 0)}
 // 	defer func() { ErrorLog = originalLogger }()
 // 	reset(b)
-// 	for i := 0; i < b.N; i++ {
+// 	for b.Loop() {
 // 		b.StopTimer()
 // 		start, deferFunc := ExeTime("testFunction")
 // 		b.StartTimer()
@@ -389,7 +389,7 @@ func TestWriteSigned(t *testing.T) {
 
 func BenchmarkWriteSigned(b *testing.B) {
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = WriteSigned("a", "b")
 	}
 }
@@ -421,7 +421,7 @@ func TestVerifySigned(t *testing.T) {
 func BenchmarkVerifySigned(b *testing.B) {
 	signedValue, _ := WriteSigned("a", "b")
 	reset(b)
-	for i := 0; i < b.N; i++ {
+	for b.Loop() {
 		_, _ = VerifySigned("a", signedValue)
 	}
 }
