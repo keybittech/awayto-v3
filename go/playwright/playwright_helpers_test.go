@@ -150,9 +150,9 @@ func doEval(page *Page) {
 }
 
 type UserWithPass struct {
-	UserId   int
 	Password string
 	Profile  *types.IUserProfile
+	UserId   int
 }
 
 func getUiUser() *UserWithPass {

@@ -10,9 +10,9 @@ import (
 // Adapted from https://blog.logrocket.com/rate-limiting-go-application
 
 type RateLimiter struct {
+	LimitedClients map[string]*LimitedClient
 	Name           string
 	Mu             sync.Mutex
-	LimitedClients map[string]*LimitedClient
 	ExpiryDuration time.Duration
 	LimitNum       rate.Limit
 	Burst          int
@@ -21,8 +21,8 @@ type RateLimiter struct {
 var RateLimiters sync.Map
 
 type LimitedClient struct {
-	Limiter  *rate.Limiter
 	LastSeen time.Time
+	Limiter  *rate.Limiter
 }
 
 func NewRateLimit(name string, limit rate.Limit, burst int, expiryDuration time.Duration) *RateLimiter {

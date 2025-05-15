@@ -15,12 +15,12 @@ import (
 	"github.com/sashabaranov/go-openai"
 )
 
-type AiPrompts map[types.IPrompts]interface{}
+type AiPrompts map[types.IPrompts]any
 
 type Ai struct {
-	Client  *openai.Client
-	Model   string
 	Prompts AiPrompts
+	Model   string
+	Client  *openai.Client
 }
 
 func InitAi() *Ai {

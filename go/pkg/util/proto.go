@@ -22,14 +22,14 @@ type IdStruct struct {
 }
 
 type HandlerOptions struct {
+	NoLogFields       []protoreflect.Name
+	SiteRoleName      string
+	Pattern           string
+	ServiceMethodURL  string
 	CacheDuration     int64
 	CacheType         int64
 	SiteRole          int64
 	Throttle          int64
-	SiteRoleName      string
-	Pattern           string
-	ServiceMethodURL  string
-	NoLogFields       []protoreflect.Name
 	MultipartResponse bool
 	MultipartRequest  bool
 }

@@ -16,6 +16,7 @@ service GroupService {
       post: "/v1/group"
       body: "*"
     };
+    option (use_tx) = true;
   }
 
   rpc PatchGroup(PatchGroupRequest) returns (PatchGroupResponse) {

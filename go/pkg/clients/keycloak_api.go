@@ -27,19 +27,19 @@ import (
 )
 
 type KeycloakUserWithClaims struct {
-	jwt.StandardClaims
 	types.KeycloakUser
+	jwt.StandardClaims
 	ResourceAccess map[string]struct {
 		Roles []string `json:"roles,omitempty"`
 	} `json:"resource_access,omitempty"`
 }
 
 type KeycloakClient struct {
+	GroupAdminRoles []*types.KeycloakRole
 	Server          string
 	Realm           string
 	AppClient       *types.KeycloakRealmClient
 	ApiClient       *types.KeycloakRealmClient
-	GroupAdminRoles []*types.KeycloakRole
 	Token           *types.OIDCToken
 	PublicKey       *rsa.PublicKey
 }

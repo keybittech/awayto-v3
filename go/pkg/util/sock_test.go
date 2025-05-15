@@ -324,8 +324,8 @@ type PayloadData struct {
 }
 
 type TestPayload struct {
-	Id   string
 	Data PayloadData
+	Id   string
 }
 
 func TestGenerateMessage(t *testing.T) {

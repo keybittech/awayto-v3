@@ -98,9 +98,9 @@ func batchOpQueryRow[T any](br pgx.BatchResults) (any, error) {
 }
 
 type Batchable struct {
-	Sub, GroupId string
 	ops          []batchOp
 	outerSlice   []any
+	Sub, GroupId string
 	pool         *pgxpool.Pool
 	batch        *pgx.Batch
 	RoleBits     int64

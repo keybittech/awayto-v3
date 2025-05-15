@@ -39,9 +39,9 @@ const (
 )
 
 type Database struct {
-	DatabaseClient      *DatabaseClient
 	DatabaseAdminSub    string
 	DatabaseAdminRoleId string
+	DatabaseClient      *DatabaseClient
 }
 
 func (db *Database) Client() *DatabaseClient {

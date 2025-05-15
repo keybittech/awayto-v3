@@ -340,19 +340,19 @@ func InitSocket() *Socket {
 }
 
 type SocketRequest struct {
-	*types.SocketRequestParams
 	Conn net.Conn
+	*types.SocketRequestParams
 }
 
 type SocketResponse struct {
-	*types.SocketResponseParams
 	Error error
+	*types.SocketResponseParams
 }
 
 type SocketCommand struct {
-	*types.WorkerCommandParams
 	Request   SocketRequest
 	ReplyChan chan SocketResponse
+	*types.WorkerCommandParams
 }
 
 func (cmd SocketCommand) GetClientId() string {

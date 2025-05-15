@@ -50,13 +50,13 @@ type AuthRequest struct {
 }
 
 type AuthResponse struct {
-	*types.AuthResponseParams
 	Error error
+	*types.AuthResponseParams
 }
 
 type AuthCommand struct {
+	Request AuthRequest
 	*types.WorkerCommandParams
-	Request   AuthRequest
 	ReplyChan chan AuthResponse
 }
 
@@ -64,7 +64,7 @@ func (cmd AuthCommand) GetClientId() string {
 	return cmd.ClientId
 }
 
-func (cmd AuthCommand) GetReplyChannel() interface{} {
+func (cmd AuthCommand) GetReplyChannel() any {
 	return cmd.ReplyChan
 }
 
