@@ -16,39 +16,36 @@ service GroupUserScheduleService {
       post: "/v1/group/user_schedules"
       body: "*"
     };
+    option (use_tx) = true;
   }
-
   rpc GetGroupUserSchedules(GetGroupUserSchedulesRequest) returns (GetGroupUserSchedulesResponse) {
     option (google.api.http) = {
       get: "/v1/group/user_schedules/{groupScheduleId}"
     };
     option (cache) = SKIP; 
   }
-
   rpc GetGroupUserScheduleStubs(GetGroupUserScheduleStubsRequest) returns (GetGroupUserScheduleStubsResponse) {
     option (google.api.http) = {
       get: "/v1/group/user_schedules_stubs"
     };
     option (cache) = SKIP; 
   }
-
   rpc GetGroupUserScheduleStubReplacement(GetGroupUserScheduleStubReplacementRequest) returns (GetGroupUserScheduleStubReplacementResponse) {
     option (google.api.http) = {
       get: "/v1/group/user_schedules/stub_replacement/{userScheduleId}/sd/{slotDate}/st/{startTime}/tn/{tierName}"
     };
   }
-
   rpc PatchGroupUserScheduleStubReplacement(PatchGroupUserScheduleStubReplacementRequest) returns (PatchGroupUserScheduleStubReplacementResponse) {
     option (google.api.http) = {
       patch: "/v1/group/user_schedules/stub_replacement"
       body: "*"
     };
   }
-
   rpc DeleteGroupUserScheduleByUserScheduleId(DeleteGroupUserScheduleByUserScheduleIdRequest) returns (DeleteGroupUserScheduleByUserScheduleIdResponse) {
     option (google.api.http) = {
       delete: "/v1/group/user_schedules/{ids}"
     };
+    option (use_tx) = true;
   }
 }
 

@@ -15,32 +15,27 @@ service ServiceTierService {
       body: "*"
     };
   }
-
   rpc PatchServiceTier(PatchServiceTierRequest) returns (PatchServiceTierResponse) {
     option (google.api.http) = {
       patch: "/v1/service_tiers/{id}"
       body: "*"
     };
   }
-
   rpc GetServiceTiers(GetServiceTiersRequest) returns (GetServiceTiersResponse) {
     option (google.api.http) = {
       get: "/v1/service_tiers"
     };
   }
-
   rpc GetServiceTierById(GetServiceTierByIdRequest) returns (GetServiceTierByIdResponse) {
     option (google.api.http) = {
       get: "/v1/service_tiers/{id}"
     };
   }
-
   rpc DeleteServiceTier(DeleteServiceTierRequest) returns (DeleteServiceTierResponse) {
     option (google.api.http) = {
       delete: "/v1/service_tiers/{id}"
     };
   }
-
   rpc DisableServiceTier(DisableServiceTierRequest) returns (DisableServiceTierResponse) {
     option (google.api.http) = {
       patch: "/v1/service_tiers/{id}/disable"
@@ -58,7 +53,6 @@ message IServiceTier {
   map<string, IServiceAddon> addons = 7;
   int32 order = 8;
   string createdOn = 9;
-  int32 row = 10;
 }
 
 

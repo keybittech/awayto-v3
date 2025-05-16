@@ -76,8 +76,7 @@ message IUserProfile {
   map<string, IGroup> groups = 17;
   map<string, IRole> roles = 18;
   int64 roleBits = 19;
-  int32 row = 20;
-  string roleName = 21;
+  string roleName = 22;
 }
 
 message PostUserProfileRequest {

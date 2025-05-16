@@ -23,8 +23,7 @@ OR REPLACE VIEW dbview_schema.enabled_roles AS
 SELECT
   id,
   name,
-  created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.roles
 WHERE
@@ -37,8 +36,7 @@ SELECT
   role_id as "roleId",
   user_id as "userId",
   created_sub as sub,
-  created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.user_roles
 WHERE
@@ -52,8 +50,7 @@ SELECT
   display_name as "displayName",
   created_on::TEXT as "createdOn",
   purpose,
-  ai,
-  row_number() OVER () as row
+  ai
 FROM
   dbtable_schema.groups
 WHERE
@@ -65,8 +62,7 @@ SELECT
   id,
   user_id as "userId",
   group_id as "groupId",
-  created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.group_users
 WHERE
@@ -78,8 +74,7 @@ SELECT
   id,
   role_id as "roleId",
   group_id as "groupId",
-  created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.group_roles
 WHERE
@@ -90,8 +85,7 @@ OR REPLACE VIEW dbview_schema.enabled_file_types AS
 SELECT
   id,
   name,
-  created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.file_types
 WHERE
@@ -105,8 +99,7 @@ SELECT
   f.name,
   f.mime_type as "mimeType",
   f.created_sub as "createdSub",
-  f.created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  f.created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.files f
 WHERE
@@ -119,8 +112,7 @@ SELECT
   gf.file_id as "fileId",
   f.name,
   gf.group_id as "groupId",
-  gf.created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  gf.created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.group_files gf
   JOIN dbview_schema.enabled_files f ON f.id = gf.file_id
@@ -133,8 +125,7 @@ SELECT
   un.id,
   un.parent_uuid as "parentUuid",
   un.note,
-  un.created_on::TEXT as "createdOn",
-  row_number() OVER () as row
+  un.created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.uuid_notes un
 WHERE

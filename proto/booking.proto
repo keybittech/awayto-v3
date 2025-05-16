@@ -90,9 +90,8 @@ message IBooking {
   IService service = 10;
   IScheduleBracketSlot scheduleBracketSlot = 11;
   IServiceTier serviceTier = 12;
-  int32 row = 13;
-  string timezone = 14;
-  string scheduleName = 15;
+  string timezone = 13;
+  string scheduleName = 14;
 }
 
 message PostBookingRequest {

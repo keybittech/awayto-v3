@@ -73,8 +73,7 @@ message IQuote {
   IProtoFormVersionSubmission tierFormVersionSubmission = 12;
   string createdOn = 13;
   string timezone = 14;
-  int32 row = 15;
-  string scheduleName = 16;
+  string scheduleName = 15;
 }
 
 message PostQuoteRequest {

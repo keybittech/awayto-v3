@@ -77,7 +77,8 @@ enum BookingModes {
 
 message ScheduledParts {
   repeated string ids = 1;
-  string parttype = 2;
+  string partType = 2;
+  string groupScheduleId = 3;
 }
 
 message IScheduleBracketSlot {
@@ -93,8 +94,7 @@ message IScheduleBracketSlot {
   string startTime = 3 [
     (buf.validate.field).string.pattern = "^P(([0-9]+Y)?([0-9]+M)?([0-9]+W)?([0-9]+D)?)?(T(([0-9]+)H)?(([0-9]+)M)?(([0-9]+.?[0-9]*)S)?)?$"
   ];
-  int32 row = 4;
-  string color = 5;
+  string color = 4;
 }
 
 message IScheduleBracket {
@@ -120,8 +120,7 @@ message IScheduleBracket {
   map<string, IScheduleBracketSlot> slots = 7;
   map<string, IQuote> quotes = 8;
   string createdOn = 9;
-  int32 row = 10;
-  string color = 11;
+  string color = 10;
 }
 
 message ISchedule {
@@ -159,7 +158,6 @@ message ISchedule {
   ];
   map<string, IScheduleBracket> brackets = 13;
   string createdOn = 14;
-  int32 row = 15;
 
   option (buf.validate.message).cel = {
     id: "ISchedule.endTime",

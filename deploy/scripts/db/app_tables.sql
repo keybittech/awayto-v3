@@ -137,18 +137,6 @@ CREATE TABLE dbtable_schema.group_service_addons (
   UNIQUE (group_id, service_addon_id)
 );
 
-CREATE TABLE dbtable_schema.uuid_service_addons (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-  parent_uuid uuid NOT NULL,
-  service_addon_id uuid NOT NULL REFERENCES dbtable_schema.service_addons (id) ON DELETE CASCADE,
-  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
-  updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
-  enabled BOOLEAN NOT NULL DEFAULT true,
-  UNIQUE (parent_uuid, service_addon_id)
-);
-
 CREATE TABLE dbtable_schema.service_tiers (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
   service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
@@ -173,18 +161,6 @@ CREATE TABLE dbtable_schema.service_tier_addons (
   updated_sub uuid REFERENCES dbtable_schema.users (sub),
   enabled BOOLEAN NOT NULL DEFAULT true,
   UNIQUE (service_tier_id, service_addon_id)
-);
-
-CREATE TABLE dbtable_schema.contacts (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-  name VARCHAR (250),
-  email VARCHAR (250),
-  phone VARCHAR (20),
-  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
-  updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
-  enabled BOOLEAN NOT NULL DEFAULT true
 );
 
 CREATE TABLE dbtable_schema.time_units (
@@ -497,7 +473,6 @@ CREATE TABLE dbtable_schema.exchange_call_log (
 
 CREATE TABLE dbtable_schema.payments (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-  contact_id uuid NOT NULL REFERENCES dbtable_schema.contacts (id),
   details jsonb NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),

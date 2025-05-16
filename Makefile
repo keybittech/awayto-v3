@@ -85,6 +85,7 @@ DOCKER_DB_CMD:=${SUDO} docker exec --user postgres -i
 #################################
 
 DEPLOY_SCRIPTS=deploy/scripts
+DB_SCRIPTS=$(DEPLOY_SCRIPTS)/db
 DEV_SCRIPTS=$(DEPLOY_SCRIPTS)/dev
 DOCKER_SCRIPTS=$(DEPLOY_SCRIPTS)/docker
 DEPLOY_HOST_SCRIPTS=$(DEPLOY_SCRIPTS)/host
@@ -637,6 +638,19 @@ docker_db_upgrade_op:
 
 .PHONY: docker_db_upgrade
 docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
+
+.PHONY: docker_db_redeploy_views
+docker_db_redeploy_views:
+	@> working/sql_views
+	@printf "DROP SCHEMA dbview_schema CASCADE;\nCREATE SCHEMA dbview_schema;\nGRANT USAGE ON SCHEMA dbview_schema TO $(PG_WORKER);\nALTER DEFAULT PRIVILEGES IN SCHEMA dbview_schema GRANT ALL ON TABLES TO $(PG_WORKER);\n\n" >> working/sql_views
+	@cat $(DB_SCRIPTS)/base_views.sql >> working/sql_views
+	@echo "" >> working/sql_views
+	@cat $(DB_SCRIPTS)/app_views.sql >> working/sql_views
+	@echo "" >> working/sql_views
+	@cat $(DB_SCRIPTS)/function_views.sql >> working/sql_views
+	@echo "" >> working/sql_views
+	@cat $(DB_SCRIPTS)/kiosk_views.sql >> working/sql_views
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) psql -U postgres -d ${PG_DB} < working/sql_views
 
 .PHONY: host_db_backup
 host_db_backup:

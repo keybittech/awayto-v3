@@ -25,9 +25,7 @@ psql -v ON_ERROR_STOP=1 \
   -f $SCRIPT_DIR/function_views.sql \
   -f $SCRIPT_DIR/kiosk_views.sql \
   -f $SCRIPT_DIR/app_alterations.sql \
-  -f $SCRIPT_DIR/triggers.sql \
-  -f $SCRIPT_DIR/user_details.sql
-
+  -f $SCRIPT_DIR/triggers.sql
 
 rm -rf $SCRIPT_DIR
 

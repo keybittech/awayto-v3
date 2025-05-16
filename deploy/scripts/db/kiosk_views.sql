@@ -1,7 +1,7 @@
 CREATE OR REPLACE VIEW dbview_schema.distinct_schedule_slots AS SELECT DISTINCT
   gus.group_schedule_id,
   sbs.start_time,
-  ROW_NUMBER() OVER () as rowNum
+  row_number () over () as rowNum
 FROM
   dbtable_schema.schedule_bracket_slots sbs
 JOIN dbtable_schema.schedule_brackets sb ON sb.id = sbs.schedule_bracket_id

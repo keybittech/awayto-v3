@@ -43,7 +43,7 @@ CREATE OR REPLACE FUNCTION dbfunc_schema.get_scheduled_parts (
   p_schedule_id UUID
 )
 RETURNS TABLE (
-  partType TEXT,
+  "partType" TEXT,
   ids JSONB
 )  AS $$
 BEGIN

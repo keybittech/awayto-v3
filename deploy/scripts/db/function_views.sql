@@ -1,5 +1,6 @@
 CREATE OR REPLACE VIEW dbview_schema.group_user_schedule_stubs AS
 SELECT
+  q.group_id as "groupId",
   brac.schedule_id as "userScheduleId",
   q.id as "quoteId",
   q.slot_date::TEXT as "slotDate",

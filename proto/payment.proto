@@ -53,8 +53,7 @@ message PaymentDetails {
 
 message IPayment {
   string id = 1;
-  string contactId = 2;
-  PaymentDetails details = 3;
+  PaymentDetails details = 2;
 }
 
 message PostPaymentRequest {

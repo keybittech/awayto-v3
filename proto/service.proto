@@ -72,7 +72,6 @@ message IService {
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
   string createdOn = 7;
-  int32 row = 8;
 }
 
 message PostServiceRequest {
