@@ -81,7 +81,7 @@ func (h *Handlers) PatchBooking(info ReqInfo, data *types.PatchBookingRequest) (
 
 func (h *Handlers) GetBookings(info ReqInfo, data *types.GetBookingsRequest) (*types.GetBookingsResponse, error) {
 	bookings := util.BatchQuery[types.IBooking](info.Batch, `
-		SELECT eb.*
+		SELECT eb.id, eb.rating, eb."slotDate", eb."quoteId", eb."scheduleBracketSlotId", eb."tierSurveyVersionSubmissionId", eb."serviceSurveyVersionSubmissionId", eb."createdOn", eb.quote, eb.service, eb."scheduleBracketSlot", eb."serviceTier"
 		FROM dbview_schema.enabled_bookings eb
 		JOIN dbtable_schema.bookings b ON b.id = eb.id
 		LEFT JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = eb.schedule_bracket_slot_id
@@ -95,8 +95,9 @@ func (h *Handlers) GetBookings(info ReqInfo, data *types.GetBookingsRequest) (*t
 
 func (h *Handlers) GetBookingById(info ReqInfo, data *types.GetBookingByIdRequest) (*types.GetBookingByIdResponse, error) {
 	booking := util.BatchQueryRow[types.IBooking](info.Batch, `
-		SELECT * FROM dbview_schema.enabled_bookings
-		WHERE id = $1
+		SELECT eb.id, eb.rating, eb."slotDate", eb."quoteId", eb."scheduleBracketSlotId", eb."tierSurveyVersionSubmissionId", eb."serviceSurveyVersionSubmissionId", eb."createdOn", eb.quote, eb.service, eb."scheduleBracketSlot", eb."serviceTier"
+		FROM dbview_schema.enabled_bookings eb
+		WHERE eb.id = $1
 	`, data.Id)
 
 	info.Batch.Send(info.Ctx)

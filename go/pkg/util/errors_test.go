@@ -51,12 +51,13 @@ func TestSnipUserError(t *testing.T) {
 		args args
 		want string
 	}{
-		{name: "Empty error", args: args{"ERROR_FOR_USER error ERROR_FOR_USER"}, want: "error "},
+		{name: "Empty error", args: args{"ERROR_FOR_USER error ERROR_FOR_USER"}, want: "error"},
+		{name: "Normal error", args: args{"Got an error ERROR_FOR_USER error ERROR_FOR_USER it was bad"}, want: "error"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := SnipUserError(tt.args.err); got != tt.want {
-				t.Errorf("SnipUserError() = %v, want %v", got, tt.want)
+				t.Errorf("SnipUserError(1) = %v, want %v", got, tt.want)
 			}
 		})
 	}
@@ -65,7 +66,7 @@ func TestSnipUserError(t *testing.T) {
 func BenchmarkSnipUserError(b *testing.B) {
 	reset(b)
 	for b.Loop() {
-		_ = SnipUserError("ERROR_FOR_USER error ERROR_FOR_USER")
+		SnipUserError("ERROR_FOR_USER error ERROR_FOR_USER")
 	}
 }
 

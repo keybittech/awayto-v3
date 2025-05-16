@@ -53,7 +53,7 @@ func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedules
 func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroupScheduleMasterByIdRequest) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	// The schedule master is the root ISchedule, not an IGroupSchedule
 	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
-		SELECT *
+		SELECT id, name, timezone, "startTime", "endTime", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", brackets
 		FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.GroupScheduleId)

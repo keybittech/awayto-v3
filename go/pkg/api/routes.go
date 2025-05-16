@@ -75,12 +75,18 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			if p := recover(); p != nil {
 				// ErrCheck handled errors will already have a trace
 				// If there is no trace file hint, print the full stack
-				errStr := fmt.Sprint(p)
+				var sb strings.Builder
+				sb.WriteString("Service: ")
+				sb.WriteString(serviceName)
+				sb.WriteByte(' ')
+				sb.WriteString(fmt.Sprint(p))
+				errStr := sb.String()
+
+				util.RequestError(w, errStr, ignoreFields, pb)
+
 				if !strings.Contains(errStr, ".go:") {
 					util.ErrorLog.Println(string(debug.Stack()))
 				}
-
-				util.RequestError(w, errStr, ignoreFields, pb)
 			}
 
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
@@ -110,7 +116,7 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 
 		results, err := handlerFunc(reqInfo, pb)
 		if err != nil {
-			panic(util.ErrCheck(err))
+			panic(err) // ErrCheck unnecessary as handlers do it
 		}
 
 		if results != nil {

@@ -14,8 +14,8 @@ func TestWithPagination(t *testing.T) {
 		want string
 	}{
 		{name: "Empty query", args: args{"", 1, 10}, want: " LIMIT 10 OFFSET 0"},
-		{name: "Regular query", args: args{"SELECT * FROM products WHERE category = 'test'", 3, 15}, want: "SELECT * FROM products WHERE category = 'test' LIMIT 15 OFFSET 30"},
-		{name: "Negative page size", args: args{"SELECT * FROM users", 1, -5}, want: "SELECT * FROM users LIMIT -5 OFFSET 0"},
+		{name: "Regular query", args: args{"SELECT id FROM products WHERE category = 'test'", 3, 15}, want: "SELECT id FROM products WHERE category = 'test' LIMIT 15 OFFSET 30"},
+		{name: "Negative page size", args: args{"SELECT id FROM users", 1, -5}, want: "SELECT id FROM users LIMIT -5 OFFSET 0"},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -29,6 +29,6 @@ func TestWithPagination(t *testing.T) {
 func BenchmarkWithPagination(b *testing.B) {
 	reset(b)
 	for b.Loop() {
-		_ = WithPagination("SELECT * FROM products WHERE category = 'test'", 3, 15)
+		_ = WithPagination("SELECT id FROM products WHERE category = 'test'", 3, 15)
 	}
 }

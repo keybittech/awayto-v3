@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -97,8 +98,13 @@ func batchOpQueryRow[T any](br pgx.BatchResults) (any, error) {
 	return pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[T])
 }
 
+type BatchOp struct {
+	loc string
+	op  batchOp
+}
+
 type Batchable struct {
-	ops          []batchOp
+	ops          []*BatchOp
 	outerSlice   []any
 	Sub, GroupId string
 	pool         *pgxpool.Pool
@@ -123,21 +129,21 @@ func NewBatchable(pool *pgxpool.Pool, sub, groupId string, roleBits int64) *Batc
 func (b *Batchable) Reset(knownOpSize ...int32) {
 	var opSize int32 = defaultMaxOps
 	if knownOpSize != nil {
-		opSize = knownOpSize[0]
+		opSize = knownOpSize[0] + 2 // include set session ops if size provided
 	}
 	b.batch = &pgx.Batch{}
 	b.batch.Queue(setSessionVariablesSQL, b.Sub, b.GroupId, b.RoleBits, emptyString)
 
-	b.ops = make([]batchOp, 0, opSize)
+	b.ops = make([]*BatchOp, 0, opSize)
 
-	b.ops = append(b.ops, batchOpExec)
+	b.ops = append(b.ops, &BatchOp{"while setting session for sub " + b.Sub, batchOpExec})
 
 	b.outerSlice = make([]any, 0, opSize)
 }
 
-func (b *Batchable) batchOp(op batchOp, query string, params ...any) int {
+func (b *Batchable) makeBatchOp(op batchOp, query string, params ...any) int {
 	b.batch.Queue(query, params...)
-	b.ops = append(b.ops, op)
+	b.ops = append(b.ops, &BatchOp{ErrCheckN(3, "").Error(), op})
 	b.outerSlice = append(b.outerSlice, nil)
 	return len(b.outerSlice) - 1
 }
@@ -146,7 +152,7 @@ func (b *Batchable) batchOp(op batchOp, query string, params ...any) int {
 func BatchExec(b *Batchable, query string, params ...any) *pgconn.CommandTag {
 	var result pgconn.CommandTag
 	resultPtr := &result
-	idx := b.batchOp(batchOpExec, query, params...)
+	idx := b.makeBatchOp(batchOpExec, query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
@@ -155,7 +161,7 @@ func BatchExec(b *Batchable, query string, params ...any) *pgconn.CommandTag {
 func BatchQuery[T any](b *Batchable, query string, params ...any) *[]*T {
 	var result []*T
 	resultPtr := &result
-	idx := b.batchOp(batchOpQuery[T], query, params...)
+	idx := b.makeBatchOp(batchOpQuery[T], query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
@@ -164,7 +170,7 @@ func BatchQuery[T any](b *Batchable, query string, params ...any) *[]*T {
 func BatchQueryRow[T any](b *Batchable, query string, params ...any) **T {
 	var result *T
 	resultPtr := &result
-	idx := b.batchOp(batchOpQueryRow[T], query, params...)
+	idx := b.makeBatchOp(batchOpQueryRow[T], query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
@@ -173,7 +179,7 @@ func BatchQueryRow[T any](b *Batchable, query string, params ...any) **T {
 func BatchQueryMap[T any](b *Batchable, mapKey, query string, params ...any) *map[string]*T {
 	var result map[string]*T
 	resultPtr := &result
-	idx := b.batchOp(batchOpQueryMap[T](mapKey), query, params...)
+	idx := b.makeBatchOp(batchOpQueryMap[T](mapKey), query, params...)
 	b.outerSlice[idx] = resultPtr
 	return resultPtr
 }
@@ -181,17 +187,32 @@ func BatchQueryMap[T any](b *Batchable, mapKey, query string, params ...any) *ma
 // Panics on error!
 // Close a batch opened with NewBatchable. The caller needs to dereference values returned by BatchOpX
 func (b *Batchable) Send(ctx context.Context) {
+	var currentOpLoc string
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				var sb strings.Builder
+				sb.WriteString("Error sending batch: ")
+				sb.WriteString(err.Error())
+				sb.WriteByte(' ')
+				sb.WriteString(strings.TrimSpace(currentOpLoc))
+				panic(sb.String())
+			}
+		}
+	}()
+
 	b.batch.Queue(setSessionVariablesSQL, emptyString, emptyString, emptyInteger, emptyString)
-	b.ops = append(b.ops, batchOpExec)
+	b.ops = append(b.ops, &BatchOp{"while unsetting session for sub " + b.Sub, batchOpExec})
 
 	br := b.pool.SendBatch(ctx, b.batch)
 
 	var opErr error
 	opIdx := 0
 	for i, op := range b.ops {
-		res, err := op(br)
+		res, err := op.op(br)
 		if err != nil {
-			opErr = ErrCheck(err)
+			currentOpLoc = op.loc
+			opErr = err
 			break
 		}
 
@@ -207,11 +228,12 @@ func (b *Batchable) Send(ctx context.Context) {
 		if closeErr != nil {
 			ErrorLog.Println(ErrCheck(closeErr))
 		}
-		panic(ErrCheck(opErr))
+		panic(opErr)
 	}
 
 	if closeErr != nil {
-		panic(ErrCheck(closeErr))
+		currentOpLoc = "while closing batch for sub " + b.Sub
+		panic(closeErr)
 	}
 }
 

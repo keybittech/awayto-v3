@@ -43,9 +43,9 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		err := info.Tx.QueryRow(info.Ctx, `
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
-				SELECT * FROM input_rows
+				SELECT name, service_id, multiplier, form_id, survey_id, created_sub FROM input_rows
 				ON CONFLICT (name, service_id) DO UPDATE
-			SET enabled = true, multiplier = $3::decimal, form_id = $4::uuid, survey_id = $5::uuid, updated_sub = $6::uuid, updated_on = $7
+				SET enabled = true, multiplier = $3::decimal, form_id = $4::uuid, survey_id = $5::uuid, updated_sub = $6::uuid, updated_on = $7
 				RETURNING id
 			)
 			SELECT id
@@ -124,8 +124,9 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 
 func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*types.GetServicesResponse, error) {
 	services := util.BatchQuery[types.IService](info.Batch, `
-		SELECT * FROM dbtable_schema.services
-		WHERE created_sub = $1
+		SELECT id, name, "formId", "surveyId", "createdOn"
+		FROM dbview_schema.enabled_services
+		WHERE "createdSub" = $1
 	`, info.Session.UserSub)
 
 	info.Batch.Send(info.Ctx)

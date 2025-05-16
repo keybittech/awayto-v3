@@ -13,7 +13,7 @@ func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameReques
 	var count int
 
 	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT COUNT(*) FROM dbtable_schema.groups WHERE name = $1
+		SELECT COUNT(id) FROM dbtable_schema.groups WHERE name = $1
 	`, data.GetName()).Scan(&count)
 	if err != nil {
 		return nil, util.ErrCheck(err)

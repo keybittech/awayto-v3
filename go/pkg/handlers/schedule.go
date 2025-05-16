@@ -185,10 +185,9 @@ func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest)
 
 func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (*types.GetSchedulesResponse, error) {
 	schedules := util.BatchQuery[types.ISchedule](info.Batch, `
-		SELECT es.* 
-		FROM dbview_schema.enabled_schedules es
-		JOIN dbtable_schema.schedules s ON s.id = es.id
-		WHERE s.created_sub = $1
+		SELECT id, name, "createdOn"
+		FROM dbview_schema.enabled_schedules
+		WHERE "createdSub" = $1
 	`, info.Session.UserSub)
 
 	info.Batch.Send(info.Ctx)
@@ -198,7 +197,8 @@ func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (
 
 func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequest) (*types.GetScheduleByIdResponse, error) {
 	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
-		SELECT * FROM dbview_schema.enabled_schedules_ext
+		SELECT id, name, timezone, "startTime", "endTime", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", brackets
+		FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.Id)
 
@@ -459,7 +459,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 			// Check if bracket has any slots with quotes
 			var quoteCount int
 			err := info.Tx.QueryRow(ctx, `
-				SELECT COUNT(*) FROM dbtable_schema.quotes q
+				SELECT COUNT(id) FROM dbtable_schema.quotes q
 				JOIN dbtable_schema.schedule_bracket_slots sbs ON q.schedule_bracket_slot_id = sbs.id
 				WHERE sbs.schedule_bracket_id = $1 AND q.enabled = true
 			`, bracketId).Scan(&quoteCount)

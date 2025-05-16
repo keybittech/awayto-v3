@@ -33,7 +33,8 @@ func (h *Handlers) PatchGroupFile(info ReqInfo, data *types.PatchGroupFileReques
 
 func (h *Handlers) GetGroupFiles(info ReqInfo, data *types.GetGroupFilesRequest) (*types.GetGroupFilesResponse, error) {
 	groupFiles := util.BatchQuery[types.IGroupFile](info.Batch, `
-		SELECT * FROM dbview_schema.enabled_group_files
+		SELECT id, name, "fileId", "createdOn"
+		FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1
 	`, info.Session.GroupId)
 
@@ -44,7 +45,8 @@ func (h *Handlers) GetGroupFiles(info ReqInfo, data *types.GetGroupFilesRequest)
 
 func (h *Handlers) GetGroupFileById(info ReqInfo, data *types.GetGroupFileByIdRequest) (*types.GetGroupFileByIdResponse, error) {
 	groupFile := util.BatchQueryRow[types.IGroupFile](info.Batch, `
-		SELECT * FROM dbview_schema.enabled_group_files
+		SELECT id, name, "fileId", "createdOn"
+		FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1 AND id = $2
 	`, info.Session.GroupId, data.Id)
 

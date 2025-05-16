@@ -52,7 +52,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	`, info.Session.GroupId)
 
 	rolesReq := util.BatchQueryMap[types.IRole](info.Batch, "id", `
-		SELECT er.id, er.name, er."createdOn"
+		SELECT er.id, er.name, eur."createdOn"
 		FROM dbview_schema.enabled_user_roles eur
 		JOIN dbview_schema.enabled_roles er ON er.id = eur."roleId"
 		WHERE eur.sub = $1

@@ -1,97 +1,90 @@
 package handlers
 
 import (
-	json "encoding/json"
-	"errors"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func (h *Handlers) PostPayment(info ReqInfo, data *types.PostPaymentRequest) (*types.PostPaymentResponse, error) {
-	var paymentId string
-
-	err := info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.payments (contact_id, details, created_sub)
-		VALUES ($1, $2, $3::uuid)
-		RETURNING id, contact_id as "contactId", details
-	`, data.GetPayment().GetContactId(), data.GetPayment().GetContactId(), info.Session.UserSub).Scan(&paymentId)
-	if err != nil || paymentId == "" {
+	paymentDetails, err := protojson.Marshal(data.Payment.Details)
+	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.PostPaymentResponse{Id: paymentId}, nil
+	paymentInsert := util.BatchQueryRow[types.ILookup](info.Batch, `
+		INSERT INTO dbtable_schema.payments (details, created_sub)
+		VALUES ($1, $2, $3::uuid)
+		RETURNING id
+	`, paymentDetails, info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.PostPaymentResponse{Id: (*paymentInsert).Id}, nil
 }
 
 func (h *Handlers) PatchPayment(info ReqInfo, data *types.PatchPaymentRequest) (*types.PatchPaymentResponse, error) {
-	paymentDetails, err := json.Marshal(data.GetPayment().GetDetails())
+	paymentDetails, err := protojson.Marshal(data.Payment.Details)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.payments
-		SET contact_id = $2, details = $3, updated_sub = $4, updated_on = $5
+		SET details = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-		RETURNING id, contact_id as "contactId", details
-	`, data.GetPayment().GetId(), data.GetPayment().GetContactId(), paymentDetails, info.Session.UserSub, time.Now().Local().UTC())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Payment.Id, paymentDetails, info.Session.UserSub, time.Now())
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.PatchPaymentResponse{Success: true}, nil
 }
 
 func (h *Handlers) GetPayments(info ReqInfo, data *types.GetPaymentsRequest) (*types.GetPaymentsResponse, error) {
-	var payments []*types.IPayment
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &payments, `SELECT * FROM dbview_schema.enabled_payments`)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	payments := util.BatchQuery[types.IPayment](info.Batch, `
+		SELECT id, "createdOn"
+		FROM dbview_schema.enabled_payments
+		WHERE "createdSub" = $1
+	`, info.Session.UserSub)
 
-	return &types.GetPaymentsResponse{Payments: payments}, nil
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetPaymentsResponse{Payments: *payments}, nil
 }
 
 func (h *Handlers) GetPaymentById(info ReqInfo, data *types.GetPaymentByIdRequest) (*types.GetPaymentByIdResponse, error) {
-	var payments []*types.IPayment
-
-	err := h.Database.QueryRows(info.Ctx, info.Tx, &payments, `
-		SELECT * FROM dbview_schema.enabled_payments
+	payment := util.BatchQueryRow[types.IPayment](info.Batch, `
+		SELECT id, details, "createdOn"
+		FROM dbview_schema.enabled_payments
 		WHERE id = $1
-	`, data.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id)
 
-	if len(payments) == 0 {
-		return nil, util.ErrCheck(errors.New("payment not found"))
-	}
+	info.Batch.Send(info.Ctx)
 
-	return &types.GetPaymentByIdResponse{Payment: payments[0]}, nil
+	return &types.GetPaymentByIdResponse{Payment: *payment}, nil
 }
 
 func (h *Handlers) DeletePayment(info ReqInfo, data *types.DeletePaymentRequest) (*types.DeletePaymentResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		DELETE FROM dbtable_schema.payments
 		WHERE id = $1
-	`, data.GetId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id)
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.DeletePaymentResponse{Success: true}, nil
 }
 
 func (h *Handlers) DisablePayment(info ReqInfo, data *types.DisablePaymentRequest) (*types.DisablePaymentResponse, error) {
-	_, err := info.Tx.Exec(info.Ctx, `
+	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.payments
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, data.Id, time.Now(), info.Session.UserSub)
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.DisablePaymentResponse{Success: true}, nil
 }

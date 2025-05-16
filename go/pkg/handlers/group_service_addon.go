@@ -21,7 +21,7 @@ func (h *Handlers) PostGroupServiceAddon(info ReqInfo, data *types.PostGroupServ
 
 func (h *Handlers) GetGroupServiceAddons(info ReqInfo, data *types.GetGroupServiceAddonsRequest) (*types.GetGroupServiceAddonsResponse, error) {
 	groupServiceAddons := util.BatchQuery[types.IGroupServiceAddon](info.Batch, `
-		SELECT egsa.id, egsa."groupId", TO_JSONB(esa.*) as "serviceAddon" 
+		SELECT egsa.id, egsa."groupId", TO_JSONB(esa.id, esa.name, esa."createdOn") as "serviceAddon" 
 		FROM dbview_schema.enabled_group_service_addons egsa
 		LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = egsa."serviceAddonId"
 		WHERE egsa."groupId" = $1
