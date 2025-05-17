@@ -15,6 +15,7 @@ service GroupServiceAddonsService {
       post: "/v1/group/service_addons/{serviceAddonId}"
     };
     option (throttle) = 1;
+    option (invalidates) = "GetGroupServiceAddons";
   }
 
   rpc GetGroupServiceAddons(GetGroupServiceAddonsRequest) returns (GetGroupServiceAddonsResponse) {
@@ -28,6 +29,7 @@ service GroupServiceAddonsService {
       delete: "/v1/group/service_addons/{serviceAddonId}"
     };
     option (throttle) = 1;
+    option (invalidates) = "GetGroupServiceAddons";
   }
 }
 

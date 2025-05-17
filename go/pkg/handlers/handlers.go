@@ -9,10 +9,13 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 type Handlers struct {
 	Functions map[string]ProtoHandler
+	Options   map[string]*util.HandlerOptions
 	Ai        *clients.Ai
 	Database  *clients.Database
 	Redis     *clients.Redis
@@ -33,6 +36,35 @@ func NewHandlers() *Handlers {
 	}
 
 	h.registerHandlers()
+
+	h.Options = make(map[string]*util.HandlerOptions, len(h.Functions))
+
+	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if fd.Services().Len() == 0 {
+			return true
+		}
+
+		services := fd.Services().Get(0)
+
+		for i := 0; i <= services.Methods().Len()-1; i++ {
+			serviceMethod := services.Methods().Get(i)
+			handlerOpts := util.ParseHandlerOptions(serviceMethod)
+
+			protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
+				if mt.Descriptor().FullName() == serviceMethod.Input().FullName() {
+					handlerOpts.ServiceMethodType = mt
+					return false
+				}
+				return true
+			})
+
+			h.Options[handlerOpts.ServiceMethodName] = handlerOpts
+		}
+
+		return true
+	})
+
+	util.ParseInvalidations(h.Options)
 
 	return h
 }

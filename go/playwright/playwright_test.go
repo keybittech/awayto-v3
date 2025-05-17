@@ -14,12 +14,12 @@ import (
 )
 
 var (
-	aiEnabled, useRand bool
-	browser            playwright.Browser
+	aiEnabled, useRandUser bool
+	browser                playwright.Browser
 )
 
 func init() {
-	useRand = false
+	useRandUser = true
 	aiEnabled = false
 }
 
@@ -36,6 +36,8 @@ func TestMain(m *testing.M) {
 		fmt.Println("Error starting server:", err)
 		os.Exit(1)
 	}
+
+	time.Sleep(2 * time.Second)
 
 	pw, err := playwright.Run()
 	if err != nil {
@@ -76,7 +78,7 @@ func TestPlaywright(t *testing.T) {
 	page := getBrowserPage(t)
 	user := getUiUser()
 
-	if useRand {
+	if useRandUser {
 		if _, err := page.Goto(""); err != nil {
 			t.Fatalf("could not goto: %v", err)
 		}
@@ -132,7 +134,6 @@ func TestPlaywright(t *testing.T) {
 
 		// Add group roles
 		time.Sleep(2 * time.Second)
-		page.ByText("Edit Roles").MouseOver().Click()
 		if aiEnabled {
 			page.ByLocator(`span[id^="suggestion-"]`).Nth(0).MouseOver().Click()
 			page.ByLocator(`span[id^="suggestion-"]`).Nth(1).MouseOver().Click()

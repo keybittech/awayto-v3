@@ -8,7 +8,7 @@ import (
 )
 
 func (h *Handlers) PostServiceAddon(info ReqInfo, data *types.PostServiceAddonRequest) (*types.PostServiceAddonResponse, error) {
-	serviceAddon := util.BatchQueryRow[types.IServiceAddon](info.Batch, `
+	serviceAddonInsert := util.BatchQueryRow[types.IServiceAddon](info.Batch, `
 		WITH input_rows(name, created_sub) as (VALUES ($1, $2::uuid)), ins AS (
 			INSERT INTO dbtable_schema.service_addons (name, created_sub)
 			SELECT name, created_sub FROM input_rows
@@ -27,7 +27,7 @@ func (h *Handlers) PostServiceAddon(info ReqInfo, data *types.PostServiceAddonRe
 
 	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
 
-	return &types.PostServiceAddonResponse{Id: (*serviceAddon).Id}, nil
+	return &types.PostServiceAddonResponse{Id: (*serviceAddonInsert).Id}, nil
 }
 
 func (h *Handlers) PatchServiceAddon(info ReqInfo, data *types.PatchServiceAddonRequest) (*types.PatchServiceAddonResponse, error) {
@@ -89,6 +89,8 @@ func (h *Handlers) DisableServiceAddon(info ReqInfo, data *types.DisableServiceA
 	`, data.Id, time.Now(), info.Session.UserSub)
 
 	info.Batch.Send(info.Ctx)
+
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
 
 	return &types.DisableServiceAddonResponse{Success: true}, nil
 }

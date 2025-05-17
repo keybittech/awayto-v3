@@ -155,9 +155,15 @@ type UserWithPass struct {
 	UserId   int
 }
 
+var testUserWithPass *UserWithPass
+
 func getUiUser() *UserWithPass {
+	if testUserWithPass != nil {
+		return testUserWithPass
+	}
+
 	var userId int
-	if useRand {
+	if useRandUser {
 		userId = rand.IntN(1000000) + 1
 	} else {
 		userId = 1
@@ -173,6 +179,8 @@ func getUiUser() *UserWithPass {
 	}
 
 	user.Password = strings.ToLower(user.Profile.FirstName + user.Profile.LastName)
+
+	testUserWithPass = user
 
 	return user
 }

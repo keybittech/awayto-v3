@@ -13,8 +13,10 @@ func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameReques
 	var count int
 
 	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT COUNT(id) FROM dbtable_schema.groups WHERE name = $1
-	`, data.GetName()).Scan(&count)
+		SELECT COUNT(id)
+		FROM dbtable_schema.groups
+		WHERE name = $1
+	`, data.Name).Scan(&count)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -211,6 +213,9 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 		ScheduleId:      postScheduleRes.Id,
 		GroupScheduleId: postGroupScheduleRes.Id,
 	}
+
+	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return onboardingResponse, nil
 }

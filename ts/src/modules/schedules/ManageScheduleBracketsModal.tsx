@@ -14,7 +14,7 @@ import DialogActions from '@mui/material/DialogActions';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
-import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName, targets, plural, generateLightBgColor, IGroupSchedule } from 'awayto/hooks';
+import { siteApi, useUtil, getRelativeDuration, ISchedule, IService, IScheduleBracket, timeUnitOrder, useTimeName, targets, plural, generateLightBgColor, IGroupSchedule, dayjs } from 'awayto/hooks';
 
 import GroupContext, { GroupContextType } from '../groups/GroupContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -102,8 +102,8 @@ export function ManageScheduleBracketsModal({ editSchedule, groupSchedules, clos
               groupScheduleId: groupSchedule.schedule.id,
               brackets: newBrackets,
               name: schedule.name,
-              startTime: schedule.startTime,
-              endTime: schedule.endTime,
+              startTime: dayjs(schedule.startTime).toISOString(),
+              endTime: dayjs(schedule.endTime).toISOString(),
               scheduleTimeUnitId: schedule.scheduleTimeUnitId,
               bracketTimeUnitId: schedule.bracketTimeUnitId,
               slotTimeUnitId: schedule.slotTimeUnitId,

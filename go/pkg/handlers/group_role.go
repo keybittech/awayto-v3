@@ -118,6 +118,7 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 
 		oldSubGroupPath := info.Session.GroupPath + "/" + existingRoleName
 		h.Cache.UnsetCachedSubGroup(oldSubGroupPath)
+
 		h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 		h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")

@@ -72,7 +72,7 @@ func batchOpExec(br pgx.BatchResults) (any, error) {
 func batchOpQuery[T any](br pgx.BatchResults) (any, error) {
 	rows, err := br.Query()
 	if err != nil {
-		return nil, ErrCheck(err)
+		return nil, err
 	}
 
 	return pgx.CollectRows(rows, pgx.RowToAddrOfStructByNameLax[T])
@@ -82,7 +82,7 @@ func batchOpQueryMap[T any](mapKeyTarget string) func(br pgx.BatchResults) (any,
 	return func(br pgx.BatchResults) (any, error) {
 		rows, err := br.Query()
 		if err != nil {
-			return nil, ErrCheck(err)
+			return nil, err
 		}
 
 		return collectRowsToMap(rows, mapKeyTarget, pgx.RowToAddrOfStructByNameLax[T])
@@ -92,7 +92,7 @@ func batchOpQueryMap[T any](mapKeyTarget string) func(br pgx.BatchResults) (any,
 func batchOpQueryRow[T any](br pgx.BatchResults) (any, error) {
 	rows, err := br.Query()
 	if err != nil {
-		return nil, ErrCheck(err)
+		return nil, err
 	}
 
 	return pgx.CollectOneRow(rows, pgx.RowToAddrOfStructByNameLax[T])
@@ -226,7 +226,7 @@ func (b *Batchable) Send(ctx context.Context) {
 	closeErr := br.Close()
 	if opErr != nil {
 		if closeErr != nil {
-			ErrorLog.Println(ErrCheck(closeErr))
+			ErrorLog.Println("closing error with op error as well ", ErrCheck(closeErr))
 		}
 		panic(opErr)
 	}

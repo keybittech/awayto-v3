@@ -47,6 +47,7 @@ OR REPLACE VIEW dbview_schema.enabled_groups AS
 SELECT
   id,
   name,
+  code,
   display_name as "displayName",
   created_on::TEXT as "createdOn",
   purpose,

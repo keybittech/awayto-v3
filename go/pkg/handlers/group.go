@@ -166,16 +166,21 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 
 func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*types.PatchGroupResponse, error) {
 
-	check, err := h.CheckGroupName(info, &types.CheckGroupNameRequest{Name: data.Name})
-	if err != nil {
-		return nil, util.ErrCheck(err)
+	cachedGroup := h.Cache.GetCachedGroup(info.Session.GroupPath)
+	nameChanged := cachedGroup.Name != data.Name
+
+	if nameChanged {
+		check, err := h.CheckGroupName(info, &types.CheckGroupNameRequest{Name: data.Name})
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		if !check.GetIsValid() {
+			return nil, util.ErrCheck(groupNameInUseError)
+		}
 	}
 
-	if !check.GetIsValid() {
-		return nil, util.ErrCheck(groupNameInUseError)
-	}
-
-	_, err = info.Tx.Exec(info.Ctx, `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.groups
 		SET name = $2, purpose = $3, display_name = $4, updated_sub = $5, updated_on = $6, ai = $7
 		WHERE id = $1
@@ -196,9 +201,6 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 	}
 
 	// If the group name changed, make a new group cache entry
-	cachedGroup := h.Cache.GetCachedGroup(info.Session.GroupPath)
-	nameChanged := cachedGroup.Name != data.Name
-
 	if nameChanged {
 		newGroupPath := strings.Replace(info.Session.GroupPath, cachedGroup.Name, data.Name, 1)
 		h.Cache.SetCachedGroup(newGroupPath, cachedGroup.Id, cachedGroup.ExternalId, cachedGroup.Sub, data.Name, data.Ai)

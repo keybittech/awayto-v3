@@ -6,7 +6,6 @@ import "service.proto";
 import "util.proto";
 
 import "validate/validate.proto";
-import "google/protobuf/timestamp.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -126,13 +125,8 @@ message IScheduleBracket {
 message ISchedule {
   string id = 1;
   string name = 2 [(buf.validate.field).string.min_len = 1];
-  google.protobuf.Timestamp startTime = 3 [
-    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
-  ];
-  google.protobuf.Timestamp endTime = 4 [
-    (buf.validate.field).timestamp.gt_now = true,
-    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
-  ];
+  string startTime = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
+  string endTime = 4 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
   string timezone = 5 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
@@ -159,20 +153,17 @@ message ISchedule {
   map<string, IScheduleBracket> brackets = 13;
   string createdOn = 14;
 
-  option (buf.validate.message).cel = {
-    id: "ISchedule.endTime",
-    message: "End date must be after start date",
-    expression: "has(this.endTime) ? this.endTime > this.startTime : true"
-  };
+  // option (buf.validate.message).cel = {
+  //   id: "ISchedule.endTime",
+  //   message: "End date must be after start date",
+  //   expression: "has(this.endTime) ? this.endTime > this.startTime : true"
+  // };
 }
 
 message PostScheduleRequest {
   string name = 1 [(buf.validate.field).string.min_len = 1];
-  google.protobuf.Timestamp startTime = 2;
-  google.protobuf.Timestamp endTime = 3 [
-    (buf.validate.field).timestamp.gt_now = true,
-    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
-  ];
+  string startTime = 2;
+  string endTime = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
   string scheduleTimeUnitId = 4 [(buf.validate.field).string.uuid = true];
   string bracketTimeUnitId = 5 [(buf.validate.field).string.uuid = true];
   string slotTimeUnitId = 6 [(buf.validate.field).string.uuid = true];
@@ -187,11 +178,11 @@ message PostScheduleRequest {
   ];
   bool asGroup = 10;
 
-  option (buf.validate.message).cel = {
-    id: "PostScheduleRequest.endTime",
-    message: "End date must be after start date",
-    expression: "has(this.endTime) ? this.endTime > this.startTime : true"
-  };
+  // option (buf.validate.message).cel = {
+  //   id: "PostScheduleRequest.endTime",
+  //   message: "End date must be after start date",
+  //   expression: "has(this.endTime) ? this.endTime > this.startTime : true"
+  // };
 }
 
 message PostScheduleResponse {

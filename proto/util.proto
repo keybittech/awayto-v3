@@ -13,6 +13,7 @@ extend google.protobuf.MethodOptions {
   bool multipart_request = 50004;
   bool multipart_response = 50005;
   bool use_tx = 50006;
+  repeated string invalidates = 50007;
 }
 
 extend google.protobuf.MessageOptions {

@@ -45,38 +45,48 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 		WHERE sub = $1
 	`, info.Session.UserSub)
 
-	groupsReq := util.BatchQueryMap[types.IGroup](info.Batch, "id", `
-		SELECT id, name, "displayName", "createdOn", purpose, ai
+	var groupsReq *map[string]*types.IGroup
+	var rolesReq *map[string]*types.IRole
+	var quotesReq *map[string]*types.IQuote
+	var bookingsReq *map[string]*types.IBooking
+
+	if info.Session.GroupId != "" {
+		groupsReq = util.BatchQueryMap[types.IGroup](info.Batch, "code", `
+		SELECT code, name, "displayName", "createdOn", purpose, ai, true as active
 		FROM dbview_schema.enabled_groups
 		WHERE id = $1
 	`, info.Session.GroupId)
 
-	rolesReq := util.BatchQueryMap[types.IRole](info.Batch, "id", `
+		rolesReq = util.BatchQueryMap[types.IRole](info.Batch, "id", `
 		SELECT er.id, er.name, eur."createdOn"
 		FROM dbview_schema.enabled_user_roles eur
 		JOIN dbview_schema.enabled_roles er ON er.id = eur."roleId"
 		WHERE eur.sub = $1
 	`, info.Session.UserSub)
 
-	quotesReq := util.BatchQueryMap[types.IQuote](info.Batch, "id", `
+		quotesReq = util.BatchQueryMap[types.IQuote](info.Batch, "id", `
 		SELECT id, "slotDate", "startTime", "scheduleBracketSlotId", "serviceTierName", "serviceName", "createdOn"
 		FROM dbview_schema.enabled_quotes
 		WHERE "slotCreatedSub" = $1
 	`, info.Session.UserSub)
 
-	bookingsReq := util.BatchQueryMap[types.IBooking](info.Batch, "id", `
+		bookingsReq = util.BatchQueryMap[types.IBooking](info.Batch, "id", `
 		SELECT id, "slotDate", "scheduleBracketSlot", service, "serviceTier", "createdOn"
 		FROM dbview_schema.enabled_bookings eb
 		WHERE "createdSub" = $1 OR "quoteCreatedSub" = $1
 	`, info.Session.UserSub)
+	}
 
 	info.Batch.Send(info.Ctx)
 
 	up := *upReq
-	up.Groups = *groupsReq
-	up.Roles = *rolesReq
-	up.Quotes = *quotesReq
-	up.Bookings = *bookingsReq
+
+	if info.Session.GroupId != "" {
+		up.Groups = *groupsReq
+		up.Roles = *rolesReq
+		up.Quotes = *quotesReq
+		up.Bookings = *bookingsReq
+	}
 
 	roleBits := info.Session.RoleBits
 	up.RoleBits = roleBits

@@ -48,31 +48,70 @@ import (
 // ease the task of debugging and general understanding.
 
 var (
-	appGroupSchedulesRole      = int64(types.SiteRoles_APP_GROUP_SCHEDULES)
-	onlyOneMasterScheduleError = util.UserError("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it.")
+	appGroupSchedulesRole        = int64(types.SiteRoles_APP_GROUP_SCHEDULES)
+	startTimeRequiredWithEndTime = util.UserError("A start time must be provided when using end time.")
+	endTimeMustBeAfterStartTime  = util.UserError("End time must be after start time.")
+	onlyOneMasterScheduleError   = util.UserError("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it.")
+	zeroTime                     time.Time
 )
+
+func parseScheduleTimeRange(start, end string) (*time.Time, *time.Time, error) {
+	var err error
+
+	if start == "" {
+		if end != "" {
+			return nil, nil, util.ErrCheck(startTimeRequiredWithEndTime)
+		}
+		return nil, nil, nil
+	}
+
+	startTime, err := time.Parse(time.RFC3339, start)
+	if err != nil {
+		return nil, nil, util.ErrCheck(err)
+	}
+
+	if end != "" {
+		endTime, err := time.Parse(time.RFC3339, end)
+		if err != nil {
+			return nil, nil, util.ErrCheck(err)
+		}
+
+		if endTime.In(time.UTC).Truncate(24 * time.Hour).Before(startTime.In(time.UTC).Truncate(24 * time.Hour)) {
+			return nil, nil, util.ErrCheck(endTimeMustBeAfterStartTime)
+		}
+
+		return &startTime, &endTime, nil
+	}
+
+	return &startTime, nil, nil
+}
 
 func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (*types.PostScheduleResponse, error) {
 	var scheduleId string
-
-	var startTime, endTime *string
-	if data.StartTime != nil {
-		st := data.StartTime.AsTime().Format(time.RFC3339Nano)
-		startTime = &st
-	}
-	if data.EndTime != nil {
-		et := data.EndTime.AsTime().Format(time.RFC3339Nano)
-		endTime = &et
-	}
 
 	var insertScheduleQuery = `
 		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_time, end_time, timezone)
 		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9)
 		RETURNING id
 	`
-	var insertScheduleParams = []any{data.GetName(), info.Session.UserSub, data.GetSlotDuration(), data.GetScheduleTimeUnitId(), data.GetBracketTimeUnitId(), data.GetSlotTimeUnitId(), &startTime, &endTime, info.Session.Timezone}
 
-	var err error
+	startTime, endTime, err := parseScheduleTimeRange(data.StartTime, data.EndTime)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	var insertScheduleParams = []any{
+		data.Name,
+		info.Session.UserSub,
+		data.SlotDuration,
+		data.ScheduleTimeUnitId,
+		data.BracketTimeUnitId,
+		data.SlotTimeUnitId,
+		startTime,
+		endTime,
+		info.Session.Timezone,
+	}
+
 	var row pgx.Row
 	var done func()
 
@@ -119,7 +158,6 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 }
 
 func (h *Handlers) PostScheduleBrackets(info ReqInfo, data *types.PostScheduleBracketsRequest) (*types.PostScheduleBracketsResponse, error) {
-
 	existingBracketIds := make([]string, 0)
 	existingBrackets := make(map[string]*types.IScheduleBracket)
 	newBrackets := make(map[string]*types.IScheduleBracket)
@@ -160,23 +198,16 @@ func (h *Handlers) PostScheduleBrackets(info ReqInfo, data *types.PostScheduleBr
 }
 
 func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest) (*types.PatchScheduleResponse, error) {
-	schedule := data.GetSchedule()
-
-	var startTime, endTime *string
-	if schedule.StartTime != nil {
-		st := schedule.StartTime.AsTime().Format(time.RFC3339Nano)
-		startTime = &st
-	}
-	if schedule.EndTime != nil {
-		et := schedule.EndTime.AsTime().Format(time.RFC3339Nano)
-		endTime = &et
+	startTime, endTime, err := parseScheduleTimeRange(data.Schedule.StartTime, data.Schedule.EndTime)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.schedules
 		SET name = $2, start_time = $3, end_time = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, schedule.GetId(), schedule.GetName(), &startTime, &endTime, info.Session.UserSub, time.Now())
+	`, data.Schedule.Id, data.Schedule.Name, startTime, endTime, info.Session.UserSub, time.Now())
 
 	info.Batch.Send(info.Ctx)
 

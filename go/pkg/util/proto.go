@@ -6,6 +6,7 @@ import (
 	"math"
 	"net/http"
 	"reflect"
+	"regexp"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -18,23 +19,34 @@ import (
 )
 
 type HandlerOptions struct {
+	Invalidations     []string
 	NoLogFields       []protoreflect.Name
+	ServiceMethod     protoreflect.MethodDescriptor
+	ServiceMethodType protoreflect.MessageType
+	ServiceMethodName string
+	ServiceMethodURL  string
 	SiteRoleName      string
 	Pattern           string
-	ServiceMethodURL  string
 	CacheDuration     int64
 	CacheType         int64
 	SiteRole          int64
 	Throttle          int64
+	NumInvalidations  int32
 	HasQueryParams    bool
 	HasPathParams     bool
 	MultipartResponse bool
 	MultipartRequest  bool
+	ShouldStore       bool
+	ShouldSkip        bool
 	UseTx             bool
 }
 
 func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
-	parsedOptions := &HandlerOptions{}
+	parsedOptions := &HandlerOptions{
+		ServiceMethod:     md,
+		ServiceMethodName: string(md.Name()),
+	}
+
 	fieldsLen, err := Itoi32(md.Input().Fields().Len())
 	if err != nil {
 		log.Fatal(err)
@@ -50,52 +62,48 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		}
 	}
 
+	parsedOptions.NoLogFields = append(parsedOptions.NoLogFields, DEFAULT_IGNORED_PROTO_FIELDS...)
+
 	inputOpts := md.Options().(*descriptor.MethodOptions)
 
-	var serviceMethodMethod, serviceMethodUrl string
-
-	// get the URL of the handler
-	httpRule := &annotations.HttpRule{}
-
-	if proto.HasExtension(inputOpts, annotations.E_Http) {
-		ext := proto.GetExtension(inputOpts, annotations.E_Http)
-		httpRule, _ = ext.(*annotations.HttpRule)
+	httpRule, ok := proto.GetExtension(inputOpts, annotations.E_Http).(*annotations.HttpRule)
+	if !ok {
+		log.Fatalf("service method %s doesn't have an http rule", parsedOptions.ServiceMethodName)
 	}
+
+	var serviceMethodMethod, serviceMethodURL string
 
 	switch {
 	case httpRule.GetPost() != "":
 		serviceMethodMethod = "POST"
-		serviceMethodUrl = httpRule.GetPost()
+		serviceMethodURL = httpRule.GetPost()
 	case httpRule.GetGet() != "":
 		serviceMethodMethod = "GET"
-		serviceMethodUrl = httpRule.GetGet()
+		serviceMethodURL = httpRule.GetGet()
 	case httpRule.GetPut() != "":
 		serviceMethodMethod = "PUT"
-		serviceMethodUrl = httpRule.GetPut()
+		serviceMethodURL = httpRule.GetPut()
 	case httpRule.GetDelete() != "":
 		serviceMethodMethod = "DELETE"
-		serviceMethodUrl = httpRule.GetDelete()
+		serviceMethodURL = httpRule.GetDelete()
 	case httpRule.GetPatch() != "":
 		serviceMethodMethod = "PATCH"
-		serviceMethodUrl = httpRule.GetPatch()
+		serviceMethodURL = httpRule.GetPatch()
 	default:
 	}
 
-	parsedOptions.ServiceMethodURL = serviceMethodUrl
+	parsedOptions.ServiceMethodURL = "/api" + serviceMethodURL
+	parsedOptions.Pattern = serviceMethodMethod + " " + parsedOptions.ServiceMethodURL
 
-	// attach /api to /v1 /v2, etc -- resulting in /api/v1/ which is the standard API_PATH
-	parsedOptions.Pattern = fmt.Sprintf("%s /api%s", serviceMethodMethod, serviceMethodUrl)
-
-	if strings.Contains(serviceMethodUrl, "?") {
+	if strings.Contains(serviceMethodURL, "?") {
 		parsedOptions.HasQueryParams = true
 	}
 
-	if strings.Contains(serviceMethodUrl, "{") {
+	if strings.Contains(serviceMethodURL, "{") {
 		parsedOptions.HasPathParams = true
 	}
 
-	if proto.HasExtension(inputOpts, types.E_SiteRole) {
-		siteRoles := proto.GetExtension(inputOpts, types.E_SiteRole).(types.SiteRoles)
+	if siteRoles, ok := proto.GetExtension(inputOpts, types.E_SiteRole).(types.SiteRoles); ok {
 		roles := strings.Split(fmt.Sprint(siteRoles), ",")
 		roleBits := StringsToBitmask(roles)
 		parsedOptions.SiteRole = roleBits
@@ -104,32 +112,61 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		}
 	}
 
-	if proto.HasExtension(inputOpts, types.E_Cache) {
-		cacheType := proto.GetExtension(inputOpts, types.E_Cache).(types.CacheType)
+	if cacheType, ok := proto.GetExtension(inputOpts, types.E_Cache).(types.CacheType); ok {
 		parsedOptions.CacheType = int64(cacheType)
 	}
 
-	if proto.HasExtension(inputOpts, types.E_CacheDuration) {
-		parsedOptions.CacheDuration = proto.GetExtension(inputOpts, types.E_CacheDuration).(int64)
+	parsedOptions.ShouldStore = parsedOptions.CacheType == int64(types.CacheType_STORE)
+	parsedOptions.ShouldSkip = parsedOptions.CacheType == int64(types.CacheType_SKIP)
+
+	if cacheDuration, ok := proto.GetExtension(inputOpts, types.E_CacheDuration).(int64); ok {
+		parsedOptions.CacheDuration = cacheDuration
 	}
 
-	if proto.HasExtension(inputOpts, types.E_Throttle) {
-		parsedOptions.Throttle = proto.GetExtension(inputOpts, types.E_Throttle).(int64)
+	if throttle, ok := proto.GetExtension(inputOpts, types.E_Throttle).(int64); ok {
+		parsedOptions.Throttle = throttle
 	}
 
-	if proto.HasExtension(inputOpts, types.E_MultipartRequest) {
-		parsedOptions.MultipartRequest = proto.GetExtension(inputOpts, types.E_MultipartRequest).(bool)
+	if multipartRequest, ok := proto.GetExtension(inputOpts, types.E_MultipartRequest).(bool); ok {
+		parsedOptions.MultipartRequest = multipartRequest
 	}
 
-	if proto.HasExtension(inputOpts, types.E_MultipartResponse) {
-		parsedOptions.MultipartResponse = proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool)
+	if multipartResponse, ok := proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool); ok {
+		parsedOptions.MultipartResponse = multipartResponse
 	}
 
-	if proto.HasExtension(inputOpts, types.E_UseTx) {
-		parsedOptions.UseTx = proto.GetExtension(inputOpts, types.E_UseTx).(bool)
+	if useTx, ok := proto.GetExtension(inputOpts, types.E_UseTx).(bool); ok {
+		parsedOptions.UseTx = useTx
 	}
 
 	return parsedOptions
+}
+
+// Make wildcard patterns out of urls /path/{param} -> /path/*
+func parseInvalidation(i string) string {
+	return string(regexp.MustCompile("{[^}]+}").ReplaceAll([]byte(i), []byte("*")))
+}
+
+func ParseInvalidations(handlerOptions map[string]*HandlerOptions) {
+	for _, opts := range handlerOptions {
+
+		// Unless needing to permanently store results in redis, mutations should invalidate the GET
+		if !opts.ShouldStore {
+			opts.Invalidations = append(opts.Invalidations, parseInvalidation(opts.ServiceMethodURL))
+		}
+
+		inputOpts := opts.ServiceMethod.Options().(*descriptor.MethodOptions)
+
+		if invalidates, ok := proto.GetExtension(inputOpts, types.E_Invalidates).([]string); ok {
+			for _, invalidation := range invalidates {
+				invalidateHandler, ok := handlerOptions[invalidation]
+				if !ok {
+					log.Fatalf("%s invalidates unknown handler %s", opts.ServiceMethodName, invalidation)
+				}
+				opts.Invalidations = append(opts.Invalidations, parseInvalidation(invalidateHandler.ServiceMethodURL))
+			}
+		}
+	}
 }
 
 func parseTag(field reflect.StructField, fieldName string) string {
@@ -142,7 +179,6 @@ func parseTag(field reflect.StructField, fieldName string) string {
 	return tagValue
 }
 
-// Common utility function to handle setting field values
 func setProtoFieldValue(msg proto.Message, jsonName string, value string) {
 	reflectMsg := msg.ProtoReflect()
 	descriptor := reflectMsg.Descriptor()
@@ -157,7 +193,7 @@ func setProtoFieldValue(msg proto.Message, jsonName string, value string) {
 	}
 }
 
-// ParseProtoQueryParams sets proto message fields from URL query parameters
+// Sets proto message fields from URL query parameters
 func ParseProtoQueryParams(msg proto.Message, req *http.Request) {
 	queryParams := req.URL.Query()
 	if len(queryParams) == 0 {
@@ -180,9 +216,9 @@ func ParseProtoQueryParams(msg proto.Message, req *http.Request) {
 	}
 }
 
-// ParseProtoPathParams sets proto message fields from path parameters
+// Sets proto message fields from path parameters
 func ParseProtoPathParams(msg proto.Message, methodParams []string, req *http.Request) {
-	requestParams := strings.Split(req.URL.Path[4:], "/")
+	requestParams := strings.Split(req.URL.Path, "/")
 	if len(methodParams) == 0 || len(methodParams) != len(requestParams) {
 		return
 	}
@@ -190,10 +226,8 @@ func ParseProtoPathParams(msg proto.Message, methodParams []string, req *http.Re
 	for i := range len(methodParams) {
 		paramName := methodParams[i]
 		if strings.HasPrefix(paramName, "{") {
-			// Extract the parameter name without braces
 			paramName = strings.Trim(paramName, "{}")
 
-			// Set the field value if it exists
 			setProtoFieldValue(msg, paramName, requestParams[i])
 		}
 	}

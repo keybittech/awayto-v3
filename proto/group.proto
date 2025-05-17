@@ -26,6 +26,8 @@ service GroupService {
     };
     option (site_role) = APP_GROUP_ADMIN;
     option (throttle) = 1;
+    option (use_tx) = true;
+    option (invalidates) = "GetUserProfileDetails";
   }
 
   rpc PatchGroupAssignments(PatchGroupAssignmentsRequest) returns (PatchGroupAssignmentsResponse) {
@@ -49,6 +51,7 @@ service GroupService {
       delete: "/v1/group"
     };
     option (site_role) = APP_GROUP_ADMIN;
+    option (use_tx) = true;
   }
 }
 
