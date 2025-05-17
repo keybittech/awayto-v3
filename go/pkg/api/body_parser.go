@@ -12,13 +12,12 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-type BodyParser func(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error)
+type BodyParser func(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message
 
-func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error) {
-	pb := serviceType.New().Interface().(proto.Message)
+func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message {
+	pb := handlerOpts.ServiceMethodType.New().Interface().(proto.Message)
 
 	if req.Body != nil && req.Body != http.NoBody {
 		req.Body = http.MaxBytesReader(w, req.Body, 1<<20)
@@ -26,49 +25,49 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util
 
 		buf, err := io.ReadAll(req.Body)
 		if err != nil {
-			return nil, util.ErrCheck(err)
+			panic(util.ErrCheck(err))
 		}
 
 		if len(buf) > 0 {
 			err = protojson.Unmarshal(buf, pb)
 			if err != nil {
-				return nil, util.ErrCheck(err)
+				panic(util.ErrCheck(err))
 			}
 
 			err = protovalidate.Validate(pb)
 			if err != nil {
-				return nil, util.ErrCheck(util.UserError(err.Error()))
+				panic(util.ErrCheck(util.UserError(err.Error())))
 			}
 		}
 	}
 
-	return pb, nil
+	return pb
 }
 
-func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions, serviceType protoreflect.MessageType) (proto.Message, error) {
+func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message {
 	req.Body = http.MaxBytesReader(w, req.Body, 1<<25)
 
 	err := req.ParseMultipartForm(1 << 25)
 	if err != nil {
-		return nil, util.ErrCheck(util.UserError("Attached files may not exceed 32MB."))
+		panic(util.ErrCheck(util.UserError("Attached files may not exceed 32MB.")))
 	}
 
 	pbFiles := &types.PostFileContentsRequest{}
 
 	uploadIdValue, ok := req.MultipartForm.Value["uploadId"]
 	if !ok {
-		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+		panic(util.ErrCheck(errors.New("invalid multipart request: no uploadId object")))
 	}
 
 	if uploadIdValue[0] != "" {
 		pbFiles.UploadId = uploadIdValue[0]
 	} else {
-		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+		panic(util.ErrCheck(errors.New("invalid multipart request: uploadId is empty")))
 	}
 
 	existingIdsValue, ok := req.MultipartForm.Value["existingIds"]
 	if !ok {
-		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+		panic(util.ErrCheck(errors.New("invalid multipart request: no existingIds object")))
 	}
 
 	if existingIdsValue[0] != "" {
@@ -77,7 +76,7 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 
 	overwriteIdsValue, ok := req.MultipartForm.Value["overwriteIds"]
 	if !ok {
-		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+		panic(util.ErrCheck(errors.New("invalid multipart request: no overwriteIds object")))
 	}
 
 	if overwriteIdsValue[0] != "" {
@@ -86,11 +85,11 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 
 	files, ok := req.MultipartForm.File["contents"]
 	if !ok {
-		return nil, util.ErrCheck(errors.New("invalid multipart request"))
+		panic(util.ErrCheck(errors.New("invalid multipart request: no contents object")))
 	}
 
 	if len(pbFiles.ExistingIds)+len(files)-len(pbFiles.OverwriteIds) > 5 {
-		return nil, util.ErrCheck(util.UserError("No more than 5 files may be uploaded in total."))
+		panic(util.ErrCheck(util.UserError("No more than 5 files may be uploaded in total.")))
 	}
 
 	for _, f := range files {
@@ -99,12 +98,12 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 		fileData, _ := f.Open()
 		_, err := fileData.Read(fileBuf)
 		if err != nil {
-			return nil, util.ErrCheck(err)
+			panic(util.ErrCheck(err))
 		}
 
 		err = fileData.Close()
 		if err != nil {
-			return nil, util.ErrCheck(err)
+			panic(util.ErrCheck(err))
 		}
 
 		fileLen := int64(len(fileBuf))
@@ -117,5 +116,5 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *
 		pbFiles.TotalLength += fileLen
 	}
 
-	return pbFiles, nil
+	return pbFiles
 }

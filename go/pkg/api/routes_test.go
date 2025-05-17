@@ -4,12 +4,12 @@ import (
 	"reflect"
 	"testing"
 
-	"google.golang.org/protobuf/reflect/protoreflect"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func TestAPI_HandleRequest(t *testing.T) {
 	type args struct {
-		serviceMethod protoreflect.MethodDescriptor
+		handlerOpts *util.HandlerOptions
 	}
 	tests := []struct {
 		name string
@@ -21,8 +21,8 @@ func TestAPI_HandleRequest(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.HandleRequest(tt.args.serviceMethod); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.HandleRequest(%v) = %v, want %v", tt.args.serviceMethod, got, tt.want)
+			if got := tt.a.HandleRequest(tt.args.handlerOpts); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("API.HandleRequest(%v) = %v, want %v", tt.args.handlerOpts, got, tt.want)
 			}
 		})
 	}

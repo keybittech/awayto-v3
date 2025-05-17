@@ -1,8 +1,9 @@
 package api
 
 import (
-	"fmt"
+	"errors"
 	"net/http"
+	"strconv"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -11,35 +12,43 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type ResponseHandler func(w http.ResponseWriter, results proto.Message) (int, error)
+type ResponseHandler func(w http.ResponseWriter, results proto.Message) int
 
-func ProtoResponseHandler(w http.ResponseWriter, results proto.Message) (int, error) {
-	var resLen int
+func ProtoResponseHandler(w http.ResponseWriter, results proto.Message) int {
+	if results == nil {
+		return 0
+	}
+
 	pbJsonBytes, err := protojson.Marshal(results)
 	if err != nil {
-		return 0, util.ErrCheck(err)
+		panic(util.ErrCheck(err))
 	}
-	resLen = len(pbJsonBytes)
 
 	w.Header().Set("Content-Type", "application/json")
-	w.Header().Set("Content-Length", fmt.Sprintf("%d", resLen))
-	_, err = w.Write(pbJsonBytes)
+	w.Header().Set("Content-Length", strconv.Itoa(len(pbJsonBytes)))
+
+	n, err := w.Write(pbJsonBytes)
 	if err != nil {
-		return 0, util.ErrCheck(err)
+		panic(util.ErrCheck(err))
 	}
 
-	return resLen, nil
+	return n
 }
 
-func MultipartResponseHandler(w http.ResponseWriter, results proto.Message) (int, error) {
-	var resLen int
-	if resData, ok := results.(*types.GetFileContentsResponse); ok {
-		resLen = len(resData.Content)
-		_, err := w.Write(resData.Content)
-		if err != nil {
-			return 0, util.ErrCheck(err)
-		}
+func MultipartResponseHandler(w http.ResponseWriter, results proto.Message) int {
+	if results == nil {
+		return 0
 	}
 
-	return resLen, nil
+	resData, ok := results.(*types.GetFileContentsResponse)
+	if !ok {
+		panic(util.ErrCheck(errors.New("multipart response is not the right proto")))
+	}
+
+	n, err := w.Write(resData.Content)
+	if err != nil {
+		panic(util.ErrCheck(err))
+	}
+
+	return n
 }

@@ -10,7 +10,11 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-const getGroupDetailsQuery = `SELECT id, external_id, sub, ai FROM dbtable_schema.groups WHERE enabled = true`
+const getGroupDetailsQuery = `
+	SELECT id, name, external_id, sub, ai
+	FROM dbtable_schema.groups
+	WHERE enabled = true
+`
 
 func (a *API) InitGroups() {
 	workerDbSession := &clients.DbSession{
@@ -32,7 +36,7 @@ func (a *API) InitGroups() {
 	for rows.Next() {
 		dbGroup := &types.IGroup{}
 
-		err := rows.Scan(&dbGroup.Id, &dbGroup.ExternalId, &dbGroup.CreatedSub, &dbGroup.Ai)
+		err := rows.Scan(&dbGroup.Id, &dbGroup.Name, &dbGroup.ExternalId, &dbGroup.CreatedSub, &dbGroup.Ai)
 		if err != nil {
 			log.Fatal(util.ErrCheck(err))
 		}
@@ -44,7 +48,7 @@ func (a *API) InitGroups() {
 
 			kcGroup, err := a.Handlers.Keycloak.GetGroup(ctx, "worker", g.ExternalId)
 			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
+				util.DebugLog.Printf("%s", util.ErrCheck(err))
 				return
 			}
 
@@ -52,7 +56,7 @@ func (a *API) InitGroups() {
 
 			kcSubGroups, err := a.Handlers.Keycloak.GetGroupSubGroups(ctx, "worker", g.ExternalId)
 			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
+				util.DebugLog.Printf("%s", util.ErrCheck(err))
 				return
 			}
 

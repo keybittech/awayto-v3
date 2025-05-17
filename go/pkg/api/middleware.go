@@ -3,6 +3,7 @@ package api
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -166,8 +167,6 @@ func (cw *CacheWriter) Write(data []byte) (int, error) {
 }
 
 func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
-	shouldStore := int64(types.CacheType_STORE) == opts.CacheType
-	shouldSkip := int64(types.CacheType_SKIP) == opts.CacheType
 
 	var parsedDuration time.Duration
 	var hasDuration bool
@@ -183,40 +182,76 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 	return func(next SessionHandler) SessionHandler {
 		return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-			if shouldSkip {
+			if opts.ShouldSkip {
 				next(w, req, session)
 				return
 			}
 
 			ctx := req.Context()
-			var cacheKey strings.Builder
-			cacheKey.WriteString(session.UserSub)
-			cacheKey.WriteString(req.URL.String())
-			cacheKeyData := cacheKey.String() + cacheKeySuffixData
-			cacheKeyModTime := cacheKey.String() + cacheKeySuffixModTime
 
 			// Any non-GET processed normally, and deletes cache key unless being stored
-			if !shouldStore && req.Method != http.MethodGet {
+			if !opts.ShouldStore && req.Method != http.MethodGet {
 				next(w, req, session)
-				if !shouldStore {
-					pipe := a.Handlers.Redis.RedisClient.Pipeline()
-					pipe.Del(ctx, cacheKeyData)
-					pipe.Del(ctx, cacheKeyModTime)
-					_, err := pipe.Exec(ctx)
-					if err != nil {
-						util.ErrorLog.Println("failed to perform cache mutation cleanup pipeline", err.Error(), cacheKeyData)
+
+				iLen := len(opts.Invalidations)
+				if iLen == 0 {
+					return
+				}
+
+				scanKeys := make([]string, iLen)
+
+				for _, val := range opts.Invalidations {
+					invCacheKey := session.UserSub + val
+
+					if strings.Index(val, "*") == -1 {
+						scanKeys = append(scanKeys, invCacheKey)
+						scanKeys = append(scanKeys, invCacheKey+cacheKeySuffixModTime)
+						continue
+					}
+
+					var cursor uint64
+					var err error
+
+					for {
+						var pathKeys []string
+						pathKeys, cursor, err = a.Handlers.Redis.RedisClient.Scan(ctx, 0, invCacheKey, 10).Result()
+						if err != nil {
+							util.ErrorLog.Println(util.ErrCheck(err))
+							break
+						}
+
+						scanKeys = append(scanKeys, pathKeys...)
+
+						if cursor == 0 {
+							break
+						}
 					}
 				}
+
+				if len(scanKeys) > 0 {
+					deleted, err := a.Handlers.Redis.RedisClient.Del(ctx, scanKeys...).Result()
+					if err != nil {
+						util.ErrorLog.Println("failed to perform cache mutation cleanup pipeline", err.Error(), fmt.Sprint(opts.Invalidations))
+					}
+
+					println("DID DELETE CACHE RECORDS", deleted, fmt.Sprint(scanKeys))
+				}
+
 				return
 			}
 
+			cacheKey := session.UserSub + req.URL.String()
+			cacheKeyModTime := cacheKey + cacheKeySuffixModTime
+
 			// Check redis cache for request
-			cachedResponse := a.Handlers.Redis.RedisClient.MGet(ctx, cacheKeyData, cacheKeyModTime).Val()
+			cachedResponse := a.Handlers.Redis.RedisClient.MGet(ctx, cacheKey, cacheKeyModTime).Val()
 
 			cachedData, dataOk := cachedResponse[0].(string)
 			modTime, modOk := cachedResponse[1].(string)
 
-			if dataOk && modOk && len(cachedData) > 0 && modTime != "" {
+			// cachedData will be {} if empty
+			if dataOk && modOk && len(cachedData) > 2 && modTime != "" {
+				println("USING cache for ", cacheKey)
 
 				lastMod, err := time.Parse(time.RFC3339Nano, modTime)
 				if err == nil {
@@ -264,11 +299,13 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 			// Cache any response
 			if buf.Len() > 0 {
+				println("STORING cache for ", cacheKey)
+
 				duration := duration180
 
 				if hasDuration {
 					duration = parsedDuration
-				} else if shouldStore {
+				} else if opts.ShouldStore {
 					duration = 0
 				}
 
@@ -276,16 +313,16 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				modTimeStr := timeNow.Format(time.RFC3339Nano)
 
 				if duration > 0 {
-					pipe.SetEx(ctx, cacheKeyData, buf.Bytes(), duration)
+					pipe.SetEx(ctx, cacheKey, buf.Bytes(), duration)
 					pipe.SetEx(ctx, cacheKeyModTime, modTimeStr, duration)
 				} else {
-					pipe.Set(ctx, cacheKeyData, buf.Bytes(), 0)
+					pipe.Set(ctx, cacheKey, buf.Bytes(), 0)
 					pipe.Set(ctx, cacheKeyModTime, modTimeStr, 0)
 				}
 
 				_, err := pipe.Exec(ctx)
 				if err != nil {
-					util.ErrorLog.Println("failed to perform cache insert pipeline", err.Error(), cacheKeyData)
+					util.ErrorLog.Println("failed to perform cache insert pipeline", err.Error(), cacheKey)
 				}
 			}
 		}

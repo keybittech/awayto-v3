@@ -7,7 +7,6 @@ import (
 
 const (
 	maxCacheBuffer        = 1 << 12
-	cacheKeySuffixData    = ":data"
 	cacheKeySuffixModTime = ":mod"
 )
 

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net/http"
 	"runtime/debug"
-	"slices"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -12,32 +11,17 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
 	"google.golang.org/protobuf/proto"
-	"google.golang.org/protobuf/reflect/protoreflect"
-	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
-func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) SessionHandler {
-	var serviceType protoreflect.MessageType
-	protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
-		if mt.Descriptor().FullName() == serviceMethod.Input().FullName() {
-			serviceType = mt
-			return false
-		}
-		return true
-	})
-
-	serviceName := string(serviceMethod.Name())
-	handlerFunc, ok := a.Handlers.Functions[serviceName]
+func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
+	handlerFunc, ok := a.Handlers.Functions[handlerOpts.ServiceMethodName]
 	if !ok {
-		util.DebugLog.Println("Service Method Not Implemented:", serviceName)
+		util.DebugLog.Println("Service Method Not Implemented:", handlerOpts.ServiceMethodName)
 		return func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
 			w.WriteHeader(501)
 			return
 		}
 	}
-
-	handlerOpts := util.ParseHandlerOptions(serviceMethod)
-	ignoreFields := slices.Concat(util.DEFAULT_IGNORED_PROTO_FIELDS, handlerOpts.NoLogFields)
 
 	var queryParser = func(msg proto.Message, req *http.Request) {}
 	if handlerOpts.HasQueryParams {
@@ -77,12 +61,12 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 				// If there is no trace file hint, print the full stack
 				var sb strings.Builder
 				sb.WriteString("Service: ")
-				sb.WriteString(serviceName)
+				sb.WriteString(handlerOpts.ServiceMethodName)
 				sb.WriteByte(' ')
 				sb.WriteString(fmt.Sprint(p))
 				errStr := sb.String()
 
-				util.RequestError(w, errStr, ignoreFields, pb)
+				util.RequestError(w, errStr, handlerOpts.NoLogFields, pb)
 
 				if !strings.Contains(errStr, ".go:") {
 					util.ErrorLog.Println(string(debug.Stack()))
@@ -92,21 +76,13 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
 		}()
 
-		pb, err = bodyParser(w, req, handlerOpts, serviceType)
-		if err != nil {
-			panic(util.ErrCheck(err))
-		}
-
+		pb = bodyParser(w, req, handlerOpts)
 		queryParser(pb, req)
-
 		pathParser(pb, req)
 
 		ctx := req.Context()
 
-		reqInfo, done, err := requestExecutor(ctx, a.Handlers.Database.DatabaseClient, session)
-		if err != nil {
-			panic(util.ErrCheck(err))
-		}
+		reqInfo, done := requestExecutor(ctx, a.Handlers.Database.DatabaseClient, session)
 		defer done()
 
 		reqInfo.Ctx = ctx
@@ -119,11 +95,6 @@ func (a *API) HandleRequest(serviceMethod protoreflect.MethodDescriptor) Session
 			panic(err) // ErrCheck unnecessary as handlers do it
 		}
 
-		if results != nil {
-			_, err = responseHandler(w, results)
-			if err != nil {
-				panic(util.ErrCheck(err))
-			}
-		}
+		responseHandler(w, results)
 	}
 }

@@ -14,7 +14,6 @@ func TestProtoBodyParser(t *testing.T) {
 		w           http.ResponseWriter
 		req         *http.Request
 		handlerOpts *util.HandlerOptions
-		serviceType protoreflect.MessageType
 	}
 	tests := []struct {
 		name    string
@@ -26,13 +25,10 @@ func TestProtoBodyParser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := ProtoBodyParser(tt.args.w, tt.args.req, tt.args.handlerOpts, tt.args.serviceType)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ProtoBodyParser(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.handlerOpts, tt.args.serviceType, err, tt.wantErr)
-				return
-			}
+			got := ProtoBodyParser(tt.args.w, tt.args.req, tt.args.handlerOpts)
+
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ProtoBodyParser(%v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.handlerOpts, tt.args.serviceType, got, tt.want)
+				t.Errorf("ProtoBodyParser(%v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.handlerOpts, got, tt.want)
 			}
 		})
 	}
@@ -43,7 +39,6 @@ func TestMultipartBodyParser(t *testing.T) {
 		w           http.ResponseWriter
 		req         *http.Request
 		handlerOpts *util.HandlerOptions
-		serviceType protoreflect.MessageType
 	}
 	tests := []struct {
 		name    string
@@ -55,13 +50,9 @@ func TestMultipartBodyParser(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got, err := MultipartBodyParser(tt.args.w, tt.args.req, tt.args.handlerOpts, tt.args.serviceType)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("MultipartBodyParser(%v, %v, %v, %v) error = %v, wantErr %v", tt.args.w, tt.args.req, tt.args.handlerOpts, tt.args.serviceType, err, tt.wantErr)
-				return
-			}
+			got := MultipartBodyParser(tt.args.w, tt.args.req, tt.args.handlerOpts)
 			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("MultipartBodyParser(%v, %v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.handlerOpts, tt.args.serviceType, got, tt.want)
+				t.Errorf("MultipartBodyParser(%v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.handlerOpts, got, tt.want)
 			}
 		})
 	}
