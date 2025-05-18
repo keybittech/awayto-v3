@@ -90,7 +90,6 @@ func main() {
 	server.InitAuthProxy()
 	server.InitSockServer()
 	server.InitStatic()
-	server.InitGroups()
 
 	rateLimiter := api.NewRateLimit("api", rate.Limit(requestsPerSecond), requestsPerSecondBurst, time.Duration(5*time.Minute))
 	limitMiddleware := server.LimitMiddleware(rateLimiter)(server.Server.Handler)

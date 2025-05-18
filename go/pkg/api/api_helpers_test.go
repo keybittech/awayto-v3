@@ -34,7 +34,6 @@ func getTestApi() *API {
 	}
 	a := NewAPI(httpsPort)
 	a.InitProtoHandlers()
-	a.InitGroups()
 	return a
 }
 
@@ -93,7 +92,7 @@ func getKeycloakToken(user *types.TestUser) (string, *types.UserSession, error) 
 		return "", nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", nil, err
 	}
@@ -108,7 +107,7 @@ func getKeycloakToken(user *types.TestUser) (string, *types.UserSession, error) 
 		log.Fatalf("error validating auth token: %v", err)
 	}
 
-	return token, session.GetProtoClone(), nil
+	return token, session, nil
 }
 
 func checkResponseFor(buf []byte, items []byte) bool {

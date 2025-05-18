@@ -39,42 +39,45 @@ func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRe
 }
 
 func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfileDetailsRequest) (*types.GetUserProfileDetailsResponse, error) {
+	userSub := info.Session.GetUserSub()
+	groupId := info.Session.GetGroupId()
+
 	upReq := util.BatchQueryRow[types.IUserProfile](info.Batch, `
 		SELECT "firstName", "lastName",	image, email, locked,	active
 		FROM dbview_schema.enabled_users
 		WHERE sub = $1
-	`, info.Session.GetUserSub())
+	`, userSub)
 
 	var groupsReq *map[string]*types.IGroup
 	var rolesReq *map[string]*types.IRole
 	var quotesReq *map[string]*types.IQuote
 	var bookingsReq *map[string]*types.IBooking
 
-	if info.Session.GetGroupId() != "" {
+	if groupId != "" {
 		groupsReq = util.BatchQueryMap[types.IGroup](info.Batch, "code", `
-		SELECT code, name, "displayName", "createdOn", purpose, ai, true as active
-		FROM dbview_schema.enabled_groups
-		WHERE id = $1
-	`, info.Session.GetGroupId())
+			SELECT code, name, "displayName", "createdOn", purpose, ai, true as active
+			FROM dbview_schema.enabled_groups
+			WHERE id = $1
+		`, groupId)
 
 		rolesReq = util.BatchQueryMap[types.IRole](info.Batch, "id", `
-		SELECT er.id, er.name, eur."createdOn"
-		FROM dbview_schema.enabled_user_roles eur
-		JOIN dbview_schema.enabled_roles er ON er.id = eur."roleId"
-		WHERE eur.sub = $1
-	`, info.Session.GetUserSub())
+			SELECT er.id, er.name, eur."createdOn"
+			FROM dbview_schema.enabled_user_roles eur
+			JOIN dbview_schema.enabled_roles er ON er.id = eur."roleId"
+			WHERE eur."createdSub" = $1
+		`, userSub)
 
 		quotesReq = util.BatchQueryMap[types.IQuote](info.Batch, "id", `
-		SELECT id, "slotDate", "startTime", "scheduleBracketSlotId", "serviceTierName", "serviceName", "createdOn"
-		FROM dbview_schema.enabled_quotes
-		WHERE "slotCreatedSub" = $1
-	`, info.Session.GetUserSub())
+			SELECT id, "slotDate", "startTime", "scheduleBracketSlotId", "serviceTierName", "serviceName", "createdOn"
+			FROM dbview_schema.enabled_quotes
+			WHERE "slotCreatedSub" = $1
+		`, userSub)
 
 		bookingsReq = util.BatchQueryMap[types.IBooking](info.Batch, "id", `
-		SELECT id, "slotDate", "scheduleBracketSlot", service, "serviceTier", "createdOn"
-		FROM dbview_schema.enabled_bookings eb
-		WHERE "createdSub" = $1 OR "quoteCreatedSub" = $1
-	`, info.Session.GetUserSub())
+			SELECT id, "slotDate", "scheduleBracketSlot", service, "serviceTier", "createdOn"
+			FROM dbview_schema.enabled_bookings eb
+			WHERE "createdSub" = $1 OR "quoteCreatedSub" = $1
+		`, userSub)
 	}
 
 	info.Batch.Send(info.Ctx)
@@ -91,7 +94,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	roleBits := info.Session.GetRoleBits()
 	up.RoleBits = roleBits
 
-	roleName := info.Session.GetRoleName()
+	roleName := info.Session.GetSubGroupName()
 	up.RoleName = roleName
 
 	// Try to send a request if the user has an active socket connection

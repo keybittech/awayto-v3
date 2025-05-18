@@ -188,7 +188,7 @@ clean:
 	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) # $(MOCK_TARGET)
 
 $(LOG_DIR):
-ifeq ($(DEPLOYING),false)
+ifeq ($(DEPLOYING),)
 	mkdir -p $(LOG_DIR)/db
 	setfacl -m g:1000:rwx $(LOG_DIR)/db
 	setfacl -d -m g:1000:rwx $(LOG_DIR)/db

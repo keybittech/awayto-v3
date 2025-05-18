@@ -4,7 +4,7 @@ package types;
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 message CachedGroup {
-  map<string, CachedSubGroup> subGroups = 1;
+  repeated string subGroupPaths = 1;
   string id = 2;
   string externalId = 3;
   string sub = 4;
@@ -13,7 +13,7 @@ message CachedGroup {
 }
 
 message CachedSubGroup {
-  string externalId = 1;
-  string groupPath = 2;
+  string groupPath = 1;
+  string externalId = 2;
   string name = 3;
 }

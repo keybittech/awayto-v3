@@ -4,7 +4,6 @@ import (
 	json "encoding/json"
 	"errors"
 	"slices"
-	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -153,10 +152,6 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	newGroupPath := "/" + data.Name
-
-	h.Cache.SetCachedGroup(newGroupPath, groupId, kcGroupExternalId, groupSub, data.Name, data.Ai)
-	h.Cache.SetCachedSubGroup(kcAdminSubGroup.Path, kcAdminSubGroup.Id, kcAdminSubGroup.Name, newGroupPath)
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 	_ = h.Socket.RoleCall(info.Session.GetUserSub())
 
@@ -166,8 +161,9 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 
 func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*types.PatchGroupResponse, error) {
 
-	cachedGroup := h.Cache.GetCachedGroup(info.Session.GetGroupPath())
-	nameChanged := cachedGroup.Name != data.Name
+	sessionGroupPath := info.Session.GetGroupPath()
+	cachedGroup := h.Cache.Groups.Load(sessionGroupPath)
+	nameChanged := cachedGroup.GetName() != data.Name
 
 	if nameChanged {
 		check, err := h.CheckGroupName(info, &types.CheckGroupNameRequest{Name: data.Name})
@@ -202,17 +198,16 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 
 	// If the group name changed, make a new group cache entry
 	if nameChanged {
-		newGroupPath := strings.Replace(info.Session.GetGroupPath(), cachedGroup.Name, data.Name, 1)
-		h.Cache.SetCachedGroup(newGroupPath, cachedGroup.Id, cachedGroup.ExternalId, cachedGroup.Sub, data.Name, data.Ai)
-
 		err = h.Keycloak.UpdateGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetGroupExternalId(), data.Name)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		h.Cache.UnsetCachedGroup(info.Session.GetGroupPath())
-		info.Session.SetGroupPath(newGroupPath)
-		h.Cache.SetSessionToken(info.Req.Header.Get("Authorization"), info.Session)
+		h.Cache.Groups.Delete(sessionGroupPath)
+
+		for _, subGroupPath := range cachedGroup.GetSubGroupPaths() {
+			h.Cache.SubGroups.Delete(subGroupPath)
+		}
 	}
 
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
@@ -318,12 +313,12 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 	assignments := make(map[string]*types.IGroupRoleAuthActions)
 	assignmentsWithoutId := make(map[string]*types.IGroupRoleAuthActions)
 
-	subgroups, err := h.Keycloak.GetGroupSubGroups(info.Ctx, info.Session.GetUserSub(), kcGroup.Id)
+	subGroups, err := h.Keycloak.GetGroupSubGroups(info.Ctx, info.Session.GetUserSub(), kcGroup.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	for _, sg := range subgroups {
+	for _, sg := range subGroups {
 		graaWI := &types.IGroupRoleAuthActions{
 			Actions: []*types.IGroupRoleAuthAction{},
 		}

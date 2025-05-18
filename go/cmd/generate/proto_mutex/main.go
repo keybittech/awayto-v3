@@ -19,6 +19,10 @@ func getGoScalarType(kind protoreflect.Kind) string {
 		return "float64"
 	case protoreflect.FloatKind:
 		return "float32"
+	case protoreflect.Uint64Kind:
+		return "uint64"
+	case protoreflect.Uint32Kind:
+		return "uint32"
 	case protoreflect.Int64Kind:
 		return "int64"
 	case protoreflect.Int32Kind:
@@ -383,7 +387,7 @@ func main() {
 				// 	log.Printf("Cache miss for %s, calling external API", endpointKey)
 				// 	return externalAPI.GetProduct("456")
 				// })
-				g.P("func (c *", concurrentMsgName, "Cache) LoadOrSet(k string, loaderFunc func() (*", msgName, ", error)) (*", concurrentMsgName, ", error) {")
+				g.P("func (c *", concurrentMsgName, "Cache) LoadOrSet(k string, loaderFunc func() (*", msgName, ", error)) (msg *", concurrentMsgName, ", err error) {")
 				// 1. Quick check: Is it already in the cache?
 				g.P("  cachedWrapper, ok := c.InternalCache.Load(k)")
 				g.P("  if ok && cachedWrapper != nil {")
@@ -393,6 +397,13 @@ func main() {
 				g.P()
 				// 2. Not in cache (or was nil). Call the loader function to get the data.
 				// This might be slow (DB call, network request, complex computation).
+				g.P("  defer func() {") // catch loader panics
+				g.P("    if r := recover(); r != nil {")
+				g.P("      if e, ok := r.(error); ok {")
+				g.P("        err = e")
+				g.P("      }")
+				g.P("    }")
+				g.P("  }()")
 				g.P("  loadedProtoData, err := loaderFunc()")
 				g.P("  if err != nil {")
 				g.P("    return nil, err") // Loader failed, propagate error.

@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -51,10 +52,14 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		responseHandler = MultipartResponseHandler
 	}
 
-	var resetGroup = func(*types.ConcurrentUserSession) {}
+	var setGroupVersion = func(string) {}
 	if handlerOpts.ResetsGroup {
-		resetGroup = func(s *types.ConcurrentUserSession) {
-			a.GroupSessionVersions.Store(s.GetGroupId())
+		setGroupVersion = func(groupId string) {
+			if groupId == "" {
+				return
+			}
+			println("DID RESET GROUP VERSION")
+			a.Cache.GroupSessionVersions.Store(groupId, time.Now().UnixNano())
 		}
 	}
 
@@ -102,8 +107,8 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 			panic(err) // ErrCheck unnecessary as handlers do it
 		}
 
-		responseHandler(w, results)
+		setGroupVersion(session.GetGroupId())
 
-		resetGroup(session)
+		responseHandler(w, results)
 	}
 }

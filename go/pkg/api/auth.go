@@ -19,7 +19,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*types.ConcurrentUserSession, error) {
+func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*types.UserSession, error) {
 	token = strings.TrimPrefix(token, "Bearer ")
 
 	parsedToken, err := jwt.ParseWithClaims(token, &clients.KeycloakUserWithClaims{}, func(t *jwt.Token) (interface{}, error) {
@@ -40,16 +40,20 @@ func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*t
 	if !ok {
 		return nil, util.ErrCheck(errors.New("could not parse claims"))
 	}
+	var roleBits int64
+	if clientAccess, clientAccessOk := claims.ResourceAccess[claims.Azp]; clientAccessOk {
+		roleBits = util.StringsToBitmask(clientAccess.Roles)
+	}
 
-	session := types.NewConcurrentUserSession(&types.UserSession{
-		UserSub:   claims.Subject,
-		UserEmail: claims.Email,
-		SubGroups: claims.Groups,
-		RoleBits:  util.StringsToBitmask(claims.ResourceAccess[claims.Azp].Roles),
-		ExpiresAt: claims.ExpiresAt,
-		Timezone:  timezone,
-		AnonIp:    anonIp,
-	})
+	session := &types.UserSession{
+		UserSub:       claims.Subject,
+		UserEmail:     claims.Email,
+		SubGroupPaths: claims.Groups,
+		RoleBits:      roleBits,
+		ExpiresAt:     claims.ExpiresAt,
+		Timezone:      timezone,
+		AnonIp:        anonIp,
+	}
 
 	return session, nil
 }

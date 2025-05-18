@@ -59,28 +59,29 @@ service GroupService {
 }
 
 message IGroup {
-  string id = 1;
-  string externalId = 2;
-  string createdSub = 3;
-  string createdOn = 4;
-  string defaultRoleId = 5;
-  string allowedDomains = 6;
-  string displayName = 7;
-  string name = 8;
-  string purpose = 9;
-  bool ldr = 10;
-  string code = 11;
-  int32 usersCount = 12;
-  map<string, IRole> roles = 13;
-  map<string, IGroupUser> users = 14;
-  map<string, IGroupRoleAuthActions> availableGroupAssignments = 15;
-  bool isValid = 16;
-  bool needCheckName = 17;
-  bool checkingName = 18;
-  string checkedName = 19;
-  string error = 20;
-  bool active = 21;
-  bool ai = 22;
+  map<string, IRole> roles = 1;
+  map<string, IGroupUser> users = 2;
+  map<string, IGroupRoleAuthActions> availableGroupAssignments = 3;
+  string id = 4;
+  string sub = 5;
+  string externalId = 6;
+  string createdSub = 7;
+  string createdOn = 8;
+  string defaultRoleId = 9;
+  string allowedDomains = 10;
+  string displayName = 11;
+  string name = 12;
+  string purpose = 13;
+  string code = 14;
+  string checkedName = 15;
+  string error = 16;
+  int32 usersCount = 17;
+  bool active = 18;
+  bool ai = 19;
+  bool ldr = 20;
+  bool isValid = 21;
+  bool needCheckName = 22;
+  bool checkingName = 23;
 }
 
 message IGroupRoleAuthAction {

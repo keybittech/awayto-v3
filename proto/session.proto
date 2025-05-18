@@ -4,22 +4,21 @@ package types;
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 message UserSession {
-  string userSub = 1;
-  string userEmail = 2;
-  string groupName = 3;
-  string groupId = 4;
-  string groupSub = 5;
-  string groupExternalId = 6;
-  string groupPath = 7;
-  string subGroupName = 8;
-  string subGroupExternalId = 9;
-  string subGroupPath = 10;
-  string roleName = 11;
+  repeated string subGroupPaths = 1;
+  string userSub = 2;
+  string userEmail = 3;
+  string groupName = 4;
+  string groupId = 5;
+  string groupSub = 6;
+  string groupExternalId = 7;
+  string groupPath = 8;
+  string subGroupName = 9;
+  string subGroupExternalId = 10;
+  string subGroupPath = 11;
   string anonIp = 12;
   string timezone = 13;
   int64 roleBits = 14;
   int64 groupSessionVersion = 15;
   int64 expiresAt = 16;
-  repeated string subGroups = 17;
-  bool groupAi = 18;
+  bool groupAi = 17;
 }

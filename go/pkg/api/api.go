@@ -6,12 +6,13 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 type API struct {
-	*http.Server
-	*Cache
-	*handlers.Handlers
+	Server   *http.Server
+	Cache    *util.Cache
+	Handlers *handlers.Handlers
 }
 
 func NewAPI(httpsPort int) *API {
@@ -19,7 +20,9 @@ func NewAPI(httpsPort int) *API {
 
 	registerHandlers(h)
 
-	c := NewCache()
+	c := util.NewCache()
+
+	h.Cache = c
 
 	return &API{
 		Server: &http.Server{

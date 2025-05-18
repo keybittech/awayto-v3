@@ -100,8 +100,8 @@ func testIntegrationJoinGroup(t *testing.T) {
 				}
 			}
 
-			if len(session.SubGroups) == 0 {
-				t.Errorf("no group id after getting new token %v", session)
+			if len(session.SubGroupPaths) == 0 {
+				t.Errorf("no subgroup paths after getting new token %v", session)
 			}
 
 			testUser := &types.TestUser{

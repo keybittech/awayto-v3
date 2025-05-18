@@ -214,7 +214,7 @@ func InitKeycloak() *Keycloak {
 				Error: err,
 			}
 		case CreateSubgroupKeycloakCommand:
-			subgroup, err := kc.CreateSubgroup(cmd.Request.GroupId, cmd.Request.GroupName)
+			subGroup, err := kc.CreateSubgroup(cmd.Request.GroupId, cmd.Request.GroupName)
 			if err != nil {
 				cmd.ReplyChan <- AuthResponse{
 					Error: err,
@@ -224,7 +224,7 @@ func InitKeycloak() *Keycloak {
 
 			cmd.ReplyChan <- AuthResponse{
 				AuthResponseParams: &types.AuthResponseParams{
-					Group: subgroup,
+					Group: subGroup,
 				},
 			}
 		case AddUserToGroupKeycloakCommand:

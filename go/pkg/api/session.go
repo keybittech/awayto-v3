@@ -17,16 +17,16 @@ const (
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession)
 
 type SessionMux struct {
-	publicKey     *rsa.PublicKey
-	mux           *http.ServeMux
-	sessionTokens *SessionTokensCache
+	publicKey    *rsa.PublicKey
+	mux          *http.ServeMux
+	userSessions *types.ConcurrentUserSessionCache
 }
 
-func NewSessionMux(pk *rsa.PublicKey, sessionTokens *SessionTokensCache) *SessionMux {
+func NewSessionMux(pk *rsa.PublicKey, userSessions *types.ConcurrentUserSessionCache) *SessionMux {
 	return &SessionMux{
-		publicKey:     pk,
-		mux:           http.NewServeMux(),
-		sessionTokens: sessionTokens,
+		publicKey:    pk,
+		mux:          http.NewServeMux(),
+		userSessions: userSessions,
 	}
 }
 
@@ -38,19 +38,14 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 			return
 		}
 
-		if cachedSession, ok := sm.sessionTokens.Load(token); ok {
-			handler(w, req, cachedSession)
-			return
-		}
-
-		session, err := ValidateToken(sm.publicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+		session, err := sm.userSessions.LoadOrSet(token, func() (*types.UserSession, error) {
+			return ValidateToken(sm.publicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+		})
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
-
-		sm.sessionTokens.Store(token, session)
 
 		handler(w, req, session)
 	}))

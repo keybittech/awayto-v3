@@ -85,11 +85,11 @@ message KeycloakUserGroup {
 }
 
 message KeycloakGroup {
-  string id = 1;
-  string name = 2;
-  string path = 3;
-  string parentId = 4;
-  repeated KeycloakGroup subGroups = 5;
+  repeated KeycloakGroup subGroups = 1;
+  string id = 2;
+  string name = 3;
+  string path = 4;
+  string parentId = 5;
 }
 
 message KeycloakRole {

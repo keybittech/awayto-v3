@@ -14,10 +14,10 @@ func init() {
 	}
 }
 
-func reset(b *testing.B) {
-	b.ReportAllocs()
-	b.ResetTimer()
-}
+// func reset(b *testing.B) {
+// 	b.ReportAllocs()
+// 	b.ResetTimer()
+// }
 
 func TestMain(m *testing.M) {
 	// statusCmd := mainApi.Handlers.Redis.RedisClient.FlushAll(context.Background())

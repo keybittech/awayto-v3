@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"log"
 	"net"
@@ -66,8 +65,9 @@ func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFu
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
-
-			session, err := ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+			session, err := a.Cache.UserSessions.LoadOrSet(token, func() (*types.UserSession, error) {
+				return ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+			})
 			if err != nil {
 				util.ErrorLog.Println(err)
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
@@ -81,57 +81,136 @@ func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFu
 
 func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 	return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-		hasGroups := len(session.GetSubGroups()) > 0
+		sessionSubGroups := session.GetSubGroupPaths()
+		sessionGroupId := session.GetGroupId()
 
-		if hasGroups { // user has groups
-			sgPath := session.GetSubGroups()[0]
-			session.SetSubGroupPath(sgPath)
-			session.SetSubGroupName(sgPath[strings.LastIndex(sgPath, "/")+1:])
-		} else if session.GetGroupSessionVersion() > 0 { // user had a group but no more
-			session.SetSubGroupName("")
-			session.SetSubGroupPath("")
-			session.SetGroupName("")
-			session.SetGroupPath("")
-			session.SetRoleName("")
-			session.SetGroupExternalId("")
-			session.SetSubGroupExternalId("")
-			session.SetGroupId("")
-			session.SetGroupAi(false)
-			session.SetGroupSub("")
-			session.SetGroupSessionVersion(0)
-			// a.Cache.SessionTokens.Store(req.Header.Get("Authorization"), session) // not necessary with concurrent session
+		if len(sessionSubGroups) == 0 {
+			if sessionGroupId != "" { // user had a group but no more
+				session.SetSubGroupName("")
+				session.SetSubGroupPath("")
+				session.SetGroupName("")
+				session.SetGroupPath("")
+				session.SetGroupExternalId("")
+				session.SetSubGroupExternalId("")
+				session.SetGroupId("")
+				session.SetGroupAi(false)
+				session.SetGroupSub("")
+				session.SetGroupSessionVersion(0)
+			}
 			next(w, req, session)
 			return
 		}
 
-		if hasGroups && (session.GetGroupId() == "" || a.Cache.GroupSessionVersions.Load(session.GetGroupId()) != session.GetGroupSessionVersion()) {
-			sgPath := session.GetSubGroupPath()
-			subGroup, ok := a.Cache.SubGroups.Load(sgPath)
-			if !ok {
-				util.ErrorLog.Println(errors.New("could not load subgroup " + sgPath))
+		refresh := sessionGroupId == ""
+
+		if !refresh {
+			currentGroupVersion, found := a.Cache.GroupSessionVersions.Load(sessionGroupId)
+			if !found || currentGroupVersion != session.GetGroupSessionVersion() {
+				refresh = true
+			}
+		}
+
+		if refresh {
+
+			ctx := req.Context()
+
+			subGroupPath := sessionSubGroups[0]
+			subGroupPathIdx := strings.LastIndex(subGroupPath, "/")
+			subGroupName := subGroupPath[subGroupPathIdx+1:]
+
+			groupPath := subGroupPath[:subGroupPathIdx]
+			groupName := groupPath[1:]
+
+			concurrentCachedGroup, err := a.Cache.Groups.LoadOrSet(groupPath, func() (*types.CachedGroup, error) {
+				batch := util.NewBatchable(a.Handlers.Database.DatabaseClient.Pool, "worker", "", 0)
+				groupReq := util.BatchQueryRow[types.IGroup](batch, `
+					SELECT id, "externalId", sub, ai
+					FROM dbview_schema.enabled_groups
+					WHERE name = $1
+				`, groupName)
+
+				batch.Send(ctx)
+
+				group := *groupReq
+
+				kcSubGroups, err := a.Handlers.Keycloak.GetGroupSubGroups(ctx, "worker", group.ExternalId)
+				if err != nil {
+					return nil, err
+				}
+
+				cachedGroup := &types.CachedGroup{
+					SubGroupPaths: make([]string, len(kcSubGroups)),
+					Id:            group.Id,
+					Name:          group.Name,
+					ExternalId:    group.ExternalId,
+					Sub:           group.Sub,
+					Ai:            group.Ai,
+				}
+
+				for _, subGroup := range kcSubGroups {
+					cachedGroup.SubGroupPaths = append(cachedGroup.SubGroupPaths, subGroup.Path)
+				}
+
+				if _, found := a.Cache.GroupSessionVersions.Load(group.Id); !found {
+					a.Cache.GroupSessionVersions.Store(group.Id, time.Now().UnixNano())
+				}
+
+				return cachedGroup, nil
+			})
+			if err != nil {
+				util.ErrorLog.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			groupPath := session.GetGroupPath()
-			group, ok := a.Cache.Groups.Load(groupPath)
-			if !ok {
-				util.ErrorLog.Println(errors.New("could not load group " + groupPath))
+			concurrentCachedSubGroup, err := a.Cache.SubGroups.LoadOrSet(subGroupPath, func() (*types.CachedSubGroup, error) {
+				batch := util.NewBatchable(a.Handlers.Database.DatabaseClient.Pool, "worker", "", 0)
+				subGroupReq := util.BatchQueryRow[types.IGroupRole](batch, `
+					SELECT egr."externalId"
+					FROM dbview_schema.enabled_roles er
+					JOIN dbview_schema.enabled_group_roles egr ON egr."roleId" = er.id
+					WHERE er.name = $1
+				`, subGroupName)
+
+				batch.Send(ctx)
+
+				subGroup := *subGroupReq
+
+				cachedSubGroup := &types.CachedSubGroup{
+					ExternalId: subGroup.ExternalId,
+					Name:       subGroupName,
+					GroupPath:  groupPath,
+				}
+
+				return cachedSubGroup, nil
+			})
+			if err != nil {
+				util.ErrorLog.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			session.SetGroupId(group.GetId())
-			session.SetGroupExternalId(group.GetExternalId())
-			session.SetGroupSub(group.GetSub())
-			session.SetGroupName(group.GetName())
-			session.SetGroupAi(group.GetAi())
-			session.SetGroupPath(subGroup.GetGroupPath())
-			session.SetRoleName(subGroup.GetName())
-			session.SetSubGroupExternalId(subGroup.GetExternalId())
-			session.SetGroupSessionVersion(a.Cache.GroupSessionVersions.Load(group.GetId()))
+			groupId := concurrentCachedGroup.GetId()
 
-			// a.Handlers.Cache.SetSessionToken(req.Header.Get("Authorization"), session) // not necessary with concurrent session
+			session.SetGroupId(groupId)
+			session.SetGroupPath(groupPath)
+			session.SetGroupName(concurrentCachedGroup.GetName())
+			session.SetGroupExternalId(concurrentCachedGroup.GetExternalId())
+			session.SetGroupSub(concurrentCachedGroup.GetSub())
+			session.SetGroupAi(concurrentCachedGroup.GetAi())
+
+			session.SetSubGroupPath(subGroupPath)
+			session.SetSubGroupName(concurrentCachedSubGroup.GetName())
+			session.SetSubGroupExternalId(concurrentCachedSubGroup.GetExternalId())
+
+			currentGroupVersion, found := a.Cache.GroupSessionVersions.Load(groupId)
+			if !found {
+				session.SetGroupSessionVersion(0)
+			} else {
+				session.SetGroupSessionVersion(currentGroupVersion)
+			}
+
+			a.Cache.UserSessions.Store(req.Header.Get("Authorization"), session)
 		}
 
 		next(w, req, session)

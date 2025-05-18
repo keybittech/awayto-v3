@@ -12,7 +12,10 @@ import (
 )
 
 func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest) (*types.PostGroupRoleResponse, error) {
-	kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetGroupExternalId(), data.Name)
+	userSub := info.Session.GetUserSub()
+	groupId := info.Session.GetGroupId()
+
+	kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, userSub, info.Session.GetGroupExternalId(), data.Name)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -23,7 +26,7 @@ func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest)
 		VALUES ($1, $2, $3, $4, $5)
 		ON CONFLICT (group_id, role_id) DO NOTHING
 		RETURNING id
-	`, info.Session.GetGroupId(), data.RoleId, kcSubGroup.Id, time.Now(), info.Session.GetUserSub()).Scan(&groupRoleId)
+	`, groupId, data.RoleId, kcSubGroup.Id, time.Now(), userSub).Scan(&groupRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -34,14 +37,11 @@ func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest)
 			UPDATE dbtable_schema.groups
 			SET default_role_id = $2
 			WHERE id = $1
-		`, info.Session.GetGroupId(), data.RoleId)
+		`, groupId, data.RoleId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
-
-	newSubGroupPath := info.Session.GetGroupPath() + "/" + data.Name
-	h.Cache.SetCachedSubGroup(newSubGroupPath, kcSubGroup.Id, data.Name, info.Session.GetGroupPath())
 
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/roles")
@@ -51,6 +51,8 @@ func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest)
 }
 
 func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleRequest) (*types.PatchGroupRoleResponse, error) {
+	groupId := info.Session.GetGroupId()
+
 	var existingRoleExternalId, defaultRoleId, existingRoleName string
 	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT gr.external_id, g.default_role_id, r.name
@@ -58,7 +60,7 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 		JOIN dbtable_schema.groups g ON g.id = gr.group_id
 		JOIN dbtable_schema.roles r ON r.id = gr.role_id
 		WHERE gr.group_id = $1 AND gr.role_id = $2
-	`, info.Session.GetGroupId(), data.RoleId).Scan(&existingRoleExternalId, &defaultRoleId, &existingRoleName)
+	`, groupId, data.RoleId).Scan(&existingRoleExternalId, &defaultRoleId, &existingRoleName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -80,7 +82,7 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 			UPDATE dbtable_schema.groups
 			SET default_role_id = $2
 			WHERE id = $1
-		`, info.Session.GetGroupId(), postRoleResponse.GetId())
+		`, groupId, postRoleResponse.GetId())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -91,7 +93,7 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 		_, err := info.Tx.Exec(info.Ctx, `
 			DELETE FROM dbtable_schema.group_roles
 			WHERE group_id = $1 AND role_id = $2
-		`, info.Session.GetGroupId(), data.GetRoleId())
+		`, groupId, data.GetRoleId())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -101,13 +103,10 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 			VALUES ($1, $2, $3, $4, $5)
 			ON CONFLICT (group_id, role_id) DO NOTHING
-		`, info.Session.GetGroupId(), postRoleResponse.GetId(), existingRoleExternalId, time.Now(), info.Session.GetUserSub())
+		`, groupId, postRoleResponse.GetId(), existingRoleExternalId, time.Now(), info.Session.GetUserSub())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-
-		newSubGroupPath := info.Session.GetGroupPath() + "/" + data.Name
-		h.Cache.SetCachedSubGroup(newSubGroupPath, existingRoleExternalId, data.Name, info.Session.GetGroupPath())
 
 		// update the name of the keycloak group which controls this role
 		err = h.Keycloak.UpdateGroup(info.Ctx, info.Session.GetUserSub(), existingRoleExternalId, data.Name)
@@ -115,8 +114,7 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 			return nil, util.ErrCheck(err)
 		}
 
-		oldSubGroupPath := info.Session.GetGroupPath() + "/" + existingRoleName
-		h.Cache.UnsetCachedSubGroup(oldSubGroupPath)
+		h.Cache.SubGroups.Delete(info.Session.GetSubGroupPath())
 
 		h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 		h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/roles")
@@ -195,7 +193,7 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 						return nil, util.ErrCheck(err)
 					}
 
-					h.Cache.UnsetCachedSubGroup(subGroup.Path)
+					h.Cache.SubGroups.Delete(subGroup.Path)
 				}
 			}
 		}
@@ -231,9 +229,6 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-
-		newSubGroupPath := info.Session.GetGroupPath() + "/" + role.Name
-		h.Cache.SetCachedSubGroup(newSubGroupPath, kcSubGroup.Id, role.Name, info.Session.GetGroupPath())
 	}
 
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
@@ -298,8 +293,7 @@ func (h *Handlers) DeleteGroupRole(info ReqInfo, data *types.DeleteGroupRoleRequ
 				return nil, util.ErrCheck(err)
 			}
 
-			oldSubGroupPath := info.Session.GetGroupPath() + "/" + name
-			h.Cache.UnsetCachedSubGroup(oldSubGroupPath)
+			h.Cache.SubGroups.Delete(info.Session.GetGroupPath() + "/" + name)
 		}
 	}
 

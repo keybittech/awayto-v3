@@ -33,6 +33,7 @@ type Handlers struct {
 	Redis     *clients.Redis
 	Keycloak  *clients.Keycloak
 	Socket    *clients.Socket
+	Cache     *util.Cache
 }
 
 func NewHandlers() *Handlers {

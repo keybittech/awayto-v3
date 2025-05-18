@@ -35,7 +35,7 @@ SELECT
   id,
   role_id as "roleId",
   user_id as "userId",
-  created_sub as sub,
+  created_sub as "createdSub",
   created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.user_roles
@@ -47,8 +47,13 @@ OR REPLACE VIEW dbview_schema.enabled_groups AS
 SELECT
   id,
   name,
+  sub,
   code,
+  default_role_id as "defaultRoleId",
+  allowed_domains as "allowedDomains",
+  external_id as "externalId",
   display_name as "displayName",
+  created_sub as "createdSub",
   created_on::TEXT as "createdOn",
   purpose,
   ai
@@ -75,6 +80,7 @@ SELECT
   id,
   role_id as "roleId",
   group_id as "groupId",
+  external_id as "externalId",
   created_on::TEXT as "createdOn"
 FROM
   dbtable_schema.group_roles
@@ -136,9 +142,6 @@ CREATE
 OR REPLACE VIEW dbview_schema.enabled_groups_ext AS
 SELECT
   eg.*,
-  g.code,
-  g.default_role_id as "defaultRoleId",
-  g.allowed_domains as "allowedDomains",
   ug."usersCount",
   rls.* as roles
 FROM
