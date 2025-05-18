@@ -6,14 +6,9 @@ import (
 	"database/sql"
 	"encoding/base64"
 	"errors"
-	"fmt"
-	"io"
 	"log"
 	"math"
-	"net"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -43,29 +38,13 @@ const (
 func init() {
 	TitleCase = cases.Title(language.Und, cases.NoLower)
 
-	signingToken, err := EnvFile(os.Getenv("SIGNING_TOKEN_FILE"))
+	signingToken, err := GetEnvFile("SIGNING_TOKEN_FILE", 128)
 	if err != nil {
 		println("Failed to get signing token")
 		log.Fatal(err)
 	}
 
 	SigningToken = []byte(signingToken)
-}
-
-type NullConn struct{}
-
-func (n NullConn) Read(b []byte) (int, error)         { return 0, io.EOF }
-func (n NullConn) Write(b []byte) (int, error)        { return len(b), nil }
-func (n NullConn) Close() error                       { return nil }
-func (n NullConn) LocalAddr() net.Addr                { return nil }
-func (n NullConn) RemoteAddr() net.Addr               { return nil }
-func (n NullConn) SetDeadline(t time.Time) error      { return nil }
-func (n NullConn) SetReadDeadline(t time.Time) error  { return nil }
-func (n NullConn) SetWriteDeadline(t time.Time) error { return nil }
-
-// NewNullConn returns a new no-op connection
-func NewNullConn() net.Conn {
-	return NullConn{}
 }
 
 func NewNullString(s string) sql.NullString {
@@ -103,7 +82,7 @@ func IsUUID(id string) bool {
 		return false
 	}
 
-	for i := 0; i < 36; i++ {
+	for i := range 36 {
 		if i == 8 || i == 13 || i == 18 || i == 23 {
 			continue
 		}
@@ -137,28 +116,6 @@ func PaddedLen(padTo int, length int) string {
 	return strLen
 }
 
-func EnvFile(loc string) (string, error) {
-	cleanLoc := filepath.Clean(loc)
-
-	if strings.Contains(cleanLoc, "..") {
-		return "", fmt.Errorf("invalid file path: path traversal attempt detected")
-	}
-
-	envFilePath := filepath.Join(os.Getenv("PROJECT_DIR"), cleanLoc)
-
-	projectDir := os.Getenv("PROJECT_DIR")
-	if !strings.HasPrefix(filepath.Clean(envFilePath), filepath.Clean(projectDir)) {
-		return "", fmt.Errorf("invalid file path: path is outside of project directory")
-	}
-
-	envFile, err := os.ReadFile(envFilePath)
-	if err != nil {
-		return "", ErrCheck(err)
-	}
-
-	return strings.Trim(string(envFile), "\n"), nil
-}
-
 func AnonIp(ipAddr string) string {
 	ipParts := strings.Split(ipAddr, ".")
 	if len(ipParts) != 4 {
@@ -166,15 +123,6 @@ func AnonIp(ipAddr string) string {
 	}
 	ipParts[3] = "0"
 	return strings.Join(ipParts, ".")
-}
-
-func StringIn(s string, ss []string) bool {
-	for _, sv := range ss {
-		if sv == s {
-			return true
-		}
-	}
-	return false
 }
 
 func StringOut(s string, ss []string) []string {

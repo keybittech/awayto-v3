@@ -38,14 +38,17 @@ TS_BUILD_DIR=ts/build
 LOG_DIR=log
 HOST_LOCAL_DIR=sites/${PROJECT_PREFIX}
 GO_GEN_DIR=$(GO_SRC)/pkg/types
+GO_CMD_DIR=$(GO_SRC)/cmd/generate
+GO_PROTO_MUTEX_CMD_DIR=$(GO_CMD_DIR)/proto_mutex
+GO_HANDLERS_REGISTER_CMD_DIR=$(GO_CMD_DIR)/handlers_register
 GO_API_DIR=$(GO_SRC)/pkg/api
 GO_CLIENTS_DIR=$(GO_SRC)/pkg/clients
-GO_HANDLERS_DIR=$(GO_SRC)/pkg/handlers
+export GO_HANDLERS_DIR=$(GO_SRC)/pkg/handlers
+GO_UTIL_DIR=$(GO_SRC)/pkg/util
 GO_INTEGRATIONS_DIR=$(GO_SRC)/integrations
 GO_PLAYWRIGHT_DIR=$(GO_SRC)/playwright
 # GO_INTERFACES_DIR=$(GO_SRC)/pkg/interfaces
-GO_UTIL_DIR=$(GO_SRC)/pkg/util
-export PLAYWRIGHT_CACHE_DIR=working/playwright # export here for test runner to see
+export PLAYWRIGHT_CACHE_DIR=working/playwright
 DEMOS_DIR=demos/final
 
 #################################
@@ -55,13 +58,19 @@ DEMOS_DIR=demos/final
 JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
+
+GO_FILE_DIRS=$(GO_SRC) $(GO_HANDLERS_REGISTER_CMD_DIR) $(GO_GEN_DIR) $(GO_API_DIR) $(GO_CLIENTS_DIR) $(GO_HANDLERS_DIR) $(GO_UTIL_DIR)
+GO_FILES=$(foreach dir,$(GO_FILE_DIRS),$(wildcard $(dir)/*.go))
 GO_TARGET=${PWD}/$(GO_SRC)/$(BINARY_NAME)
-GO_HANDLERS_REGISTER=${PWD}/$(GO_HANDLERS_DIR)/register.go
+export GO_HANDLERS_REGISTER=$(GO_API_DIR)/register.go
 # GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
 # GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
-PROTO_MOD_TARGET=$(GO_GEN_DIR)/go.mod
 
-PROTO_FILES=$(wildcard proto/*.proto)
+PROTO_FILES:=$(wildcard proto/*.proto)
+PROTO_GEN_MOD=$(GO_GEN_DIR)/go.mod
+PROTO_GEN_FILES:=$(patsubst proto/%.proto,$(GO_GEN_DIR)/%.pb.go,$(PROTO_FILES))
+PROTO_GEN_MUTEX=$(PROJECT_DIR)/working/protoc-gen-mutex
+PROTO_GEN_MUTEX_FILES:=$(patsubst proto/%.proto,$(GO_GEN_DIR)/%_mutex.pb.go,$(PROTO_FILES))
 
 TS_API_YAML=ts/openapi.yaml
 TS_API_BUILD=ts/src/hooks/api.ts
@@ -155,7 +164,7 @@ endef
 
 DOCKER_COMPOSE:=compose -f $(DOCKER_COMPOSE_SCRIPT) --env-file $(ENVFILE)
 RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
-GO_ENVFILE_FLAG=GO_ENVFILE_LOC=${PROJECT_DIR}/.env
+GO_ENVFILE_FLAG=GO_ENVFILE_LOC=$(PROJECT_DIR)/.env
 GO_DEV_FLAGS=$(GO_ENVFILE_FLAG) LOG_LEVEL=debug
 GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1} -v=$${V:-false}
 GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false}
@@ -169,14 +178,14 @@ SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 #           TARGETS             #
 #################################
 
-build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
+build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(GO_HANDLERS_REGISTER) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
 clean:
 	rm -rf $(LOG_DIR) $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) working/proto-stamp # $(MOCK_TARGET)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) # $(MOCK_TARGET)
 
 $(LOG_DIR):
 ifeq ($(DEPLOYING),false)
@@ -247,29 +256,29 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 	pnpm --dir $(TS_SRC) i
 	pnpm run --dir $(TS_SRC) build
 
-$(PROTO_MOD_TARGET): working/proto-stamp
-working/proto-stamp: $(wildcard proto/*.proto)
+$(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
+	go build -C $(GO_PROTO_MUTEX_CMD_DIR) -o $@ .
+
+$(PROTO_GEN_MOD) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 	@mkdir -p $(@D) $(GO_GEN_DIR)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
 		--go_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
+		--plugin=protoc-gen-mutex=$(PROTO_GEN_MUTEX) \
+		--mutex_out=$(GO_GEN_DIR) \
+		--mutex_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
-	if [ ! -f "$(PROTO_MOD_TARGET)" ]; then \
+	if [ ! -f "$(PROTO_GEN_MOD)" ]; then \
 		cd $(GO_GEN_DIR) && go mod init ${PROJECT_REPO}/$(GO_GEN_DIR) && go mod tidy && cd -; \
 	fi
-	touch $@
 
-$(GO_HANDLERS_REGISTER): $(shell find $(GO_HANDLERS_DIR) -type f)
-	go run -C $(GO_SRC) cmd/generate/handlers_register.go
+$(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go
+	go run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
 
-$(GO_TARGET): working/proto-stamp $(shell find $(GO_SRC)/{main.go,pkg} -type f) # $(GO_MOCK_TARGET)
+$(GO_TARGET): $(GO_FILES)
 	$(call set_local_unix_sock_dir)
 	$(GO) build -C $(GO_SRC) -o $(GO_TARGET) .
-
-# $(GO_MOCK_TARGET): $(GO_INTERFACES_FILE)
-# 	@mkdir -p $(@D)
-# 	mockgen -source=$(GO_INTERFACES_FILE) -destination=$(GO_MOCK_TARGET) -package=interfaces
 
 #################################
 #           DEVELOP             #
@@ -284,11 +293,21 @@ go_dev:
 .PHONY: go_tidy
 go_tidy:
 	cd $(GO_SRC) && go mod tidy
+	cd $(GO_PROTO_MUTEX_CMD_DIR) && go mod tidy
+	cd $(GO_HANDLERS_REGISTER_CMD_DIR) && go mod tidy
 	cd $(GO_INTEGRATIONS_DIR) && go mod tidy
 	cd $(GO_API_DIR) && go mod tidy
 	cd $(GO_CLIENTS_DIR) && go mod tidy
 	cd $(GO_HANDLERS_DIR) && go mod tidy
 	cd $(GO_UTIL_DIR) && go mod tidy
+
+.PHONY: go_sec
+go_sec:
+	cd $(GO_SRC) && gosec -exclude-dir=types -exclude-dir=buf.build ./...
+
+.PHONY: go_sec_all
+go_sec_all:
+	cd $(GO_SRC) && gosec ./...
 
 # cd $(GO_INTERFACES_DIR) && go mod tidy
 

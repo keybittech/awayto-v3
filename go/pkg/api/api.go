@@ -14,6 +14,10 @@ type API struct {
 }
 
 func NewAPI(httpsPort int) *API {
+	h := handlers.NewHandlers()
+
+	registerHandlers(h)
+
 	return &API{
 		Server: &http.Server{
 			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
@@ -22,6 +26,6 @@ func NewAPI(httpsPort int) *API {
 			IdleTimeout:  15 * time.Second,
 			Handler:      http.NewServeMux(),
 		},
-		Handlers: handlers.NewHandlers(),
+		Handlers: h,
 	}
 }

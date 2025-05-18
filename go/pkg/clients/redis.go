@@ -27,7 +27,7 @@ func (r *Redis) Client() *redis.Client {
 
 func InitRedis() *Redis {
 
-	redisPass, err := util.EnvFile(os.Getenv("REDIS_PASS_FILE"))
+	redisPass, err := util.GetEnvFile("REDIS_PASS_FILE", 128)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 	}

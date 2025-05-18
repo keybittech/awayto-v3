@@ -89,7 +89,7 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCTok
 
 	headers := http.Header{}
 
-	clientSecret, err := util.EnvFile(os.Getenv("KC_API_CLIENT_SECRET_FILE"))
+	clientSecret, err := util.GetEnvFile("KC_API_CLIENT_SECRET_FILE", 128)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -192,7 +192,7 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 
 		if len(kcGroup.SubGroups) > 0 {
 			for _, subGroup := range kcGroup.SubGroups {
-				if util.StringIn(subGroup.Name, diffRoleNames) {
+				if slices.Contains(diffRoleNames, subGroup.Name) {
 					err = h.Keycloak.DeleteGroup(info.Ctx, info.Session.UserSub, subGroup.Id)
 					if err != nil {
 						return nil, util.ErrCheck(err)

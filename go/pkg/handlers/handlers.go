@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"context"
-	"errors"
 	"net/http"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -12,6 +11,19 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
 )
+
+type ReqInfo struct {
+	Ctx     context.Context
+	W       http.ResponseWriter
+	Req     *http.Request
+	Session *types.UserSession
+	Tx      *clients.PoolTx
+	Batch   *util.Batchable
+}
+
+type TypedProtoHandler[ReqMsg, ResMsg proto.Message] func(info ReqInfo, message ReqMsg) (ResMsg, error)
+
+type ProtoHandler func(info ReqInfo, messages proto.Message) (proto.Message, error)
 
 type Handlers struct {
 	Functions map[string]ProtoHandler
@@ -34,8 +46,6 @@ func NewHandlers() *Handlers {
 		Socket:    clients.InitSocket(),
 		Cache:     &HandlerCache{},
 	}
-
-	h.registerHandlers()
 
 	h.Options = make(map[string]*util.HandlerOptions, len(h.Functions))
 
@@ -67,28 +77,4 @@ func NewHandlers() *Handlers {
 	util.ParseInvalidations(h.Options)
 
 	return h
-}
-
-type ReqInfo struct {
-	Ctx     context.Context
-	W       http.ResponseWriter
-	Req     *http.Request
-	Session *types.UserSession
-	Tx      *clients.PoolTx
-	Batch   *util.Batchable
-}
-
-type TypedProtoHandler[ReqMsg, ResMsg proto.Message] func(info ReqInfo, message ReqMsg) (ResMsg, error)
-
-type ProtoHandler func(info ReqInfo, messages proto.Message) (proto.Message, error)
-
-func Register[ReqMsg, ResMsg proto.Message](handler TypedProtoHandler[ReqMsg, ResMsg]) ProtoHandler {
-	return func(info ReqInfo, message proto.Message) (proto.Message, error) {
-		msg, ok := message.(ReqMsg)
-		if !ok {
-			return nil, errors.New("invalid request type")
-		}
-
-		return handler(info, msg)
-	}
 }

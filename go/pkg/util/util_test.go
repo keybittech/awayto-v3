@@ -2,14 +2,29 @@ package util
 
 import (
 	"database/sql"
+	"io"
 	"net"
-	"os"
-	"path/filepath"
 	"reflect"
 	"sync"
 	"testing"
 	"time"
 )
+
+type NullConn struct{}
+
+func (n NullConn) Read(b []byte) (int, error)         { return 0, io.EOF }
+func (n NullConn) Write(b []byte) (int, error)        { return len(b), nil }
+func (n NullConn) Close() error                       { return nil }
+func (n NullConn) LocalAddr() net.Addr                { return nil }
+func (n NullConn) RemoteAddr() net.Addr               { return nil }
+func (n NullConn) SetDeadline(t time.Time) error      { return nil }
+func (n NullConn) SetReadDeadline(t time.Time) error  { return nil }
+func (n NullConn) SetWriteDeadline(t time.Time) error { return nil }
+
+// NewNullConn returns a new no-op connection
+func NewNullConn() net.Conn {
+	return NullConn{}
+}
 
 func reset(b *testing.B) {
 	b.ReportAllocs()
@@ -184,71 +199,71 @@ func BenchmarkPaddedLenNegative(b *testing.B) {
 	}
 }
 
-func TestEnvFile(t *testing.T) {
-	tmpDirName := "test-project-dir"
-	tmpDir, err := os.MkdirTemp("", tmpDirName)
-	if err != nil {
-		t.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-	os.Setenv("PROJECT_DIR", tmpDir)
-	type args struct {
-		loc     string
-		content string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		{name: "valid file", args: args{loc: "test.txt", content: "test content\n\n"}, want: "test content", wantErr: false},
-		{name: "empty file", args: args{loc: "empty.txt", content: ""}, want: "", wantErr: false},
-		{name: "nonexistent file", args: args{loc: "nonexistent.txt", content: ""}, wantErr: true},
-	}
-
-	for _, tc := range tests {
-		if tc.name != "nonexistent file" {
-			filePath := filepath.Join(tmpDir, tc.args.loc)
-			err := os.WriteFile(filePath, []byte(tc.args.content), 0644)
-			if err != nil {
-				t.Fatalf("Failed to create test file %s: %v", tc.args.loc, err)
-			}
-		}
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := EnvFile(tt.args.loc)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("EnvFile() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("EnvFile() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkEnvFile(b *testing.B) {
-	tmpDirName := "test-project-dir"
-	tmpDir, err := os.MkdirTemp("", tmpDirName)
-	if err != nil {
-		b.Fatalf("Failed to create temp directory: %v", err)
-	}
-	defer os.RemoveAll(tmpDir)
-	oldDir := os.Getenv("PROJECT_DIR")
-	os.Setenv("PROJECT_DIR", tmpDir)
-	defer func() { os.Setenv("PROJECT_DIR", oldDir) }()
-	filePath := filepath.Join(tmpDir, "test.txt")
-	err = os.WriteFile(filePath, []byte("test content\n\n"), 0644)
-
-	reset(b)
-	for b.Loop() {
-		_, _ = EnvFile("test.txt")
-	}
-}
+// func TestEnvFile(t *testing.T) {
+// 	tmpDirName := "test-project-dir"
+// 	tmpDir, err := os.MkdirTemp("", tmpDirName)
+// 	if err != nil {
+// 		t.Fatalf("Failed to create temp directory: %v", err)
+// 	}
+// 	defer os.RemoveAll(tmpDir)
+// 	os.Setenv("PROJECT_DIR", tmpDir)
+// 	type args struct {
+// 		loc     string
+// 		content string
+// 	}
+// 	tests := []struct {
+// 		name    string
+// 		args    args
+// 		want    string
+// 		wantErr bool
+// 	}{
+// 		{name: "valid file", args: args{loc: "test.txt", content: "test content\n\n"}, want: "test content", wantErr: false},
+// 		{name: "empty file", args: args{loc: "empty.txt", content: ""}, want: "", wantErr: false},
+// 		{name: "nonexistent file", args: args{loc: "nonexistent.txt", content: ""}, wantErr: true},
+// 	}
+//
+// 	for _, tc := range tests {
+// 		if tc.name != "nonexistent file" {
+// 			filePath := filepath.Join(tmpDir, tc.args.loc)
+// 			err := os.WriteFile(filePath, []byte(tc.args.content), 0644)
+// 			if err != nil {
+// 				t.Fatalf("Failed to create test file %s: %v", tc.args.loc, err)
+// 			}
+// 		}
+// 	}
+//
+// 	for _, tt := range tests {
+// 		t.Run(tt.name, func(t *testing.T) {
+// 			got, err := EnvFile(tt.args.loc)
+// 			if (err != nil) != tt.wantErr {
+// 				t.Errorf("EnvFile() error = %v, wantErr %v", err, tt.wantErr)
+// 				return
+// 			}
+// 			if got != tt.want {
+// 				t.Errorf("EnvFile() = %v, want %v", got, tt.want)
+// 			}
+// 		})
+// 	}
+// }
+//
+// func BenchmarkEnvFile(b *testing.B) {
+// 	tmpDirName := "test-project-dir"
+// 	tmpDir, err := os.MkdirTemp("", tmpDirName)
+// 	if err != nil {
+// 		b.Fatalf("Failed to create temp directory: %v", err)
+// 	}
+// 	defer os.RemoveAll(tmpDir)
+// 	oldDir := os.Getenv("PROJECT_DIR")
+// 	os.Setenv("PROJECT_DIR", tmpDir)
+// 	defer func() { os.Setenv("PROJECT_DIR", oldDir) }()
+// 	filePath := filepath.Join(tmpDir, "test.txt")
+// 	err = os.WriteFile(filePath, []byte("test content\n\n"), 0644)
+//
+// 	reset(b)
+// 	for b.Loop() {
+// 		_, _ = EnvFile("test.txt")
+// 	}
+// }
 
 func TestAnonIp(t *testing.T) {
 	type args struct {
@@ -282,35 +297,6 @@ func BenchmarkAnonIpNegative(b *testing.B) {
 	reset(b)
 	for b.Loop() {
 		_ = AnonIp("1.1.1")
-	}
-}
-
-func TestStringIn(t *testing.T) {
-	type args struct {
-		s  string
-		ss []string
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		{name: "has string", args: args{"test", []string{"test"}}, want: true},
-		{name: "does not have string", args: args{"test", []string{}}, want: false},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := StringIn(tt.args.s, tt.args.ss); got != tt.want {
-				t.Errorf("StringIn() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func BenchmarkStringIn(b *testing.B) {
-	reset(b)
-	for b.Loop() {
-		_ = StringIn("test", []string{"test"})
 	}
 }
 

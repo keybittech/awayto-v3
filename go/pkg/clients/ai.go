@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"os"
 	"regexp"
 	"strings"
 
@@ -32,7 +31,7 @@ func InitAi() *Ai {
 	aiPrompts[types.IPrompts_SUGGEST_SERVICE] = suggestServiceMessages
 	aiPrompts[types.IPrompts_SUGGEST_TIER] = suggestTierMessages
 
-	apiKey, err := util.EnvFile(os.Getenv("OAI_KEY_FILE"))
+	apiKey, err := util.GetEnvFile("OAI_KEY_FILE", 128)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		log.Fatal(util.ErrCheck(err))

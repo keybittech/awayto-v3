@@ -17,12 +17,15 @@ func testIntegrationSchedule(t *testing.T) {
 	name := "test schedule"
 	timezone := "America/Los_Angeles"
 	slotDuration := int32(30)
-	startTime := &timestamppb.Timestamp{
+	st := &timestamppb.Timestamp{
 		Seconds: time.Date(2023, time.March, 03, 0, 0, 0, 0, time.UTC).Unix(),
 	}
-	endTime := &timestamppb.Timestamp{
+	startTime := st.AsTime().String()
+
+	et := &timestamppb.Timestamp{
 		Seconds: time.Date(2033, time.March, 03, 0, 0, 0, 0, time.UTC).Unix(),
 	}
+	endTime := et.AsTime().String()
 
 	t.Run("admin can get lookups and generate a schedule", func(t *testing.T) {
 		integrationTest.MasterSchedule = &types.ISchedule{

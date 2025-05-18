@@ -1,8 +1,23 @@
 package api
 
 import (
+	"errors"
 	"net/http"
+
+	"github.com/keybittech/awayto-v3/go/pkg/handlers"
+	"google.golang.org/protobuf/proto"
 )
+
+func registerProtoHandler[ReqMsg, ResMsg proto.Message](handler handlers.TypedProtoHandler[ReqMsg, ResMsg]) handlers.ProtoHandler {
+	return func(info handlers.ReqInfo, message proto.Message) (proto.Message, error) {
+		msg, ok := message.(ReqMsg)
+		if !ok {
+			return nil, errors.New("invalid request type")
+		}
+
+		return handler(info, msg)
+	}
+}
 
 func (a *API) InitProtoHandlers() {
 	sessionMux := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Handlers.Cache)

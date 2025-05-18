@@ -60,7 +60,7 @@ func InitDatabase() *Database {
 	dbDriver := os.Getenv("DB_DRIVER")
 	pgUser := os.Getenv("PG_WORKER")
 	pgDb := os.Getenv("PG_DB")
-	pgPass, err := util.EnvFile(os.Getenv("PG_WORKER_PASS_FILE"))
+	pgPass, err := util.GetEnvFile("PG_WORKER_PASS_FILE", 128)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		log.Fatal(util.ErrCheck(err))

@@ -46,6 +46,12 @@ enum SocketActions {
   SET_BOX = 25;
 }
 
+enum ExchangeActions {
+  EXCHANGE_TEXT = 0;
+  EXCHANGE_CALL = 1;
+  EXCHANGE_WHITEBOARD = 2;
+}
+
 message Subscriber {
   string userSub = 1;
   string groupId = 2;
