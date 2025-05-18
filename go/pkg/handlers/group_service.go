@@ -15,12 +15,12 @@ func (h *Handlers) PostGroupService(info ReqInfo, data *types.PostGroupServiceRe
 		VALUES ($1, $2, $3::uuid)
 		ON CONFLICT (group_id, service_id) DO NOTHING
 		RETURNING id
-	`, info.Session.GroupId, data.ServiceId, info.Session.UserSub).Scan(&groupServiceId)
+	`, info.Session.GetGroupId(), data.ServiceId, info.Session.GetUserSub()).Scan(&groupServiceId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/services")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/services")
 
 	return &types.PostGroupServiceResponse{Id: groupServiceId}, nil
 }
@@ -31,7 +31,7 @@ func (h *Handlers) GetGroupServices(info ReqInfo, data *types.GetGroupServicesRe
 		FROM dbview_schema.enabled_group_services egs
 		LEFT JOIN dbview_schema.enabled_services es ON es.id = egs."serviceId"
 		WHERE egs."groupId" = $1
-	`, info.Session.GroupId)
+	`, info.Session.GetGroupId())
 
 	info.Batch.Send(info.Ctx)
 
@@ -44,14 +44,14 @@ func (h *Handlers) DeleteGroupService(info ReqInfo, data *types.DeleteGroupServi
 	util.BatchExec(info.Batch, `
 		DELETE FROM dbtable_schema.group_services
 		WHERE group_id = $1 AND service_id = ANY($2)
-	`, info.Session.GroupId, pq.Array(serviceIds))
+	`, info.Session.GetGroupId(), pq.Array(serviceIds))
 
 	info.Batch.Send(info.Ctx)
 	info.Batch.Reset()
 
 	h.DeleteService(info, &types.DeleteServiceRequest{Ids: data.Ids})
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/services")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/services")
 
 	return &types.DeleteGroupServiceResponse{Success: true}, nil
 }

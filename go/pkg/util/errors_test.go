@@ -174,3 +174,43 @@ func BenchmarkErrCheck(b *testing.B) {
 		_ = ErrCheck(errors.New("test error"))
 	}
 }
+
+func TestWriteCallerErr(t *testing.T) {
+	type args struct {
+		n   int
+		err any
+		sb  *strings.Builder
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			WriteCallerErr(tt.args.n, tt.args.err, tt.args.sb)
+		})
+	}
+}
+
+func TestErrCheckN(t *testing.T) {
+	type args struct {
+		n   int
+		err any
+	}
+	tests := []struct {
+		name    string
+		args    args
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if err := ErrCheckN(tt.args.n, tt.args.err); (err != nil) != tt.wantErr {
+				t.Errorf("ErrCheckN(%v, %v) error = %v, wantErr %v", tt.args.n, tt.args.err, err, tt.wantErr)
+			}
+		})
+	}
+}

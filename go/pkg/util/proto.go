@@ -36,6 +36,7 @@ type HandlerOptions struct {
 	HasPathParams     bool
 	MultipartResponse bool
 	MultipartRequest  bool
+	ResetsGroup       bool
 	ShouldStore       bool
 	ShouldSkip        bool
 	UseTx             bool
@@ -133,6 +134,10 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 
 	if multipartResponse, ok := proto.GetExtension(inputOpts, types.E_MultipartResponse).(bool); ok {
 		parsedOptions.MultipartResponse = multipartResponse
+	}
+
+	if resetsGroup, ok := proto.GetExtension(inputOpts, types.E_ResetsGroup).(bool); ok {
+		parsedOptions.ResetsGroup = resetsGroup
 	}
 
 	if useTx, ok := proto.GetExtension(inputOpts, types.E_UseTx).(bool); ok {

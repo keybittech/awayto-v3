@@ -12,7 +12,7 @@ func (h *Handlers) PostServiceTier(info ReqInfo, data *types.PostServiceTierRequ
 		INSERT INTO dbtable_schema.service_tiers (name, serviceId, multiplier, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
-	`, data.Name, data.ServiceId, data.Multiplier, info.Session.UserSub)
+	`, data.Name, data.ServiceId, data.Multiplier, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -24,7 +24,7 @@ func (h *Handlers) PatchServiceTier(info ReqInfo, data *types.PatchServiceTierRe
 		UPDATE dbtable_schema.service_tiers
 		SET name = $2, multiplier = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
-	`, data.Id, data.Name, data.Multiplier, info.Session.UserSub, time.Now())
+	`, data.Id, data.Name, data.Multiplier, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
@@ -36,7 +36,7 @@ func (h *Handlers) GetServiceTiers(info ReqInfo, data *types.GetServiceTiersRequ
 		SELECT id, name, "createdOn"
 		FROM dbview_schema.enabled_service_tiers
 		WHERE "createdSub" = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -71,7 +71,7 @@ func (h *Handlers) DisableServiceTier(info ReqInfo, data *types.DisableServiceTi
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.Id, time.Now(), info.Session.UserSub)
+	`, data.Id, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 

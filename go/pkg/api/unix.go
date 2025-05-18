@@ -76,12 +76,12 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		return
 	}
 
-	session := &types.UserSession{
+	session := types.NewConcurrentUserSession(&types.UserSession{
 		UserSub:   authEvent.UserId,
 		UserEmail: authEvent.Email,
 		AnonIp:    util.AnonIp(authEvent.IpAddress),
 		Timezone:  authEvent.Timezone,
-	}
+	})
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -97,9 +97,9 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		Tx: tx,
 	}
 
-	workerSession := &types.UserSession{
+	workerSession := types.NewConcurrentUserSession(&types.UserSession{
 		UserSub: "worker",
-	}
+	})
 
 	err = poolTx.SetSession(ctx, workerSession)
 	if err != nil {

@@ -17,18 +17,18 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 	handlerFunc, ok := a.Handlers.Functions[handlerOpts.ServiceMethodName]
 	if !ok {
 		util.DebugLog.Println("Service Method Not Implemented:", handlerOpts.ServiceMethodName)
-		return func(w http.ResponseWriter, r *http.Request, session *types.UserSession) {
+		return func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession) {
 			w.WriteHeader(501)
 			return
 		}
 	}
 
-	var queryParser = func(msg proto.Message, req *http.Request) {}
+	var queryParser = func(proto.Message, *http.Request) {}
 	if handlerOpts.HasQueryParams {
 		queryParser = util.ParseProtoQueryParams
 	}
 
-	var pathParser = func(msg proto.Message, req *http.Request) {}
+	var pathParser = func(proto.Message, *http.Request) {}
 	if handlerOpts.HasPathParams {
 		pathParams := strings.Split(handlerOpts.ServiceMethodURL, "/")
 		pathParser = func(msg proto.Message, req *http.Request) {
@@ -51,7 +51,14 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		responseHandler = MultipartResponseHandler
 	}
 
-	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+	var resetGroup = func(*types.ConcurrentUserSession) {}
+	if handlerOpts.ResetsGroup {
+		resetGroup = func(s *types.ConcurrentUserSession) {
+			a.GroupSessionVersions.Store(s.GetGroupId())
+		}
+	}
+
+	return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 		var err error
 		var pb proto.Message
 
@@ -73,7 +80,7 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 				}
 			}
 
-			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.UserSub)
+			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.GetUserSub())
 		}()
 
 		pb = bodyParser(w, req, handlerOpts)
@@ -96,5 +103,7 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		}
 
 		responseHandler(w, results)
+
+		resetGroup(session)
 	}
 }

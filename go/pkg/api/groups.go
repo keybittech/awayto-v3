@@ -19,9 +19,9 @@ const getGroupDetailsQuery = `
 func (a *API) InitGroups() {
 	workerDbSession := &clients.DbSession{
 		Pool: a.Handlers.Database.DatabaseClient.Pool,
-		UserSession: &types.UserSession{
+		ConcurrentUserSession: types.NewConcurrentUserSession(&types.UserSession{
 			UserSub: "worker",
-		},
+		}),
 	}
 
 	ctx := context.Background()
@@ -52,19 +52,21 @@ func (a *API) InitGroups() {
 				return
 			}
 
-			a.Handlers.Cache.SetCachedGroup(kcGroup.Path, g.Id, g.ExternalId, g.CreatedSub, g.Name, g.Ai)
-
 			kcSubGroups, err := a.Handlers.Keycloak.GetGroupSubGroups(ctx, "worker", g.ExternalId)
 			if err != nil {
 				util.DebugLog.Printf("%s", util.ErrCheck(err))
 				return
 			}
 
+			sgPaths := make([]string, len(kcSubGroups))
 			for _, subGroup := range kcSubGroups {
+				sgPaths = append(sgPaths, subGroup.Path)
 				a.Handlers.Cache.SetCachedSubGroup(subGroup.Path, subGroup.Id, subGroup.Name, kcGroup.Path)
 			}
 
-			a.Handlers.Cache.SetGroupSessionVersion(g.Id)
+			a.Handlers.Cache.SetCachedGroup(kcGroup.Path, g.Id, g.ExternalId, g.CreatedSub, g.Name, g.Ai, sgPaths)
+
+			a.GroupSessionVersions.Store(g.Id)
 		}(dbGroup)
 	}
 

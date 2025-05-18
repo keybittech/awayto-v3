@@ -80,55 +80,58 @@ func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFu
 }
 
 func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
-	return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-		hasGroups := len(session.SubGroups) > 0
+	return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
+		hasGroups := len(session.GetSubGroups()) > 0
 
 		if hasGroups { // user has groups
-			session.SubGroupPath = session.SubGroups[0]
-			session.SubGroupName = session.SubGroups[0][strings.LastIndex(session.SubGroups[0], "/")+1:]
-		} else if session.GroupSessionVersion > 0 { // user had a group but no more
-			session.SubGroupName = ""
-			session.SubGroupPath = ""
-			session.GroupName = ""
-			session.GroupPath = ""
-			session.RoleName = ""
-			session.GroupExternalId = ""
-			session.SubGroupExternalId = ""
-			session.GroupId = ""
-			session.GroupAi = false
-			session.GroupSub = ""
-			session.GroupSessionVersion = 0
-			a.Handlers.Cache.SetSessionToken(req.Header.Get("Authorization"), session)
+			sgPath := session.GetSubGroups()[0]
+			session.SetSubGroupPath(sgPath)
+			session.SetSubGroupName(sgPath[strings.LastIndex(sgPath, "/")+1:])
+		} else if session.GetGroupSessionVersion() > 0 { // user had a group but no more
+			session.SetSubGroupName("")
+			session.SetSubGroupPath("")
+			session.SetGroupName("")
+			session.SetGroupPath("")
+			session.SetRoleName("")
+			session.SetGroupExternalId("")
+			session.SetSubGroupExternalId("")
+			session.SetGroupId("")
+			session.SetGroupAi(false)
+			session.SetGroupSub("")
+			session.SetGroupSessionVersion(0)
+			// a.Cache.SessionTokens.Store(req.Header.Get("Authorization"), session) // not necessary with concurrent session
 			next(w, req, session)
 			return
 		}
 
-		if hasGroups && (session.GroupId == "" || a.Handlers.Cache.GetGroupSessionVersion(session.GroupId) != session.GroupSessionVersion) {
-			subGroup := a.Handlers.Cache.GetCachedSubGroup(session.SubGroupPath)
-			if subGroup == nil {
-				util.ErrorLog.Println(errors.New("could not load subgroup " + session.SubGroupPath))
+		if hasGroups && (session.GetGroupId() == "" || a.Cache.GroupSessionVersions.Load(session.GetGroupId()) != session.GetGroupSessionVersion()) {
+			sgPath := session.GetSubGroupPath()
+			subGroup, ok := a.Cache.SubGroups.Load(sgPath)
+			if !ok {
+				util.ErrorLog.Println(errors.New("could not load subgroup " + sgPath))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			group := a.Handlers.Cache.GetCachedGroup(subGroup.GroupPath)
-			if group == nil {
-				util.ErrorLog.Println(errors.New("could not load group " + subGroup.GroupPath))
+			groupPath := session.GetGroupPath()
+			group, ok := a.Cache.Groups.Load(groupPath)
+			if !ok {
+				util.ErrorLog.Println(errors.New("could not load group " + groupPath))
 				w.WriteHeader(http.StatusInternalServerError)
 				return
 			}
 
-			session.GroupId = group.Id
-			session.GroupExternalId = group.ExternalId
-			session.GroupSub = group.Sub
-			session.GroupName = group.Name
-			session.GroupAi = group.Ai
-			session.GroupPath = subGroup.GroupPath
-			session.RoleName = subGroup.Name
-			session.SubGroupExternalId = subGroup.ExternalId
-			session.GroupSessionVersion = a.Handlers.Cache.GetGroupSessionVersion(session.GroupId)
+			session.SetGroupId(group.GetId())
+			session.SetGroupExternalId(group.GetExternalId())
+			session.SetGroupSub(group.GetSub())
+			session.SetGroupName(group.GetName())
+			session.SetGroupAi(group.GetAi())
+			session.SetGroupPath(subGroup.GetGroupPath())
+			session.SetRoleName(subGroup.GetName())
+			session.SetSubGroupExternalId(subGroup.GetExternalId())
+			session.SetGroupSessionVersion(a.Cache.GroupSessionVersions.Load(group.GetId()))
 
-			a.Handlers.Cache.SetSessionToken(req.Header.Get("Authorization"), session)
+			// a.Handlers.Cache.SetSessionToken(req.Header.Get("Authorization"), session) // not necessary with concurrent session
 		}
 
 		next(w, req, session)
@@ -138,13 +141,13 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
 	return func(next SessionHandler) SessionHandler {
 		if opts.SiteRole == int64(types.SiteRoles_UNRESTRICTED) {
-			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 				next(w, req, session)
 			}
 		} else {
-			return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
-				if session.RoleBits&opts.SiteRole == 0 {
-					util.WriteAuthRequest(req, session.UserSub, opts.SiteRoleName)
+			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
+				if session.GetRoleBits()&opts.SiteRole == 0 {
+					util.WriteAuthRequest(req, session.GetUserSub(), opts.SiteRoleName)
 					w.WriteHeader(http.StatusForbidden)
 					return
 				}
@@ -181,7 +184,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 	}
 
 	return func(next SessionHandler) SessionHandler {
-		return func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+		return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 			if opts.ShouldSkip {
 				next(w, req, session)
 				return
@@ -201,7 +204,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				scanKeys := make([]string, iLen)
 
 				for _, val := range opts.Invalidations {
-					invCacheKey := session.UserSub + val
+					invCacheKey := session.GetUserSub() + val
 
 					if strings.Index(val, "*") == -1 {
 						scanKeys = append(scanKeys, invCacheKey)
@@ -240,7 +243,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				return
 			}
 
-			cacheKey := session.UserSub + req.URL.String()
+			cacheKey := session.GetUserSub() + req.URL.String()
 			cacheKeyModTime := cacheKey + cacheKeySuffixModTime
 
 			// Check redis cache for request

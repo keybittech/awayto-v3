@@ -151,3 +151,23 @@ func TestWriteAccessRequest(t *testing.T) {
 		})
 	}
 }
+
+func TestRunTimer(t *testing.T) {
+	type args struct {
+		values []any
+	}
+	tests := []struct {
+		name string
+		args args
+		want func()
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := RunTimer(tt.args.values...); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("RunTimer(%v) didn't return a func", tt.args.values)
+			}
+		})
+	}
+}

@@ -4,15 +4,16 @@ package types;
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 message CachedGroup {
-  string id = 1;
-  string external_id = 2;
-  string sub = 3;
-  string name = 4;
-  bool ai = 5;
+  map<string, CachedSubGroup> subGroups = 1;
+  string id = 2;
+  string externalId = 3;
+  string sub = 4;
+  string name = 5;
+  bool ai = 6;
 }
 
 message CachedSubGroup {
-  string external_id = 1;
-  string group_path = 2;
+  string externalId = 1;
+  string groupPath = 2;
   string name = 3;
 }

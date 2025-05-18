@@ -216,15 +216,17 @@ func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 		return "", nil, fmt.Errorf("access token not found in response")
 	}
 
-	session, err := api.ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
+	s, err := api.ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
 	if err != nil {
 		log.Fatalf("error validating auth token: %v", err)
 	}
 
 	if integrationTest.Group != nil {
 		groupId := integrationTest.Group.Id
-		session.GroupId = groupId
+		s.SetGroupId(groupId)
 	}
+
+	session := s.GetProtoClone()
 
 	return token, session, nil
 }

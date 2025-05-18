@@ -16,6 +16,7 @@ service GroupUsersService {
     };
     option (site_role) = APP_GROUP_USERS;
     option (use_tx) = true;
+    option (resets_group) = true;
   }
   rpc GetGroupUsers(GetGroupUsersRequest) returns (GetGroupUsersResponse) {
     option (google.api.http) = {
@@ -35,18 +36,21 @@ service GroupUsersService {
     };
     option (site_role) = APP_GROUP_USERS;
     option (use_tx) = true;
+    option (resets_group) = true;
   }
   rpc LockGroupUser(LockGroupUserRequest) returns (LockGroupUserResponse) {
     option (google.api.http) = {
       patch: "/v1/group/users/{ids}/lock"
     };
     option (site_role) = APP_GROUP_USERS;
+    option (resets_group) = true;
   }
   rpc UnlockGroupUser(UnlockGroupUserRequest) returns (UnlockGroupUserResponse) {
     option (google.api.http) = {
       patch: "/v1/group/users/{ids}/unlock"
     };
     option (site_role) = APP_GROUP_USERS;
+    option (resets_group) = true;
   }
 }
 

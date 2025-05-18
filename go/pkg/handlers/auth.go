@@ -51,7 +51,7 @@ func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(info ReqInfo, authEvent *types.
 		return &types.AuthWebhookResponse{Value: `{ "success": false, "reason": "invalid group code" }`}, nil
 	}
 
-	info.Session.GroupId = group.GetId()
+	info.Session.SetGroupId(group.GetId())
 	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
 	var kcRoleSubgroupExternalId string

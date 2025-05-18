@@ -9,9 +9,9 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-type RequestExecutor func(ctx context.Context, dbc *clients.DatabaseClient, session *types.UserSession) (handlers.ReqInfo, func() error)
+type RequestExecutor func(ctx context.Context, dbc *clients.DatabaseClient, session *types.ConcurrentUserSession) (handlers.ReqInfo, func() error)
 
-func TxExecutor(ctx context.Context, dbc *clients.DatabaseClient, session *types.UserSession) (handlers.ReqInfo, func() error) {
+func TxExecutor(ctx context.Context, dbc *clients.DatabaseClient, session *types.ConcurrentUserSession) (handlers.ReqInfo, func() error) {
 	poolTx, err := dbc.OpenPoolSessionTx(ctx, session)
 	if err != nil {
 		panic(util.ErrCheck(err))
@@ -33,9 +33,9 @@ func TxExecutor(ctx context.Context, dbc *clients.DatabaseClient, session *types
 	}
 }
 
-func BatchExecutor(ctx context.Context, dbc *clients.DatabaseClient, session *types.UserSession) (handlers.ReqInfo, func() error) {
+func BatchExecutor(ctx context.Context, dbc *clients.DatabaseClient, session *types.ConcurrentUserSession) (handlers.ReqInfo, func() error) {
 	reqInfo := handlers.ReqInfo{
-		Batch: util.NewBatchable(dbc.Pool, session.UserSub, session.GroupId, session.RoleBits),
+		Batch: util.NewBatchable(dbc.Pool, session.GetUserSub(), session.GetGroupId(), session.GetRoleBits()),
 	}
 
 	return reqInfo, func() error { return nil } //noop

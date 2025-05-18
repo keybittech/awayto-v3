@@ -21,11 +21,11 @@ func (h *Handlers) PostServiceAddon(info ReqInfo, data *types.PostServiceAddonRe
 		SELECT sa.id, sa.name
 		FROM input_rows
 		JOIN dbtable_schema.service_addons sa USING (name);
-	`, data.GetName(), info.Session.UserSub)
+	`, data.GetName(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.PostServiceAddonResponse{Id: (*serviceAddonInsert).Id}, nil
 }
@@ -35,11 +35,11 @@ func (h *Handlers) PatchServiceAddon(info ReqInfo, data *types.PatchServiceAddon
 		UPDATE dbtable_schema.service_addons
 		SET name = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-	`, data.Id, data.Name, info.Session.UserSub, time.Now())
+	`, data.Id, data.Name, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.PatchServiceAddonResponse{Success: true}, nil
 }
@@ -49,7 +49,7 @@ func (h *Handlers) GetServiceAddons(info ReqInfo, data *types.GetServiceAddonsRe
 		SELECT id, name, "createdOn"
 		FROM dbview_schema.enabled_service_addons
 		WHERE "createdSub" = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -76,7 +76,7 @@ func (h *Handlers) DeleteServiceAddon(info ReqInfo, data *types.DeleteServiceAdd
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.DeleteServiceAddonResponse{Success: true}, nil
 }
@@ -86,11 +86,11 @@ func (h *Handlers) DisableServiceAddon(info ReqInfo, data *types.DisableServiceA
 		UPDATE dbtable_schema.service_addons
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.Id, time.Now(), info.Session.UserSub)
+	`, data.Id, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.DisableServiceAddonResponse{Success: true}, nil
 }

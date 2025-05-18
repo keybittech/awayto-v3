@@ -10,11 +10,11 @@ func (h *Handlers) PostGroupServiceAddon(info ReqInfo, data *types.PostGroupServ
 		INSERT INTO dbtable_schema.group_service_addons (group_id, service_addon_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		ON CONFLICT (group_id, service_addon_id) DO NOTHING
-	`, info.Session.GroupId, data.ServiceAddonId, info.Session.UserSub)
+	`, info.Session.GetGroupId(), data.ServiceAddonId, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.PostGroupServiceAddonResponse{}, nil
 }
@@ -32,7 +32,7 @@ func (h *Handlers) GetGroupServiceAddons(info ReqInfo, data *types.GetGroupServi
 		FROM dbview_schema.enabled_group_service_addons egsa
 		LEFT JOIN dbview_schema.enabled_service_addons esa ON esa.id = egsa."serviceAddonId"
 		WHERE egsa."groupId" = $1
-	`, info.Session.GroupId)
+	`, info.Session.GetGroupId())
 
 	info.Batch.Send(info.Ctx)
 
@@ -54,7 +54,7 @@ func (h *Handlers) DeleteGroupServiceAddon(info ReqInfo, data *types.DeleteGroup
 		DELETE FROM dbtable_schema.group_service_addons gsa
 		WHERE gsa.group_id = $1 AND gsa.service_addon_id = $2
 		AND (SELECT COUNT(id) FROM existing_service_addon) = 0
-	`, info.Session.GroupId, data.ServiceAddonId)
+	`, info.Session.GetGroupId(), data.ServiceAddonId)
 
 	info.Batch.Send(info.Ctx)
 
@@ -62,7 +62,7 @@ func (h *Handlers) DeleteGroupServiceAddon(info ReqInfo, data *types.DeleteGroup
 		return nil, util.ErrCheck(util.UserError("Deletion was skipped because the record is still associated with a group service."))
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/service_addons")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.DeleteGroupServiceAddonResponse{Success: true}, nil
 }

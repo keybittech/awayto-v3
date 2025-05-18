@@ -87,7 +87,7 @@ func (h *Handlers) PostFileContents(info ReqInfo, data *types.PostFileContentsRe
 		_, err := info.Tx.Exec(info.Ctx, `
 			INSERT INTO dbtable_schema.file_contents (uuid, name, content, content_length, created_on, created_sub, upload_id)
 			VALUES ($1::uuid, $2, $3::bytea, $4, $5, $6, $7)
-		`, fileUuid.String(), file.GetName(), pdfDoc, len(pdfDoc), time.Now(), info.Session.UserSub, data.UploadId)
+		`, fileUuid.String(), file.GetName(), pdfDoc, len(pdfDoc), time.Now(), info.Session.GetUserSub(), data.UploadId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -152,7 +152,7 @@ func (h *Handlers) PostFile(info ReqInfo, data *types.PostFileRequest) (*types.P
 		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		RETURNING id
-	`, data.File.Uuid, data.File.Name, data.File.MimeType, time.Now(), info.Session.UserSub)
+	`, data.File.Uuid, data.File.Name, data.File.MimeType, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -164,7 +164,7 @@ func (h *Handlers) PatchFile(info ReqInfo, data *types.PatchFileRequest) (*types
 		UPDATE dbtable_schema.files
 		SET name = $2, updated_on = $3, updated_sub = $4
 		WHERE id = $1
-	`, data.Id, data.Name, time.Now(), info.Session.UserSub)
+	`, data.Id, data.Name, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -176,7 +176,7 @@ func (h *Handlers) GetFiles(info ReqInfo, data *types.GetFilesRequest) (*types.G
 		SELECT id, uuid, name, "mimeType", "createdOn"
 		FROM dbview_schema.enabled_files
 		WHERE "createdSub" = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -211,7 +211,7 @@ func (h *Handlers) DisableFile(info ReqInfo, data *types.DisableFileRequest) (*t
 		UPDATE dbtable_schema.files
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now(), info.Session.UserSub)
+	`, data.GetId(), time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 

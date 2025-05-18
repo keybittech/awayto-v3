@@ -9,14 +9,17 @@ import (
 )
 
 type API struct {
-	Server   *http.Server
-	Handlers *handlers.Handlers
+	*http.Server
+	*Cache
+	*handlers.Handlers
 }
 
 func NewAPI(httpsPort int) *API {
 	h := handlers.NewHandlers()
 
 	registerHandlers(h)
+
+	c := NewCache()
 
 	return &API{
 		Server: &http.Server{
@@ -27,5 +30,6 @@ func NewAPI(httpsPort int) *API {
 			Handler:      http.NewServeMux(),
 		},
 		Handlers: h,
+		Cache:    c,
 	}
 }

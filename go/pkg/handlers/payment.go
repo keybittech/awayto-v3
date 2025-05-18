@@ -18,7 +18,7 @@ func (h *Handlers) PostPayment(info ReqInfo, data *types.PostPaymentRequest) (*t
 		INSERT INTO dbtable_schema.payments (details, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
-	`, paymentDetails, info.Session.UserSub)
+	`, paymentDetails, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -35,7 +35,7 @@ func (h *Handlers) PatchPayment(info ReqInfo, data *types.PatchPaymentRequest) (
 		UPDATE dbtable_schema.payments
 		SET details = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-	`, data.Payment.Id, paymentDetails, info.Session.UserSub, time.Now())
+	`, data.Payment.Id, paymentDetails, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
@@ -47,7 +47,7 @@ func (h *Handlers) GetPayments(info ReqInfo, data *types.GetPaymentsRequest) (*t
 		SELECT id, "createdOn"
 		FROM dbview_schema.enabled_payments
 		WHERE "createdSub" = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -82,7 +82,7 @@ func (h *Handlers) DisablePayment(info ReqInfo, data *types.DisablePaymentReques
 		UPDATE dbtable_schema.payments
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.Id, time.Now(), info.Session.UserSub)
+	`, data.Id, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 

@@ -12,7 +12,7 @@ func (h *Handlers) PostGroupFile(info ReqInfo, data *types.PostGroupFileRequest)
 		INSERT INTO dbtable_schema.group_files (group_id, file_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
-	`, info.Session.GroupId, data.GetFileId(), time.Now(), info.Session.UserSub)
+	`, info.Session.GetGroupId(), data.GetFileId(), time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -24,7 +24,7 @@ func (h *Handlers) PatchGroupFile(info ReqInfo, data *types.PatchGroupFileReques
 		UPDATE dbtable_schema.group_files
 		SET group_id = $2, file_id = $3, updated_sub = $4, updated_on = $5
 		WHERE id = $1
-	`, data.GetId(), info.Session.GroupId, data.GetFileId(), info.Session.UserSub, time.Now())
+	`, data.GetId(), info.Session.GetGroupId(), data.GetFileId(), info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
@@ -36,7 +36,7 @@ func (h *Handlers) GetGroupFiles(info ReqInfo, data *types.GetGroupFilesRequest)
 		SELECT id, name, "fileId", "createdOn"
 		FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1
-	`, info.Session.GroupId)
+	`, info.Session.GetGroupId())
 
 	info.Batch.Send(info.Ctx)
 
@@ -48,7 +48,7 @@ func (h *Handlers) GetGroupFileById(info ReqInfo, data *types.GetGroupFileByIdRe
 		SELECT id, name, "fileId", "createdOn"
 		FROM dbview_schema.enabled_group_files
 		WHERE "groupId" = $1 AND id = $2
-	`, info.Session.GroupId, data.Id)
+	`, info.Session.GetGroupId(), data.Id)
 
 	info.Batch.Send(info.Ctx)
 

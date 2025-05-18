@@ -16,7 +16,7 @@ type ReqInfo struct {
 	Ctx     context.Context
 	W       http.ResponseWriter
 	Req     *http.Request
-	Session *types.UserSession
+	Session *types.ConcurrentUserSession
 	Tx      *clients.PoolTx
 	Batch   *util.Batchable
 }
@@ -33,7 +33,6 @@ type Handlers struct {
 	Redis     *clients.Redis
 	Keycloak  *clients.Keycloak
 	Socket    *clients.Socket
-	Cache     *HandlerCache
 }
 
 func NewHandlers() *Handlers {
@@ -44,7 +43,6 @@ func NewHandlers() *Handlers {
 		Redis:     clients.InitRedis(),
 		Keycloak:  clients.InitKeycloak(),
 		Socket:    clients.InitSocket(),
-		Cache:     &HandlerCache{},
 	}
 
 	h.Options = make(map[string]*util.HandlerOptions, len(h.Functions))

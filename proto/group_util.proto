@@ -33,6 +33,7 @@ service GroupUtilService {
     };
     option (cache) = SKIP;
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse) {
@@ -42,6 +43,7 @@ service GroupUtilService {
     };
     option (cache) = SKIP;
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 
   rpc AttachUser(AttachUserRequest) returns (AttachUserResponse) {
@@ -51,6 +53,7 @@ service GroupUtilService {
     };
     option (cache) = SKIP;
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 
   rpc CompleteOnboarding(CompleteOnboardingRequest) returns (CompleteOnboardingResponse) {
@@ -60,6 +63,7 @@ service GroupUtilService {
     };
     option (cache) = SKIP;
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 }
 

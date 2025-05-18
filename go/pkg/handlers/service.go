@@ -19,7 +19,7 @@ func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*t
 		ON CONFLICT (name, created_sub) DO UPDATE
 		SET enabled = true, cost = $2::integer, form_id = $3, survey_id = $4
 		RETURNING id
-	`, service.GetName(), service.Cost, service.FormId, service.SurveyId, info.Session.UserSub).Scan(&service.Id)
+	`, service.GetName(), service.Cost, service.FormId, service.SurveyId, info.Session.GetUserSub()).Scan(&service.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -54,7 +54,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 			SELECT st.id
 			FROM input_rows
 			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), service.Id, tier.GetMultiplier(), tier.FormId, tier.SurveyId, info.Session.UserSub, time.Now()).Scan(&tierId)
+		`, tier.GetName(), service.Id, tier.GetMultiplier(), tier.FormId, tier.SurveyId, info.Session.GetUserSub(), time.Now()).Scan(&tierId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -69,7 +69,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 				VALUES ($1, $2, $3::uuid)
 				ON CONFLICT (service_addon_id, service_tier_id) DO UPDATE
 				SET enabled = true
-			`, addon.GetId(), tierId, info.Session.UserSub)
+			`, addon.GetId(), tierId, info.Session.GetUserSub())
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -112,12 +112,12 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		UPDATE dbtable_schema.services
 		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, info.Session.UserSub, time.Now())
+	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, info.Session.GetUserSub(), time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+service.Id)
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"service/"+service.Id)
 
 	return &types.PatchServiceResponse{Success: true}, nil
 }
@@ -127,7 +127,7 @@ func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*t
 		SELECT id, name, "formId", "surveyId", "createdOn"
 		FROM dbview_schema.enabled_services
 		WHERE "createdSub" = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -157,10 +157,10 @@ func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest)
 	info.Batch.Send(info.Ctx)
 
 	for _, serviceId := range serviceIds {
-		h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+serviceId)
+		h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"service/"+serviceId)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"service")
 
 	return &types.DeleteServiceResponse{Success: true}, nil
 }
@@ -172,15 +172,15 @@ func (h *Handlers) DisableService(info ReqInfo, data *types.DisableServiceReques
 		UPDATE dbtable_schema.services
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = ANY($1)
-	`, pq.Array(serviceIds), time.Now(), info.Session.UserSub)
+	`, pq.Array(serviceIds), time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
 	for _, serviceId := range serviceIds {
-		h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service/"+serviceId)
+		h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"service/"+serviceId)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"service")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"service")
 
 	return &types.DisableServiceResponse{Success: true}, nil
 }

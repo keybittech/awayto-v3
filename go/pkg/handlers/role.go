@@ -31,7 +31,7 @@ func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.P
 	var userId string
 	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT id FROM dbtable_schema.users WHERE sub = $1
-	`, info.Session.UserSub).Scan(&userId)
+	`, info.Session.GetUserSub()).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -40,12 +40,12 @@ func (h *Handlers) PostRole(info ReqInfo, data *types.PostRoleRequest) (*types.P
 		INSERT INTO dbtable_schema.user_roles (user_id, role_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (user_id, role_id) DO NOTHING
-	`, userId, role.Id, info.Session.UserSub)
+	`, userId, role.Id, info.Session.GetUserSub())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return &types.PostRoleResponse{Id: role.Id}, nil
 }
@@ -57,7 +57,7 @@ func (h *Handlers) GetRoles(info ReqInfo, data *types.GetRolesRequest) (*types.G
 		LEFT JOIN dbview_schema.enabled_user_roles eur ON er.id = eur."roleId"
 		LEFT JOIN dbview_schema.enabled_users eu ON eu.id = eur."userId"
 		WHERE eu.sub = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -80,11 +80,11 @@ func (h *Handlers) DeleteRole(info ReqInfo, data *types.DeleteRoleRequest) (*typ
 	util.BatchExec(info.Batch, `
 		DELETE FROM dbtable_schema.user_roles
 		WHERE role_id = ANY($1) AND created_sub = $2
-	`, pq.Array(strings.Split(data.Ids, ",")), info.Session.UserSub)
+	`, pq.Array(strings.Split(data.Ids, ",")), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return &types.DeleteRoleResponse{Success: true}, nil
 }

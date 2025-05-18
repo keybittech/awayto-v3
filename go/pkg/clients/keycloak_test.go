@@ -463,3 +463,32 @@ func TestKeycloak_SendCommand(t *testing.T) {
 		})
 	}
 }
+
+func TestKeycloak_GetGroupSubGroups(t *testing.T) {
+	type args struct {
+		ctx     context.Context
+		userSub string
+		groupId string
+	}
+	tests := []struct {
+		name    string
+		k       *Keycloak
+		args    args
+		want    []*types.KeycloakGroup
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := tt.k.GetGroupSubGroups(tt.args.ctx, tt.args.userSub, tt.args.groupId)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Keycloak.GetGroupSubGroups(%v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.userSub, tt.args.groupId, err, tt.wantErr)
+				return
+			}
+			if !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("Keycloak.GetGroupSubGroups(%v, %v, %v) = %v, want %v", tt.args.ctx, tt.args.userSub, tt.args.groupId, got, tt.want)
+			}
+		})
+	}
+}

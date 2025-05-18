@@ -344,3 +344,20 @@ func Test_setProtoFieldValue(t *testing.T) {
 		})
 	}
 }
+
+func TestParseInvalidations(t *testing.T) {
+	type args struct {
+		handlerOptions map[string]*HandlerOptions
+	}
+	tests := []struct {
+		name string
+		args args
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			ParseInvalidations(tt.args.handlerOptions)
+		})
+	}
+}

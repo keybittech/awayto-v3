@@ -27,27 +27,30 @@ func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameReques
 func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types.JoinGroupResponse, error) {
 	var userId, allowedDomains, defaultRoleId string
 
+	var groupId string
 	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT id, allowed_domains, default_role_id
 		FROM dbtable_schema.groups
 		WHERE code = $1
-	`, data.GetCode()).Scan(&info.Session.GroupId, &allowedDomains, &defaultRoleId)
+	`, data.GetCode()).Scan(&groupId, &allowedDomains, &defaultRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
+
+	info.Session.SetGroupId(groupId)
 
 	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT id
 		FROM dbtable_schema.users
 		WHERE sub = $1
-	`, info.Session.UserSub).Scan(&userId)
+	`, info.Session.GetUserSub()).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	if allowedDomains != "" {
 		allowedDomainsSlice := strings.Split(allowedDomains, ",")
-		if !slices.Contains(allowedDomainsSlice, strings.Split(info.Session.UserEmail, "@")[1]) {
+		if !slices.Contains(allowedDomainsSlice, strings.Split(info.Session.GetUserEmail(), "@")[1]) {
 			return nil, util.ErrCheck(util.UserError("Group access is restricted."))
 		}
 	}
@@ -70,12 +73,10 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
-	`, userId, info.Session.GroupId, kcSubgroupExternalId, info.Session.UserSub)
+	`, userId, info.Session.GetGroupId(), kcSubgroupExternalId, info.Session.GetUserSub())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.JoinGroupResponse{Success: true}, nil
 }
@@ -90,7 +91,7 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 		return nil, util.ErrCheck(util.UserError("Group not found."))
 	}
 
-	err = info.Tx.QueryRow(info.Ctx, `SELECT id FROM dbtable_schema.users WHERE sub = $1`, info.Session.UserSub).Scan(&userId)
+	err = info.Tx.QueryRow(info.Ctx, `SELECT id FROM dbtable_schema.users WHERE sub = $1`, info.Session.GetUserSub()).Scan(&userId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -102,12 +103,10 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.UserSub, info.Session.UserSub, groupId)
+	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetUserSub(), groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
 
 	return &types.LeaveGroupResponse{Success: true}, nil
 }
@@ -116,14 +115,17 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*types.AttachUserResponse, error) {
 	var kcRoleSubgroupExternalId, createdSub string
 
+	var groupId string
 	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT g.id
 		FROM dbtable_schema.groups g
 		WHERE g.code = $1
-	`, data.GetCode()).Scan(&info.Session.GroupId)
+	`, data.GetCode()).Scan(&groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	info.Session.SetGroupId(groupId)
 
 	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
@@ -132,7 +134,7 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 		FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
 		WHERE g.id = $1
-	`, info.Session.GroupId)
+	`, groupId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -143,17 +145,17 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.UserSub, info.Session.UserSub, kcRoleSubgroupExternalId)
+	// Sub passed twice here to act as worker pool key as well as data for the add
+	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetUserSub(), kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if err := h.Socket.RoleCall(info.Session.UserSub); err != nil {
+	if err := h.Socket.RoleCall(info.Session.GetUserSub()); err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 	h.Redis.Client().Del(info.Ctx, createdSub+"profile/details")
 
 	return &types.AttachUserResponse{Success: true}, nil
@@ -214,8 +216,7 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 		GroupScheduleId: postGroupScheduleRes.Id,
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
-	h.Cache.SetGroupSessionVersion(info.Session.GroupId)
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return onboardingResponse, nil
 }

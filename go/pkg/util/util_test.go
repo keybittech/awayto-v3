@@ -2,29 +2,11 @@ package util
 
 import (
 	"database/sql"
-	"io"
-	"net"
+	"net/http"
 	"reflect"
 	"sync"
 	"testing"
-	"time"
 )
-
-type NullConn struct{}
-
-func (n NullConn) Read(b []byte) (int, error)         { return 0, io.EOF }
-func (n NullConn) Write(b []byte) (int, error)        { return len(b), nil }
-func (n NullConn) Close() error                       { return nil }
-func (n NullConn) LocalAddr() net.Addr                { return nil }
-func (n NullConn) RemoteAddr() net.Addr               { return nil }
-func (n NullConn) SetDeadline(t time.Time) error      { return nil }
-func (n NullConn) SetReadDeadline(t time.Time) error  { return nil }
-func (n NullConn) SetWriteDeadline(t time.Time) error { return nil }
-
-// NewNullConn returns a new no-op connection
-func NewNullConn() net.Conn {
-	return NullConn{}
-}
 
 func reset(b *testing.B) {
 	b.ReportAllocs()
@@ -412,190 +394,6 @@ func BenchmarkVerifySigned(b *testing.B) {
 	}
 }
 
-func TestNullConn_Read(t *testing.T) {
-	type args struct {
-		b []byte
-	}
-	tests := []struct {
-		name    string
-		n       NullConn
-		args    args
-		want    int
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.n.Read(tt.args.b)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NullConn.Read(%v) error = %v, wantErr %v", tt.args.b, err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("NullConn.Read(%v) = %v, want %v", tt.args.b, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNullConn_Write(t *testing.T) {
-	type args struct {
-		b []byte
-	}
-	tests := []struct {
-		name    string
-		n       NullConn
-		args    args
-		want    int
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.n.Write(tt.args.b)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("NullConn.Write(%v) error = %v, wantErr %v", tt.args.b, err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("NullConn.Write(%v) = %v, want %v", tt.args.b, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNullConn_Close(t *testing.T) {
-	tests := []struct {
-		name    string
-		n       NullConn
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.n.Close(); (err != nil) != tt.wantErr {
-				t.Errorf("NullConn.Close() error = %v, wantErr %v", err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNullConn_LocalAddr(t *testing.T) {
-	tests := []struct {
-		name string
-		n    NullConn
-		want net.Addr
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.n.LocalAddr(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NullConn.LocalAddr() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNullConn_RemoteAddr(t *testing.T) {
-	tests := []struct {
-		name string
-		n    NullConn
-		want net.Addr
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.n.RemoteAddr(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NullConn.RemoteAddr() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestNullConn_SetDeadline(t *testing.T) {
-	type args struct {
-		t time.Time
-	}
-	tests := []struct {
-		name    string
-		n       NullConn
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.n.SetDeadline(tt.args.t); (err != nil) != tt.wantErr {
-				t.Errorf("NullConn.SetDeadline(%v) error = %v, wantErr %v", tt.args.t, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNullConn_SetReadDeadline(t *testing.T) {
-	type args struct {
-		t time.Time
-	}
-	tests := []struct {
-		name    string
-		n       NullConn
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.n.SetReadDeadline(tt.args.t); (err != nil) != tt.wantErr {
-				t.Errorf("NullConn.SetReadDeadline(%v) error = %v, wantErr %v", tt.args.t, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNullConn_SetWriteDeadline(t *testing.T) {
-	type args struct {
-		t time.Time
-	}
-	tests := []struct {
-		name    string
-		n       NullConn
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.n.SetWriteDeadline(tt.args.t); (err != nil) != tt.wantErr {
-				t.Errorf("NullConn.SetWriteDeadline(%v) error = %v, wantErr %v", tt.args.t, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func TestNewNullConn(t *testing.T) {
-	tests := []struct {
-		name string
-		want net.Conn
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := NewNullConn(); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("NewNullConn() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
 func TestStringsToBitmask(t *testing.T) {
 	type args struct {
 		roles []string
@@ -611,6 +409,78 @@ func TestStringsToBitmask(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := StringsToBitmask(tt.args.roles); got != tt.want {
 				t.Errorf("StringsToBitmask(%v) = %v, want %v", tt.args.roles, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestAtoi32(t *testing.T) {
+	type args struct {
+		s string
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int32
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Atoi32(tt.args.s)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Atoi32(%v) error = %v, wantErr %v", tt.args.s, err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Atoi32(%v) = %v, want %v", tt.args.s, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestItoi32(t *testing.T) {
+	type args struct {
+		i int
+	}
+	tests := []struct {
+		name    string
+		args    args
+		want    int32
+		wantErr bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Itoi32(tt.args.i)
+			if (err != nil) != tt.wantErr {
+				t.Errorf("Itoi32(%v) error = %v, wantErr %v", tt.args.i, err, tt.wantErr)
+				return
+			}
+			if got != tt.want {
+				t.Errorf("Itoi32(%v) = %v, want %v", tt.args.i, got, tt.want)
+			}
+		})
+	}
+}
+
+func TestCookieExpired(t *testing.T) {
+	type args struct {
+		req *http.Request
+	}
+	tests := []struct {
+		name string
+		args args
+		want bool
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := CookieExpired(tt.args.req); got != tt.want {
+				t.Errorf("CookieExpired(%v) = %v, want %v", tt.args.req, got, tt.want)
 			}
 		})
 	}

@@ -19,7 +19,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*types.UserSession, error) {
+func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*types.ConcurrentUserSession, error) {
 	token = strings.TrimPrefix(token, "Bearer ")
 
 	parsedToken, err := jwt.ParseWithClaims(token, &clients.KeycloakUserWithClaims{}, func(t *jwt.Token) (interface{}, error) {
@@ -41,7 +41,7 @@ func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*t
 		return nil, util.ErrCheck(errors.New("could not parse claims"))
 	}
 
-	session := &types.UserSession{
+	session := types.NewConcurrentUserSession(&types.UserSession{
 		UserSub:   claims.Subject,
 		UserEmail: claims.Email,
 		SubGroups: claims.Groups,
@@ -49,7 +49,7 @@ func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*t
 		ExpiresAt: claims.ExpiresAt,
 		Timezone:  timezone,
 		AnonIp:    anonIp,
-	}
+	})
 
 	return session, nil
 }
@@ -102,7 +102,7 @@ func (a *API) InitAuthProxy() {
 		SetForwardingHeadersAndServe(authProxy, w, req)
 	})))
 
-	loginStatusHandler := func(w http.ResponseWriter, req *http.Request, session *types.UserSession) {
+	loginStatusHandler := func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 		var cookieVal string
 		var cookieExpires int
 
@@ -111,7 +111,7 @@ func (a *API) InitAuthProxy() {
 				return
 			}
 
-			cookieVal, err = util.WriteSigned(util.LOGIN_SIGNATURE_NAME, strconv.FormatInt(session.ExpiresAt, 10))
+			cookieVal, err = util.WriteSigned(util.LOGIN_SIGNATURE_NAME, strconv.FormatInt(session.GetExpiresAt(), 10))
 			if err != nil {
 				util.ErrorLog.Println(util.ErrCheck(err))
 				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)

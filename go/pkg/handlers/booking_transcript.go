@@ -32,7 +32,7 @@ func (h *Handlers) DisableBookingTranscript(info ReqInfo, data *types.DisableBoo
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
+	`, data.GetId(), time.Now().Local().UTC(), info.Session.GetUserSub())
 
 	if err != nil {
 		return nil, util.ErrCheck(err)

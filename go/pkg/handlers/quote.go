@@ -36,7 +36,7 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 				INSERT INTO dbtable_schema.form_version_submissions (form_version_id, submission, created_sub)
 				VALUES ($1, $2::jsonb, $3::uuid)
 				RETURNING id
-			`, form.GetFormVersionId(), formSubmission, info.Session.UserSub).Scan(&form.Id)
+			`, form.GetFormVersionId(), formSubmission, info.Session.GetUserSub()).Scan(&form.Id)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -55,7 +55,7 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, service_form_version_submission_id, tier_form_version_submission_id, created_sub, group_id, slot_created_sub)
 		VALUES ($1::date, $2::uuid, $3::uuid, $4, $5, $6::uuid, $7::uuid, $8::uuid)
 		RETURNING id
-	`, data.SlotDate, data.ScheduleBracketSlotId, data.ServiceTierId, util.NewNullString(serviceForm.Id), util.NewNullString(tierForm.Id), info.Session.UserSub, info.Session.GroupId, slotCreatedSub).Scan(&quoteId)
+	`, data.SlotDate, data.ScheduleBracketSlotId, data.ServiceTierId, util.NewNullString(serviceForm.Id), util.NewNullString(tierForm.Id), info.Session.GetUserSub(), info.Session.GetGroupId(), slotCreatedSub).Scan(&quoteId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -68,7 +68,7 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		_, err = info.Tx.Exec(info.Ctx, `
 			INSERT INTO dbtable_schema.quote_files (quote_id, file_id, created_sub)
 			VALUES ($1::uuid, $2::uuid, $3::uuid)
-		`, quoteId, fileRes.GetId(), info.Session.UserSub)
+		`, quoteId, fileRes.GetId(), info.Session.GetUserSub())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -109,7 +109,7 @@ func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*typ
 		UPDATE dbtable_schema.quotes
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
 		WHERE id = $1
-	`, data.Id, data.ServiceTierId, info.Session.UserSub, time.Now())
+	`, data.Id, data.ServiceTierId, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
@@ -122,7 +122,7 @@ func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types
 		FROM dbview_schema.enabled_quotes q
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q."scheduleBracketSlotId"
 		WHERE sbs.created_sub = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -157,12 +157,12 @@ func (h *Handlers) DisableQuote(info ReqInfo, data *types.DisableQuoteRequest) (
 		UPDATE dbtable_schema.quotes
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = ANY($1)
-	`, pq.Array(strings.Split(data.Ids, ",")), time.Now(), info.Session.UserSub)
+	`, pq.Array(strings.Split(data.Ids, ",")), time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"quotes")
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"quotes")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return &types.DisableQuoteResponse{Success: true}, nil
 }

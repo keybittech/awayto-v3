@@ -108,7 +108,7 @@ func getKeycloakToken(user *types.TestUser) (string, *types.UserSession, error) 
 		log.Fatalf("error validating auth token: %v", err)
 	}
 
-	return token, session, nil
+	return token, session.GetProtoClone(), nil
 }
 
 func checkResponseFor(buf []byte, items []byte) bool {

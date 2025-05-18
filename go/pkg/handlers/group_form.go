@@ -17,7 +17,7 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 			LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
 			WHERE f.name = $1 AND gf.group_id = $2
 		)
-	`, data.Name, info.Session.GroupId)
+	`, data.Name, info.Session.GetGroupId())
 
 	info.Batch.Send(info.Ctx)
 
@@ -28,13 +28,12 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 	info.Batch.Reset()
 
 	groupInfo := ReqInfo{
-		W:   info.W,
-		Req: info.Req,
-		Session: &types.UserSession{
-			UserSub: info.Session.GroupSub,
-			GroupId: info.Session.GroupId,
-		},
-		Batch: util.NewBatchable(h.Database.DatabaseClient.Pool, info.Session.GroupSub, info.Session.GroupId, info.Session.RoleBits),
+		Ctx: info.Ctx,
+		Session: types.NewConcurrentUserSession(&types.UserSession{
+			UserSub: info.Session.GetGroupSub(),
+			GroupId: info.Session.GetGroupId(),
+		}),
+		Batch: util.NewBatchable(h.Database.DatabaseClient.Pool, info.Session.GetGroupSub(), info.Session.GetGroupId(), info.Session.GetRoleBits()),
 	}
 
 	formResp, _ := h.PostForm(groupInfo, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()})
@@ -51,11 +50,11 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		INSERT INTO dbtable_schema.group_forms (group_id, form_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (group_id, form_id) DO NOTHING
-	`, info.Session.GroupId, formResp.Id, info.Session.GroupSub)
+	`, info.Session.GetGroupId(), formResp.Id, info.Session.GetGroupSub())
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
 
 	return &types.PostGroupFormResponse{Id: formResp.Id}, nil
 }
@@ -66,8 +65,8 @@ func (h *Handlers) PostGroupFormVersion(info ReqInfo, data *types.PostGroupFormV
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms/"+data.FormId)
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms/"+data.FormId)
 
 	return &types.PostGroupFormVersionResponse{Id: formVersionResp.GetId()}, nil
 }
@@ -78,8 +77,8 @@ func (h *Handlers) PatchGroupForm(info ReqInfo, data *types.PatchGroupFormReques
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms/"+data.GetGroupForm().GetForm().GetId())
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms/"+data.GetGroupForm().GetForm().GetId())
 
 	return &types.PatchGroupFormResponse{Success: true}, nil
 }
@@ -90,7 +89,7 @@ func (h *Handlers) GetGroupForms(info ReqInfo, data *types.GetGroupFormsRequest)
 		FROM dbview_schema.enabled_group_forms egf
 		LEFT JOIN dbview_schema.enabled_forms ef ON ef.id = egf."formId"
 		WHERE egf."groupId" = $1
-	`, info.Session.GroupId)
+	`, info.Session.GetGroupId())
 
 	info.Batch.Send(info.Ctx)
 
@@ -107,7 +106,7 @@ func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRe
 		SELECT "formId", "groupId", form
 		FROM dbview_schema.enabled_group_forms_ext 
 		WHERE "groupId" = $1 AND "formId" = $2
-	`, info.Session.GroupId, data.FormId)
+	`, info.Session.GetGroupId(), data.FormId)
 
 	info.Batch.Send(info.Ctx)
 
@@ -129,7 +128,7 @@ func (h *Handlers) DeleteGroupForm(info ReqInfo, data *types.DeleteGroupFormRequ
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/forms")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
 
 	return &types.DeleteGroupFormResponse{Success: true}, nil
 }

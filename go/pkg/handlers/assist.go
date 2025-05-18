@@ -39,7 +39,7 @@ func (h *Handlers) PostPrompt(info ReqInfo, data *types.PostPromptRequest) (*typ
 
 func (h *Handlers) GetSuggestion(info ReqInfo, data *types.GetSuggestionRequest) (*types.GetSuggestionResponse, error) {
 
-	if info.Session.GroupAi {
+	if info.Session.GetGroupAi() {
 		promptParts := strings.Split(data.GetPrompt(), "!$")
 		promptType, err := util.Atoi32(data.Id)
 		if err != nil {

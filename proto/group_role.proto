@@ -17,6 +17,7 @@ service GroupRoleService {
     };
     option (site_role) = APP_GROUP_ROLES;
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 
   rpc PatchGroupRole(PatchGroupRoleRequest) returns (PatchGroupRoleResponse) {
@@ -26,6 +27,7 @@ service GroupRoleService {
     };
     option (site_role) = APP_GROUP_ROLES; 
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 
   rpc PatchGroupRoles(PatchGroupRolesRequest) returns (PatchGroupRolesResponse) {
@@ -35,6 +37,7 @@ service GroupRoleService {
     };
     option (site_role) = APP_GROUP_ROLES; 
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 
   rpc GetGroupRoles(GetGroupRolesRequest) returns (GetGroupRolesResponse) {
@@ -49,6 +52,7 @@ service GroupRoleService {
     };
     option (site_role) = APP_GROUP_ROLES; 
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 }
 

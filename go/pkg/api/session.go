@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -15,19 +14,19 @@ const (
 	redisTokenDuration = 55 * time.Second
 )
 
-type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.UserSession)
+type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession)
 
 type SessionMux struct {
-	publicKey    *rsa.PublicKey
-	mux          *http.ServeMux
-	handlerCache *handlers.HandlerCache
+	publicKey     *rsa.PublicKey
+	mux           *http.ServeMux
+	sessionTokens *SessionTokensCache
 }
 
-func NewSessionMux(pk *rsa.PublicKey, handlerCache *handlers.HandlerCache) *SessionMux {
+func NewSessionMux(pk *rsa.PublicKey, sessionTokens *SessionTokensCache) *SessionMux {
 	return &SessionMux{
-		publicKey:    pk,
-		mux:          http.NewServeMux(),
-		handlerCache: handlerCache,
+		publicKey:     pk,
+		mux:           http.NewServeMux(),
+		sessionTokens: sessionTokens,
 	}
 }
 
@@ -39,7 +38,7 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 			return
 		}
 
-		if cachedSession := sm.handlerCache.GetSessionToken(token); cachedSession != nil {
+		if cachedSession, ok := sm.sessionTokens.Load(token); ok {
 			handler(w, req, cachedSession)
 			return
 		}
@@ -51,7 +50,7 @@ func (sm *SessionMux) Handle(pattern string, handler SessionHandler) {
 			return
 		}
 
-		go sm.handlerCache.SetSessionToken(token, session)
+		sm.sessionTokens.Store(token, session)
 
 		handler(w, req, session)
 	}))

@@ -410,7 +410,7 @@ func (s *Socket) SendCommand(ctx context.Context, cmdType int32, request *types.
 	return res.SocketResponseParams, nil
 }
 
-func (s *Socket) StoreConn(ctx context.Context, ticket string, conn net.Conn) (*types.UserSession, error) {
+func (s *Socket) StoreConn(ctx context.Context, ticket string, conn net.Conn) (*types.ConcurrentUserSession, error) {
 	createCmd := func(replyChan chan SocketResponse) SocketCommand {
 		return SocketCommand{
 			WorkerCommandParams: &types.WorkerCommandParams{
@@ -433,18 +433,18 @@ func (s *Socket) StoreConn(ctx context.Context, ticket string, conn net.Conn) (*
 		return nil, util.ErrCheck(err)
 	}
 
-	return &types.UserSession{
+	return types.NewConcurrentUserSession(&types.UserSession{
 		UserSub:  res.SocketResponseParams.UserSub,
 		GroupId:  res.SocketResponseParams.GroupId,
 		RoleBits: res.SocketResponseParams.RoleBits,
-	}, nil
+	}), nil
 }
 
-func (s *Socket) GetSocketTicket(ctx context.Context, session *types.UserSession) (string, error) {
+func (s *Socket) GetSocketTicket(ctx context.Context, session *types.ConcurrentUserSession) (string, error) {
 	response, err := s.SendCommand(ctx, CreateSocketTicketSocketCommand, &types.SocketRequestParams{
-		UserSub:  session.UserSub,
-		GroupId:  session.GroupId,
-		RoleBits: session.RoleBits,
+		UserSub:  session.GetUserSub(),
+		GroupId:  session.GetGroupId(),
+		RoleBits: session.GetRoleBits(),
 	})
 
 	if err != nil {

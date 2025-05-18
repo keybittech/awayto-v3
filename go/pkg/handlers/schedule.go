@@ -102,14 +102,14 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 
 	var insertScheduleParams = []any{
 		data.Name,
-		info.Session.UserSub,
+		info.Session.GetUserSub(),
 		data.SlotDuration,
 		data.ScheduleTimeUnitId,
 		data.BracketTimeUnitId,
 		data.SlotTimeUnitId,
 		startTime,
 		endTime,
-		info.Session.Timezone,
+		info.Session.GetTimezone(),
 	}
 
 	var row pgx.Row
@@ -117,12 +117,12 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 
 	if data.AsGroup {
 		// check to see APP_GROUP_SCHEDULE role is on info.Session.Roles
-		if info.Session.RoleBits&appGroupSchedulesRole == 0 {
+		if info.Session.GetRoleBits()&appGroupSchedulesRole == 0 {
 			return nil, util.ErrCheck(errors.New("does not have APP_GROUP_SCHEDULES role"))
 		}
 
 		ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
-		insertScheduleParams[1] = info.Session.GroupSub
+		insertScheduleParams[1] = info.Session.GetGroupSub()
 		row, done, err = ds.SessionBatchQueryRow(info.Ctx, insertScheduleQuery, insertScheduleParams...)
 		defer done()
 	} else {
@@ -190,9 +190,9 @@ func (h *Handlers) PostScheduleBrackets(info ReqInfo, data *types.PostScheduleBr
 		}
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"schedules/"+data.UserScheduleId)
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/user_schedules/"+data.GroupScheduleId)
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules/"+data.UserScheduleId)
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/user_schedules/"+data.GroupScheduleId)
 
 	return &types.PostScheduleBracketsResponse{Success: true}, nil
 }
@@ -207,7 +207,7 @@ func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest)
 		UPDATE dbtable_schema.schedules
 		SET name = $2, start_time = $3, end_time = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, data.Schedule.Id, data.Schedule.Name, startTime, endTime, info.Session.UserSub, time.Now())
+	`, data.Schedule.Id, data.Schedule.Name, startTime, endTime, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
@@ -219,7 +219,7 @@ func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (
 		SELECT id, name, "createdOn"
 		FROM dbview_schema.enabled_schedules
 		WHERE "createdSub" = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -281,8 +281,8 @@ func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleReques
 		}
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return &types.DeleteScheduleResponse{Success: true}, nil
 }
@@ -292,7 +292,7 @@ func (h *Handlers) DisableSchedule(info ReqInfo, data *types.DisableScheduleRequ
 		UPDATE dbtable_schema.schedules
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.GetId(), time.Now().Local().UTC(), info.Session.UserSub)
+	`, data.GetId(), time.Now().Local().UTC(), info.Session.GetUserSub())
 
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -381,7 +381,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 				slotsToKeep = append(slotsToKeep, slotId)
 			} else if util.IsEpoch(slotId) {
 				h.Database.BuildInserts(&slotsQuery, 4, slotsLen)
-				slotsValues = append(slotsValues, bracketId, slot.StartTime, info.Session.UserSub, info.Session.GroupId)
+				slotsValues = append(slotsValues, bracketId, slot.StartTime, info.Session.GetUserSub(), info.Session.GetGroupId())
 				slotsLen += 4
 			}
 		}
@@ -396,7 +396,7 @@ func (h *Handlers) HandleExistingBrackets(ctx context.Context, existingBracketId
 
 			if !found {
 				h.Database.BuildInserts(&servicesQuery, 4, servicesLen)
-				servicesValues = append(servicesValues, bracketId, serviceId, info.Session.UserSub, info.Session.GroupId)
+				servicesValues = append(servicesValues, bracketId, serviceId, info.Session.GetUserSub(), info.Session.GetGroupId())
 				servicesLen += 4
 			}
 		}
@@ -562,7 +562,7 @@ func (h *Handlers) InsertNewBrackets(ctx context.Context, scheduleId string, new
 			INSERT INTO dbtable_schema.schedule_brackets (schedule_id, duration, multiplier, automatic, created_sub, group_id)
 			VALUES ($1, $2, $3, $4, $5::uuid, $6)
 			RETURNING id
-		`, scheduleId, bracket.Duration, bracket.Multiplier, bracket.Automatic, info.Session.UserSub, info.Session.GroupId).Scan(&bracket.Id)
+		`, scheduleId, bracket.Duration, bracket.Multiplier, bracket.Automatic, info.Session.GetUserSub(), info.Session.GetGroupId()).Scan(&bracket.Id)
 		if err != nil {
 			return util.ErrCheck(fmt.Errorf("failed to insert bracket new bracket record: %w", err))
 		}
@@ -570,14 +570,14 @@ func (h *Handlers) InsertNewBrackets(ctx context.Context, scheduleId string, new
 		var slotsLen int
 		for _, slot := range bracket.Slots {
 			h.Database.BuildInserts(&slotsQuery, 4, slotsLen)
-			slotsValues = append(slotsValues, bracket.Id, slot.StartTime, info.Session.UserSub, info.Session.GroupId)
+			slotsValues = append(slotsValues, bracket.Id, slot.StartTime, info.Session.GetUserSub(), info.Session.GetGroupId())
 			slotsLen += 4
 		}
 
 		var servicesLen int
 		for _, service := range bracket.Services {
 			h.Database.BuildInserts(&servicesQuery, 4, servicesLen)
-			servicesValues = append(servicesValues, bracket.Id, service.Id, info.Session.UserSub, info.Session.GroupId)
+			servicesValues = append(servicesValues, bracket.Id, service.Id, info.Session.GetUserSub(), info.Session.GetGroupId())
 			servicesLen += 4
 		}
 	}

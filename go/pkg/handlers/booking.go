@@ -28,12 +28,12 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 			SELECT 1 FROM dbtable_schema.schedule_bracket_slots
 			WHERE id = $1 AND created_sub = $2
 		)
-	`, scheduleBracketSlotId, info.Session.UserSub).Scan(&isOwner)
+	`, scheduleBracketSlotId, info.Session.GetUserSub()).Scan(&isOwner)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 	if !isOwner {
-		return nil, util.ErrCheck(errors.New("sub " + info.Session.UserSub + " attempted to approve non-owned sbsid " + scheduleBracketSlotId))
+		return nil, util.ErrCheck(errors.New("sub " + info.Session.GetUserSub() + " attempted to approve non-owned sbsid " + scheduleBracketSlotId))
 	}
 
 	for _, booking := range data.Bookings {
@@ -49,7 +49,7 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 			INSERT INTO dbtable_schema.bookings (quote_id, slot_date, schedule_bracket_slot_id, created_sub, quote_created_sub)
 			VALUES ($1::uuid, $2::date, $3::uuid, $4::uuid, $5::uuid)
 			RETURNING id
-		`, booking.Quote.Id, booking.Quote.SlotDate, scheduleBracketSlotId, info.Session.UserSub, quoteCreatedSub).Scan(&newBooking.Id)
+		`, booking.Quote.Id, booking.Quote.SlotDate, scheduleBracketSlotId, info.Session.GetUserSub(), quoteCreatedSub).Scan(&newBooking.Id)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -63,7 +63,7 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 		newBookings = append(newBookings, &newBooking)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"profile/details")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 	return &types.PostBookingResponse{Bookings: newBookings}, nil
 }
 
@@ -72,7 +72,7 @@ func (h *Handlers) PatchBooking(info ReqInfo, data *types.PatchBookingRequest) (
 		UPDATE dbtable_schema.bookings
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-	`, data.Booking.Id, data.Booking.Quote.ServiceTierId, info.Session.UserSub, time.Now())
+	`, data.Booking.Id, data.Booking.Quote.ServiceTierId, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
@@ -86,7 +86,7 @@ func (h *Handlers) GetBookings(info ReqInfo, data *types.GetBookingsRequest) (*t
 		JOIN dbtable_schema.bookings b ON b.id = eb.id
 		LEFT JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = eb.schedule_bracket_slot_id
 		WHERE b.created_sub = $1 OR sbs.created_sub = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -128,7 +128,7 @@ func (h *Handlers) PatchBookingRating(info ReqInfo, data *types.PatchBookingRati
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"bookings/"+data.Id)
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"bookings/"+data.Id)
 
 	return &types.PatchBookingRatingResponse{Success: true}, nil
 }
@@ -149,7 +149,7 @@ func (h *Handlers) DisableBooking(info ReqInfo, data *types.DisableBookingReques
 		UPDATE dbtable_schema.bookings
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.Id, time.Now(), info.Session.UserSub)
+	`, data.Id, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 

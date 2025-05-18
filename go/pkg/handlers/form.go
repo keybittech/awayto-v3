@@ -12,7 +12,7 @@ func (h *Handlers) PostForm(info ReqInfo, data *types.PostFormRequest) (*types.P
 		INSERT INTO dbtable_schema.forms (name, created_on, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
-	`, data.Form.Name, time.Now(), info.Session.UserSub)
+	`, data.Form.Name, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -29,13 +29,13 @@ func (h *Handlers) PostFormVersion(info ReqInfo, data *types.PostFormVersionRequ
 		INSERT INTO dbtable_schema.form_versions (form_id, form, created_on, created_sub)
 		VALUES ($1::uuid, $2::jsonb, $3, $4::uuid)
 		RETURNING id
-	`, data.Version.FormId, formJson, time.Now(), info.Session.UserSub)
+	`, data.Version.FormId, formJson, time.Now(), info.Session.GetUserSub())
 
 	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.forms
 		SET name = $1, updated_on = $2, updated_sub = $3
 		WHERE id = $4
-	`, data.Name, time.Now(), info.Session.UserSub, data.Version.FormId)
+	`, data.Name, time.Now(), info.Session.GetUserSub(), data.Version.FormId)
 
 	info.Batch.Send(info.Ctx)
 
@@ -47,7 +47,7 @@ func (h *Handlers) PatchForm(info ReqInfo, data *types.PatchFormRequest) (*types
 		UPDATE dbtable_schema.forms
 		SET name = $1, updated_on = $2, updated_sub = $3
 		WHERE id = $4
-	`, data.Form.Name, time.Now(), info.Session.UserSub, data.Form.Id)
+	`, data.Form.Name, time.Now(), info.Session.GetUserSub(), data.Form.Id)
 
 	info.Batch.Send(info.Ctx)
 
@@ -59,7 +59,7 @@ func (h *Handlers) GetForms(info ReqInfo, data *types.GetFormsRequest) (*types.G
 		SELECT id, name, "createdOn"
 		FROM dbview_schema.enabled_forms
 		WHERE "createdSub" = $1
-	`, info.Session.UserSub)
+	`, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -94,7 +94,7 @@ func (h *Handlers) DisableForm(info ReqInfo, data *types.DisableFormRequest) (*t
 		UPDATE dbtable_schema.forms
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = $1
-	`, data.Id, time.Now(), info.Session.UserSub)
+	`, data.Id, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 

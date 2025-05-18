@@ -9,7 +9,7 @@ func (h *Handlers) PostSiteFeedback(info ReqInfo, data *types.PostSiteFeedbackRe
 	util.BatchExec(info.Batch, `
 		INSERT INTO dbtable_schema.feedback (message, created_sub)
 		VALUES ($1, $2::uuid)
-	`, data.Feedback.FeedbackMessage, info.Session.UserSub)
+	`, data.Feedback.FeedbackMessage, info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 

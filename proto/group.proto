@@ -17,6 +17,7 @@ service GroupService {
       body: "*"
     };
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 
   rpc PatchGroup(PatchGroupRequest) returns (PatchGroupResponse) {
@@ -27,6 +28,7 @@ service GroupService {
     option (site_role) = APP_GROUP_ADMIN;
     option (throttle) = 1;
     option (use_tx) = true;
+    option (resets_group) = true;
     option (invalidates) = "GetUserProfileDetails";
   }
 
@@ -37,6 +39,7 @@ service GroupService {
     };
     option (site_role) = APP_GROUP_PERMISSIONS;
     option (throttle) = 60;
+    option (resets_group) = true;
   }
 
   rpc GetGroupAssignments(GetGroupAssignmentsRequest) returns (GetGroupAssignmentsResponse) {

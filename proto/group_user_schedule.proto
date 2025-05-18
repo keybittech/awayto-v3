@@ -17,6 +17,7 @@ service GroupUserScheduleService {
       body: "*"
     };
     option (use_tx) = true;
+    option (resets_group) = true;
   }
   rpc GetGroupUserSchedules(GetGroupUserSchedulesRequest) returns (GetGroupUserSchedulesResponse) {
     option (google.api.http) = {
@@ -40,12 +41,14 @@ service GroupUserScheduleService {
       patch: "/v1/group/user_schedules/stub_replacement"
       body: "*"
     };
+    option (resets_group) = true;
   }
   rpc DeleteGroupUserScheduleByUserScheduleId(DeleteGroupUserScheduleByUserScheduleIdRequest) returns (DeleteGroupUserScheduleByUserScheduleIdResponse) {
     option (google.api.http) = {
       delete: "/v1/group/user_schedules/{ids}"
     };
     option (use_tx) = true;
+    option (resets_group) = true;
   }
 }
 

@@ -71,7 +71,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 
 	if sm.Action != socketActionSubscribe {
 		hasSubRequest, err := a.Handlers.Socket.SendCommand(ctx, clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: ds.UserSession.UserSub,
+			UserSub: ds.ConcurrentUserSession.GetUserSub(),
 			Topic:   sm.Topic,
 		})
 
@@ -129,7 +129,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		}
 
 		_, err = a.Handlers.Socket.SendCommand(ctx, clients.AddSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: ds.UserSession.UserSub,
+			UserSub: ds.ConcurrentUserSession.GetUserSub(),
 			Topic:   sm.Topic,
 			Targets: cachedParticipantTargets,
 		})
@@ -139,7 +139,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-		err = a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, connId, &types.SocketMessage{
+		err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), connId, &types.SocketMessage{
 			Action: socketActionSubscribe,
 			Topic:  sm.Topic,
 		})
@@ -165,7 +165,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		}
 
 		if cachedParticipantTargets != "" {
-			err = a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, cachedParticipantTargets, &types.SocketMessage{
+			err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), cachedParticipantTargets, &types.SocketMessage{
 				Action:  socketActionUnsubscribeTopic,
 				Topic:   sm.Topic,
 				Payload: socketId,
@@ -181,7 +181,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		}
 
 		_, err = a.Handlers.Socket.SendCommand(ctx, clients.DeleteSubscribedTopicSocketCommand, &types.SocketRequestParams{
-			UserSub: ds.UserSession.UserSub,
+			UserSub: ds.ConcurrentUserSession.GetUserSub(),
 			Topic:   sm.Topic,
 		})
 		if err != nil {
@@ -215,7 +215,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-		err = a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, onlineTargets, &types.SocketMessage{
+		err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), onlineTargets, &types.SocketMessage{
 			Action:  socketActionLoadSubscribers,
 			Sender:  connId,
 			Topic:   sm.Topic,
@@ -242,7 +242,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		for _, messageBytes := range messages {
 			if messageBytes != nil {
 				_, err := a.Handlers.Socket.SendCommand(ctx, clients.SendSocketMessageSocketCommand, &types.SocketRequestParams{
-					UserSub:      ds.UserSession.UserSub,
+					UserSub:      ds.ConcurrentUserSession.GetUserSub(),
 					Targets:      connId,
 					MessageBytes: messageBytes,
 				})
@@ -261,7 +261,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-		err = a.Handlers.Socket.SendMessage(ctx, ds.UserSession.UserSub, cachedParticipantTargets, sm)
+		err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), cachedParticipantTargets, sm)
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return

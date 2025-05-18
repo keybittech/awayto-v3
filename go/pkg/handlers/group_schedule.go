@@ -15,12 +15,12 @@ func (h *Handlers) PostGroupSchedule(info ReqInfo, data *types.PostGroupSchedule
 		INSERT INTO dbtable_schema.group_schedules (group_id, schedule_id, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
-	`, info.Session.GroupId, data.ScheduleId, info.Session.GroupSub).Scan(&groupScheduleId)
+	`, info.Session.GetGroupId(), data.ScheduleId, info.Session.GetGroupSub()).Scan(&groupScheduleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
 
 	return &types.PostGroupScheduleResponse{Id: groupScheduleId}, nil
 }
@@ -31,8 +31,8 @@ func (h *Handlers) PatchGroupSchedule(info ReqInfo, data *types.PatchGroupSchedu
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/schedules/master/"+data.GetGroupSchedule().GetSchedule().GetId())
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules/master/"+data.GetGroupSchedule().GetSchedule().GetId())
 
 	return &types.PatchGroupScheduleResponse{Success: scheduleResp.Success}, nil
 }
@@ -43,7 +43,7 @@ func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedules
 		FROM dbview_schema.enabled_schedules es
 		JOIN dbview_schema.enabled_group_schedules egs ON egs."scheduleId" = es.id
 		WHERE egs."groupId" = $1
-	`, info.Session.GroupId)
+	`, info.Session.GetGroupId())
 
 	info.Batch.Send(info.Ctx)
 
@@ -151,7 +151,7 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 		`
 	}
 
-	rows, err := info.Tx.Query(info.Ctx, query, data.Date, data.GroupScheduleId, info.Session.Timezone)
+	rows, err := info.Tx.Query(info.Ctx, query, data.Date, data.GroupScheduleId, info.Session.GetTimezone())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -234,8 +234,8 @@ func (h *Handlers) DeleteGroupSchedule(info ReqInfo, data *types.DeleteGroupSche
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.UserSub+"group/schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules")
+	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
 
 	return &types.DeleteGroupScheduleResponse{Success: true}, nil
 }

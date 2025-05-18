@@ -20,7 +20,7 @@ func registerProtoHandler[ReqMsg, ResMsg proto.Message](handler handlers.TypedPr
 }
 
 func (a *API) InitProtoHandlers() {
-	sessionMux := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Handlers.Cache)
+	sessionMux := NewSessionMux(a.Handlers.Keycloak.Client.PublicKey, a.Cache.SessionTokens)
 
 	for _, handlerOpts := range a.Handlers.Options {
 		sessionMux.Handle(handlerOpts.Pattern,

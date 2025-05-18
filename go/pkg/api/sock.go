@@ -86,7 +86,7 @@ func (a *API) InitSockServer() {
 		}
 
 		connCtx, cancelConnCtx := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
-		userSession, err := a.Handlers.Socket.StoreConn(connCtx, ticket, conn)
+		session, err := a.Handlers.Socket.StoreConn(connCtx, ticket, conn)
 		if err != nil {
 			cancelConnCtx()
 			util.ErrorLog.Println(util.ErrCheck(err))
@@ -94,7 +94,9 @@ func (a *API) InitSockServer() {
 		}
 		cancelConnCtx()
 
-		socketId := util.GetColonJoined(userSession.UserSub, connId)
+		userSub := session.GetUserSub()
+
+		socketId := util.GetColonJoined(userSub, connId)
 
 		// Use wait group/goroutine to clean up DbSession usage as this overall func is long-lived
 		var wg sync.WaitGroup
@@ -104,8 +106,8 @@ func (a *API) InitSockServer() {
 			defer wg.Done()
 
 			ds := clients.DbSession{
-				Pool:        a.Handlers.Database.Client().Pool,
-				UserSession: userSession,
+				Pool:                  a.Handlers.Database.Client().Pool,
+				ConcurrentUserSession: session,
 			}
 
 			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
@@ -121,8 +123,8 @@ func (a *API) InitSockServer() {
 
 		defer func() {
 			ds := clients.DbSession{
-				Pool:        a.Handlers.Database.DatabaseClient.Pool,
-				UserSession: userSession,
+				Pool:                  a.Handlers.Database.DatabaseClient.Pool,
+				ConcurrentUserSession: session,
 			}
 
 			ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
@@ -138,7 +140,7 @@ func (a *API) InitSockServer() {
 
 		var userSockInfo strings.Builder
 		userSockInfo.WriteString(" /sock sub:")
-		userSockInfo.WriteString(userSession.UserSub)
+		userSockInfo.WriteString(userSub)
 		userSockInfo.WriteString(" cid:")
 		userSockInfo.WriteString(connId)
 		userSockInfo.WriteString(" ")
@@ -198,7 +200,7 @@ func (a *API) InitSockServer() {
 
 				ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
 				defer cancel()
-				err := a.Handlers.Socket.SendMessage(ctx, userSession.UserSub, connId, &types.SocketMessage{
+				err := a.Handlers.Socket.SendMessage(ctx, userSub, connId, &types.SocketMessage{
 					Action:  socketActionPingPong,
 					Payload: PING,
 				})
@@ -213,7 +215,7 @@ func (a *API) InitSockServer() {
 					partSockMessage.WriteString("returned due to messages EOF")
 					return
 				} else {
-					if sockRl.Limit(userSession.UserSub) {
+					if sockRl.Limit(userSub) {
 						continue
 					}
 
@@ -221,7 +223,7 @@ func (a *API) InitSockServer() {
 						ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
 
 						defer func() {
-							clients.GetGlobalWorkerPool().CleanUpClientMapping(userSession.UserSub)
+							clients.GetGlobalWorkerPool().CleanUpClientMapping(userSub)
 							cancel()
 						}()
 
@@ -246,9 +248,9 @@ func (a *API) InitSockServer() {
 							}
 
 							a.SocketMessageRouter(ctx, connId, socketId, sm, clients.DbSession{
-								Topic:       sm.Topic,
-								Pool:        a.Handlers.Database.DatabaseClient.Pool,
-								UserSession: userSession,
+								Topic:                 sm.Topic,
+								Pool:                  a.Handlers.Database.DatabaseClient.Pool,
+								ConcurrentUserSession: session,
 							})
 						}
 					}()
@@ -279,6 +281,8 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 	var wg sync.WaitGroup
 	// Log errors but attempt to tear down everything
 
+	userSub := ds.ConcurrentUserSession.GetUserSub()
+
 	wg.Add(1)
 	go func() {
 		defer wg.Done()
@@ -291,7 +295,7 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 		}
 
 		for topic, targets := range topics {
-			err := a.Handlers.Socket.SendMessage(context.Background(), ds.UserSession.UserSub, targets, &types.SocketMessage{
+			err := a.Handlers.Socket.SendMessage(context.Background(), userSub, targets, &types.SocketMessage{
 				Action:  socketActionUnsubscribeTopic,
 				Topic:   topic,
 				Payload: socketId,
@@ -315,9 +319,9 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 
 		workerDs := clients.DbSession{
 			Pool: a.Handlers.Database.DatabaseClient.Pool,
-			UserSession: &types.UserSession{
+			ConcurrentUserSession: types.NewConcurrentUserSession(&types.UserSession{
 				UserSub: "worker",
-			},
+			}),
 		}
 
 		err := workerDs.RemoveDbSocketConnection(ctx, connId)
@@ -331,7 +335,7 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 		defer wg.Done()
 
 		_, err := a.Handlers.Socket.SendCommand(context.Background(), clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
-			UserSub: ds.UserSession.UserSub,
+			UserSub: userSub,
 			ConnId:  connId,
 		})
 		if err != nil {
@@ -344,7 +348,7 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 	if tearDownFailures.Len() > 0 {
 		var sb strings.Builder
 		sb.WriteString("TEARDOWN /sock sub:")
-		sb.WriteString(ds.UserSession.UserSub)
+		sb.WriteString(userSub)
 		sb.WriteString(" socketid:")
 		sb.WriteString(socketId)
 		sb.WriteString(" connid:")
@@ -354,5 +358,5 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 		util.ErrorLog.Println(sb.String())
 	}
 
-	clients.GetGlobalWorkerPool().CleanUpClientMapping(ds.UserSession.UserSub)
+	clients.GetGlobalWorkerPool().CleanUpClientMapping(userSub)
 }

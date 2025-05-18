@@ -9,7 +9,7 @@ func (h *Handlers) PostGroupFeedback(info ReqInfo, data *types.PostGroupFeedback
 	util.BatchExec(info.Batch, `
 		INSERT INTO dbtable_schema.group_feedback (message, group_id, created_sub)
 		VALUES ($1, $2::uuid, $3::uuid)
-	`, data.Feedback.FeedbackMessage, info.Session.GroupId, info.Session.UserSub)
+	`, data.Feedback.FeedbackMessage, info.Session.GetGroupId(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 
@@ -22,7 +22,7 @@ func (h *Handlers) GetGroupFeedback(info ReqInfo, data *types.GetGroupFeedbackRe
 		FROM dbtable_schema.group_feedback f
 		WHERE f.group_id = $1
 		ORDER BY f.created_on DESC
-	`, info.Session.GroupId)
+	`, info.Session.GetGroupId())
 
 	info.Batch.Send(info.Ctx)
 

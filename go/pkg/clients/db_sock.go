@@ -16,7 +16,7 @@ func (ds DbSession) InitDbSocketConnection(ctx context.Context, connId string) e
 	_, err := ds.SessionBatchExec(ctx, `
 		INSERT INTO dbtable_schema.sock_connections (created_sub, connection_id)
 		VALUES ($1::uuid, $2)
-	`, ds.UserSession.UserSub, connId)
+	`, ds.ConcurrentUserSession.GetUserSub(), connId)
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -67,7 +67,7 @@ func (ds DbSession) GetSocketAllowances(ctx context.Context, bookingId string) (
 	finish := util.RunTimer()
 	defer finish()
 	row, done, err := ds.SessionBatchQueryRow(ctx, socketAllowanceQuery,
-		ds.UserSession.UserSub,
+		ds.ConcurrentUserSession.GetUserSub(),
 		bookingId)
 	if err != nil {
 		return false, util.ErrCheck(err)
@@ -178,7 +178,7 @@ func (ds DbSession) StoreTopicMessage(ctx context.Context, connId string, messag
 	_, err := ds.SessionBatchExec(ctx, `
 		INSERT INTO dbtable_schema.topic_messages (created_sub, connection_id, topic, message)
 		VALUES ($1, $2, $3, $4)
-	`, ds.UserSession.UserSub, connId, message.Topic, util.GenerateMessage(util.DefaultPadding, message))
+	`, ds.ConcurrentUserSession.GetUserSub(), connId, message.Topic, util.GenerateMessage(util.DefaultPadding, message))
 	if err != nil {
 		return util.ErrCheck(err)
 	}

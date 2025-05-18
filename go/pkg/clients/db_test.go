@@ -111,8 +111,8 @@ func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	for c := 0; c < b.N; c++ {
 		b.StopTimer()
 		ds := &DbSession{
-			Pool:        db.DatabaseClient.Pool,
-			UserSession: integrationTest.TestUsers[int32(c%7)].UserSession,
+			Pool:                  db.DatabaseClient.Pool,
+			ConcurrentUserSession: types.NewConcurrentUserSession(integrationTest.TestUsers[int32(c%7)].UserSession),
 		}
 		b.StartTimer()
 		ds.GetSocketAllowances(ctx, bookingId)
@@ -207,119 +207,17 @@ func TestDatabase_BuildInserts(t *testing.T) {
 	}
 }
 
-func Test_fieldIndexes(t *testing.T) {
-	type args struct {
-		structType reflect.Type
-	}
-	tests := []struct {
-		name string
-		args args
-		want map[string]int
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := fieldIndexes(tt.args.structType); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("fieldIndexes(%v) = %v, want %v", tt.args.structType, got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_cachedFieldIndexes(t *testing.T) {
-	type args struct {
-		structType reflect.Type
-	}
-	tests := []struct {
-		name string
-		args args
-		want map[string]int
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := cachedFieldIndexes(tt.args.structType); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("cachedFieldIndexes(%v) = %v, want %v", tt.args.structType, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestJSONSerializer_Scan(t *testing.T) {
-	type args struct {
-		src interface{}
-	}
-	tests := []struct {
-		name    string
-		pms     *JSONSerializer
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.pms.Scan(tt.args.src); (err != nil) != tt.wantErr {
-				t.Errorf("JSONSerializer.Scan(%v) error = %v, wantErr %v", tt.args.src, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_mapTypeToNullType(t *testing.T) {
-	type args struct {
-		t string
-	}
-	tests := []struct {
-		name string
-		args args
-		want reflect.Type
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := mapTypeToNullType(tt.args.t); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("mapTypeToNullType(%v) = %v, want %v", tt.args.t, got, tt.want)
-			}
-		})
-	}
-}
-
-func Test_extractValue(t *testing.T) {
-	type args struct {
-		dst reflect.Value
-		src reflect.Value
-	}
-	tests := []struct {
-		name    string
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := extractValue(tt.args.dst, tt.args.src); (err != nil) != tt.wantErr {
-				t.Errorf("extractValue(%v, %v) error = %v, wantErr %v", tt.args.dst, tt.args.src, err, tt.wantErr)
-			}
-		})
-	}
-}
-
 func TestDatabaseClient_OpenPoolSessionGroupTx(t *testing.T) {
 	type args struct {
 		ctx     context.Context
-		session *types.UserSession
+		session *types.ConcurrentUserSession
 	}
 	tests := []struct {
 		name    string
 		dc      *DatabaseClient
 		args    args
 		want    *PoolTx
-		want1   *types.UserSession
+		want1   *types.ConcurrentUserSession
 		wantErr bool
 	}{
 		// TODO: Add test cases.
@@ -344,7 +242,7 @@ func TestDatabaseClient_OpenPoolSessionGroupTx(t *testing.T) {
 func TestDatabaseClient_OpenPoolSessionTx(t *testing.T) {
 	type args struct {
 		ctx     context.Context
-		session *types.UserSession
+		session *types.ConcurrentUserSession
 	}
 	tests := []struct {
 		name    string
@@ -394,7 +292,7 @@ func TestDatabaseClient_ClosePoolSessionTx(t *testing.T) {
 func TestPoolTx_SetSession(t *testing.T) {
 	type args struct {
 		ctx     context.Context
-		session *types.UserSession
+		session *types.ConcurrentUserSession
 	}
 	tests := []struct {
 		name    string
@@ -437,7 +335,7 @@ func TestPoolTx_UnsetSession(t *testing.T) {
 func TestNewGroupDbSession(t *testing.T) {
 	type args struct {
 		pool    *pgxpool.Pool
-		session *types.UserSession
+		session *types.ConcurrentUserSession
 	}
 	tests := []struct {
 		name string
@@ -617,51 +515,6 @@ func TestDbSession_SessionSendBatch(t *testing.T) {
 
 			if !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("DbSession.SessionSendBatch(%v, %v) = %v, want %v", tt.args.ctx, tt.args.batch, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestDatabase_QueryRows(t *testing.T) {
-	type args struct {
-		ctx              context.Context
-		tx               *PoolTx
-		protoStructSlice interface{}
-		query            string
-		args             []interface{}
-	}
-	tests := []struct {
-		name    string
-		db      *Database
-		args    args
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if err := tt.db.QueryRows(tt.args.ctx, tt.args.tx, tt.args.protoStructSlice, tt.args.query, tt.args.args...); (err != nil) != tt.wantErr {
-				t.Errorf("Database.QueryRows(%v, %v, %v, %v, %v) error = %v, wantErr %v", tt.args.ctx, tt.args.tx, tt.args.protoStructSlice, tt.args.query, tt.args.args, err, tt.wantErr)
-			}
-		})
-	}
-}
-
-func Test_mapIntTypeToNullType(t *testing.T) {
-	type args struct {
-		t uint32
-	}
-	tests := []struct {
-		name string
-		args args
-		want reflect.Type
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := mapIntTypeToNullType(tt.args.t); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("mapIntTypeToNullType(%v) = %v, want %v", tt.args.t, got, tt.want)
 			}
 		})
 	}
