@@ -10,6 +10,8 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"runtime/debug"
+	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -17,6 +19,30 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
+
+type UnixResponseWriter struct {
+	body       []byte
+	statusCode int
+	header     http.Header
+}
+
+func NewUnixResponseWriter() *UnixResponseWriter {
+	return &UnixResponseWriter{
+		header: http.Header{},
+	}
+}
+
+func (w *UnixResponseWriter) Write(b []byte) (int, error) {
+	return 0, nil
+}
+
+func (w *UnixResponseWriter) Header() http.Header {
+	return w.header
+}
+
+func (w *UnixResponseWriter) WriteHeader(statusCode int) {
+	w.statusCode = statusCode
+}
 
 func (a *API) InitUnixServer(unixPath string) {
 	err := os.Remove(unixPath)
@@ -53,10 +79,40 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 	defer func() {
 		if p := recover(); p != nil {
 			util.ErrorLog.Println(fmt.Sprint(p))
-		} else if deferredError != nil {
-			util.ErrorLog.Println(deferredError)
-			fmt.Fprint(conn, fmt.Sprintf(`{ "success": false, "reason": "%s" }`, deferredError))
 		}
+	}()
+
+	w := NewUnixResponseWriter()
+
+	defer func() {
+		if p := recover(); p != nil {
+			// ErrCheck handled errors will already have a trace
+			// If there is no trace file hint, print the full stack
+			var sb strings.Builder
+			if authEvent != nil {
+				sb.WriteString("Backchannel: ")
+				sb.WriteString(authEvent.WebhookName)
+				sb.WriteByte(' ')
+				sb.WriteString(fmt.Sprint(p))
+			}
+			errStr := sb.String()
+
+			util.RequestError(w, errStr, util.DEFAULT_IGNORED_PROTO_FIELDS, authEvent)
+			fmt.Fprint(conn, `{ "success": false, "reason": "UNIX_PANIC" }`)
+
+			if !strings.Contains(errStr, ".go:") {
+				util.ErrorLog.Println(string(debug.Stack()))
+			}
+		}
+
+		if deferredError != nil {
+			util.ErrorLog.Println(deferredError)
+		}
+
+		if authEvent != nil && authEvent.GetUserId() != "" {
+			clients.GetGlobalWorkerPool().CleanUpClientMapping(authEvent.GetUserId())
+		}
+
 	}()
 
 	scanner := bufio.NewScanner(conn)
@@ -83,36 +139,14 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		Timezone:  authEvent.Timezone,
 	})
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	ctx, cancel := context.WithTimeout(fakeReq.Context(), 5*time.Second)
 	defer cancel()
 
-	tx, err := a.Handlers.Database.DatabaseClient.Pool.Begin(ctx)
-	if err != nil {
-		deferredError = util.ErrCheck(err)
-		return
-	}
-	defer tx.Rollback(ctx)
-
-	poolTx := &clients.PoolTx{
-		Tx: tx,
-	}
-
-	workerSession := types.NewConcurrentUserSession(&types.UserSession{
-		UserSub: "worker",
-	})
-
-	err = poolTx.SetSession(ctx, workerSession)
-	if err != nil {
-		deferredError = util.ErrCheck(err)
-		return
-	}
-
 	reqInfo := handlers.ReqInfo{
-		Ctx:     fakeReq.Context(),
+		Ctx:     ctx,
 		W:       nil,
 		Req:     fakeReq,
 		Session: session,
-		Tx:      poolTx,
 	}
 
 	result, err := a.Handlers.Functions["AuthWebhook_"+authEvent.WebhookName](reqInfo, authEvent)
@@ -127,17 +161,5 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		return
 	}
 
-	err = poolTx.UnsetSession(ctx)
-	if err != nil {
-		deferredError = util.ErrCheck(err)
-		return
-	}
-
-	err = poolTx.Commit(ctx)
-	if err != nil {
-		deferredError = util.ErrCheck(err)
-		return
-	}
-
-	fmt.Fprint(conn, authResponse.Value)
+	fmt.Fprint(conn, authResponse.GetValue())
 }

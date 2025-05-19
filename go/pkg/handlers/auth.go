@@ -9,7 +9,28 @@ import (
 )
 
 func (h *Handlers) AuthWebhook_REGISTER(info ReqInfo, authEvent *types.AuthEvent) (*types.AuthWebhookResponse, error) {
-	_, err := h.PostUserProfile(info, &types.PostUserProfileRequest{
+	tx, err := h.Database.DatabaseClient.Pool.Begin(info.Ctx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	defer tx.Rollback(info.Ctx)
+
+	poolTx := &clients.PoolTx{
+		Tx: tx,
+	}
+
+	workerSession := types.NewConcurrentUserSession(&types.UserSession{
+		UserSub: "worker",
+	})
+
+	err = poolTx.SetSession(info.Ctx, workerSession)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	info.Tx = poolTx
+
+	_, err = h.PostUserProfile(info, &types.PostUserProfileRequest{
 		FirstName: authEvent.FirstName,
 		LastName:  authEvent.LastName,
 		Username:  authEvent.Email,
@@ -32,52 +53,55 @@ func (h *Handlers) AuthWebhook_REGISTER(info ReqInfo, authEvent *types.AuthEvent
 		}
 	}
 
+	err = poolTx.UnsetSession(info.Ctx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = poolTx.Commit(info.Ctx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	return &types.AuthWebhookResponse{Value: `{ "success": true }`}, nil
 }
 
-func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(info ReqInfo, authEvent *types.AuthEvent) (*types.AuthWebhookResponse, error) {
+// Validating registration is done by taking the group code on the registration screen
+// then using it to fetch the basic details about the group which are used during
+// registration in keycloak (limiting email domains, joining group). The implication is
+// a user is joining an existing group, so we need to get the *external_id of the default_role_id*
+// of the group, as roles are "roles" in our app, but also "groups" in keycloak.
+func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(info ReqInfo, authEvent *types.AuthEvent) (msg *types.AuthWebhookResponse, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			if err, ok := r.(error); ok {
+				util.ErrorLog.Println(util.ErrCheck(err))
+			}
+			msg = &types.AuthWebhookResponse{Value: `{ "success": false, "reason": "BAD_GROUP" }`}
+		}
+	}()
 
-	group := &types.IGroup{}
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT id, default_role_id, name, allowed_domains
-		FROM dbtable_schema.groups
+	batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
+
+	groupLookup := util.BatchQueryRow[types.IGroup](batch, `
+		SELECT eg."displayName", eg."allowedDomains", egr."externalId"
+		FROM dbview_schema.enabled_groups eg
+		JOIN dbview_schema.enabled_group_roles egr ON egr."groupId" = eg.id AND egr."roleId" = eg."defaultRoleId"
 		WHERE code = $1
-	`, authEvent.GroupCode).Scan(&group.Id, &group.DefaultRoleId, &group.Name, &group.AllowedDomains)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	`, authEvent.GroupCode)
 
-	if group.Name == "" {
-		return &types.AuthWebhookResponse{Value: `{ "success": false, "reason": "invalid group code" }`}, nil
-	}
+	batch.Send(info.Ctx)
 
-	info.Session.SetGroupId(group.GetId())
-	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
-
-	var kcRoleSubgroupExternalId string
-
-	row, done, err := ds.SessionBatchQueryRow(info.Ctx, `
-		SELECT external_id
-		FROM dbtable_schema.group_roles
-		WHERE group_id = $1 AND role_id = $2
-	`, group.GetId(), group.GetDefaultRoleId())
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	defer done()
-
-	err = row.Scan(&kcRoleSubgroupExternalId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	group := *groupLookup
 
 	var authRes strings.Builder
-	authRes.WriteString(`{ "success": true, "name": "`)
-	authRes.WriteString(group.Name)
+	authRes.WriteString(`{ "success": true, "groupName": "`)
+	authRes.WriteString(group.GetDisplayName())
 	authRes.WriteString(`", "allowedDomains": "`)
-	authRes.WriteString(group.AllowedDomains)
-	authRes.WriteString(`", "id": "`)
-	authRes.WriteString(kcRoleSubgroupExternalId)
+	authRes.WriteString(group.GetAllowedDomains())
+	authRes.WriteString(`", "roleGroupId": "`)
+	// using group for convenience but this is the *external id of the group's default role*
+	authRes.WriteString(group.GetExternalId())
 	authRes.WriteString(`" }`)
 
 	return &types.AuthWebhookResponse{Value: authRes.String()}, nil

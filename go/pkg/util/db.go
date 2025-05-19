@@ -112,7 +112,8 @@ type Batchable struct {
 	RoleBits     int64
 }
 
-// Open a batch with the intention of adding multiple queries
+// Open a batch with the intention of adding multiple queries or doing queries under a different
+// user or group context
 func NewBatchable(pool *pgxpool.Pool, sub, groupId string, roleBits int64) *Batchable {
 	b := &Batchable{
 		Sub:      sub,

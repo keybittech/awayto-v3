@@ -111,7 +111,6 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 		}
 
 		if refresh {
-
 			ctx := req.Context()
 
 			subGroupPath := sessionSubGroups[0]

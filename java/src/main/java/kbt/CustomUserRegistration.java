@@ -13,7 +13,6 @@ import org.keycloak.forms.login.LoginFormsProvider;
 import org.keycloak.http.HttpRequest;
 import org.keycloak.models.GroupModel;
 import org.keycloak.models.KeycloakSession;
-import org.keycloak.models.UserModel;
 import org.keycloak.models.utils.FormMessage;
 import org.keycloak.representations.idm.AbstractUserRepresentation;
 import org.keycloak.userprofile.UserProfile;
@@ -52,16 +51,14 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     String groupCode = queryParams.getFirst("groupCode");
     Boolean failedValidation = groupCode == null;
 
-    if (failedValidation) {
-      try {
-        groupCode = request != null ? request.getDecodedFormParameters().getFirst("groupCode") : null;
-      } catch (Exception e) {
-      }
+    if (failedValidation && request != null) {
+      groupCode = request.getDecodedFormParameters().getFirst("groupCode");
     }
 
     Boolean suppliedCode = groupCode != null && groupCode.length() > 0;
 
-    if (suppliedCode) {
+    Boolean invalidFlag = session.getAttribute("invalidGroupFlag", Boolean.class);
+    if (suppliedCode && invalidFlag != null && !invalidFlag) {
       String groupName = (String) session.getAttribute("groupName");
       String allowedDomains = (String) session.getAttribute("allowedDomains");
 
@@ -73,8 +70,8 @@ public class CustomUserRegistration extends RegistrationUserCreation {
             registrationValidationPayload);
 
         if (registrationValidationResponse.getBoolean("success")) {
-          String groupId = registrationValidationResponse.getString("id");
-          groupName = registrationValidationResponse.getString("name").replaceAll("_", " ");
+          String groupId = registrationValidationResponse.getString("roleGroupId");
+          groupName = registrationValidationResponse.getString("groupName");
           allowedDomains = registrationValidationResponse.getString("allowedDomains").replaceAll(",", ", ");
           session.setAttribute("groupId", groupId);
           session.setAttribute("groupCode", groupCode);
@@ -100,7 +97,6 @@ public class CustomUserRegistration extends RegistrationUserCreation {
       session.removeAttribute("groupName");
       session.removeAttribute("allowedDomains");
     }
-
   }
 
   @Override
@@ -133,21 +129,22 @@ public class CustomUserRegistration extends RegistrationUserCreation {
             JSONObject registrationValidationResponse = BackchannelAuth.sendUnixMessage("REGISTER_VALIDATE",
                 registrationValidationPayload);
 
-            if (false == registrationValidationResponse.getBoolean("success")) {
+            if (registrationValidationResponse.getBoolean("success")) {
 
-              String reason = registrationValidationResponse.getString("reason");
+              String groupId = registrationValidationResponse.getString("roleGroupId");
 
-              if (reason.contains("BAD_GROUP")) {
-                validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
+              if (context.getRealm().getGroupById(groupId) != null) { // If this is null it'll get caught later on
+                allowedDomains = registrationValidationResponse.getString("allowedDomains");
+                session.setAttribute("groupId", groupId);
+                session.setAttribute("groupCode", groupCode);
+                session.setAttribute("groupName", registrationValidationResponse.getString("groupName"));
+                session.setAttribute("allowedDomains", allowedDomains);
+                session.setAttribute("invalidGroupFlag", false);
+              } else {
+                session.setAttribute("invalidGroupFlag", true);
               }
-            } else {
-              String groupId = registrationValidationResponse.getString("id");
-              groupName = registrationValidationResponse.getString("name");
-              allowedDomains = registrationValidationResponse.getString("allowedDomains");
-              session.setAttribute("groupId", groupId);
-              session.setAttribute("groupCode", groupCode);
-              session.setAttribute("groupName", groupName);
-              session.setAttribute("allowedDomains", allowedDomains);
+            } else if (registrationValidationResponse.getString("reason").contains("BAD_GROUP")) {
+              validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
             }
           }
         }
@@ -156,16 +153,15 @@ public class CustomUserRegistration extends RegistrationUserCreation {
       if (allowedDomains != null) {
         List<String> domains = List.of(allowedDomains.split(","));
         if (email == null
-            || email.contains("@") && allowedDomains.length() > 0 && !domains.contains(email.split("@")[1])) {
+            || email.contains("@") && allowedDomains.length() > 0 &&
+                !domains.contains(email.split("@")[1])) {
           validationErrors.add(new FormMessage("email", "invalidEmail"));
         }
       } else if (suppliedCode) {
         validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
       }
 
-      UserModel userWithEmail = context.getSession().users().getUserByEmail(context.getRealm(), email);
-
-      if (userWithEmail != null) {
+      if (context.getSession().users().getUserByEmail(context.getRealm(), email) != null) {
         validationErrors.add(new FormMessage("email", "emailInUse"));
       }
 
@@ -174,8 +170,6 @@ public class CustomUserRegistration extends RegistrationUserCreation {
         context.validationError(formData, validationErrors);
         return;
       }
-
-      // context.getEvent().detail("group_code", groupCode);
     }
 
     super.validate(context);
@@ -210,5 +204,4 @@ public class CustomUserRegistration extends RegistrationUserCreation {
 
     BackchannelAuth.sendUnixMessage("REGISTER", registrationSuccessPayload);
   }
-
 }
