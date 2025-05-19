@@ -43,6 +43,7 @@ service ServiceService {
     option (google.api.http) = {
       delete: "/v1/services/{id}"
     };
+    option (use_tx) = true;
   }
 
   rpc DisableService(DisableServiceRequest) returns (DisableServiceResponse) {

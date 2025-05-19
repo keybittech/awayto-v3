@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"database/sql"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -10,49 +9,50 @@ import (
 )
 
 func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest) (*types.PostGroupFormResponse, error) {
-	groupFormExists := util.BatchQueryRow[sql.NullBool](info.Batch, `
+	var formExists bool
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT EXISTS (
 			SELECT 1
 			FROM dbtable_schema.forms f
 			LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = f.id
 			WHERE f.name = $1 AND gf.group_id = $2
 		)
-	`, data.Name, info.Session.GetGroupId())
+	`, data.Name, info.Session.GetGroupId()).Scan(&formExists)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	info.Batch.Send(info.Ctx)
-
-	if (*groupFormExists).Bool {
+	if formExists {
 		return nil, util.ErrCheck(util.UserError("A form with this name already exists."))
 	}
 
-	info.Batch.Reset()
+	// Group forms should be owned by the group user
+	info.Session.SetUserSub(info.Session.GetGroupSub())
 
-	groupInfo := ReqInfo{
-		Ctx: info.Ctx,
-		Session: types.NewConcurrentUserSession(&types.UserSession{
-			UserSub: info.Session.GetGroupSub(),
-			GroupId: info.Session.GetGroupId(),
-		}),
-		Batch: util.NewBatchable(h.Database.DatabaseClient.Pool, info.Session.GetGroupSub(), info.Session.GetGroupId(), info.Session.GetRoleBits()),
+	formResp, err := h.PostForm(info, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()})
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
-	formResp, _ := h.PostForm(groupInfo, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()})
-
-	h.PostFormVersion(info, &types.PostFormVersionRequest{
+	_, err = h.PostFormVersion(info, &types.PostFormVersionRequest{
 		Name: data.GetGroupForm().GetForm().GetName(),
 		Version: &types.IProtoFormVersion{
 			FormId: formResp.Id,
 			Form:   data.GetGroupForm().GetForm().GetVersion().GetForm(),
 		},
 	})
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	util.BatchExec(info.Batch, `
+	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.group_forms (group_id, form_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (group_id, form_id) DO NOTHING
 	`, info.Session.GetGroupId(), formResp.Id, info.Session.GetGroupSub())
-
-	info.Batch.Send(info.Ctx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
 

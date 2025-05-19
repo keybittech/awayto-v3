@@ -1,6 +1,8 @@
 syntax = "proto3";
 package types;
 
+import "util.proto";
+
 import "google/protobuf/struct.proto";
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
@@ -13,39 +15,35 @@ service FormService {
       post: "/v1/forms"
       body: "*"
     };
+    option (use_tx) = true;
   }
-
   rpc PostFormVersion(PostFormVersionRequest) returns (PostFormVersionResponse) {
     option (google.api.http) = {
       post: "/v1/forms/{formId}/versions"
       body: "*"
     };
+    option (use_tx) = true;
   }
-
   rpc PatchForm(PatchFormRequest) returns (PatchFormResponse) {
     option (google.api.http) = {
       patch: "/v1/forms/{id}"
     };
   }
-
   rpc GetForms(GetFormsRequest) returns (GetFormsResponse) {
     option (google.api.http) = {
       get: "/v1/forms"
     };
   }
-
   rpc GetFormById(GetFormByIdRequest) returns (GetFormByIdResponse) {
     option (google.api.http) = {
       get: "/v1/forms/{id}"
     };
   }
-
   rpc DeleteForm(DeleteFormRequest) returns (DeleteFormResponse) {
     option (google.api.http) = {
       delete: "/v1/forms/{id}"
     };
   }
-
   rpc DisableForm(DisableFormRequest) returns (DisableFormResponse) {
     option (google.api.http) = {
       patch: "/v1/forms/{id}/disable"

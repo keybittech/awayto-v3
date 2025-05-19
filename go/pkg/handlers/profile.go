@@ -123,7 +123,7 @@ func (h *Handlers) ActivateProfile(info ReqInfo, data *types.ActivateProfileRequ
 		WHERE sub = $1
 	`, info.Session.GetUserSub(), time.Now())
 	if err != nil {
-		util.ErrCheck(err)
+		return nil, util.ErrCheck(err)
 	}
 
 	return &types.ActivateProfileResponse{Success: true}, nil

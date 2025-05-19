@@ -41,15 +41,18 @@ func (h *Handlers) GetGroupServices(info ReqInfo, data *types.GetGroupServicesRe
 func (h *Handlers) DeleteGroupService(info ReqInfo, data *types.DeleteGroupServiceRequest) (*types.DeleteGroupServiceResponse, error) {
 	serviceIds := strings.Split(data.Ids, ",")
 
-	util.BatchExec(info.Batch, `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.group_services
 		WHERE group_id = $1 AND service_id = ANY($2)
 	`, info.Session.GetGroupId(), pq.Array(serviceIds))
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	info.Batch.Send(info.Ctx)
-	info.Batch.Reset()
-
-	h.DeleteService(info, &types.DeleteServiceRequest{Ids: data.Ids})
+	_, err = h.DeleteService(info, &types.DeleteServiceRequest{Ids: data.Ids})
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/services")
 

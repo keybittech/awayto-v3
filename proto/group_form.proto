@@ -2,6 +2,7 @@ syntax = "proto3";
 package types;
 
 import "form.proto";
+import "util.proto";
 
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
@@ -14,6 +15,7 @@ service GroupFormService {
       post: "/v1/group/forms"
       body: "*"
     };
+    option (use_tx) = true;
   };
   rpc PostGroupFormVersion(PostGroupFormVersionRequest) returns (PostGroupFormVersionResponse) {
     option (google.api.http) = {

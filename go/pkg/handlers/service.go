@@ -149,15 +149,12 @@ func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdReques
 func (h *Handlers) DeleteService(info ReqInfo, data *types.DeleteServiceRequest) (*types.DeleteServiceResponse, error) {
 	serviceIds := strings.Split(data.GetIds(), ",")
 
-	util.BatchExec(info.Batch, `
+	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.services
 		WHERE id = ANY($1)
 	`, pq.Array(serviceIds))
-
-	info.Batch.Send(info.Ctx)
-
-	for _, serviceId := range serviceIds {
-		h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"service/"+serviceId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"service")

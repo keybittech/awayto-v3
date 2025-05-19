@@ -82,6 +82,8 @@ message IGroup {
   bool isValid = 21;
   bool needCheckName = 22;
   bool checkingName = 23;
+
+  option (types.mutex) = true;
 }
 
 message IGroupRoleAuthAction {

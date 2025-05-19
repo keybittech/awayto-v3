@@ -28,6 +28,7 @@ service GroupServiceService {
     option (google.api.http) = {
       delete: "/v1/group/services/{ids}"
     };
+    option (use_tx) = true;
   }
 }
 

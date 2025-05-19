@@ -67,7 +67,6 @@ export GO_HANDLERS_REGISTER=$(GO_API_DIR)/register.go
 # GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
 
 PROTO_FILES:=$(wildcard proto/*.proto)
-PROTO_GEN_MOD=$(GO_GEN_DIR)/go.mod
 PROTO_GEN_FILES:=$(patsubst proto/%.proto,$(GO_GEN_DIR)/%.pb.go,$(PROTO_FILES))
 PROTO_GEN_MUTEX=$(PROJECT_DIR)/working/protoc-gen-mutex
 PROTO_GEN_MUTEX_FILES:=$(patsubst proto/%.proto,$(GO_GEN_DIR)/%_mutex.pb.go,$(PROTO_FILES))
@@ -259,19 +258,18 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 $(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
 	go build -C $(GO_PROTO_MUTEX_CMD_DIR) -o $@ .
 
-$(PROTO_GEN_MOD) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
+$(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX_FILES): $(PROTO_FILES) $(PROTO_GEN_MUTEX)
 	@mkdir -p $(@D) $(GO_GEN_DIR)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
 		--go_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
+		$(PROTO_FILES)
+	protoc --proto_path=proto \
 		--plugin=protoc-gen-mutex=$(PROTO_GEN_MUTEX) \
 		--mutex_out=$(GO_GEN_DIR) \
 		--mutex_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
-	if [ ! -f "$(PROTO_GEN_MOD)" ]; then \
-		cd $(GO_GEN_DIR) && go mod init ${PROJECT_REPO}/$(GO_GEN_DIR) && go mod tidy && cd -; \
-	fi
 
 $(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go
 	go run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
@@ -293,13 +291,6 @@ go_dev:
 .PHONY: go_tidy
 go_tidy:
 	cd $(GO_SRC) && go mod tidy
-	cd $(GO_PROTO_MUTEX_CMD_DIR) && go mod tidy
-	cd $(GO_HANDLERS_REGISTER_CMD_DIR) && go mod tidy
-	cd $(GO_INTEGRATIONS_DIR) && go mod tidy
-	cd $(GO_API_DIR) && go mod tidy
-	cd $(GO_CLIENTS_DIR) && go mod tidy
-	cd $(GO_HANDLERS_DIR) && go mod tidy
-	cd $(GO_UTIL_DIR) && go mod tidy
 
 .PHONY: go_sec
 go_sec:
@@ -308,8 +299,6 @@ go_sec:
 .PHONY: go_sec_all
 go_sec_all:
 	cd $(GO_SRC) && gosec ./...
-
-# cd $(GO_INTERFACES_DIR) && go mod tidy
 
 .PHONY: go_watch
 go_watch:

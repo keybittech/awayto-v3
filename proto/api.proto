@@ -1,6 +1,8 @@
 syntax = "proto3";
 package types;
 
+import "util.proto";
+
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 message CachedGroup {
@@ -10,10 +12,14 @@ message CachedGroup {
   string sub = 4;
   string name = 5;
   bool ai = 6;
+
+  option (types.mutex) = true;
 }
 
 message CachedSubGroup {
   string groupPath = 1;
   string externalId = 2;
   string name = 3;
+
+  option (types.mutex) = true;
 }

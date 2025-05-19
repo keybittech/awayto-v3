@@ -8,15 +8,17 @@ import (
 )
 
 func (h *Handlers) PostForm(info ReqInfo, data *types.PostFormRequest) (*types.PostFormResponse, error) {
-	formInsert := util.BatchQueryRow[types.ILookup](info.Batch, `
+	var formId string
+	err := info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.forms (name, created_on, created_sub)
 		VALUES ($1, $2, $3::uuid)
 		RETURNING id
-	`, data.Form.Name, time.Now(), info.Session.GetUserSub())
+	`, data.Form.Name, time.Now(), info.Session.GetUserSub()).Scan(&formId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	info.Batch.Send(info.Ctx)
-
-	return &types.PostFormResponse{Id: (*formInsert).Id}, nil
+	return &types.PostFormResponse{Id: formId}, nil
 }
 
 func (h *Handlers) PostFormVersion(info ReqInfo, data *types.PostFormVersionRequest) (*types.PostFormVersionResponse, error) {
@@ -25,21 +27,26 @@ func (h *Handlers) PostFormVersion(info ReqInfo, data *types.PostFormVersionRequ
 		return nil, util.ErrCheck(err)
 	}
 
-	versionInsert := util.BatchQueryRow[types.ILookup](info.Batch, `
+	var versionId string
+	err = info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.form_versions (form_id, form, created_on, created_sub)
 		VALUES ($1::uuid, $2::jsonb, $3, $4::uuid)
 		RETURNING id
-	`, data.Version.FormId, formJson, time.Now(), info.Session.GetUserSub())
+	`, data.Version.FormId, formJson, time.Now(), info.Session.GetUserSub()).Scan(&versionId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	util.BatchExec(info.Batch, `
+	_, err = info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.forms
 		SET name = $1, updated_on = $2, updated_sub = $3
 		WHERE id = $4
 	`, data.Name, time.Now(), info.Session.GetUserSub(), data.Version.FormId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	info.Batch.Send(info.Ctx)
-
-	return &types.PostFormVersionResponse{Id: (*versionInsert).Id}, nil
+	return &types.PostFormVersionResponse{Id: versionId}, nil
 }
 
 func (h *Handlers) PatchForm(info ReqInfo, data *types.PatchFormRequest) (*types.PatchFormResponse, error) {
