@@ -10,7 +10,7 @@ SELECT
   u.email,
   u.locked,
   u.active,
-  u.created_on::TEXT as "createdOn",
+  u.created_on as "createdOn",
   u.updated_on as "updatedOn",
   u.enabled
 FROM
@@ -23,7 +23,7 @@ OR REPLACE VIEW dbview_schema.enabled_roles AS
 SELECT
   id,
   name,
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.roles
 WHERE
@@ -36,7 +36,7 @@ SELECT
   role_id as "roleId",
   user_id as "userId",
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.user_roles
 WHERE
@@ -54,7 +54,7 @@ SELECT
   external_id as "externalId",
   display_name as "displayName",
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn",
+  created_on as "createdOn",
   purpose,
   ai
 FROM
@@ -68,7 +68,7 @@ SELECT
   id,
   user_id as "userId",
   group_id as "groupId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.group_users
 WHERE
@@ -81,7 +81,7 @@ SELECT
   role_id as "roleId",
   group_id as "groupId",
   external_id as "externalId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.group_roles
 WHERE
@@ -92,7 +92,7 @@ OR REPLACE VIEW dbview_schema.enabled_file_types AS
 SELECT
   id,
   name,
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.file_types
 WHERE
@@ -106,7 +106,7 @@ SELECT
   f.name,
   f.mime_type as "mimeType",
   f.created_sub as "createdSub",
-  f.created_on::TEXT as "createdOn"
+  f.created_on as "createdOn"
 FROM
   dbtable_schema.files f
 WHERE
@@ -119,7 +119,7 @@ SELECT
   gf.file_id as "fileId",
   f.name,
   gf.group_id as "groupId",
-  gf.created_on::TEXT as "createdOn"
+  gf.created_on as "createdOn"
 FROM
   dbtable_schema.group_files gf
   JOIN dbview_schema.enabled_files f ON f.id = gf.file_id
@@ -132,7 +132,7 @@ SELECT
   un.id,
   un.parent_uuid as "parentUuid",
   un.note,
-  un.created_on::TEXT as "createdOn"
+  un.created_on as "createdOn"
 FROM
   dbtable_schema.uuid_notes un
 WHERE

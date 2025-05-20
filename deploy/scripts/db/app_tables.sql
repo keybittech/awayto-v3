@@ -186,8 +186,8 @@ VALUES
 CREATE TABLE dbtable_schema.schedules (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
   name VARCHAR (50),
-  start_time TIMESTAMPTZ,
-  end_time TIMESTAMPTZ,
+  start_date TIMESTAMPTZ,
+  end_date TIMESTAMPTZ,
   timezone VARCHAR(128) NOT NULL,
   schedule_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),
   bracket_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),

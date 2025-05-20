@@ -49,53 +49,53 @@ import (
 
 var (
 	appGroupSchedulesRole        = int64(types.SiteRoles_APP_GROUP_SCHEDULES)
-	startTimeRequiredWithEndTime = util.UserError("A start time must be provided when using end time.")
-	endTimeMustBeAfterStartTime  = util.UserError("End time must be after start time.")
+	startDateRequiredWithEndDate = util.UserError("A start date must be provided when using end date.")
+	endDateMustBeAfterStartDate  = util.UserError("End time must be after start time.")
 	onlyOneMasterScheduleError   = util.UserError("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it.")
 	zeroTime                     time.Time
 )
 
-func parseScheduleTimeRange(start, end string) (*time.Time, *time.Time, error) {
+func parseScheduleDateRange(start, end string) (*time.Time, *time.Time, error) {
 	var err error
 
 	if start == "" {
 		if end != "" {
-			return nil, nil, util.ErrCheck(startTimeRequiredWithEndTime)
+			return nil, nil, util.ErrCheck(startDateRequiredWithEndDate)
 		}
 		return nil, nil, nil
 	}
 
-	startTime, err := time.Parse(time.RFC3339, start)
+	startDate, err := time.Parse(time.RFC3339, start)
 	if err != nil {
 		return nil, nil, util.ErrCheck(err)
 	}
 
 	if end != "" {
-		endTime, err := time.Parse(time.RFC3339, end)
+		endDate, err := time.Parse(time.RFC3339, end)
 		if err != nil {
 			return nil, nil, util.ErrCheck(err)
 		}
 
-		if endTime.In(time.UTC).Truncate(24 * time.Hour).Before(startTime.In(time.UTC).Truncate(24 * time.Hour)) {
-			return nil, nil, util.ErrCheck(endTimeMustBeAfterStartTime)
+		if endDate.In(time.UTC).Truncate(24 * time.Hour).Before(startDate.In(time.UTC).Truncate(24 * time.Hour)) {
+			return nil, nil, util.ErrCheck(endDateMustBeAfterStartDate)
 		}
 
-		return &startTime, &endTime, nil
+		return &startDate, &endDate, nil
 	}
 
-	return &startTime, nil, nil
+	return &startDate, nil, nil
 }
 
 func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (*types.PostScheduleResponse, error) {
 	var scheduleId string
 
 	var insertScheduleQuery = `
-		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_time, end_time, timezone)
+		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_date, end_date, timezone)
 		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9)
 		RETURNING id
 	`
 
-	startTime, endTime, err := parseScheduleTimeRange(data.StartTime, data.EndTime)
+	startDate, endDate, err := parseScheduleDateRange(data.StartDate, data.EndDate)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -107,8 +107,8 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 		data.ScheduleTimeUnitId,
 		data.BracketTimeUnitId,
 		data.SlotTimeUnitId,
-		startTime,
-		endTime,
+		startDate,
+		endDate,
 		info.Session.GetTimezone(),
 	}
 
@@ -198,16 +198,16 @@ func (h *Handlers) PostScheduleBrackets(info ReqInfo, data *types.PostScheduleBr
 }
 
 func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest) (*types.PatchScheduleResponse, error) {
-	startTime, endTime, err := parseScheduleTimeRange(data.Schedule.StartTime, data.Schedule.EndTime)
+	startDate, endDate, err := parseScheduleDateRange(data.Schedule.StartDate, data.Schedule.EndDate)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.schedules
-		SET name = $2, start_time = $3, end_time = $4, updated_sub = $5, updated_on = $6
+		SET name = $2, start_date= $3, end_date = $4, updated_sub = $5, updated_on = $6
 		WHERE id = $1
-	`, data.Schedule.Id, data.Schedule.Name, startTime, endTime, info.Session.GetUserSub(), time.Now())
+	`, data.Schedule.Id, data.Schedule.Name, startDate, endDate, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
 
@@ -228,7 +228,7 @@ func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (
 
 func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequest) (*types.GetScheduleByIdResponse, error) {
 	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
-		SELECT id, name, timezone, "startTime", "endTime", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", brackets
+		SELECT id, name, timezone, "startDate", "endDate", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", brackets
 		FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.Id)

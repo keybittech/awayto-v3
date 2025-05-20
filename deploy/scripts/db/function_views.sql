@@ -3,8 +3,8 @@ SELECT
   q.group_id as "groupId",
   brac.schedule_id as "userScheduleId",
   q.id as "quoteId",
-  q.slot_date::TEXT as "slotDate",
-  sbs.start_time::TEXT as "startTime",
+  q.slot_date as "slotDate",
+  sbs.start_time as "startTime",
   serv.name as "serviceName",
   t.name as "tierName",
   rep.*

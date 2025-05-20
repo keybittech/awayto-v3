@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"os"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
@@ -61,6 +62,29 @@ func doAndRead(req *http.Request) ([]byte, error) {
 	return body, nil
 }
 
+var (
+	sharedHttpClient *http.Client
+	once             sync.Once
+)
+
+func getHttpClient() *http.Client {
+	once.Do(func() {
+		transport := &http.Transport{
+			TLSClientConfig: &tls.Config{
+				InsecureSkipVerify: true,
+			},
+			MaxIdleConns:        100,
+			MaxIdleConnsPerHost: 100,
+			IdleConnTimeout:     90 * time.Second,
+		}
+		sharedHttpClient = &http.Client{
+			Transport: transport,
+			Timeout:   30 * time.Second,
+		}
+	})
+	return sharedHttpClient
+}
+
 func apiRequest(token, method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 	reqURL := "https://localhost:7443" + path
 	if queryParams != nil && len(queryParams) > 0 {
@@ -75,6 +99,7 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 	if body != nil {
 		reqBody = bytes.NewBuffer(body)
 	}
+
 	req, err := http.NewRequest(method, reqURL, reqBody)
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
@@ -86,15 +111,11 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 	req.Header.Set("Accept", "application/json")
 	req.Header.Add("X-TZ", "America/Los_Angeles")
 
-	req.Header.Add("Authorization", "Bearer "+token)
-
-	client := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
+	if token != "" {
+		req.Header.Add("Authorization", "Bearer "+token)
 	}
+
+	client := getHttpClient()
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -102,20 +123,18 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 	}
 	defer resp.Body.Close()
 
-	println("integration request", resp.StatusCode, method, reqURL)
-
-	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return fmt.Errorf("unsuccessful api request status code: %d", resp.StatusCode)
-	}
-
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("error reading response body: %w", err)
 	}
 
+	if resp.StatusCode < 200 || resp.StatusCode > 299 {
+		return fmt.Errorf("unsuccessful api request status code: %d, body: %s", resp.StatusCode, string(respBody))
+	}
+
 	if len(respBody) > 0 && responseObj != nil {
 		if err := protojson.Unmarshal(respBody, responseObj); err != nil {
-			return fmt.Errorf("error unmarshaling into responseObj: %w", err)
+			return fmt.Errorf("error unmarshaling response body '%s' into responseObj: %w", string(respBody), err)
 		}
 	}
 

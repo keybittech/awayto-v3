@@ -40,6 +40,7 @@ service FileService {
       post: "/v1/files"
       body: "*"
     };
+    option (use_tx) = true;
   }
   
   rpc PatchFile(PatchFileRequest) returns (PatchFileResponse) {

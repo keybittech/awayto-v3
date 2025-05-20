@@ -121,9 +121,9 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     </Alert>
   }
 
-  const { startTime, endTime } = groupSchedule.schedule || {};
+  const { startDate, endDate } = groupSchedule.schedule || {};
   const hasForms = Boolean(serviceForm?.id || tierForm?.id);
-  const scheduleInactive = !startTime || dayjs().isBefore(dayjs(startTime));
+  const scheduleInactive = !startDate || dayjs().isBefore(dayjs(startDate));
 
   return <>
     <Card variant="outlined">
@@ -133,7 +133,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
       />
 
       <Grid container p={2}>
-        <GroupScheduleSelect variant="standard" helperText={!scheduleInactive && `Start: ${dateFormat(startTime)} End: ${endTime ? dateFormat(endTime) : 'Ongoing'}`} />
+        <GroupScheduleSelect variant="standard" helperText={!scheduleInactive && `Start: ${dateFormat(startDate)} End: ${endDate ? dateFormat(endDate) : 'Ongoing'}`} />
       </Grid>
 
       {!groupUserSchedulesRequest?.groupUserSchedules || scheduleInactive ? <>

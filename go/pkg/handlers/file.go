@@ -148,15 +148,17 @@ func (h *Handlers) GetFileContents(info ReqInfo, data *types.GetFileContentsRequ
 }
 
 func (h *Handlers) PostFile(info ReqInfo, data *types.PostFileRequest) (*types.PostFileResponse, error) {
-	fileInsert := util.BatchQueryRow[types.ILookup](info.Batch, `
+	var fileId string
+	err := info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		RETURNING id
-	`, data.File.Uuid, data.File.Name, data.File.MimeType, time.Now(), info.Session.GetUserSub())
+	`, data.File.Uuid, data.File.Name, data.File.MimeType, time.Now(), info.Session.GetUserSub()).Scan(&fileId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	info.Batch.Send(info.Ctx)
-
-	return &types.PostFileResponse{Id: (*fileInsert).Id, Uuid: data.File.Uuid}, nil
+	return &types.PostFileResponse{Id: fileId, Uuid: data.File.Uuid}, nil
 }
 
 func (h *Handlers) PatchFile(info ReqInfo, data *types.PatchFileRequest) (*types.PatchFileResponse, error) {

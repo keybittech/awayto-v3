@@ -44,6 +44,7 @@ func NewHandlers() *Handlers {
 		Redis:     clients.InitRedis(),
 		Keycloak:  clients.InitKeycloak(),
 		Socket:    clients.InitSocket(),
+		Cache:     util.NewCache(),
 	}
 
 	h.Options = make(map[string]*util.HandlerOptions, len(h.Functions))

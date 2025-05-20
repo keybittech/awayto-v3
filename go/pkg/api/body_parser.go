@@ -20,7 +20,7 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util
 	pb := handlerOpts.ServiceMethodType.New().Interface().(proto.Message)
 
 	if req.Body != nil && req.Body != http.NoBody {
-		req.Body = http.MaxBytesReader(w, req.Body, 1<<20)
+		req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1MB limit
 		defer req.Body.Close()
 
 		buf, err := io.ReadAll(req.Body)
@@ -29,7 +29,15 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util
 		}
 
 		if len(buf) > 0 {
-			err = protojson.Unmarshal(buf, pb)
+			contentType := req.Header.Get("Content-Type")
+			switch contentType {
+			case "application/x-protobuf":
+				err = proto.Unmarshal(buf, pb)
+			case "application/json":
+				err = protojson.Unmarshal(buf, pb)
+			default:
+				err = protojson.Unmarshal(buf, pb)
+			}
 			if err != nil {
 				panic(util.ErrCheck(err))
 			}

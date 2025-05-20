@@ -279,11 +279,12 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 					return
 				}
 
-				scanKeys := make([]string, iLen)
+				scanKeys := make([]string, 0, iLen*2) // double num to make room for ModTime keys
 
 				for _, val := range opts.Invalidations {
 					invCacheKey := session.GetUserSub() + val
 
+					// If it's not a dynamically generated path, we don't need to scan redis for keys
 					if strings.Index(val, "*") == -1 {
 						scanKeys = append(scanKeys, invCacheKey)
 						scanKeys = append(scanKeys, invCacheKey+cacheKeySuffixModTime)
@@ -291,17 +292,20 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 					}
 
 					var cursor uint64
-					var err error
 
 					for {
 						var pathKeys []string
-						pathKeys, cursor, err = a.Handlers.Redis.RedisClient.Scan(ctx, 0, invCacheKey, 10).Result()
+						var err error
+						pathKeys, cursor, err = a.Handlers.Redis.RedisClient.Scan(ctx, cursor, invCacheKey, 10).Result()
 						if err != nil {
 							util.ErrorLog.Println(util.ErrCheck(err))
 							break
 						}
 
-						scanKeys = append(scanKeys, pathKeys...)
+						for _, pathKey := range pathKeys {
+							scanKeys = append(scanKeys, pathKey)
+							scanKeys = append(scanKeys, pathKey+cacheKeySuffixModTime)
+						}
 
 						if cursor == 0 {
 							break
@@ -310,12 +314,10 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				}
 
 				if len(scanKeys) > 0 {
-					deleted, err := a.Handlers.Redis.RedisClient.Del(ctx, scanKeys...).Result()
+					_, err := a.Handlers.Redis.RedisClient.Del(ctx, scanKeys...).Result()
 					if err != nil {
 						util.ErrorLog.Println("failed to perform cache mutation cleanup pipeline", err.Error(), fmt.Sprint(opts.Invalidations))
 					}
-
-					println("DID DELETE CACHE RECORDS", deleted, fmt.Sprint(scanKeys))
 				}
 
 				return
@@ -332,8 +334,6 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 			// cachedData will be {} if empty
 			if dataOk && modOk && len(cachedData) > 2 && modTime != "" {
-				println("USING cache for ", cacheKey)
-
 				lastMod, err := time.Parse(time.RFC3339Nano, modTime)
 				if err == nil {
 
@@ -380,8 +380,6 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 			// Cache any response
 			if buf.Len() > 0 {
-				println("STORING cache for ", cacheKey)
-
 				duration := duration180
 
 				if hasDuration {

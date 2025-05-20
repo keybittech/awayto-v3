@@ -58,7 +58,6 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 			if groupId == "" {
 				return
 			}
-			println("DID RESET GROUP VERSION")
 			a.Cache.GroupSessionVersions.Store(groupId, time.Now().UnixNano())
 		}
 	}

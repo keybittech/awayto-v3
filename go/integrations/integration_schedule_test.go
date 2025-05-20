@@ -20,20 +20,20 @@ func testIntegrationSchedule(t *testing.T) {
 	st := &timestamppb.Timestamp{
 		Seconds: time.Date(2023, time.March, 03, 0, 0, 0, 0, time.UTC).Unix(),
 	}
-	startTime := st.AsTime().String()
+	startDate := st.AsTime().Format(time.RFC3339)
 
 	et := &timestamppb.Timestamp{
 		Seconds: time.Date(2033, time.March, 03, 0, 0, 0, 0, time.UTC).Unix(),
 	}
-	endTime := et.AsTime().String()
+	endDate := et.AsTime().Format(time.RFC3339)
 
 	t.Run("admin can get lookups and generate a schedule", func(t *testing.T) {
 		integrationTest.MasterSchedule = &types.ISchedule{
 			Name:         name + " Master",
 			Timezone:     timezone,
 			SlotDuration: slotDuration,
-			StartTime:    startTime,
-			EndTime:      endTime,
+			StartDate:    startDate,
+			EndDate:      endDate,
 		}
 
 		lookupsResponse := &types.GetLookupsResponse{}
@@ -64,8 +64,8 @@ func testIntegrationSchedule(t *testing.T) {
 		schedule, err := postSchedule(admin.TestToken, &types.PostScheduleRequest{
 			AsGroup:            true,
 			Name:               name + " Master Creation Test",
-			StartTime:          startTime,
-			EndTime:            endTime,
+			StartDate:          startDate,
+			EndDate:            endDate,
 			ScheduleTimeUnitId: scheduleUnitId,
 			BracketTimeUnitId:  bracketUnitId,
 			SlotTimeUnitId:     slotUnitId,

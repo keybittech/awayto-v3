@@ -61,6 +61,8 @@ func InitDatabase() *Database {
 
 	config.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
 		util.RegisterTimestamp(c.TypeMap())
+		util.RegisterDate(c.TypeMap())
+		util.RegisterInterval(c.TypeMap())
 		return nil
 	}
 
@@ -68,6 +70,23 @@ func InitDatabase() *Database {
 	if err != nil {
 		log.Fatalf("Unable to create connection pool: %v\n", err)
 	}
+
+	// go func() {
+	// 	ticker := time.NewTicker(time.Duration(5 * time.Second))
+	// 	defer ticker.Stop()
+	// 	for range ticker.C {
+	// 		stats := dbpool.Stat()
+	// 		fmt.Printf("[%s] DB Stats: TotalConns: %d, AcquiredConns: %d, IdleConns: %d, MaxConns: %d, AcquireCount: %d, AcquireDuration: %s\n",
+	// 			time.Now().Format(time.RFC3339),
+	// 			stats.TotalConns(),
+	// 			stats.AcquiredConns(),
+	// 			stats.IdleConns(),
+	// 			stats.MaxConns(),
+	// 			stats.AcquireCount(),
+	// 			stats.AcquireDuration(),
+	// 		)
+	// 	}
+	// }()
 
 	dbc := &Database{
 		DatabaseClient: &DatabaseClient{

@@ -19,7 +19,6 @@ service QuoteService {
     option (site_role) = APP_GROUP_BOOKINGS;
     option (use_tx) = true;
   }
-
   rpc PatchQuote(PatchQuoteRequest) returns (PatchQuoteResponse) {
     option (google.api.http) = {
       patch: "/v1/quotes/{id}"
@@ -28,28 +27,24 @@ service QuoteService {
     // Requests are left up to the scheduling user to manage once submitted
     option (site_role) = APP_GROUP_SCHEDULES;
   }
-  
   rpc GetQuotes(GetQuotesRequest) returns (GetQuotesResponse) {
     option (google.api.http) = {
       get: "/v1/quotes"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
   }
-  
   rpc GetQuoteById(GetQuoteByIdRequest) returns (GetQuoteByIdResponse) {
     option (google.api.http) = {
       get: "/v1/quotes/{id}"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
   }
-  
   rpc DeleteQuote(DeleteQuoteRequest) returns (DeleteQuoteResponse) {
     option (google.api.http) = {
       delete: "/v1/quotes/{id}"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
   }
-  
   rpc DisableQuote(DisableQuoteRequest) returns (DisableQuoteResponse) {
     option (google.api.http) = {
       patch: "/v1/quotes/disable/{ids}"

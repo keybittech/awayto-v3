@@ -20,8 +20,8 @@ import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 export const scheduleSchema = {
   name: '',
-  startTime: '',
-  endTime: '',
+  startDate: '',
+  endDate: '',
   timezone: '',
   slotDuration: 30,
   scheduleTimeUnitId: '',
@@ -123,16 +123,16 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
 
   const handleSubmit = useCallback(async () => {
     if (groupSchedule.schedule) {
-      groupSchedule.schedule.startTime = groupSchedule.schedule.startTime?.length ? groupSchedule.schedule.startTime : undefined;
-      groupSchedule.schedule.endTime = groupSchedule.schedule.endTime?.length ? groupSchedule.schedule.endTime : undefined;
+      groupSchedule.schedule.startDate = groupSchedule.schedule.startDate?.length ? groupSchedule.schedule.startDate : undefined;
+      groupSchedule.schedule.endDate = groupSchedule.schedule.endDate?.length ? groupSchedule.schedule.endDate : undefined;
 
       if (validArea != 'onboarding') {
         const s = groupSchedule.schedule;
 
         const newSchedule = {
           name: s.name,
-          startTime: s.startTime,
-          endTime: s.endTime
+          startDate: s.startDate,
+          endDate: s.endDate
         } as ISchedule;
 
         if (s.id) {
@@ -239,10 +239,10 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                 <Grid size={6}>
                   <DesktopDatePicker
                     {...targets(`manage schedule modal start date`, `Start Date`, `set when the schedule should start`)}
-                    value={schedule.startTime ? dayjs(schedule.startTime) : null}
+                    value={schedule.startDate ? dayjs(schedule.startDate) : null}
                     format="MM/DD/YYYY"
                     formatDensity="spacious"
-                    onChange={date => setGroupSchedule({ schedule: { ...schedule, startTime: date ? date.toISOString() : undefined } })}
+                    onChange={date => setGroupSchedule({ schedule: { ...schedule, startDate: date ? date.toISOString() : undefined } })}
                     disableHighlightToday={true}
                     slotProps={{
                       openPickerButton: {
@@ -251,7 +251,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                       clearIcon: { sx: { color: 'red' } },
                       field: {
                         clearable: true,
-                        onClear: () => setGroupSchedule({ schedule: { ...schedule, startTime: undefined } })
+                        onClear: () => setGroupSchedule({ schedule: { ...schedule, startDate: undefined } })
                       },
                       textField: {
                         fullWidth: true,
@@ -263,10 +263,10 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                 <Grid size={6}>
                   <DesktopDatePicker
                     {...targets(`manage schedule modal end date`, `End Date`, `set when the schedule should end`)}
-                    value={schedule.endTime ? dayjs(schedule.endTime) : null}
+                    value={schedule.endDate ? dayjs(schedule.endDate) : null}
                     format="MM/DD/YYYY"
                     formatDensity="spacious"
-                    onChange={date => setGroupSchedule({ schedule: { ...schedule, endTime: date ? date.toISOString() : undefined } })}
+                    onChange={date => setGroupSchedule({ schedule: { ...schedule, endDate: date ? date.toISOString() : undefined } })}
                     disableHighlightToday={true}
                     slotProps={{
                       openPickerButton: {
@@ -275,7 +275,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                       clearIcon: { sx: { color: 'red' } },
                       field: {
                         clearable: true,
-                        onClear: () => setGroupSchedule({ schedule: { ...schedule, endTime: undefined } })
+                        onClear: () => setGroupSchedule({ schedule: { ...schedule, endDate: undefined } })
                       },
                       textField: {
                         fullWidth: true,

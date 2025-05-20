@@ -83,7 +83,7 @@ RETURN QUERY
   SELECT JSON_BUILD_OBJECT(
     'username', usr.username,
     'scheduleBracketSlotId', repslot.id,
-    'startTime', repslot.start_time::TEXT,
+    'startTime', repslot.start_time
     'serviceTierId', reptier.id
   ) as replacement
   FROM

@@ -5,12 +5,14 @@ package util
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type Timestamp timestamppb.Timestamp
+const timestampFormat = "2006-01-02T15:04:05Z07:00"
+
+type Timestamp string
 
 // ScanTimestamp implements pgxtype.TimestampScanner interface
 func (ts *Timestamp) ScanTimestamp(v pgtype.Timestamp) error {
@@ -19,22 +21,25 @@ func (ts *Timestamp) ScanTimestamp(v pgtype.Timestamp) error {
 		return nil
 	}
 	// v.Time is a time.Time
-	*ts = Timestamp(*timestamppb.New(v.Time))
+	*ts = Timestamp(v.Time.Format(timestampFormat))
 	return nil
 }
 
 // TimestampValue implements pgxtype.TimestampValuer interface
 func (ts *Timestamp) TimestampValue() (pgtype.Timestamp, error) {
-	pbts := (*timestamppb.Timestamp)(ts)
-	return pgtype.Timestamp{Time: pbts.AsTime(), InfinityModifier: pgtype.Finite, Valid: true}, nil
+	var t time.Time
+	t, err := time.Parse(timestampFormat, *(*string)(ts))
+	if err != nil {
+		return pgtype.Timestamp{Time: t, InfinityModifier: pgtype.Finite, Valid: false}, ErrCheck(err)
+	}
+	return pgtype.Timestamp{Time: t, InfinityModifier: pgtype.Finite, Valid: true}, nil
 }
 
 // pgxtype.TryWrapEncodePlanFunc is this type of function:
 // type TryWrapEncodePlanFunc func(value any) (plan WrappedEncodePlanNextSetter, nextValue any, ok bool)
-
-func TryWrapTimestampEncodePlan(value interface{}) (plan pgtype.WrappedEncodePlanNextSetter, nextValue interface{}, ok bool) {
+func TryWrapTimestampEncodePlan(value any) (plan pgtype.WrappedEncodePlanNextSetter, nextValue any, ok bool) {
 	switch value := value.(type) {
-	case *timestamppb.Timestamp:
+	case *string:
 		return &wrapTimestampEncodePlan{}, (*Timestamp)(value), true
 	}
 
@@ -49,16 +54,16 @@ func (plan *wrapTimestampEncodePlan) SetNext(next pgtype.EncodePlan) {
 	plan.next = next
 }
 
-func (plan *wrapTimestampEncodePlan) Encode(value interface{}, buf []byte) (newBuf []byte, err error) {
-	return plan.next.Encode((*Timestamp)(value.(*timestamppb.Timestamp)), buf)
+func (plan *wrapTimestampEncodePlan) Encode(value any, buf []byte) (newBuf []byte, err error) {
+	return plan.next.Encode((*Timestamp)(value.(*string)), buf)
 }
 
 // pgxtype.TryWrapScanPlanFunc is this type of function:
 // type TryWrapScanPlanFunc func(target any) (plan WrappedScanPlanNextSetter, nextTarget any, ok bool)
 
-func TryWrapTimestampScanPlan(target interface{}) (plan pgtype.WrappedScanPlanNextSetter, nextDst interface{}, ok bool) {
+func TryWrapTimestampScanPlan(target any) (plan pgtype.WrappedScanPlanNextSetter, nextDst any, ok bool) {
 	switch target := target.(type) {
-	case *timestamppb.Timestamp:
+	case *string:
 		return &wrapTimestampScanPlan{}, (*Timestamp)(target), true
 	}
 
@@ -73,8 +78,8 @@ func (plan *wrapTimestampScanPlan) SetNext(next pgtype.ScanPlan) {
 	plan.next = next
 }
 
-func (plan *wrapTimestampScanPlan) Scan(src []byte, dst interface{}) error {
-	return plan.next.Scan(src, (*Timestamp)(dst.(*timestamppb.Timestamp)))
+func (plan *wrapTimestampScanPlan) Scan(src []byte, dst any) error {
+	return plan.next.Scan(src, (*Timestamp)(dst.(*string)))
 }
 
 // TimestampCodec embeds pgtype.TimestampCodec, which implements pgtype.Codec interface
@@ -84,12 +89,12 @@ type TimestampCodec struct {
 
 // We only need to override the behavior of pgtype.TimestampCodec.DecodeValue();
 // the other methods that satisfy pgtype.Codec are left implemented by pgtype.TimestampCodec
-func (TimestampCodec) DecodeValue(tm *pgtype.Map, oid uint32, format int16, src []byte) (interface{}, error) {
+func (TimestampCodec) DecodeValue(tm *pgtype.Map, oid uint32, format int16, src []byte) (any, error) {
 	if src == nil {
 		return nil, nil
 	}
 
-	var target *timestamppb.Timestamp
+	var target *string
 	scanPlan := tm.PlanScan(oid, format, &target)
 	if scanPlan == nil {
 		return nil, fmt.Errorf("PlanScan did not find a plan")

@@ -73,6 +73,14 @@ func Itoi32(i int) (int32, error) {
 	return int32(i), nil
 }
 
+func I64to32(i int64) (int32, error) {
+	if i > math.MaxInt32 || i < math.MinInt32 {
+		return 0, ErrCheck(errors.New("unt64 > int32 conversion overflowed"))
+	}
+
+	return int32(i), nil
+}
+
 func IsUUID(id string) bool {
 	if len(id) != 36 {
 		return false

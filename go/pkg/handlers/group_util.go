@@ -184,8 +184,8 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 	postScheduleReq := &types.PostScheduleRequest{
 		AsGroup:            true,
 		Name:               schedule.Name,
-		StartTime:          schedule.StartTime,
-		EndTime:            schedule.EndTime,
+		StartDate:          schedule.StartDate,
+		EndDate:            schedule.EndDate,
 		ScheduleTimeUnitId: schedule.ScheduleTimeUnitId,
 		BracketTimeUnitId:  schedule.BracketTimeUnitId,
 		SlotTimeUnitId:     schedule.SlotTimeUnitId,

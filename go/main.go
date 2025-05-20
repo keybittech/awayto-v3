@@ -98,6 +98,23 @@ func main() {
 	stopChan := make(chan struct{}, 1)
 	go setupGc(server, stopChan)
 
+	// go func() {
+	// 	ticker := time.NewTicker(time.Duration(5 * time.Second))
+	// 	defer ticker.Stop()
+	// 	var m runtime.MemStats
+	// 	for range ticker.C {
+	// 		runtime.ReadMemStats(&m)
+	// 		fmt.Printf("[%s] Runtime Stats: Goroutines: %d, Alloc: %v MiB, TotalAlloc: %v MiB, Sys: %v MiB, NumGC: %v\n",
+	// 			time.Now().Format(time.RFC3339),
+	// 			runtime.NumGoroutine(),
+	// 			m.Alloc/1024/1024,
+	// 			m.TotalAlloc/1024/1024,
+	// 			m.Sys/1024/1024,
+	// 			m.NumGC,
+	// 		)
+	// 	}
+	// }()
+
 	defer func() {
 		close(stopChan)
 		err := server.Server.Close()

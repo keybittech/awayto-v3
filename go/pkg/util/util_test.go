@@ -40,6 +40,24 @@ func BenchmarkMapMutexWrite(b *testing.B) {
 	})
 }
 
+func BenchmarkNoop(b *testing.B) {
+	var noop = func() {}
+	reset(b)
+	for b.Loop() {
+		noop()
+	}
+}
+
+func BenchmarkNoopNil(b *testing.B) {
+	var noop func() = nil
+	reset(b)
+	for b.Loop() {
+		if noop != nil {
+			// Noop
+		}
+	}
+}
+
 func TestNewNullString(t *testing.T) {
 	type args struct {
 		s string

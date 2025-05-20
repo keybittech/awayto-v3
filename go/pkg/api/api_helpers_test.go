@@ -8,14 +8,19 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
 	"os"
 	"strconv"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"golang.org/x/time/rate"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func init() {
@@ -36,6 +41,30 @@ func getTestApi() *API {
 	a.InitProtoHandlers()
 	return a
 }
+
+// func getProtoTestReq(token, method, url string, bodyMessage proto.Message) *http.Request {
+// 	var bodyReader io.Reader
+// 	if bodyMessage != nil {
+// 		marshaledBody, err := proto.Marshal(bodyMessage)
+// 		if err != nil {
+// 			log.Fatalf("Failed to marshal proto message: %v", err)
+// 		}
+// 		bodyReader = bytes.NewReader(marshaledBody)
+// 	}
+//
+// 	testReq, err := http.NewRequest(method, url, bodyReader)
+// 	if err != nil {
+// 		log.Fatal(err)
+// 	}
+// 	testReq.RemoteAddr = "127.0.0.1:9999"
+// 	testReq.Header.Set("Authorization", "Bearer "+token)
+// 	testReq.Header.Set("Accept", "application/x-protobuf")
+// 	testReq.Header.Set("X-TZ", "America/Los_Angeles")
+// 	if bodyMessage != nil {
+// 		testReq.Header.Set("Content-Type", "application/x-protobuf")
+// 	}
+// 	return testReq
+// }
 
 func getTestReq(token, method, url string, body io.Reader) *http.Request {
 	testReq, err := http.NewRequest(method, url, body)
@@ -120,4 +149,105 @@ func checkResponseFor(buf []byte, items []byte) bool {
 	}
 
 	return true
+}
+
+func setupRouteRequest(userId int32, method, path, contentType string) (*API, *http.Request, *httptest.ResponseRecorder) {
+	token, _, err := getKeycloakToken(integrationTest.TestUsers[userId])
+	if err != nil {
+		panic(util.ErrCheck(err))
+	}
+	req := getTestReq(token, method, path, nil)
+	req.RemoteAddr = "127.0.0.1:9999"
+	req.Header.Set("X-TZ", "America/Los_Angeles")
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", contentType)
+	req.Header.Set("Content-Type", contentType)
+
+	return getTestApi(), req, httptest.NewRecorder()
+}
+
+func limitRouteRequest(api *API, limit rate.Limit, burst int) {
+	rl := NewRateLimit("api", limit, burst, time.Duration(5*time.Second))
+	api.Server.Handler = api.LimitMiddleware(rl)(api.Server.Handler)
+}
+
+func setRouteRequestBody(req *http.Request, body proto.Message, contentType string) {
+	var bodyReader io.Reader
+	switch contentType {
+	case "application/x-protobuf":
+		marshaledBody, _ := proto.Marshal(body)
+		bodyReader = bytes.NewReader(marshaledBody)
+	case "application/json":
+		marshaledBody, _ := protojson.Marshal(body)
+		bodyReader = bytes.NewReader(marshaledBody)
+	default:
+		marshaledBody, _ := protojson.Marshal(body)
+		bodyReader = bytes.NewReader(marshaledBody)
+	}
+	req.Body = io.NopCloser(bodyReader)
+}
+
+func checkRouteRequest(recorder *httptest.ResponseRecorder, byteSet []byte) {
+	good := checkResponseFor(recorder.Body.Bytes(), byteSet)
+	if !good {
+		panic("Response body (status %d) did not start with '{'. Got: %s" + strconv.Itoa(recorder.Code) + string(recorder.Body.Bytes()))
+	}
+}
+
+func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string) {
+	api, req, recorder := setupRouteRequest(0, http.MethodGet, path, "")
+	limitRouteRequest(api, limit, burst)
+
+	reset(b)
+	for b.Loop() {
+		b.StopTimer()
+		recorder.Body.Reset()
+		b.StartTimer()
+		api.Server.Handler.ServeHTTP(recorder, req)
+	}
+
+	checkRouteRequest(recorder, []byte{'{', 'T'})
+}
+
+func doBenchmarkNoCache(b *testing.B, path string) {
+	api, req, recorder := setupRouteRequest(0, http.MethodGet, path, "")
+
+	reset(b)
+	for b.Loop() {
+		b.StopTimer()
+		recorder.Body.Reset()
+		b.StartTimer()
+		api.Server.Handler.ServeHTTP(recorder, req)
+	}
+
+	checkRouteRequest(recorder, []byte{'{', 'T'})
+}
+
+func doProtoBenchmark(b *testing.B, method, path, contentType string, body proto.Message, update func(proto.Message)) {
+	api, req, recorder := setupRouteRequest(0, method, path, contentType)
+
+	reset(b)
+	for b.Loop() {
+		b.StopTimer()
+		update(body)
+		setRouteRequestBody(req, body, contentType)
+		recorder.Body.Reset()
+		b.StartTimer()
+
+		api.Server.Handler.ServeHTTP(recorder, req)
+	}
+
+	checkRouteRequest(recorder, []byte{'{', 'T'})
+}
+
+func getApiProtoSchedule() *types.PostScheduleRequest {
+	return &types.PostScheduleRequest{
+		AsGroup:            true,
+		StartDate:          integrationTest.MasterSchedule.GetStartDate(),
+		EndDate:            integrationTest.MasterSchedule.GetEndDate(),
+		ScheduleTimeUnitId: integrationTest.MasterSchedule.GetScheduleTimeUnitId(),
+		BracketTimeUnitId:  integrationTest.MasterSchedule.GetBracketTimeUnitId(),
+		SlotTimeUnitId:     integrationTest.MasterSchedule.GetSlotTimeUnitId(),
+		SlotDuration:       integrationTest.MasterSchedule.GetSlotDuration(),
+	}
 }

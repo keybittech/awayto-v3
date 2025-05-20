@@ -53,7 +53,7 @@ func (h *Handlers) GetGroupSchedules(info ReqInfo, data *types.GetGroupSchedules
 func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroupScheduleMasterByIdRequest) (*types.GetGroupScheduleMasterByIdResponse, error) {
 	// The schedule master is the root ISchedule, not an IGroupSchedule
 	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
-		SELECT id, name, timezone, "startTime", "endTime", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", brackets
+		SELECT id, name, timezone, "startDate", "endDate", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", brackets
 		FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.GroupScheduleId)
@@ -61,6 +61,8 @@ func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroup
 	info.Batch.Send(info.Ctx)
 
 	s := *schedule
+
+	info.Batch.Reset()
 
 	return &types.GetGroupScheduleMasterByIdResponse{GroupSchedule: &types.IGroupSchedule{Master: true, ScheduleId: s.Id, Schedule: s}}, nil
 }
@@ -118,14 +120,14 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 					cycle_start::DATE + slot."startTime"::INTERVAL as real_time
 				FROM (
 					WITH schedule_info AS (
-						SELECT start_time FROM dbtable_schema.schedules	WHERE id = $2::uuid
+						SELECT start_date FROM dbtable_schema.schedules WHERE id = $2::uuid
 					)
 					SELECT 
-						si.start_time + (INTERVAL '28 days' * n) as cycle_start
+						si.start_date + (INTERVAL '28 days' * n) as cycle_start
 					FROM schedule_info si,
 					generate_series(
-						FLOOR(EXTRACT(EPOCH FROM (DATE_TRUNC('month', $1::DATE) - INTERVAL '28 days' - si.start_time)) / EXTRACT(EPOCH FROM INTERVAL '28 days'))::INTEGER,
-						CEIL(EXTRACT(EPOCH FROM (DATE_TRUNC('month', $1::DATE) + INTERVAL '2 months' - si.start_time)) / EXTRACT(EPOCH FROM INTERVAL '28 days'))::INTEGER,
+						FLOOR(EXTRACT(EPOCH FROM (DATE_TRUNC('month', $1::DATE) - INTERVAL '28 days' - si.start_date)) / EXTRACT(EPOCH FROM INTERVAL '28 days'))::INTEGER,
+						CEIL(EXTRACT(EPOCH FROM (DATE_TRUNC('month', $1::DATE) + INTERVAL '2 months' - si.start_date)) / EXTRACT(EPOCH FROM INTERVAL '28 days'))::INTEGER,
 						1
 					) as n
 				) cycle_dates

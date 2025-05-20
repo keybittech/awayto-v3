@@ -3,7 +3,7 @@ OR REPLACE VIEW dbview_schema.enabled_budgets AS
 SELECT
   id,
   name,
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.budgets
 WHERE
@@ -14,7 +14,7 @@ OR REPLACE VIEW dbview_schema.enabled_timelines AS
 SELECT
   id,
   name,
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.timelines
 WHERE
@@ -26,7 +26,7 @@ SELECT
   id,
   name,
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.forms
 WHERE
@@ -38,7 +38,7 @@ SELECT
   id,
   group_id as "groupId",
   form_id as "formId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.group_forms
 WHERE
@@ -50,7 +50,7 @@ SELECT
   id,
   form,
   form_id as "formId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.form_versions
 WHERE
@@ -62,7 +62,7 @@ SELECT
   id,
   submission,
   form_version_id as "formVersionId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.form_version_submissions
 WHERE
@@ -124,7 +124,7 @@ SELECT
   form_id as "formId",
   survey_id as "surveyId",
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.services
 WHERE
@@ -136,7 +136,7 @@ SELECT
   id,
   group_id as "groupId",
   service_addon_id as "serviceAddonId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.group_service_addons
 WHERE
@@ -148,7 +148,7 @@ SELECT
   id,
   group_id as "groupId",
   service_id as "serviceId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.group_services
 WHERE
@@ -160,7 +160,7 @@ SELECT
   id,
   name,
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.service_addons
 WHERE
@@ -176,7 +176,7 @@ SELECT
   name,
   multiplier,
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.service_tiers
 WHERE
@@ -188,14 +188,14 @@ SELECT
   id,
   name,
   timezone,
-  start_time::TEXT as "startTime",
-  end_time::TEXT as "endTime",
+  start_date as "startDate",
+  end_date as "endDate",
   schedule_time_unit_id as "scheduleTimeUnitId",
   bracket_time_unit_id as "bracketTimeUnitId",
   slot_time_unit_id as "slotTimeUnitId",
   slot_duration as "slotDuration",
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.schedules
 WHERE
@@ -207,7 +207,7 @@ SELECT
   id,
   group_id as "groupId",
   schedule_id as "scheduleId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.group_schedules
 WHERE
@@ -220,7 +220,7 @@ SELECT
   group_id as "groupId",
   group_schedule_id as "groupScheduleId",
   user_schedule_id as "userScheduleId",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.group_user_schedules
 WHERE
@@ -234,7 +234,7 @@ SELECT
   sb.duration,
   sb.multiplier,
   sb.automatic,
-  sb.created_on::TEXT as "createdOn"
+  sb.created_on as "createdOn"
 FROM
   dbtable_schema.schedule_brackets sb
 WHERE
@@ -245,7 +245,7 @@ OR REPLACE VIEW dbview_schema.enabled_schedule_bracket_slots AS
 SELECT
   id,
   schedule_bracket_id as "scheduleBracketId",
-  start_time::TEXT as "startTime"
+  start_time as "startTime"
 FROM
   dbtable_schema.schedule_bracket_slots
 WHERE
@@ -256,14 +256,14 @@ OR REPLACE VIEW dbview_schema.enabled_quotes AS
 SELECT
   q.id,
   esbs."startTime",
-  q.slot_date::TEXT as "slotDate",
+  q.slot_date as "slotDate",
   q.schedule_bracket_slot_id as "scheduleBracketSlotId",
   q.service_tier_id as "serviceTierId",
   est.name as "serviceTierName",
   es.name as "serviceName",
   q.service_form_version_submission_id as "serviceFormVersionSubmissionId",
   q.tier_form_version_submission_id as "tierFormVersionSubmissionId",
-  q.created_on::TEXT as "createdOn",
+  q.created_on as "createdOn",
   q.created_sub as "createdSub",
   q.slot_created_sub as "slotCreatedSub"
 FROM
@@ -279,12 +279,12 @@ OR REPLACE VIEW dbview_schema.enabled_bookings AS
 SELECT
   b.id,
   b.rating,
-  b.slot_date::TEXT as "slotDate",
+  b.slot_date as "slotDate",
   b.quote_id as "quoteId",
   b.schedule_bracket_slot_id as "scheduleBracketSlotId",
   b.tier_survey_version_submission_id as "tierSurveyVersionSubmissionId",
   b.service_survey_version_submission_id as "serviceSurveyVersionSubmissionId",
-  b.created_on::TEXT as "createdOn",
+  b.created_on as "createdOn",
   b.created_sub as "createdSub",
   b.quote_created_sub as "quoteCreatedSub",
   ROW_TO_JSON(q.*) as quote,
@@ -306,7 +306,7 @@ SELECT
   id,
   details,
   created_sub as "createdSub",
-  created_on::TEXT as "createdOn"
+  created_on as "createdOn"
 FROM
   dbtable_schema.payments
 WHERE

@@ -125,8 +125,8 @@ message IScheduleBracket {
 message ISchedule {
   string id = 1;
   string name = 2 [(buf.validate.field).string.min_len = 1];
-  string startTime = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
-  string endTime = 4 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
+  string startDate = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
+  string endDate = 4 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
   string timezone = 5 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
@@ -154,16 +154,16 @@ message ISchedule {
   string createdOn = 14;
 
   // option (buf.validate.message).cel = {
-  //   id: "ISchedule.endTime",
+  //   id: "ISchedule.endDate",
   //   message: "End date must be after start date",
-  //   expression: "has(this.endTime) ? this.endTime > this.startTime : true"
+  //   expression: "has(this.endDate) ? this.endDate > this.startDate : true"
   // };
 }
 
 message PostScheduleRequest {
   string name = 1 [(buf.validate.field).string.min_len = 1];
-  string startTime = 2;
-  string endTime = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
+  string startDate = 2;
+  string endDate = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
   string scheduleTimeUnitId = 4 [(buf.validate.field).string.uuid = true];
   string bracketTimeUnitId = 5 [(buf.validate.field).string.uuid = true];
   string slotTimeUnitId = 6 [(buf.validate.field).string.uuid = true];
@@ -179,9 +179,9 @@ message PostScheduleRequest {
   bool asGroup = 10;
 
   // option (buf.validate.message).cel = {
-  //   id: "PostScheduleRequest.endTime",
+  //   id: "PostScheduleRequest.endDate",
   //   message: "End date must be after start date",
-  //   expression: "has(this.endTime) ? this.endTime > this.startTime : true"
+  //   expression: "has(this.endDate) ? this.endDate > this.startDate : true"
   // };
 }
 
