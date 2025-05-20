@@ -215,7 +215,7 @@ func (ds DbSession) GetTopicMessages(ctx context.Context, page, pageSize int) ([
 	if messages[pageSize-1] != nil {
 		messages = append(messages, util.GenerateMessage(util.DefaultPadding, &types.SocketMessage{
 			Topic:  ds.Topic,
-			Action: socketActionHasMoreMessages,
+			Action: types.SocketActions_HAS_MORE_MESSAGES,
 		}))
 	}
 

@@ -11,15 +11,6 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-const (
-	socketActionPingPong         = int64(types.SocketActions_PING_PONG)
-	socketActionSubscribe        = int64(types.SocketActions_SUBSCRIBE)
-	socketActionUnsubscribe      = int64(types.SocketActions_UNSUBSCRIBE)
-	socketActionUnsubscribeTopic = int64(types.SocketActions_UNSUBSCRIBE_TOPIC)
-	socketActionLoadSubscribers  = int64(types.SocketActions_LOAD_SUBSCRIBERS)
-	socketActionLoadMessages     = int64(types.SocketActions_LOAD_MESSAGES)
-)
-
 func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 	finish := util.RunTimer()
 	defer finish()
@@ -34,7 +25,7 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 	cursor := 0
 	var curr string
 	var err error
-	for i := 0; i < 7; i++ {
+	for i := range 7 {
 		cursor, curr, err = util.ParseMessage(util.DefaultPadding, cursor, data)
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
@@ -44,13 +35,13 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 		messageParams[i] = curr
 	}
 
-	actionId, err := strconv.ParseInt(messageParams[0], 10, 64)
+	actionId, err := strconv.ParseInt(messageParams[0], 10, 32)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		return nil
 	}
 
-	socketMessage.Action = actionId
+	socketMessage.Action = types.SocketActions(actionId)
 	socketMessage.Store = messageParams[1] == "t"
 	socketMessage.Historical = messageParams[2] == "t"
 	socketMessage.Timestamp = messageParams[3]
@@ -69,7 +60,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		return
 	}
 
-	if sm.Action != socketActionSubscribe {
+	if sm.Action != types.SocketActions_SUBSCRIBE {
 		hasSubRequest, err := a.Handlers.Socket.SendCommand(ctx, clients.HasSubscribedTopicSocketCommand, &types.SocketRequestParams{
 			UserSub: ds.ConcurrentUserSession.GetUserSub(),
 			Topic:   sm.Topic,
@@ -86,7 +77,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 	}
 
 	switch sm.Action {
-	case socketActionSubscribe:
+	case types.SocketActions_SUBSCRIBE:
 
 		hasTracking, err := a.Handlers.Redis.HasTracking(ctx, sm.Topic, socketId)
 		if err != nil {
@@ -140,7 +131,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		}
 
 		err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), connId, &types.SocketMessage{
-			Action: socketActionSubscribe,
+			Action: types.SocketActions_SUBSCRIBE,
 			Topic:  sm.Topic,
 		})
 		if err != nil {
@@ -148,7 +139,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-	case socketActionUnsubscribe:
+	case types.SocketActions_UNSUBSCRIBE:
 
 		hasTracking, err := a.Handlers.Redis.HasTracking(ctx, sm.Topic, socketId)
 		if err != nil {
@@ -166,7 +157,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 
 		if cachedParticipantTargets != "" {
 			err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), cachedParticipantTargets, &types.SocketMessage{
-				Action:  socketActionUnsubscribeTopic,
+				Action:  types.SocketActions_UNSUBSCRIBE,
 				Topic:   sm.Topic,
 				Payload: socketId,
 			})
@@ -189,7 +180,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-	case socketActionLoadSubscribers:
+	case types.SocketActions_LOAD_SUBSCRIBERS:
 
 		participants, onlineTargets, err := a.Handlers.Redis.GetCachedParticipants(ctx, sm.Topic, false)
 		if err != nil {
@@ -216,7 +207,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 		}
 
 		err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), onlineTargets, &types.SocketMessage{
-			Action:  socketActionLoadSubscribers,
+			Action:  types.SocketActions_LOAD_SUBSCRIBERS,
 			Sender:  connId,
 			Topic:   sm.Topic,
 			Payload: string(participantsBytes),
@@ -226,7 +217,7 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-	case socketActionLoadMessages:
+	case types.SocketActions_LOAD_MESSAGES:
 		var pageInfo map[string]int
 		if err := json.Unmarshal([]byte(sm.Payload), &pageInfo); err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))

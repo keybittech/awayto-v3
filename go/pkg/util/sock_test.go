@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestGetColonJoined(t *testing.T) {
@@ -329,7 +330,7 @@ type TestPayload struct {
 }
 
 func TestGenerateMessage(t *testing.T) {
-	testMessage := types.SocketMessage{
+	testMessage := &types.SocketMessage{
 		Action:     44,
 		Topic:      "topic",
 		Payload:    "payload",
@@ -338,12 +339,10 @@ func TestGenerateMessage(t *testing.T) {
 		Sender:     "sender",
 		Timestamp:  "timestamp",
 	}
-	storedMessage := testMessage
+	storedMessage := proto.Clone(testMessage).(*types.SocketMessage)
 	storedMessage.Store = true
-	historicalMessage := testMessage
+	historicalMessage := proto.Clone(testMessage).(*types.SocketMessage)
 	historicalMessage.Historical = true
-	badActionMessage := testMessage
-	badActionMessage.Action = -44
 	type args struct {
 		padTo   int
 		message *types.SocketMessage
@@ -353,10 +352,9 @@ func TestGenerateMessage(t *testing.T) {
 		args args
 		want []byte
 	}{
-		{name: "standard message", args: args{5, &testMessage}, want: []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")},
-		{name: "stored message", args: args{5, &storedMessage}, want: []byte("000024400001t00001f00009timestamp00005topic00006sender00007payload")},
-		{name: "historical message", args: args{5, &historicalMessage}, want: []byte("000024400001f00001t00009timestamp00005topic00006sender00007payload")},
-		{name: "bad action message", args: args{5, &badActionMessage}, want: []byte("00003-4400001f00001f00009timestamp00005topic00006sender00007payload")},
+		{name: "standard message", args: args{5, testMessage}, want: []byte("000024400001f00001f00009timestamp00005topic00006sender00007payload")},
+		{name: "stored message", args: args{5, storedMessage}, want: []byte("000024400001t00001f00009timestamp00005topic00006sender00007payload")},
+		{name: "historical message", args: args{5, historicalMessage}, want: []byte("000024400001f00001t00009timestamp00005topic00006sender00007payload")},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

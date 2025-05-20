@@ -73,6 +73,14 @@ func Itoi32(i int) (int32, error) {
 	return int32(i), nil
 }
 
+func Itoui32(i int) (uint32, error) {
+	if i > math.MaxUint32 || i < 0 {
+		return 0, ErrCheck(errors.New("uint32 conversion overflowed"))
+	}
+
+	return uint32(i), nil
+}
+
 func I64to32(i int64) (int32, error) {
 	if i > math.MaxInt32 || i < math.MinInt32 {
 		return 0, ErrCheck(errors.New("unt64 > int32 conversion overflowed"))
@@ -203,12 +211,12 @@ func CookieExpired(req *http.Request) bool {
 	return true
 }
 
-func StringsToBitmask(roles []string) int64 {
-	var bitmask int64
+func StringsToSiteRoles(roles []string) types.SiteRoles {
+	var bitmask int32
 	for _, role := range roles {
 		if bit, ok := types.SiteRoles_value[role]; ok {
-			bitmask |= int64(bit)
+			bitmask |= bit
 		}
 	}
-	return bitmask
+	return types.SiteRoles(bitmask)
 }

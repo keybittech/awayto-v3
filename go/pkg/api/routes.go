@@ -24,13 +24,15 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		}
 	}
 
+	optPack := handlerOpts.Unpack()
+
 	var queryParser = func(proto.Message, *http.Request) {}
-	if handlerOpts.HasQueryParams {
+	if optPack.HasQueryParams {
 		queryParser = util.ParseProtoQueryParams
 	}
 
 	var pathParser = func(proto.Message, *http.Request) {}
-	if handlerOpts.HasPathParams {
+	if optPack.HasPathParams {
 		pathParams := strings.Split(handlerOpts.ServiceMethodURL, "/")
 		pathParser = func(msg proto.Message, req *http.Request) {
 			util.ParseProtoPathParams(msg, pathParams, req)
@@ -38,22 +40,22 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 	}
 
 	var bodyParser BodyParser = ProtoBodyParser
-	if handlerOpts.MultipartRequest {
+	if optPack.MultipartRequest {
 		bodyParser = MultipartBodyParser
 	}
 
 	var requestExecutor RequestExecutor = BatchExecutor
-	if handlerOpts.UseTx {
+	if optPack.UseTx {
 		requestExecutor = TxExecutor
 	}
 
 	var responseHandler ResponseHandler = ProtoResponseHandler
-	if handlerOpts.MultipartResponse {
+	if optPack.MultipartResponse {
 		responseHandler = MultipartResponseHandler
 	}
 
 	var setGroupVersion = func(string) {}
-	if handlerOpts.ResetsGroup {
+	if optPack.ResetsGroup {
 		setGroupVersion = func(groupId string) {
 			if groupId == "" {
 				return

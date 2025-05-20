@@ -19,9 +19,9 @@ message UserSession {
   string subGroupPath = 11;
   string anonIp = 12;
   string timezone = 13;
-  int64 roleBits = 14;
-  int64 groupSessionVersion = 15;
-  int64 expiresAt = 16;
+  SiteRoles roleBits = 14;
+  int64 groupSessionVersion = 15; // References UnixNano int64
+  int64 expiresAt = 16; // References claims ExpiresAt int64
   bool groupAi = 17;
 
   option (types.mutex) = true;

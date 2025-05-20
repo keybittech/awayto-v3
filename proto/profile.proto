@@ -21,34 +21,29 @@ service UserProfileService {
     };
     option (use_tx) = true;
   }
-
   rpc PatchUserProfile(PatchUserProfileRequest) returns (PatchUserProfileResponse) {
     option (google.api.http) = {
       patch: "/v1/profile"
       body: "*"
     };
   }
-
   rpc GetUserProfileDetails(GetUserProfileDetailsRequest) returns (GetUserProfileDetailsResponse) {
     option (google.api.http) = {
       get: "/v1/profile/details"
     };
     option (cache) = SKIP;
   }
-
   rpc DisableUserProfile(DisableUserProfileRequest) returns (DisableUserProfileResponse) {
     option (google.api.http) = {
       patch: "/v1/profile/{id}/disable"
     };
   }
-
   rpc ActivateProfile(ActivateProfileRequest) returns (ActivateProfileResponse) {
     option (google.api.http) = {
       patch: "/v1/profile/activate"
     };
     option (use_tx) = true;
   }
-
   rpc DeactivateProfile(DeactivateProfileRequest) returns (DeactivateProfileResponse) {
     option (google.api.http) = {
       patch: "/v1/profile/deactivate"
@@ -75,7 +70,7 @@ message IUserProfile {
   bool seenBookings = 16;
   map<string, IGroup> groups = 17;
   map<string, IRole> roles = 18;
-  int64 roleBits = 19;
+  SiteRoles roleBits = 19;
   string roleName = 22;
 }
 

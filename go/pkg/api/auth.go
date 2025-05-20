@@ -22,7 +22,7 @@ import (
 func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*types.UserSession, error) {
 	token = strings.TrimPrefix(token, "Bearer ")
 
-	parsedToken, err := jwt.ParseWithClaims(token, &clients.KeycloakUserWithClaims{}, func(t *jwt.Token) (interface{}, error) {
+	parsedToken, err := jwt.ParseWithClaims(token, &clients.KeycloakUserWithClaims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, errors.New("bad signing method")
 		}
@@ -40,9 +40,9 @@ func ValidateToken(publicKey *rsa.PublicKey, token, timezone, anonIp string) (*t
 	if !ok {
 		return nil, util.ErrCheck(errors.New("could not parse claims"))
 	}
-	var roleBits int64
+	var roleBits types.SiteRoles
 	if clientAccess, clientAccessOk := claims.ResourceAccess[claims.Azp]; clientAccessOk {
-		roleBits = util.StringsToBitmask(clientAccess.Roles)
+		roleBits = util.StringsToSiteRoles(clientAccess.Roles)
 	}
 
 	session := &types.UserSession{

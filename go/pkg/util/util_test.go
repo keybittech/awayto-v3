@@ -6,6 +6,8 @@ import (
 	"reflect"
 	"sync"
 	"testing"
+
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func reset(b *testing.B) {
@@ -412,20 +414,20 @@ func BenchmarkVerifySigned(b *testing.B) {
 	}
 }
 
-func TestStringsToBitmask(t *testing.T) {
+func TestStringsToSiteRoles(t *testing.T) {
 	type args struct {
 		roles []string
 	}
 	tests := []struct {
 		name string
 		args args
-		want int64
+		want types.SiteRoles
 	}{
 		// TODO: Add test cases.
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := StringsToBitmask(tt.args.roles); got != tt.want {
+			if got := StringsToSiteRoles(tt.args.roles); got != tt.want {
 				t.Errorf("StringsToBitmask(%v) = %v, want %v", tt.args.roles, got, tt.want)
 			}
 		})

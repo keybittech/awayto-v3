@@ -201,7 +201,7 @@ func (a *API) InitSockServer() {
 				ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
 				defer cancel()
 				err := a.Handlers.Socket.SendMessage(ctx, userSub, connId, &types.SocketMessage{
-					Action:  socketActionPingPong,
+					Action:  types.SocketActions_PING_PONG,
 					Payload: PING,
 				})
 				if err != nil {
@@ -242,7 +242,7 @@ func (a *API) InitSockServer() {
 								return
 							}
 
-							if sm.Action == socketActionPingPong {
+							if sm.Action == types.SocketActions_PING_PONG {
 								pings.Store(connId, time.Now())
 								return
 							}
@@ -296,7 +296,7 @@ func (a *API) TearDownSocketConnection(ctx context.Context, socketId, connId str
 
 		for topic, targets := range topics {
 			err := a.Handlers.Socket.SendMessage(context.Background(), userSub, targets, &types.SocketMessage{
-				Action:  socketActionUnsubscribeTopic,
+				Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
 				Topic:   topic,
 				Payload: socketId,
 			})

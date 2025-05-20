@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -109,12 +110,12 @@ type Batchable struct {
 	Sub, GroupId string
 	pool         *pgxpool.Pool
 	batch        *pgx.Batch
-	RoleBits     int64
+	RoleBits     types.SiteRoles
 }
 
 // Open a batch with the intention of adding multiple queries or doing queries under a different
 // user or group context
-func NewBatchable(pool *pgxpool.Pool, sub, groupId string, roleBits int64) *Batchable {
+func NewBatchable(pool *pgxpool.Pool, sub, groupId string, roleBits types.SiteRoles) *Batchable {
 	b := &Batchable{
 		Sub:      sub,
 		GroupId:  groupId,

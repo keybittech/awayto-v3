@@ -30,54 +30,40 @@ func (ts *Interval) ScanInterval(v pgtype.Interval) error {
 	var sb strings.Builder
 	sb.WriteString("P")
 
-	daysComponent := v.Days
-	microsecondsComponent := v.Microseconds
+	var hasComponent bool
 
-	var absDays int64
-	if daysComponent < 0 {
-		absDays = int64(-daysComponent)
-	} else {
-		absDays = int64(daysComponent)
+	if v.Days > 0 {
+		sb.WriteString(strconv.Itoa(int(v.Days)))
+		sb.WriteString("D")
+		hasComponent = true
 	}
 
-	var absMicroseconds int64
-	if microsecondsComponent < 0 {
-		absMicroseconds = -microsecondsComponent
-	} else {
-		absMicroseconds = microsecondsComponent
-	}
-
-	hasAnyComponent := false
-
-	if daysComponent != 0 {
-		sb.WriteString(fmt.Sprintf("%dD", absDays))
-		hasAnyComponent = true
-	}
-
-	if microsecondsComponent != 0 {
+	if v.Microseconds > 0 {
 		sb.WriteString("T")
 
-		hours := absMicroseconds / microsecondsPerHourInternal
-		remainingMicrosecondsForMinutes := absMicroseconds % microsecondsPerHourInternal
-		minutes := remainingMicrosecondsForMinutes / microsecondsPerMinuteInternal
+		var hasTimeComponent bool
 
-		hasTimeSpecificComponentInT := false
+		hours := v.Microseconds / microsecondsPerHourInternal
 		if hours > 0 {
-			sb.WriteString(fmt.Sprintf("%dH", hours))
-			hasTimeSpecificComponentInT = true
-		}
-		if minutes > 0 {
-			sb.WriteString(fmt.Sprintf("%dM", minutes))
-			hasTimeSpecificComponentInT = true
+			sb.WriteString(strconv.FormatInt(hours, 10))
+			sb.WriteString("M")
+			hasTimeComponent = true
 		}
 
-		if !hasTimeSpecificComponentInT {
+		minutes := (v.Microseconds % microsecondsPerHourInternal) / microsecondsPerMinuteInternal
+		if minutes > 0 {
+			sb.WriteString(strconv.FormatInt(minutes, 10))
+			sb.WriteString("M")
+			hasTimeComponent = true
+		}
+
+		if !hasTimeComponent {
 			sb.WriteString("0M")
 		}
-		hasAnyComponent = true
+		hasComponent = true
 	}
 
-	if !hasAnyComponent {
+	if !hasComponent {
 		sb.WriteString("0D")
 	}
 	*ts = Interval(sb.String())

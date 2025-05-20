@@ -60,7 +60,7 @@ message AuthEvent {
 }
 
 message KeycloakUser {
-  int64 createdTimestamp = 3;
+  uint32 createdTimestamp = 3;
   string username = 4;
   bool enabled = 5;
   bool totp = 6;
@@ -120,7 +120,7 @@ message KeycloakRealmInfo {
   string publicKey = 2 [json_name = "public_key"];
   string tokenService = 3 [json_name = "token-service"];
   string accountService = 4 [json_name = "account-service"];
-  int64 tokensNotBefore = 5 [json_name = "tokens-not-before"];
+  uint32 tokensNotBefore = 5 [json_name = "tokens-not-before"];
 }
 
 message KeycloakRealmClient {
@@ -134,7 +134,7 @@ message OIDCToken {
   double refreshExpiresIn = 3 [json_name = "refresh_expires_in"];
   string refreshToken = 4 [json_name = "refresh_token"];
   string tokenType = 5 [json_name = "token_type"];
-  int64 notBeforePolicy = 6 [json_name = "not-before-policy"];
+  uint32 notBeforePolicy = 6 [json_name = "not-before-policy"];
   string scope = 7;
 }
 

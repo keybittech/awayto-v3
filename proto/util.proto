@@ -7,8 +7,8 @@ import "google/protobuf/descriptor.proto";
 
 extend google.protobuf.MethodOptions {
   CacheType cache = 50000;
-  int64 cache_duration = 50001;
-  int64 throttle = 50002;
+  uint32 cache_duration = 50001;
+  uint32 throttle = 50002;
   SiteRoles site_role = 50003;
   bool multipart_request = 50004;
   bool multipart_response = 50005;

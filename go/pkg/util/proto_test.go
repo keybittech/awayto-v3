@@ -97,56 +97,56 @@ func TestParseHandlerOptions(t *testing.T) {
 			name: "cache=STORE",
 			md:   getMethodDescriptor(t, "PostPrompt"),
 			validate: func(got *HandlerOptions) bool {
-				return got.CacheType == int64(types.CacheType_STORE)
+				return got.Unpack().CacheType == types.CacheType_STORE
 			},
 		},
 		{
 			name: "throttle=1",
 			md:   getMethodDescriptor(t, "PostFileContents"),
 			validate: func(got *HandlerOptions) bool {
-				return got.Throttle == 1
+				return got.Unpack().Throttle == 1
 			},
 		},
 		{
 			name: "multipart_request=true",
 			md:   getMethodDescriptor(t, "PostFileContents"),
 			validate: func(got *HandlerOptions) bool {
-				return got.MultipartRequest == true
+				return got.Unpack().MultipartRequest == true
 			},
 		},
 		{
 			name: "cache=SKIP",
 			md:   getMethodDescriptor(t, "GetFileContents"),
 			validate: func(got *HandlerOptions) bool {
-				return got.CacheType == int64(types.CacheType_SKIP)
+				return got.Unpack().CacheType == types.CacheType_SKIP
 			},
 		},
 		{
 			name: "multipart_response=true",
 			md:   getMethodDescriptor(t, "GetFileContents"),
 			validate: func(got *HandlerOptions) bool {
-				return got.MultipartResponse == true
+				return got.Unpack().MultipartResponse == true
 			},
 		},
 		{
 			name: "cache_duration=180",
 			md:   getMethodDescriptor(t, "GetBookingTranscripts"),
 			validate: func(got *HandlerOptions) bool {
-				return got.CacheDuration == 180
+				return got.Unpack().CacheDuration == 180
 			},
 		},
 		{
 			name: "site_role=APP_GROUP_ROLES",
 			md:   getMethodDescriptor(t, "PostGroupRole"),
 			validate: func(got *HandlerOptions) bool {
-				return got.SiteRole == int64(types.SiteRoles_APP_GROUP_ROLES)
+				return got.Unpack().SiteRole == types.SiteRoles_APP_GROUP_ROLES
 			},
 		},
 		{
 			name: "use_tx=true",
 			md:   getMethodDescriptor(t, "PostGroupRole"),
 			validate: func(got *HandlerOptions) bool {
-				return got.UseTx == true
+				return got.Unpack().UseTx == true
 			},
 		},
 	}

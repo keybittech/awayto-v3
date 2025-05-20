@@ -55,7 +55,7 @@ enum ExchangeActions {
 message Subscriber {
   string userSub = 1;
   string groupId = 2;
-  int64 roleBits = 3;
+  SiteRoles roleBits = 3;
   string connectionId = 4;
   string connectionIds = 5;
   map<string, string> tickets = 6;
@@ -73,7 +73,7 @@ message SocketParticipant {
 }
 
 message SocketMessage {
-  int64 action = 1;
+  SocketActions action = 1;
   bool store = 2;
   bool historical = 3;
   string topic = 4;
@@ -85,7 +85,7 @@ message SocketMessage {
 message SocketRequestParams {
   string userSub = 1;
   string groupId = 2;
-  int64 roleBits = 3;
+  SiteRoles roleBits = 3;
   string ticket = 4;
   string topic = 5;
   string targets = 6;
@@ -99,7 +99,7 @@ message SocketResponseParams {
   bool hasSub = 3;
   string userSub = 4;
   string groupId = 5;
-  int64 roleBits = 6;
+  SiteRoles roleBits = 6;
 }
 
 message GetSocketTicketRequest {}

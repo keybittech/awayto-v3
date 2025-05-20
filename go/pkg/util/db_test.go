@@ -46,7 +46,7 @@ func TestNewBatchable(t *testing.T) {
 		pool     *pgxpool.Pool
 		sub      string
 		groupId  string
-		roleBits int64
+		roleBits uint32
 	}
 	tests := []struct {
 		name string

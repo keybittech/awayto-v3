@@ -91,7 +91,7 @@ message FileContent {
   string name = 1;
   string mimeType = 2;
   bytes content = 3;
-  int64 contentLength = 4;
+  int64 contentLength = 4; // References FileHeader.Size int64
 }
 
 message PostFileContentsRequest {
@@ -101,7 +101,7 @@ message PostFileContentsRequest {
   ];
   repeated string existingIds = 2 [(google.api.field_behavior) = REQUIRED];
   repeated string overwriteIds = 3 [(google.api.field_behavior) = REQUIRED];
-  int64 totalLength = 4;
+  int64 totalLength = 4; // References FileHeader.Size int64
   string uploadId = 5;
 }
 

@@ -55,7 +55,7 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util
 func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message {
 	req.Body = http.MaxBytesReader(w, req.Body, 1<<25)
 
-	err := req.ParseMultipartForm(1 << 25)
+	err := req.ParseMultipartForm(1 << 25) // 32MB payload max
 	if err != nil {
 		panic(util.ErrCheck(util.UserError("Attached files may not exceed 32MB.")))
 	}

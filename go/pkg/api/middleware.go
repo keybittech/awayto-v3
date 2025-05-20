@@ -217,14 +217,15 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 }
 
 func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
+	optPack := opts.Unpack()
 	return func(next SessionHandler) SessionHandler {
-		if opts.SiteRole == int64(types.SiteRoles_UNRESTRICTED) {
+		if optPack.SiteRole == types.SiteRoles_UNRESTRICTED {
 			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 				next(w, req, session)
 			}
 		} else {
 			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-				if session.GetRoleBits()&opts.SiteRole == 0 {
+				if session.GetRoleBits()&optPack.SiteRole == 0 {
 					util.WriteAuthRequest(req, session.GetUserSub(), opts.SiteRoleName)
 					w.WriteHeader(http.StatusForbidden)
 					return
@@ -248,12 +249,14 @@ func (cw *CacheWriter) Write(data []byte) (int, error) {
 }
 
 func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
+	shouldStore := opts.Unpack().ShouldStore
+	shouldSkip := opts.Unpack().ShouldSkip
 
 	var parsedDuration time.Duration
 	var hasDuration bool
-	if opts.CacheDuration > 0 {
+	if opts.Unpack().CacheDuration > 0 {
 		hasDuration = true
-		cacheDuration := strconv.FormatInt(opts.CacheDuration, 10)
+		cacheDuration := strconv.FormatInt(int64(opts.Unpack().CacheDuration), 10)
 		if d, err := time.ParseDuration(cacheDuration + "s"); err == nil {
 			parsedDuration = d
 		} else {
@@ -263,7 +266,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 	return func(next SessionHandler) SessionHandler {
 		return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-			if opts.ShouldSkip {
+			if shouldSkip {
 				next(w, req, session)
 				return
 			}
@@ -271,7 +274,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			ctx := req.Context()
 
 			// Any non-GET processed normally, and deletes cache key unless being stored
-			if !opts.ShouldStore && req.Method != http.MethodGet {
+			if !shouldStore && req.Method != http.MethodGet {
 				next(w, req, session)
 
 				iLen := len(opts.Invalidations)
@@ -384,7 +387,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 
 				if hasDuration {
 					duration = parsedDuration
-				} else if opts.ShouldStore {
+				} else if shouldStore {
 					duration = 0
 				}
 

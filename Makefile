@@ -255,16 +255,18 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 	pnpm --dir $(TS_SRC) i
 	pnpm run --dir $(TS_SRC) build
 
-$(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
-	go build -C $(GO_PROTO_MUTEX_CMD_DIR) -o $@ .
-
-$(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX_FILES): $(PROTO_FILES) $(PROTO_GEN_MUTEX)
+$(PROTO_GEN_FILES): $(PROTO_FILES) 
 	@mkdir -p $(@D) $(GO_GEN_DIR)
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
 		--go_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
+
+$(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
+	go build -C $(GO_PROTO_MUTEX_CMD_DIR) -o $@ .
+
+$(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX)
 	protoc --proto_path=proto \
 		--plugin=protoc-gen-mutex=$(PROTO_GEN_MUTEX) \
 		--mutex_out=$(GO_GEN_DIR) \

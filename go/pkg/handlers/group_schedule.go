@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"fmt"
 	"strings"
 
 	"github.com/jackc/pgx/v5"
@@ -68,6 +69,7 @@ func (h *Handlers) GetGroupScheduleMasterById(info ReqInfo, data *types.GetGroup
 }
 
 func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupScheduleByDateRequest) (*types.GetGroupScheduleByDateResponse, error) {
+	println(fmt.Sprint(info.Session.GetProtoClone()))
 	var scheduleTimeUnitName string
 
 	err := info.Tx.QueryRow(info.Ctx, `

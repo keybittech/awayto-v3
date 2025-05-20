@@ -1,60 +1,60 @@
 package main
 
-type SocketEvents struct {
-	loadSubscribersEvent []byte
-	loadMessagesEvent    []byte
-	moveBoxEvent         []byte
-	changeSettingEvent   []byte
-	pingMessage          []byte
-	pongMessage          []byte
-}
+// type SocketEvents struct {
+// 	loadSubscribersEvent []byte
+// 	loadMessagesEvent    []byte
+// 	moveBoxEvent         []byte
+// 	changeSettingEvent   []byte
+// 	pingMessage          []byte
+// 	pongMessage          []byte
+// }
+//
+// var subscriptions [][]byte
+// var unsubscribe []byte
+// var socketEvents *SocketEvents
 
-var subscriptions [][]byte
-var unsubscribe []byte
-var socketEvents *SocketEvents
-
-func setupSockServer() {
-
-	// userSub = subscriberRequest.UserSub
-	// groupId = subscriberRequest.GroupId
-	// roles = subscriberRequest.Roles
-	//
-	exchangeId := "0195ec07-e989-71ac-a0c4-f6a08d1f93f6"
-	// topic = "exchange/0:" + exchangeId
-	//
-	// targets = connId
-	// socketId = util.GetColonJoined(userSub, connId)
-
-	connId := "test-id"
-	subscriptions = [][]byte{
-		[]byte("00001800001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId),
-		[]byte("00001800001f00001f0000000047exchange/1:" + exchangeId + "00036" + connId),
-		[]byte("00001800001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId),
-	}
-
-	unsubscribe = []byte("00001900001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId)
-
-	loadSubscribersEvent := []byte("000021000001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId)
-	loadMessagesEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
-		`00024{"page":1,"pageSize":10}`)
-	moveBoxEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
-		`00150{"boxes":[{"id":1743421799040,"color":"#9ec4b8","x":248,"y":301,"text":"E=mc^2"}]}`)
-	changeSettingEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
-		`00032{"settings":{"highlight":false}}`)
-	pingMessage := []byte("000022400001f00001f00000000000000000004PING")
-	pongMessage := []byte("000022400001f00001f00000000000000000004PONG")
-
-	socketEvents = &SocketEvents{
-		loadSubscribersEvent,
-		loadMessagesEvent,
-		moveBoxEvent,
-		changeSettingEvent,
-		pingMessage,
-		pongMessage,
-	}
-
-	println("did setup sock")
-}
+// func setupSockServer() {
+//
+// 	// userSub = subscriberRequest.UserSub
+// 	// groupId = subscriberRequest.GroupId
+// 	// roles = subscriberRequest.Roles
+// 	//
+// 	exchangeId := "0195ec07-e989-71ac-a0c4-f6a08d1f93f6"
+// 	// topic = "exchange/0:" + exchangeId
+// 	//
+// 	// targets = connId
+// 	// socketId = util.GetColonJoined(userSub, connId)
+//
+// 	connId := "test-id"
+// 	subscriptions = [][]byte{
+// 		[]byte("00001800001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId),
+// 		[]byte("00001800001f00001f0000000047exchange/1:" + exchangeId + "00036" + connId),
+// 		[]byte("00001800001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId),
+// 	}
+//
+// 	unsubscribe = []byte("00001900001f00001f0000000047exchange/0:" + exchangeId + "00036" + connId)
+//
+// 	loadSubscribersEvent := []byte("000021000001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId)
+// 	loadMessagesEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
+// 		`00024{"page":1,"pageSize":10}`)
+// 	moveBoxEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
+// 		`00150{"boxes":[{"id":1743421799040,"color":"#9ec4b8","x":248,"y":301,"text":"E=mc^2"}]}`)
+// 	changeSettingEvent := []byte("00001600001f00001f0000000047exchange/2:" + exchangeId + "00036" + connId +
+// 		`00032{"settings":{"highlight":false}}`)
+// 	pingMessage := []byte("000022400001f00001f00000000000000000004PING")
+// 	pongMessage := []byte("000022400001f00001f00000000000000000004PONG")
+//
+// 	socketEvents = &SocketEvents{
+// 		loadSubscribersEvent,
+// 		loadMessagesEvent,
+// 		moveBoxEvent,
+// 		changeSettingEvent,
+// 		pingMessage,
+// 		pongMessage,
+// 	}
+//
+// 	println("did setup sock")
+// }
 
 // Socket Events
 

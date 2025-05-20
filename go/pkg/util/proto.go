@@ -18,7 +18,7 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-type HandlerOptions struct {
+type HandlerOptionsConfig struct {
 	Invalidations     []string
 	NoLogFields       []protoreflect.Name
 	ServiceMethod     protoreflect.MethodDescriptor
@@ -27,11 +27,11 @@ type HandlerOptions struct {
 	ServiceMethodURL  string
 	SiteRoleName      string
 	Pattern           string
-	CacheDuration     int64
-	CacheType         int64
-	SiteRole          int64
-	Throttle          int64
-	NumInvalidations  int32
+	CacheDuration     uint32
+	CacheType         types.CacheType
+	NumInvalidations  uint32
+	Throttle          uint32
+	SiteRole          types.SiteRoles
 	HasQueryParams    bool
 	HasPathParams     bool
 	MultipartResponse bool
@@ -42,8 +42,176 @@ type HandlerOptions struct {
 	UseTx             bool
 }
 
+type HandlerOptions struct {
+	Invalidations     []string
+	NoLogFields       []protoreflect.Name
+	ServiceMethod     protoreflect.MethodDescriptor
+	ServiceMethodType protoreflect.MessageType
+	ServiceMethodName string
+	ServiceMethodURL  string
+	SiteRoleName      string
+	Pattern           string
+
+	packedNumeric  uint32
+	packedBooleans uint8
+}
+
+type UnpackedOptionsData struct {
+	CacheDuration     uint32
+	CacheType         types.CacheType
+	NumInvalidations  uint32
+	Throttle          uint32
+	SiteRole          types.SiteRoles
+	HasQueryParams    bool
+	HasPathParams     bool
+	MultipartResponse bool
+	MultipartRequest  bool
+	ResetsGroup       bool
+	ShouldStore       bool
+	ShouldSkip        bool
+	UseTx             bool
+}
+
+const (
+	cacheDurationBits    = 8  // max 256 second cache duration
+	cacheTypeBits        = 2  // DEFAULT, SKIP, STORE
+	numInvalidationsBits = 4  // an endpoint could invalidate 16 others
+	throttleBits         = 8  // prevent endpoint use up to every 256 seconds
+	siteRoleBits         = 10 // 10 supported role groups, i.e. APP_GROUP_ADMIN
+
+	siteRoleShift         = 0
+	throttleShift         = siteRoleShift + siteRoleBits
+	numInvalidationsShift = throttleShift + throttleBits
+	cacheTypeShift        = numInvalidationsShift + numInvalidationsBits
+	cacheDurationShift    = cacheTypeShift + cacheTypeBits
+
+	cacheDurationMask    = (1 << cacheDurationBits) - 1
+	cacheTypeMask        = (1 << cacheTypeBits) - 1
+	numInvalidationsMask = (1 << numInvalidationsBits) - 1
+	throttleMask         = (1 << throttleBits) - 1
+	siteRoleMask         = (1 << siteRoleBits) - 1
+)
+
+const (
+	useTxBit             = 1 << 0
+	shouldSkipBit        = 1 << 1
+	shouldStoreBit       = 1 << 2
+	resetsGroupBit       = 1 << 3
+	multipartRequestBit  = 1 << 4
+	multipartResponseBit = 1 << 5
+	hasPathParamsBit     = 1 << 6
+	hasQueryParamsBit    = 1 << 7
+)
+
+func NewHandlerOptions(config HandlerOptionsConfig) (*HandlerOptions, error) {
+	var packedNumeric uint32
+	var packedBooleans uint8
+
+	if config.CacheDuration > cacheDurationMask {
+		return nil, fmt.Errorf("CacheDuration %d out of range (max %d)", config.CacheDuration, cacheDurationMask)
+	}
+	if config.CacheType > cacheTypeMask {
+		return nil, fmt.Errorf("CacheType %d out of range (max %d)", config.CacheType, cacheTypeMask)
+	}
+	if config.NumInvalidations > numInvalidationsMask {
+		return nil, fmt.Errorf("NumInvalidations %d out of range (max %d)", config.NumInvalidations, numInvalidationsMask)
+	}
+	if config.Throttle > throttleMask {
+		return nil, fmt.Errorf("Throttle %d out of range (max %d)", config.Throttle, throttleMask)
+	}
+	if config.SiteRole > siteRoleMask {
+		return nil, fmt.Errorf("SiteRole %d out of range (max %d)", config.SiteRole, siteRoleMask)
+	}
+
+	cacheType, err := Itoui32(int(config.CacheType))
+	if err != nil {
+		return nil, fmt.Errorf("CacheType %d could not parse as uint32", config.CacheType)
+	}
+
+	siteRole, err := Itoui32(int(config.SiteRole))
+	if err != nil {
+		return nil, fmt.Errorf("SiteRole %d could not parse as uint32", config.SiteRole)
+	}
+
+	packedNumeric |= (config.CacheDuration << cacheDurationShift)
+	packedNumeric |= (cacheType << cacheTypeShift)
+	packedNumeric |= (config.NumInvalidations << numInvalidationsShift)
+	packedNumeric |= (config.Throttle << throttleShift)
+	packedNumeric |= (siteRole << siteRoleShift)
+
+	if config.UseTx {
+		packedBooleans |= useTxBit
+	}
+	if config.ShouldSkip {
+		packedBooleans |= shouldSkipBit
+	}
+	if config.ShouldStore {
+		packedBooleans |= shouldStoreBit
+	}
+	if config.ResetsGroup {
+		packedBooleans |= resetsGroupBit
+	}
+	if config.MultipartRequest {
+		packedBooleans |= multipartRequestBit
+	}
+	if config.MultipartResponse {
+		packedBooleans |= multipartResponseBit
+	}
+	if config.HasPathParams {
+		packedBooleans |= hasPathParamsBit
+	}
+	if config.HasQueryParams {
+		packedBooleans |= hasQueryParamsBit
+	}
+
+	return &HandlerOptions{
+		Invalidations:     config.Invalidations,
+		NoLogFields:       config.NoLogFields,
+		ServiceMethod:     config.ServiceMethod,
+		ServiceMethodType: config.ServiceMethodType,
+		ServiceMethodName: config.ServiceMethodName,
+		ServiceMethodURL:  config.ServiceMethodURL,
+		SiteRoleName:      config.SiteRoleName,
+		Pattern:           config.Pattern,
+		packedNumeric:     packedNumeric,
+		packedBooleans:    packedBooleans,
+	}, nil
+}
+
+func (h *HandlerOptions) Unpack() UnpackedOptionsData {
+	var data UnpackedOptionsData
+
+	data.CacheDuration = (h.packedNumeric >> cacheDurationShift) & cacheDurationMask
+
+	cacheType, err := Itoi32(int((h.packedNumeric >> cacheTypeShift) & cacheTypeMask))
+	if err != nil {
+		panic(ErrCheck(err))
+	}
+
+	siteRole, err := Itoi32(int((h.packedNumeric >> siteRoleShift) & siteRoleMask))
+	if err != nil {
+		panic(ErrCheck(err))
+	}
+
+	data.CacheType = types.CacheType(cacheType)
+	data.NumInvalidations = (h.packedNumeric >> numInvalidationsShift) & numInvalidationsMask
+	data.Throttle = (h.packedNumeric >> throttleShift) & throttleMask
+	data.SiteRole = types.SiteRoles(siteRole)
+
+	data.UseTx = (h.packedBooleans & useTxBit) != 0
+	data.ShouldSkip = (h.packedBooleans & shouldSkipBit) != 0
+	data.ShouldStore = (h.packedBooleans & shouldStoreBit) != 0
+	data.ResetsGroup = (h.packedBooleans & resetsGroupBit) != 0
+	data.MultipartRequest = (h.packedBooleans & multipartRequestBit) != 0
+	data.MultipartResponse = (h.packedBooleans & multipartResponseBit) != 0
+	data.HasPathParams = (h.packedBooleans & hasPathParamsBit) != 0
+	data.HasQueryParams = (h.packedBooleans & hasQueryParamsBit) != 0
+
+	return data
+}
+
 func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
-	parsedOptions := &HandlerOptions{
+	parsedOptions := HandlerOptionsConfig{
 		ServiceMethod:     md,
 		ServiceMethodName: string(md.Name()),
 	}
@@ -106,25 +274,25 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 
 	if siteRoles, ok := proto.GetExtension(inputOpts, types.E_SiteRole).(types.SiteRoles); ok {
 		roles := strings.Split(fmt.Sprint(siteRoles), ",")
-		roleBits := StringsToBitmask(roles)
+		roleBits := StringsToSiteRoles(roles)
 		parsedOptions.SiteRole = roleBits
-		if roleBits > math.MinInt32 && roleBits < math.MaxInt32 {
+		if roleBits > 0 && roleBits < math.MaxInt32 {
 			parsedOptions.SiteRoleName = types.SiteRoles_name[int32(roleBits)]
 		}
 	}
 
 	if cacheType, ok := proto.GetExtension(inputOpts, types.E_Cache).(types.CacheType); ok {
-		parsedOptions.CacheType = int64(cacheType)
+		parsedOptions.CacheType = cacheType
 	}
 
-	parsedOptions.ShouldStore = parsedOptions.CacheType == int64(types.CacheType_STORE)
-	parsedOptions.ShouldSkip = parsedOptions.CacheType == int64(types.CacheType_SKIP)
+	parsedOptions.ShouldStore = parsedOptions.CacheType == types.CacheType_STORE
+	parsedOptions.ShouldSkip = parsedOptions.CacheType == types.CacheType_SKIP
 
-	if cacheDuration, ok := proto.GetExtension(inputOpts, types.E_CacheDuration).(int64); ok {
+	if cacheDuration, ok := proto.GetExtension(inputOpts, types.E_CacheDuration).(uint32); ok {
 		parsedOptions.CacheDuration = cacheDuration
 	}
 
-	if throttle, ok := proto.GetExtension(inputOpts, types.E_Throttle).(int64); ok {
+	if throttle, ok := proto.GetExtension(inputOpts, types.E_Throttle).(uint32); ok {
 		parsedOptions.Throttle = throttle
 	}
 
@@ -144,7 +312,12 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		parsedOptions.UseTx = useTx
 	}
 
-	return parsedOptions
+	hops, err := NewHandlerOptions(parsedOptions)
+	if err != nil {
+		log.Fatalf("error making new handler options %v", err)
+	}
+
+	return hops
 }
 
 // Make wildcard patterns out of urls /path/{param} -> /path/*
@@ -154,9 +327,8 @@ func parseInvalidation(i string) string {
 
 func ParseInvalidations(handlerOptions map[string]*HandlerOptions) {
 	for _, opts := range handlerOptions {
-
 		// Unless needing to permanently store results in redis, mutations should invalidate the GET
-		if !opts.ShouldStore {
+		if !opts.Unpack().ShouldStore {
 			opts.Invalidations = append(opts.Invalidations, parseInvalidation(opts.ServiceMethodURL))
 		}
 

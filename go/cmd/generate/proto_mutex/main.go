@@ -30,6 +30,8 @@ func getGoScalarType(kind protoreflect.Kind) string {
 		return "int64"
 	case protoreflect.Int32Kind:
 		return "int32"
+	case protoreflect.EnumKind:
+		return "int32"
 	case protoreflect.StringKind:
 		return "string"
 	case protoreflect.BoolKind:
@@ -252,6 +254,13 @@ func main() {
 							goType = "map[" + keyGoType + "]" + valueGoType
 						}
 
+					} else if field.Enum != nil {
+						goType = g.QualifiedGoIdent(field.Enum.GoIdent)
+						makePointer := field.Desc.HasOptionalKeyword() ||
+							(field.Desc.ContainingOneof() != nil && !field.Desc.ContainingOneof().IsSynthetic())
+						if makePointer {
+							goType = "*" + goType
+						}
 					} else if field.Message != nil {
 						goType = "*" + g.QualifiedGoIdent(field.Message.GoIdent)
 					} else {

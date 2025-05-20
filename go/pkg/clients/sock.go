@@ -29,10 +29,8 @@ const (
 )
 
 const (
-	CID_LENGTH                  = 36
-	socketActionHasMoreMessages = int64(types.SocketActions_HAS_MORE_MESSAGES)
-	socketActionRoleCall        = int64(types.SocketActions_ROLE_CALL)
-	sockHandlerId               = "sock"
+	CID_LENGTH    = 36
+	sockHandlerId = "sock"
 )
 
 var (
@@ -359,7 +357,7 @@ func (cmd SocketCommand) GetClientId() string {
 	return cmd.ClientId
 }
 
-func (cmd SocketCommand) GetReplyChannel() interface{} {
+func (cmd SocketCommand) GetReplyChannel() any {
 	return cmd.ReplyChan
 }
 
@@ -500,7 +498,7 @@ func (s *Socket) RoleCall(userSub string) error {
 
 	if len(response.Targets) > 0 {
 		err := s.SendMessage(ctx, userSub, response.Targets, &types.SocketMessage{
-			Action: socketActionRoleCall,
+			Action: types.SocketActions_ROLE_CALL,
 		})
 		if err != nil {
 			return util.ErrCheck(err)

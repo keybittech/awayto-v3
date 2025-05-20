@@ -1,12 +1,11 @@
 package main
 
-func setupDb() {
-
-	println("did setup db")
-}
-
-var selectAdminRoleIdSQL = `SELECT id FROM dbtable_schema.roles WHERE name = 'Admin'`
-
+// func setupDb() {
+// 	println("did setup db")
+// }
+//
+// var selectAdminRoleIdSQL = `SELECT id FROM dbtable_schema.roles WHERE name = 'Admin'`
+//
 // func BenchmarkDbDefaultExec(b *testing.B) {
 // 	reset(b)
 // 	for c := 0; c < b.N; c++ {

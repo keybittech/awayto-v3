@@ -125,6 +125,8 @@ func TestPlaywright(t *testing.T) {
 	if onRegistration {
 		doEval(page)
 
+		println(fmt.Sprintf("Registered user %s with pass %s", user.Profile.Email, user.Password))
+
 		page.ByRole("textbox", "Group Name").MouseOver().Fill(fmt.Sprintf("Downtown Writing Center %d", user.UserId))
 		page.ByRole("textbox", "Group Description").MouseOver().Fill("Works with students and the public to teach writing")
 		if aiEnabled {

@@ -23,10 +23,10 @@ var (
 	connections     map[string]net.Conn
 )
 
-func reset(b *testing.B) {
-	b.ReportAllocs()
-	b.ResetTimer()
-}
+// func reset(b *testing.B) {
+// 	b.ReportAllocs()
+// 	b.ResetTimer()
+// }
 
 func TestMain(m *testing.M) {
 	cmd := exec.Command(filepath.Join(os.Getenv("PROJECT_DIR"), "go", os.Getenv("BINARY_NAME")))

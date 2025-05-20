@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand/v2"
@@ -12,6 +14,8 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/playwright-community/playwright-go"
+	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/proto"
 )
 
 func MoveToBoundingBox(loc playwright.Locator) playwright.Locator {
@@ -208,4 +212,106 @@ func login(t *testing.T, page *Page, user *UserWithPass) {
 func goHome(page *Page) {
 	page.ById("topbar_open_menu").MouseOver().Click()
 	page.ByText("Home").MouseOver().Click()
+}
+
+type ResponseError struct {
+	URL        string
+	StatusCode int
+	Body       string
+	Err        error
+}
+
+func (e ResponseError) Error() string {
+	return fmt.Sprintf("response error from %s (status: %d): %v\nBody: %s",
+		e.URL, e.StatusCode, e.Err, e.Body)
+}
+
+// ExpectResponseWrapper creates a function that, when called, will wait for a response matching
+// the specified URL substring after performing an action (like clicking a button).
+// It returns the response data unmarshaled into the specified protobuf message type T.
+//
+// Usage:
+//
+//	getResponse := ExpectResponseWrapper[*myproto.ResponseType](page, "api/endpoint")
+//
+//	// Call the function, passing a callback that performs the action
+//	response, err := getResponse(func() error {
+//	    // Click button or perform action that triggers the request
+//	    return page.GetByRole("button", playwright.PageGetByRoleOptions{
+//	        Name: playwright.String("Submit"),
+//	    }).Click()
+//	})
+//
+//	if err != nil {
+//	    // Handle error
+//	}
+//	// Use the typed response
+//	fmt.Println(response.SomeField)
+func expectResponseWrapper[T proto.Message](page playwright.Page, urlSubstring string) func(action func() error) (T, error) {
+	var zero T
+
+	// Return a function that executes the action and waits for the response
+	return func(action func() error) (T, error) {
+		// Set up and wait for the response
+		response, err := page.ExpectResponse(
+			// URL matcher function
+			func(r playwright.Response) bool {
+				return contains(r.URL(), urlSubstring)
+			},
+			// Action to trigger the request
+			action,
+		)
+
+		if err != nil {
+			return zero, fmt.Errorf("failed to receive response: %w", err)
+		}
+
+		// Get the response URL for error reporting
+		responseURL := response.URL()
+
+		// Check the status code
+		statusCode := response.Status()
+		if statusCode < 200 || statusCode >= 300 {
+			// Get body for error details
+			body, bodyErr := response.Text()
+			if bodyErr != nil {
+				body = "[failed to extract response body]"
+			}
+			return zero, ResponseError{
+				URL:        responseURL,
+				StatusCode: statusCode,
+				Body:       body,
+				Err:        errors.New("non-success status code"),
+			}
+		}
+
+		// Get the body
+		body, err := response.Text()
+		if err != nil {
+			return zero, fmt.Errorf("failed to get response body: %w", err)
+		}
+
+		// Try to unmarshal as protobuf
+		result := proto.Clone(zero).(T)
+		err = protojson.Unmarshal([]byte(body), result)
+		if err != nil {
+			// For better error messages, check if the body is valid JSON
+			var jsonCheck interface{}
+			jsonErr := json.Unmarshal([]byte(body), &jsonCheck)
+			if jsonErr != nil {
+				return zero, fmt.Errorf("response is not valid JSON: %w\nBody: %s", jsonErr, body)
+			}
+			return zero, fmt.Errorf("failed to unmarshal response as proto: %w", err)
+		}
+
+		return result, nil
+	}
+}
+
+// Helper function to check if a string contains a substring
+func contains(s, substr string) bool {
+	return s != "" && substr != "" && (s == substr ||
+		len(s) >= len(substr) && (s[:len(substr)] == substr ||
+			s[len(s)-len(substr):] == substr ||
+			(len(s) > len(substr)*2 && s[len(s)/2-len(substr)/2:len(s)/2+len(substr)-len(substr)/2] == substr)))
 }

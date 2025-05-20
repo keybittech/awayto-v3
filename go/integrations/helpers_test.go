@@ -225,7 +225,7 @@ func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 		return "", nil, err
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(body, &result); err != nil {
 		return "", nil, err
 	}
@@ -373,7 +373,7 @@ func getSocketTicket(userId string) (*types.UserSession, string, string, string)
 		log.Fatal("failed get socket ticket", err)
 	}
 
-	var result map[string]interface{}
+	var result map[string]any
 	if err := json.Unmarshal(body, &result); err != nil {
 		log.Fatal("failed marshal ticket body", err)
 	}
@@ -495,19 +495,19 @@ func getUser(userId string) (*types.UserSession, net.Conn, string, string, strin
 //
 // 	return subscribers, connections
 // }
-
-func getUserProfileDetails(token string) (*types.IUserProfile, error) {
-	getUserProfileDetailsResponse := &types.GetUserProfileDetailsResponse{}
-	err := apiRequest(token, http.MethodPatch, "/api/v1/profile/details", nil, nil, getUserProfileDetailsResponse)
-	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error get user profile details error: %v", err))
-	}
-	if getUserProfileDetailsResponse.UserProfile.Id == "" {
-		return nil, errors.New("get user profile details response has no id")
-	}
-
-	return getUserProfileDetailsResponse.UserProfile, nil
-}
+//
+// func getUserProfileDetails(token string) (*types.IUserProfile, error) {
+// 	getUserProfileDetailsResponse := &types.GetUserProfileDetailsResponse{}
+// 	err := apiRequest(token, http.MethodPatch, "/api/v1/profile/details", nil, nil, getUserProfileDetailsResponse)
+// 	if err != nil {
+// 		return nil, errors.New(fmt.Sprintf("error get user profile details error: %v", err))
+// 	}
+// 	if getUserProfileDetailsResponse.UserProfile.Id == "" {
+// 		return nil, errors.New("get user profile details response has no id")
+// 	}
+//
+// 	return getUserProfileDetailsResponse.UserProfile, nil
+// }
 
 func getServiceById(token, serviceId string) (*types.IService, error) {
 	getServiceByIdResponse := &types.GetServiceByIdResponse{}
