@@ -32,14 +32,42 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
-func getTestApi() *API {
-	httpsPort, err := strconv.Atoi(os.Getenv("GO_HTTPS_PORT"))
-	if err != nil {
-		log.Fatalf("error getting test api %v", err)
+var testApi *API
+
+func getTestApi(limit rate.Limit, burst int) *API {
+	var api *API
+	if testApi != nil {
+		api = testApi
+	} else {
+		httpsPort, err := strconv.Atoi(os.Getenv("GO_HTTPS_PORT"))
+		if err != nil {
+			log.Fatalf("error getting test api %v", err)
+		}
+		httpPort, err := strconv.Atoi(os.Getenv("GO_HTTP_PORT"))
+		if err != nil {
+			log.Fatalf("error getting test api %v", err)
+		}
+		unixPath := "/tmp/test.sock"
+
+		api = NewAPI(httpsPort)
+
+		go api.RedirectHTTP(httpPort)
+
+		go api.InitUnixServer(unixPath)
 	}
-	a := NewAPI(httpsPort)
-	a.InitProtoHandlers()
-	return a
+
+	api.Server.Handler = http.NewServeMux()
+	api.InitProtoHandlers()
+	api.InitAuthProxy()
+	api.InitSockServer()
+	api.InitStatic()
+	rateLimiter := NewRateLimit("api", limit, burst, time.Duration(5*time.Minute))
+	limitMiddleware := api.LimitMiddleware(rateLimiter)(api.Server.Handler)
+	api.Server.Handler = api.AccessRequestMiddleware(limitMiddleware)
+
+	testApi = api
+
+	return api
 }
 
 // func getProtoTestReq(token, method, url string, bodyMessage proto.Message) *http.Request {
@@ -151,7 +179,7 @@ func checkResponseFor(buf []byte, items []byte) bool {
 	return true
 }
 
-func setupRouteRequest(userId int32, method, path, contentType string) (*API, *http.Request, *httptest.ResponseRecorder) {
+func setupRouteRequest(userId int32, limit rate.Limit, burst int, method, path, contentType string) (*API, *http.Request, *httptest.ResponseRecorder) {
 	token, _, err := getKeycloakToken(integrationTest.TestUsers[userId])
 	if err != nil {
 		panic(util.ErrCheck(err))
@@ -163,12 +191,7 @@ func setupRouteRequest(userId int32, method, path, contentType string) (*API, *h
 	req.Header.Set("Accept", contentType)
 	req.Header.Set("Content-Type", contentType)
 
-	return getTestApi(), req, httptest.NewRecorder()
-}
-
-func limitRouteRequest(api *API, limit rate.Limit, burst int) {
-	rl := NewRateLimit("api", limit, burst, time.Duration(5*time.Second))
-	api.Server.Handler = api.LimitMiddleware(rl)(api.Server.Handler)
+	return getTestApi(limit, burst), req, httptest.NewRecorder()
 }
 
 func setRouteRequestBody(req *http.Request, body proto.Message, contentType string) {
@@ -194,10 +217,7 @@ func checkRouteRequest(recorder *httptest.ResponseRecorder, byteSet []byte) {
 	}
 }
 
-func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string) {
-	api, req, recorder := setupRouteRequest(0, http.MethodGet, path, "")
-	limitRouteRequest(api, limit, burst)
-
+func doApiBenchmark(b *testing.B, api *API, req *http.Request, recorder *httptest.ResponseRecorder, checkBytes []byte) {
 	reset(b)
 	for b.Loop() {
 		b.StopTimer()
@@ -206,25 +226,10 @@ func doBenchmarkRateLimit(b *testing.B, limit rate.Limit, burst int, path string
 		api.Server.Handler.ServeHTTP(recorder, req)
 	}
 
-	checkRouteRequest(recorder, []byte{'{', 'T'})
+	checkRouteRequest(recorder, checkBytes)
 }
 
-func doBenchmarkNoCache(b *testing.B, path string) {
-	api, req, recorder := setupRouteRequest(0, http.MethodGet, path, "")
-
-	reset(b)
-	for b.Loop() {
-		b.StopTimer()
-		recorder.Body.Reset()
-		b.StartTimer()
-		api.Server.Handler.ServeHTTP(recorder, req)
-	}
-
-	checkRouteRequest(recorder, []byte{'{', 'T'})
-}
-
-func doProtoBenchmark(b *testing.B, method, path, contentType string, body proto.Message, update func(proto.Message)) {
-	api, req, recorder := setupRouteRequest(0, method, path, contentType)
+func doApiBenchmarkWithBody(b *testing.B, api *API, req *http.Request, recorder *httptest.ResponseRecorder, contentType string, checkBytes []byte, body proto.Message, update func(proto.Message)) {
 
 	reset(b)
 	for b.Loop() {
@@ -237,11 +242,11 @@ func doProtoBenchmark(b *testing.B, method, path, contentType string, body proto
 		api.Server.Handler.ServeHTTP(recorder, req)
 	}
 
-	checkRouteRequest(recorder, []byte{'{', 'T'})
+	checkRouteRequest(recorder, checkBytes)
 }
 
 func getApiProtoSchedule() *types.PostScheduleRequest {
-	return &types.PostScheduleRequest{
+	return proto.Clone(&types.PostScheduleRequest{
 		AsGroup:            true,
 		StartDate:          integrationTest.MasterSchedule.GetStartDate(),
 		EndDate:            integrationTest.MasterSchedule.GetEndDate(),
@@ -249,5 +254,5 @@ func getApiProtoSchedule() *types.PostScheduleRequest {
 		BracketTimeUnitId:  integrationTest.MasterSchedule.GetBracketTimeUnitId(),
 		SlotTimeUnitId:     integrationTest.MasterSchedule.GetSlotTimeUnitId(),
 		SlotDuration:       integrationTest.MasterSchedule.GetSlotDuration(),
-	}
+	}).(*types.PostScheduleRequest)
 }

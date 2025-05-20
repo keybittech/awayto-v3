@@ -40,44 +40,77 @@ func init() {
 }
 
 func BenchmarkApiCache(b *testing.B) {
+	userId := int32(0)
+	method := http.MethodGet
+	path := "/api/v1/quotes"
+	contentType := "application/json"
+	checkBytes := []byte{'{', 'T'} // T for Too many requests expected
 	b.Run("100 req per second, 100 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 100, 100, "/api/v1/quotes")
+		api, req, recorder := setupRouteRequest(userId, 100, 100, method, path, contentType)
+		doApiBenchmark(bb, api, req, recorder, checkBytes)
 	})
 	b.Run("1000 req per second, 1000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 1000, 1000, "/api/v1/quotes")
+		api, req, recorder := setupRouteRequest(userId, 1000, 1000, method, path, contentType)
+		doApiBenchmark(bb, api, req, recorder, checkBytes)
 	})
 	b.Run("10000 req per second, 10000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 10000, 10000, "/api/v1/quotes")
+		api, req, recorder := setupRouteRequest(userId, 10000, 10000, method, path, contentType)
+		doApiBenchmark(bb, api, req, recorder, checkBytes)
 	})
 	b.Run("100000 req per second, 100000 burst", func(bb *testing.B) {
-		doBenchmarkRateLimit(bb, 100000, 100000, "/api/v1/quotes")
+		api, req, recorder := setupRouteRequest(userId, 100000, 100000, method, path, contentType)
+		doApiBenchmark(bb, api, req, recorder, checkBytes)
 	})
 }
 
 func BenchmarkApiNoCache(b *testing.B) {
+	userId := int32(0)
+	method := http.MethodGet
+	contentType := "application/json"
+	checkBytes := []byte{'{', '['}
 	b.Run("sock_ticket", func(bb *testing.B) {
-		doBenchmarkNoCache(bb, "/api/v1/sock/ticket")
+		api, req, recorder := setupRouteRequest(userId, 100000, 100000, method, "/api/v1/sock/ticket", contentType)
+		doApiBenchmark(bb, api, req, recorder, checkBytes)
 	})
 	b.Run("profile_details", func(bb *testing.B) {
-		doBenchmarkNoCache(bb, "/api/v1/profile/details")
+		api, req, recorder := setupRouteRequest(userId, 100000, 100000, method, "/api/v1/profile/details", contentType)
+		doApiBenchmark(bb, api, req, recorder, checkBytes)
 	})
 }
 
-func BenchmarkApiProtoWire(b *testing.B) {
-	name := " Master Creation Test"
-	i := time.Now().UnixNano()
-	doProtoBenchmark(b, http.MethodPost, "/api/v1/schedules", "application/x-protobuf", getApiProtoSchedule(), func(msg proto.Message) {
-		msg.(*types.PostScheduleRequest).Name = strconv.FormatInt(i, 10) + name
-		i++
-	})
-}
+func BenchmarkApiProto(b *testing.B) {
+	userId := int32(0)
+	method := http.MethodPost
+	path := "/api/v1/schedules"
+	checkBytes := []byte{'{', '['}
+	scheduleName := " Master Creation Test"
 
-func BenchmarkApiProtoJson(b *testing.B) {
-	name := " Master Creation Test"
+	// pre-empt cache
+	contentType := "application/json"
+	api, req, recorder := setupRouteRequest(userId, 100000, 100000, method, path, contentType)
+	testSchedule := getApiProtoSchedule()
+	testSchedule.Name = strconv.FormatInt(time.Now().UnixNano(), 10) + scheduleName
+	setRouteRequestBody(req, testSchedule, contentType)
+	api.Server.Handler.ServeHTTP(recorder, req)
+	checkRouteRequest(recorder, checkBytes)
+
 	i := time.Now().UnixNano()
-	doProtoBenchmark(b, http.MethodPost, "/api/v1/schedules", "application/json", getApiProtoSchedule(), func(msg proto.Message) {
-		msg.(*types.PostScheduleRequest).Name = strconv.FormatInt(i, 10) + name
-		i++
+	contentType = "application/x-protobuf"
+	b.Run("wire format", func(b *testing.B) {
+		api, req, recorder := setupRouteRequest(userId, 100000, 100000, method, path, contentType)
+		doApiBenchmarkWithBody(b, api, req, recorder, contentType, checkBytes, getApiProtoSchedule(), func(msg proto.Message) {
+			msg.(*types.PostScheduleRequest).Name = strconv.FormatInt(i, 10) + scheduleName
+			i++
+		})
+	})
+
+	contentType = "application/json"
+	b.Run("json format", func(b *testing.B) {
+		api, req, recorder := setupRouteRequest(userId, 100000, 100000, method, path, contentType)
+		doApiBenchmarkWithBody(b, api, req, recorder, contentType, checkBytes, getApiProtoSchedule(), func(msg proto.Message) {
+			msg.(*types.PostScheduleRequest).Name = strconv.FormatInt(i, 10) + scheduleName
+			i++
+		})
 	})
 }
 
@@ -138,7 +171,7 @@ func TestRoutes(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			routeStr := fmt.Sprintf("TestRoutes(%s %s %s)", tt.method, tt.path, tt.contentType)
 
-			api, req, recorder := setupRouteRequest(tt.userId, tt.method, tt.path, tt.contentType)
+			api, req, recorder := setupRouteRequest(tt.userId, 100000, 100000, tt.method, tt.path, tt.contentType)
 
 			setRouteRequestBody(req, tt.body, tt.contentType)
 

@@ -45,9 +45,12 @@ func (w *UnixResponseWriter) WriteHeader(statusCode int) {
 }
 
 func (a *API) InitUnixServer(unixPath string) {
-	err := os.Remove(unixPath)
-	if err != nil {
-		log.Fatal(err)
+	_, err := os.Stat(unixPath)
+	if err == nil {
+		err = os.Remove(unixPath)
+		if err != nil {
+			log.Fatal(err)
+		}
 	}
 
 	unixListener, err := net.Listen("unix", unixPath)
@@ -57,12 +60,12 @@ func (a *API) InitUnixServer(unixPath string) {
 
 	defer unixListener.Close()
 
-	fmt.Println("Listening on", unixPath)
+	util.DebugLog.Println("Listening on", unixPath)
 
 	for {
 		conn, err := unixListener.Accept()
 		if err != nil {
-			fmt.Println("Error accepting unix connection:", err)
+			util.ErrorLog.Println("Error accepting unix connection:", err)
 			continue
 		}
 

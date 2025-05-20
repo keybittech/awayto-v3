@@ -170,7 +170,7 @@ GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1
 GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} # -cpuprofile=cpu.prof
 GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} # $${PROF:-} # -cpuprofile=cpu.prof
 
-GO=GOEXPERIMENT=jsonv2 gotip# go
+GO=go#GOEXPERIMENT=jsonv2 gotip# go
 SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 
 #################################

@@ -126,11 +126,11 @@ func main() {
 	certLoc := os.Getenv("CERT_LOC")
 	keyLoc := os.Getenv("CERT_KEY_LOC")
 
-	println("listening on ", httpsPort, "\nCert Locations:", certLoc, keyLoc)
+	util.DebugLog.Println("listening on ", httpsPort, "\nCert Locations:", certLoc, keyLoc)
 
 	err := server.Server.ListenAndServeTLS(certLoc, keyLoc)
 	if err != nil {
-		println("LISTEN AND SERVE ERROR: ", err.Error())
+		util.ErrorLog.Println("LISTEN AND SERVE ERROR: ", err.Error())
 		return
 	}
 }

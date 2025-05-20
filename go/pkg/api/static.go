@@ -95,7 +95,7 @@ func (a *API) InitStatic() {
 	// use dev server or built for /app
 	_, err = http.Get(devServerUrl.String())
 	if err != nil && !strings.Contains(err.Error(), "failed to verify certificate") {
-		println("Using build folder")
+		util.DebugLog.Println("Using build folder")
 
 		fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", staticDir)))
 
@@ -152,7 +152,7 @@ func (a *API) InitStatic() {
 			}
 		})))
 	} else {
-		println("Using live reload")
+		util.DebugLog.Println("Using live reload")
 		var proxy *httputil.ReverseProxy
 		proxy = httputil.NewSingleHostReverseProxy(devServerUrl)
 		proxy.Transport = &http.Transport{

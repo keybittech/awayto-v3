@@ -25,7 +25,7 @@ func (a *API) RedirectHTTP(httpPort int) {
 
 	httpRedirector.Handler = httpRedirectorMux
 
-	println("listening on ", strconv.Itoa(httpPort))
+	util.DebugLog.Println("listening on ", strconv.Itoa(httpPort))
 
 	err := httpRedirector.ListenAndServe()
 	if err != nil {
