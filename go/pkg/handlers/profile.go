@@ -41,6 +41,7 @@ func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRe
 func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfileDetailsRequest) (*types.GetUserProfileDetailsResponse, error) {
 	userSub := info.Session.GetUserSub()
 	groupId := info.Session.GetGroupId()
+	groupCode := info.Session.GetGroupCode()
 
 	upReq := util.BatchQueryRow[types.IUserProfile](info.Batch, `
 		SELECT "firstName", "lastName",	image, email, locked,	active
@@ -49,6 +50,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	`, userSub)
 
 	var groupsReq *map[string]*types.IGroup
+	var groupRolesReq *map[string]*types.IRole
 	var rolesReq *map[string]*types.IRole
 	var quotesReq *map[string]*types.IQuote
 	var bookingsReq *map[string]*types.IBooking
@@ -57,7 +59,14 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 		groupsReq = util.BatchQueryMap[types.IGroup](info.Batch, "code", `
 			SELECT code, name, "displayName", "createdOn", purpose, ai, true as active
 			FROM dbview_schema.enabled_groups
-			WHERE id = $1
+			WHERE code = $1
+		`, groupCode)
+
+		groupRolesReq = util.BatchQueryMap[types.IRole](info.Batch, "id", `
+			SELECT er.id, er.name
+			FROM dbview_schema.enabled_group_roles egr
+			JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
+			WHERE egr."groupId" = $1
 		`, groupId)
 
 		rolesReq = util.BatchQueryMap[types.IRole](info.Batch, "id", `
@@ -86,6 +95,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	if info.Session.GetGroupId() != "" {
 		up.Groups = *groupsReq
+		up.Groups[groupCode].Roles = *groupRolesReq
 		up.Roles = *rolesReq
 		up.Quotes = *quotesReq
 		up.Bookings = *bookingsReq

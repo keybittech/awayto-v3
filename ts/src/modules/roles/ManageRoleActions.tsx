@@ -93,10 +93,10 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
   const options = useMemo(() => {
     const opts = [];
     for (let r in SiteRoles) {
-      const roleNum = parseInt(r)
+      const roleNum = parseInt(SiteRoles[r])
       if (roleNum > 0 && [SiteRoles.UNRESTRICTED, SiteRoles.APP_ROLE_CALL, SiteRoles.APP_GROUP_ADMIN].indexOf(roleNum) == -1) {
         const rd = SiteRoleDetails[roleNum as SiteRoles];
-        opts.push({ id: SiteRoles[r], name: rd.name, description: rd.description });
+        opts.push({ id: r, name: rd.name, description: rd.description });
       }
     }
     return opts;

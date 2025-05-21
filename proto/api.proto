@@ -11,7 +11,8 @@ message CachedGroup {
   string externalId = 3;
   string sub = 4;
   string name = 5;
-  bool ai = 6;
+  string code = 6;
+  bool ai = 7;
 
   option (types.mutex) = true;
 }

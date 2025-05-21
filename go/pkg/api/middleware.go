@@ -81,13 +81,14 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 
 		if len(sessionSubGroups) == 0 {
 			if sessionGroupId != "" { // user had a group but no more
-				session.SetSubGroupName("")
-				session.SetSubGroupPath("")
+				session.SetGroupId("")
+				session.SetGroupCode("")
 				session.SetGroupName("")
 				session.SetGroupPath("")
+				session.SetSubGroupName("")
+				session.SetSubGroupPath("")
 				session.SetGroupExternalId("")
 				session.SetSubGroupExternalId("")
-				session.SetGroupId("")
 				session.SetGroupAi(false)
 				session.SetGroupSub("")
 				session.SetGroupSessionVersion(0)
@@ -118,7 +119,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			concurrentCachedGroup, err := a.Cache.Groups.LoadOrSet(groupPath, func() (*types.CachedGroup, error) {
 				batch := util.NewBatchable(a.Handlers.Database.DatabaseClient.Pool, "worker", "", 0)
 				groupReq := util.BatchQueryRow[types.IGroup](batch, `
-					SELECT id, "externalId", sub, ai
+					SELECT id, code, "externalId", sub, ai
 					FROM dbview_schema.enabled_groups
 					WHERE name = $1
 				`, groupName)
@@ -135,6 +136,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 				cachedGroup := &types.CachedGroup{
 					SubGroupPaths: make([]string, 0, len(kcSubGroups)),
 					Id:            group.Id,
+					Code:          group.Code,
 					Name:          groupName,
 					ExternalId:    group.ExternalId,
 					Sub:           group.Sub,
@@ -188,6 +190,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 
 			session.SetGroupId(groupId)
 			session.SetGroupPath(groupPath)
+			session.SetGroupCode(concurrentCachedGroup.GetCode())
 			session.SetGroupName(concurrentCachedGroup.GetName())
 			session.SetGroupExternalId(concurrentCachedGroup.GetExternalId())
 			session.SetGroupSub(concurrentCachedGroup.GetSub())

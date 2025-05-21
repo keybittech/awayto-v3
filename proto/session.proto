@@ -11,18 +11,19 @@ message UserSession {
   string userEmail = 3;
   string groupName = 4;
   string groupId = 5;
-  string groupSub = 6;
-  string groupExternalId = 7;
-  string groupPath = 8;
-  string subGroupName = 9;
-  string subGroupExternalId = 10;
-  string subGroupPath = 11;
-  string anonIp = 12;
-  string timezone = 13;
-  SiteRoles roleBits = 14;
-  int64 groupSessionVersion = 15; // References UnixNano int64
-  int64 expiresAt = 16; // References claims ExpiresAt int64
-  bool groupAi = 17;
+  string groupCode = 6;
+  string groupSub = 7;
+  string groupExternalId = 8;
+  string groupPath = 9;
+  string subGroupName = 10;
+  string subGroupExternalId = 11;
+  string subGroupPath = 12;
+  string anonIp = 13;
+  string timezone = 14;
+  SiteRoles roleBits = 15;
+  int64 groupSessionVersion = 16; // References UnixNano int64
+  int64 expiresAt = 17; // References claims ExpiresAt int64
+  bool groupAi = 18;
 
   option (types.mutex) = true;
 }

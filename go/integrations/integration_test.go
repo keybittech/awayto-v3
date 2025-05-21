@@ -29,7 +29,7 @@ var (
 // }
 
 func TestMain(m *testing.M) {
-	cmd := exec.Command(filepath.Join(os.Getenv("PROJECT_DIR"), "go", os.Getenv("BINARY_NAME")))
+	cmd := exec.Command(filepath.Join(os.Getenv("PROJECT_DIR"), "go", os.Getenv("BINARY_NAME")), "-requestsPerSecond=500", "-requestsPerSecondBurst=500")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
