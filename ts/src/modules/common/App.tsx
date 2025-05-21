@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
@@ -18,7 +18,21 @@ export default function App(props: IComponent): React.JSX.Element {
 
   const { authenticated } = useAppSelector(state => state.auth);
 
-  const { data: profileRequest, isSuccess } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
+  const { data: profileRequest, isLoading, isSuccess, isError } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(undefined, {
+    skip: !authenticated, // Skip query if not authenticated
+  });
+
+  useEffect(() => {
+    if (isSuccess || isError || (!isLoading && !authenticated)) {
+      window.INT_SITE_LOAD = true;
+    }
+  }, [isSuccess, isError, isLoading, authenticated]);
+
+  if (isLoading && authenticated) {
+    return <></>;
+  }
+
+  const showLayout = authenticated && profileRequest?.userProfile?.active;
 
   return <>
     <LocalizationProvider dateAdapter={AdapterDayjs} adapterLocale='en'>
@@ -27,7 +41,7 @@ export default function App(props: IComponent): React.JSX.Element {
 
         <SnackAlert />
         <ConfirmAction />
-        {isSuccess ? authenticated && profileRequest?.userProfile?.active ? <Layout {...props} /> : <Onboard {...props} /> : <></>}
+        {showLayout ? <Layout {...props} /> : <Onboard {...props} />}
       </ThemeProvider>
     </LocalizationProvider>
   </>

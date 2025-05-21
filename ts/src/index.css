@@ -1,20 +1,3 @@
-html {
-  font-size: 62.5%;
-}
-
-/* @media (max-width: 1199px) { */
-/*   html { */
-/*     font-size: 50%;  */
-/*   } */
-/* } */
-
-body {
-  background-color: #203040;
-  margin: 0;
-  padding: 0;
-  font-family: sans-serif;
-}
-
 pre {
   font-family: monospace;
   display: inline;
@@ -136,40 +119,6 @@ pre {
 .rdt_TableCell,
 .rdt_Pagination {
   background-color: unset !important;
-}
-
-#loading_site_root {
-  z-index: 1000;
-  position: absolute;
-  width: 100%;
-  height: 100vh;
-  background-color: #203040;
-  display: flex !important;
-  justify-content: center;
-  align-items: center;
-  text-align: center;
-}
-
-#loading_site_root #site_root_message {
-  color: white;
-  position: relative;
-  /* Other styles as needed */
-}
-
-#loading_site_root #site_root_message::after {
-  content: "";
-  position: absolute;
-  width: 0;
-  height: 2px; /* Thickness of the bottom border */
-  bottom: 0;
-  left: 0;
-  background-color: white; /* Color of the bottom border */
-  animation: loading-animation 2s linear infinite;
-}
-
-@keyframes loading-animation {
-  0% { width: 0; }
-  100% { width: 100%; }
 }
 
 .vertical-parent {

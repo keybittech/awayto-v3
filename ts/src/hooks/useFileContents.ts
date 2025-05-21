@@ -1,6 +1,6 @@
 import { useCallback, useMemo, useState } from 'react';
 import { BufferResponse, IFile } from './api';
-import { keycloak, refreshToken } from './auth';
+import { keycloak, refreshToken } from './keycloak';
 import { useUtil } from './useUtil';
 
 export type UseFileContents = () => {

@@ -1,6 +1,7 @@
-import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, retry, reactHooksModule, buildCreateApi, coreModule } from '@reduxjs/toolkit/query/react'
+import { MutationDefinition, QueryDefinition } from '@reduxjs/toolkit/query';
+import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, TypedUseQueryHookResult, retry, reactHooksModule, buildCreateApi, coreModule } from '@reduxjs/toolkit/query/react'
 
-import { keycloak, refreshToken, setAuthHeaders } from './auth';
+import { keycloak, refreshToken, setAuthHeaders } from './keycloak';
 import { RootState } from './store';
 import { utilSlice } from './util';
 
@@ -77,4 +78,7 @@ export const siteApiTemplate = createApi({
   endpoints: () => ({}),
 });
 
+export type SiteMutation<TQueryArg, TResultType> = MutationDefinition<TQueryArg, CustomBaseQuery, 'Root', TResultType, 'api'>;
+export type SiteQuery<TQueryArg, TResultType> = QueryDefinition<TQueryArg, CustomBaseQuery, 'Root', TResultType, 'api'>;
 
+export type UseSiteQuery<T, R> = TypedUseQueryHookResult<R, T, CustomBaseQuery>;

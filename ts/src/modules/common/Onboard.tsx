@@ -29,8 +29,10 @@ import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 export function Onboard(_: IComponent): React.JSX.Element {
 
-  window.INT_SITE_LOAD = true;
-  console.log('window initialized');
+  useEffect(() => {
+    window.INT_SITE_LOAD = true;
+    console.log('Onboard mounted, window.INT_SITE_LOAD initialized');
+  }, []);
 
   const navigate = useNavigate();
   // const location = useLocation();

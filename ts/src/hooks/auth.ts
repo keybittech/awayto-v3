@@ -1,7 +1,5 @@
 import { createSlice } from '@reduxjs/toolkit';
 
-import Keycloak from 'keycloak-js';
-
 import AccessibilityNewIcon from '@mui/icons-material/AccessibilityNew';
 import LockResetIcon from '@mui/icons-material/LockReset';
 import GroupsIcon from '@mui/icons-material/Groups';
@@ -13,67 +11,24 @@ import Diversity3Icon from '@mui/icons-material/Diversity3';
 import LockIcon from '@mui/icons-material/Lock';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
-const {
-  VITE_REACT_APP_KC_REALM,
-  VITE_REACT_APP_KC_CLIENT,
-  VITE_REACT_APP_KC_PATH,
-  VITE_REACT_APP_APP_HOST_URL,
-} = import.meta.env;
-
-export const keycloak = new Keycloak({
-  url: VITE_REACT_APP_KC_PATH,
-  realm: VITE_REACT_APP_KC_REALM,
-  clientId: VITE_REACT_APP_KC_CLIENT
-});
-
-export const refreshToken = async (dur?: number) => {
-  await keycloak.updateToken(dur);
-  return true;
+export type IAuth = {
+  authenticated?: boolean;
 }
 
-export const setAuthHeaders = (headers?: Headers) => {
-  if (!headers) {
-    headers = new Headers();
-  }
-  headers.set('X-Tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
-  headers.set('Authorization', 'Bearer ' + keycloak.token);
-  return headers;
-}
-
-export const login = async () => {
-  const authenticated = await keycloak.init({ onLoad: 'login-required' });
-  if (authenticated) {
-    await fetch('/login', { headers: setAuthHeaders() });
-  }
-  return authenticated;
-}
-
-export const logout = async () => {
-  localStorage.clear();
-  await fetch('/logout', { headers: setAuthHeaders() });
-  await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
-}
-
-/**
- * @category Authorization
- */
-export type KcSiteOpts = {
-  regroup: (groupId?: string) => Promise<void>;
-}
-
-/**
- * @category Authorization
- */
-export type DecodedJWTToken = {
-  resource_access: {
-    [prop: string]: { roles: string[] }
+export const authConfig = {
+  name: 'auth',
+  initialState: {
+    authenticated: undefined
+  } as IAuth,
+  reducers: {
+    setAuthenticated: (state: IAuth, action: { payload: IAuth }) => {
+      state.authenticated = action.payload.authenticated;
+    },
   },
-  groups: string[]
-}
+};
 
-/**
- * @category Authorization
- */
+export const authSlice = createSlice(authConfig);
+
 export enum SiteRoles {
   UNRESTRICTED = 0,
   APP_ROLE_CALL = 1,
@@ -150,49 +105,8 @@ export const SiteRoleDetails = {
   },
 }
 
-/**
- * @category Authorization
- */
-export type StrategyUser = {
-  sub: string;
-}
-
-/**
- * @category Authorization
- */
-
 export const hasRoleBits = function(userRoleBits: number, targetRoles: SiteRoles[]): boolean {
   if (!targetRoles || targetRoles.length === 0) return false;
   const targetBits = targetRoles.reduce((acc, role) => acc | role, 0);
   return (userRoleBits & targetBits) > 0;
 }
-
-/**
- * @category Authorization
- */
-export const getTokenHeaders = function(): { headers: Record<string, string> } {
-  return {
-    headers: {
-      'Content-Type': 'application/json',
-      'Authorization': `Bearer ${keycloak.token}`
-    }
-  }
-}
-
-export type IAuth = {
-  authenticated?: boolean;
-}
-
-export const authConfig = {
-  name: 'auth',
-  initialState: {
-    authenticated: undefined
-  } as IAuth,
-  reducers: {
-    setAuthenticated: (state: IAuth, action: { payload: IAuth }) => {
-      state.authenticated = action.payload.authenticated;
-    },
-  },
-};
-
-export const authSlice = createSlice(authConfig);
