@@ -32,30 +32,3 @@ func TestGetCleanPath(t *testing.T) {
 		})
 	}
 }
-
-func TestGetEnvFile(t *testing.T) {
-	type args struct {
-		envFilePath string
-		byteSize    uint16
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    string
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := GetEnvFile(tt.args.envFilePath, tt.args.byteSize)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("GetEnvFile(%v, %v) error = %v, wantErr %v", tt.args.envFilePath, tt.args.byteSize, err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("GetEnvFile(%v, %v) = %v, want %v", tt.args.envFilePath, tt.args.byteSize, got, tt.want)
-			}
-		})
-	}
-}

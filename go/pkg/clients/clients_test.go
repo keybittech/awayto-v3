@@ -13,13 +13,23 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-var integrationTest = &types.IntegrationTest{}
+var (
+	integrationTest = &types.IntegrationTest{}
 
-func init() {
-	jsonBytes, err := os.ReadFile(filepath.Join(os.Getenv("PROJECT_DIR"), "go", "integrations", "integration_results.json"))
+	testTicket, auth, testConnId string
+	testSocket                   *Socket
+	testSocketUserSession        *types.ConcurrentUserSession
+	testSocketMessage            *types.SocketMessage
+)
+
+func TestMain(m *testing.M) {
+	util.ParseEnv()
+
+	jsonBytes, err := os.ReadFile(filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -28,6 +38,32 @@ func init() {
 	if err != nil {
 		log.Fatal(err)
 	}
+
+	testSocket = InitSocket()
+	testSocketUserSession = types.NewConcurrentUserSession(&types.UserSession{
+		UserSub:  "user-sub",
+		GroupId:  "group-id",
+		RoleBits: 2, // admin is role 2
+	})
+	testTicket, err = testSocket.GetSocketTicket(context.Background(), testSocketUserSession)
+	if err != nil || testTicket == "" {
+		log.Fatal(err)
+	}
+	_, testConnId, err = util.SplitColonJoined(testTicket)
+	if err != nil {
+		log.Fatal(err)
+	}
+	testSocketMessage = &types.SocketMessage{
+		Action:     44,
+		Topic:      "topic",
+		Payload:    "payload",
+		Store:      false,
+		Historical: false,
+		Sender:     "sender",
+		Timestamp:  "timestamp",
+	}
+
+	m.Run()
 }
 
 func reset(b *testing.B) {
@@ -47,7 +83,7 @@ func (cmd MockCommand) GetClientId() string {
 	return cmd.ClientId
 }
 
-func (cmd MockCommand) GetReplyChannel() interface{} {
+func (cmd MockCommand) GetReplyChannel() any {
 	return cmd.ReplyChan
 }
 
@@ -121,14 +157,14 @@ func TestGlobalWorkerPool(t *testing.T) {
 	results2 := make([][]MockResponse, clientCount)
 
 	// Send commands to first handler
-	for i := 0; i < clientCount; i++ {
+	for i := range clientCount {
 		clientId := fmt.Sprintf("h1-client-%d", i)
 		results1[i] = make([]MockResponse, commandsPerClient)
 
 		wg.Add(1)
 		go func(clientIdx int, cId string) {
 			defer wg.Done()
-			for j := 0; j < commandsPerClient; j++ {
+			for j := range commandsPerClient {
 				createMockCommand := func(replyChan chan MockResponse) MockCommand {
 					return MockCommand{
 						Data:      cId + "-command-" + strconv.Itoa(j),
@@ -147,14 +183,14 @@ func TestGlobalWorkerPool(t *testing.T) {
 	}
 
 	// Send commands to second handler
-	for i := 0; i < clientCount; i++ {
+	for i := range clientCount {
 		clientId := fmt.Sprintf("h2-client-%d", i)
 		results2[i] = make([]MockResponse, commandsPerClient)
 
 		wg.Add(1)
 		go func(clientIdx int, cId string) {
 			defer wg.Done()
-			for j := 0; j < commandsPerClient; j++ {
+			for j := range commandsPerClient {
 				createMockCommand := func(replyChan chan MockResponse) MockCommand {
 					return MockCommand{
 						Data:      cId + "-command-" + strconv.Itoa(j),
@@ -175,9 +211,9 @@ func TestGlobalWorkerPool(t *testing.T) {
 	wg.Wait()
 
 	// Verify that commands for each client were processed in order for handler1
-	for i := 0; i < clientCount; i++ {
+	for i := range clientCount {
 		clientId := fmt.Sprintf("h1-client-%d", i)
-		for j := 0; j < commandsPerClient; j++ {
+		for j := range commandsPerClient {
 			expected := "Processed: " + clientId + "-command-" + strconv.Itoa(j) + " for client: " + clientId
 			if results1[i][j].Result != expected {
 				t.Errorf("Unexpected result for handler1 client %s, command %d: got %s, want %s",
@@ -187,9 +223,9 @@ func TestGlobalWorkerPool(t *testing.T) {
 	}
 
 	// Verify that commands for each client were processed in order for handler2
-	for i := 0; i < clientCount; i++ {
+	for i := range clientCount {
 		clientId := fmt.Sprintf("h2-client-%d", i)
-		for j := 0; j < commandsPerClient; j++ {
+		for j := range commandsPerClient {
 			expected := "Processed: " + clientId + "-command-" + strconv.Itoa(j) + " for client: " + clientId
 			if results2[i][j].Result != expected {
 				t.Errorf("Unexpected result for handler2 client %s, command %d: got %s, want %s",

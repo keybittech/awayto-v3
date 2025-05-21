@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 var (
@@ -29,7 +30,9 @@ var (
 // }
 
 func TestMain(m *testing.M) {
-	cmd := exec.Command(filepath.Join(os.Getenv("PROJECT_DIR"), "go", os.Getenv("BINARY_NAME")), "-requestsPerSecond=500", "-requestsPerSecondBurst=500")
+	util.ParseEnv()
+
+	cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME), "-rateLimit=500", "-rateLimitBurst=500")
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
@@ -67,7 +70,7 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	jsonBytes, _ := protojson.Marshal(integrationTest)
-	integrationTestPath := filepath.Join(os.Getenv("PROJECT_DIR"), "go", "integrations", "integration_results.json")
+	integrationTestPath := filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json")
 	os.WriteFile(integrationTestPath, jsonBytes, 0600)
 
 	if err := cmd.Process.Kill(); err != nil {
@@ -83,7 +86,7 @@ func TestIntegrations(t *testing.T) {
 
 			t.Log("PANIC RECOVERY ERROR: ", r)
 
-			errLogPath := filepath.Join(os.Getenv("PROJECT_DIR"), "log", "errors.log")
+			errLogPath := filepath.Join(util.E_PROJECT_DIR, "log", "errors.log")
 			reader, err := mmap.Open(errLogPath)
 			if err != nil {
 				t.Log(err)

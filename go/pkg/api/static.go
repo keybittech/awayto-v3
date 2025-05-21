@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -51,10 +50,8 @@ func (sr *StaticRedirect) WriteHeader(code int) {
 }
 
 func (a *API) InitStatic() {
-	staticDir := os.Getenv("PROJECT_DIR")
-
 	// Attach landing/ to domain url root /
-	landingFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/landing/public/", staticDir)))
+	landingFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/landing/public/", util.E_PROJECT_DIR)))
 	a.Server.Handler.(*http.ServeMux).Handle("/", http.StripPrefix("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
 		w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
@@ -62,7 +59,7 @@ func (a *API) InitStatic() {
 	})))
 
 	// Attach demos
-	demoFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/demos/final/", staticDir)))
+	demoFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/demos/final/", util.E_PROJECT_DIR)))
 	demoRl := NewRateLimit("demos", .1, 1, time.Duration(5*time.Minute))
 	a.Server.Handler.(*http.ServeMux).Handle("GET /demos/", http.StripPrefix("/demos/",
 		a.LimitMiddleware(demoRl)(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {

@@ -152,8 +152,6 @@ func PostFormData(url string, headers http.Header, data url.Values) ([]byte, err
 
 	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
-	// println(req.URL.String(), data.Encode())
-
 	resp, err := client.Do(req)
 	if err != nil {
 		return nil, ErrCheck(err)

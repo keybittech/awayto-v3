@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -66,8 +65,8 @@ func SetForwardingHeadersAndServe(prox *httputil.ReverseProxy, w http.ResponseWr
 }
 
 func (a *API) InitAuthProxy() {
-	kcRealm := os.Getenv("KC_REALM")
-	kcInternal, err := url.Parse(os.Getenv("KC_INTERNAL"))
+	kcRealm := util.E_KC_REALM
+	kcInternal, err := url.Parse(util.E_KC_INTERNAL)
 	if err != nil {
 		log.Fatal("invalid keycloak url")
 	}

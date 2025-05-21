@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"regexp"
 	"strings"
 	"time"
@@ -21,9 +20,7 @@ import (
 func setupStaticBuildOrProxy(a *API) {
 	util.DebugLog.Println("Using build folder")
 
-	staticDir := os.Getenv("PROJECT_DIR")
-
-	fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", staticDir)))
+	fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", util.E_PROJECT_DIR)))
 
 	a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		redirect := &StaticRedirect{ResponseWriter: w}

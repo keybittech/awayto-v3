@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 
@@ -77,10 +76,7 @@ type Keycloak struct {
 
 func InitKeycloak() *Keycloak {
 
-	kc := &KeycloakClient{
-		Server: os.Getenv("KC_INTERNAL"),
-		Realm:  os.Getenv("KC_REALM"),
-	}
+	kc := &KeycloakClient{}
 
 	InitGlobalWorkerPool(4, 8)
 
@@ -123,10 +119,10 @@ func InitKeycloak() *Keycloak {
 			}
 
 			for _, realmClient := range realmClients {
-				if realmClient.ClientId == os.Getenv("KC_CLIENT") {
+				if realmClient.ClientId == util.E_KC_CLIENT {
 					kc.AppClient = realmClient
 				}
-				if realmClient.ClientId == os.Getenv("KC_API_CLIENT") {
+				if realmClient.ClientId == util.E_KC_API_CLIENT {
 					kc.ApiClient = realmClient
 				}
 			}

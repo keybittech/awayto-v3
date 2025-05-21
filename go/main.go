@@ -1,100 +1,38 @@
 package main
 
 import (
-	"flag"
-	"fmt"
 	"log"
-	"os"
-	"strconv"
 	"time"
 
-	"github.com/joho/godotenv"
 	"github.com/keybittech/awayto-v3/go/pkg/api"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"golang.org/x/time/rate"
 )
 
-var (
-	httpPort               = 7080
-	httpsPort              = 7443
-	turnListenerPort       = 7788
-	turnInternalPort       = 3478
-	unixPath               = "/tmp/goapp.sock"
-	requestsPerSecond      = 20
-	requestsPerSecondBurst = 20
-)
-
-var (
-	httpPortFlag               = flag.Int("httpPort", httpPort, "Server HTTP port")
-	httpsPortFlag              = flag.Int("httpsPort", httpsPort, "Server HTTPS port")
-	turnListenerPortFlag       = flag.Int("turnListenerPort", turnListenerPort, "Turn listener port")
-	turnInternalPortFlag       = flag.Int("turnInternalPort", turnInternalPort, "Turn internal port")
-	unixPathFlag               = flag.String("unixPath", unixPath, "Unix socket path")
-	requestsPerSecondFlag      = flag.Int("requestsPerSecond", requestsPerSecond, "Turn internal port")
-	requestsPerSecondBurstFlag = flag.Int("requestsPerSecondBurst", requestsPerSecondBurst, "Turn internal port")
-)
-
-func init() {
-	flag.Parse()
-
-	httpPort = *httpPortFlag
-	httpsPort = *httpsPortFlag
-	turnListenerPort = *turnListenerPortFlag
-	turnInternalPort = *turnInternalPortFlag
-	unixPath = *unixPathFlag
-	requestsPerSecond = *requestsPerSecondFlag
-	requestsPerSecondBurst = *requestsPerSecondBurstFlag
-
-	err := godotenv.Load(os.Getenv("GO_ENVFILE_LOC"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	httpPortEnv := os.Getenv("GO_HTTP_PORT")
-	if httpPortEnv != "" && *httpPortFlag == httpPort {
-		httpPortEnvI, err := strconv.Atoi(httpPortEnv)
-		if err != nil {
-			fmt.Printf("please set GO_HTTP_PORT as int %s", err.Error())
-		} else {
-			httpPort = httpPortEnvI
-			fmt.Printf("set custom port %d\n", httpPort)
-		}
-	}
-
-	httpsPortEnv := os.Getenv("GO_HTTPS_PORT")
-	if httpsPortEnv != "" && *httpsPortFlag == httpsPort {
-		httpsPortEnvI, err := strconv.Atoi(httpsPortEnv)
-		if err != nil {
-			fmt.Printf("please set GO_HTTPS_PORT as int %s", err.Error())
-		} else {
-			httpsPort = httpsPortEnvI
-			fmt.Printf("set custom port %d\n", httpsPort)
-		}
-	}
-
-	unixSockDir, unixSockFile := os.Getenv("UNIX_SOCK_DIR"), os.Getenv("UNIX_SOCK_FILE")
-	if unixPath == unixPath && unixSockDir != "" && unixSockFile != "" {
-		unixPath = fmt.Sprintf("%s/%s", unixSockDir, unixSockFile)
-		fmt.Printf("set custom path %s\n", unixPath)
-	}
-}
-
 func main() {
+	util.ParseEnv()
 
-	util.MakeLoggers()
+	util.DebugLog.Printf(
+		"started with flags -httpPort=%d -httpsPort=%d -unixPath=%s -rateLimit=%d -rateLimitBurst=%d",
+		util.E_GO_HTTP_PORT,
+		util.E_GO_HTTPS_PORT,
+		util.E_UNIX_PATH,
+		util.E_RATE_LIMIT,
+		util.E_RATE_LIMIT_BURST,
+	)
 
-	server := api.NewAPI(httpsPort)
+	server := api.NewAPI(util.E_GO_HTTPS_PORT)
 
-	go server.RedirectHTTP(httpPort)
+	go server.RedirectHTTP(util.E_GO_HTTP_PORT)
 
-	go server.InitUnixServer(unixPath)
+	go server.InitUnixServer(util.E_UNIX_PATH)
 
 	server.InitProtoHandlers()
 	server.InitAuthProxy()
 	server.InitSockServer()
 	server.InitStatic()
 
-	rateLimiter := api.NewRateLimit("api", rate.Limit(requestsPerSecond), requestsPerSecondBurst, time.Duration(5*time.Minute))
+	rateLimiter := api.NewRateLimit("api", rate.Limit(util.E_RATE_LIMIT), util.E_RATE_LIMIT_BURST, time.Duration(5*time.Minute))
 	limitMiddleware := server.LimitMiddleware(rateLimiter)(server.Server.Handler)
 	server.Server.Handler = server.AccessRequestMiddleware(limitMiddleware)
 
@@ -126,12 +64,10 @@ func main() {
 		}
 	}()
 
-	certLoc := os.Getenv("CERT_LOC")
-	keyLoc := os.Getenv("CERT_KEY_LOC")
+	util.DebugLog.Printf("\nListening on %d ", util.E_GO_HTTPS_PORT)
+	util.DebugLog.Printf("\nCert Locations: %s %s", util.E_CERT_LOC, util.E_CERT_KEY_LOC)
 
-	util.DebugLog.Println("listening on ", httpsPort, "\nCert Locations:", certLoc, keyLoc)
-
-	err := server.Server.ListenAndServeTLS(certLoc, keyLoc)
+	err := server.Server.ListenAndServeTLS(util.E_CERT_LOC, util.E_CERT_KEY_LOC)
 	if err != nil {
 		util.ErrorLog.Println("LISTEN AND SERVE ERROR: ", err.Error())
 		return

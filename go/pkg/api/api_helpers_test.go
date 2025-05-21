@@ -10,7 +10,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 	"testing"
@@ -22,10 +21,6 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
-
-func init() {
-	util.MakeLoggers()
-}
 
 func reset(b *testing.B) {
 	b.ReportAllocs()
@@ -39,21 +34,9 @@ func getTestApi(limit rate.Limit, burst int) *API {
 	if testApi != nil {
 		api = testApi
 	} else {
-		httpsPort, err := strconv.Atoi(os.Getenv("GO_HTTPS_PORT"))
-		if err != nil {
-			log.Fatalf("error getting test api %v", err)
-		}
-		httpPort, err := strconv.Atoi(os.Getenv("GO_HTTP_PORT"))
-		if err != nil {
-			log.Fatalf("error getting test api %v", err)
-		}
-		unixPath := "/tmp/test.sock"
-
-		api = NewAPI(httpsPort)
-
-		go api.RedirectHTTP(httpPort)
-
-		go api.InitUnixServer(unixPath)
+		api = NewAPI(util.E_GO_HTTPS_PORT)
+		go api.RedirectHTTP(util.E_GO_HTTP_PORT)
+		go api.InitUnixServer(util.E_UNIX_PATH)
 	}
 
 	api.Server.Handler = http.NewServeMux()
@@ -111,14 +94,14 @@ func getTestReq(token, method, url string, body io.Reader) *http.Request {
 
 func getKeycloakToken(user *types.TestUser) (string, *types.UserSession, error) {
 	data := url.Values{}
-	data.Set("client_id", os.Getenv("KC_CLIENT"))
+	data.Set("client_id", util.E_KC_CLIENT)
 	data.Set("username", "1@"+user.TestUserId)
 	data.Set("password", "1")
 	data.Set("grant_type", "password")
 
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8080/auth/realms/"+os.Getenv("KC_REALM")+"/protocol/openid-connect/token",
+		"http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token",
 		strings.NewReader(data.Encode()),
 	)
 	if err != nil {

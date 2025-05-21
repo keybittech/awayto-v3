@@ -3,7 +3,6 @@ package clients
 import (
 	"context"
 	"errors"
-	"os"
 	"strings"
 	"time"
 
@@ -27,13 +26,13 @@ func (r *Redis) Client() *redis.Client {
 
 func InitRedis() *Redis {
 
-	redisPass, err := util.GetEnvFile("REDIS_PASS_FILE", 128)
+	redisPass, err := util.GetEnvFilePath("REDIS_PASS_FILE", 128)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 	}
 
 	rc := redis.NewClient(&redis.Options{
-		Addr:     os.Getenv("REDIS_URL"),
+		Addr:     util.E_REDIS_URL,
 		Password: redisPass,
 		DB:       0,
 		Protocol: 3,

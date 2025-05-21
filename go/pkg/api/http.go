@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -20,7 +19,7 @@ func (a *API) RedirectHTTP(httpPort int) {
 	httpRedirectorMux := http.NewServeMux()
 
 	httpRedirectorMux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		http.Redirect(w, r, fmt.Sprintf("%s%s", os.Getenv("APP_HOST_URL"), r.URL.Path), http.StatusMovedPermanently)
+		http.Redirect(w, r, fmt.Sprintf("%s%s", util.E_APP_HOST_URL, r.URL.Path), http.StatusMovedPermanently)
 	})
 
 	httpRedirector.Handler = httpRedirectorMux

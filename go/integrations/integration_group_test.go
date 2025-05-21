@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -20,17 +21,17 @@ func testIntegrationGroup(t *testing.T) {
 		}
 		requestBytes, err := protojson.Marshal(groupRequest)
 		if err != nil {
-			t.Errorf("error marshalling group request: %v", err)
+			panic(fmt.Sprintf("error marshalling group request: %v", err))
 		}
 
 		postGroupResponse := &types.PostGroupResponse{}
 		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group", requestBytes, nil, postGroupResponse)
 		if err != nil {
-			t.Errorf("error posting group: %v", err)
+			panic(fmt.Sprintf("error posting group: %v", err))
 		}
 
 		if len(postGroupResponse.Code) != 8 {
-			t.Errorf("group code is not 8 length: %s", postGroupResponse.Code)
+			panic(fmt.Sprintf("group code is not 8 length: %s", postGroupResponse.Code))
 		}
 
 		integrationTest.Group = &types.IGroup{
@@ -44,11 +45,11 @@ func testIntegrationGroup(t *testing.T) {
 
 		token, session, err := getKeycloakToken(admin.TestUserId)
 		if err != nil {
-			t.Error(err)
+			t.Fatal(err)
 		}
 
 		if session.RoleBits&types.SiteRoles_APP_GROUP_ADMIN == 0 {
-			t.Error("admin doesn't have admin role")
+			t.Fatal("admin doesn't have admin role")
 		}
 
 		admin.TestToken = token

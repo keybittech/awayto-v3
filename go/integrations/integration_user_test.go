@@ -23,7 +23,7 @@ func testIntegrationUser(t *testing.T) {
 		session, connection, token, ticket, connId := getUser(userId)
 
 		if !util.IsUUID(session.UserSub) {
-			t.Errorf("user sub is not a uuid: %s", session.UserSub)
+			t.Fatalf("user sub is not a uuid: %s", session.UserSub)
 		}
 
 		testUser := &types.TestUser{

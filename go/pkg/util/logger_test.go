@@ -77,39 +77,6 @@ func BenchmarkCustomLogger_Println(b *testing.B) {
 	os.Remove(filePath)
 }
 
-func Test_makeLogger(t *testing.T) {
-	type args struct {
-		prop string
-	}
-	tests := []struct {
-		name string
-		args args
-		want *CustomLogger
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := makeLogger(tt.args.prop); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("makeLogger(%v) = %v, want %v", tt.args.prop, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestMakeLoggers(t *testing.T) {
-	tests := []struct {
-		name string
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			MakeLoggers()
-		})
-	}
-}
-
 func TestWriteAuthRequest(t *testing.T) {
 	type args struct {
 		req  *http.Request

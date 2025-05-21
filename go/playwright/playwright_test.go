@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/playwright-community/playwright-go"
 )
 
@@ -18,13 +19,13 @@ var (
 	browser                playwright.Browser
 )
 
-func init() {
+func TestMain(m *testing.M) {
+	util.ParseEnv()
+
 	useRandUser = true
 	aiEnabled = false
-}
 
-func TestMain(m *testing.M) {
-	cmd := exec.Command(filepath.Join(os.Getenv("PROJECT_DIR"), "go", os.Getenv("BINARY_NAME")))
+	cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME))
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
@@ -45,8 +46,8 @@ func TestMain(m *testing.M) {
 	}
 
 	browser, err = pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		SlowMo:   playwright.Float(750),
-		Headless: playwright.Bool(false),
+		// SlowMo:   playwright.Float(750),
+		Headless: playwright.Bool(true),
 		Devtools: playwright.Bool(false),
 		Args: []string{
 			// "--start-maximized",

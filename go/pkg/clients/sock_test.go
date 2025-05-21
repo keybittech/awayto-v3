@@ -2,7 +2,6 @@ package clients
 
 import (
 	"context"
-	"log"
 	"net"
 	"reflect"
 	"strings"
@@ -12,38 +11,6 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
-
-var testSocket *Socket
-var testSocketUserSession *types.ConcurrentUserSession
-var testSocketMessage *types.SocketMessage
-var testTicket, auth, testConnId string
-
-func init() {
-	var err error
-	testSocket = InitSocket()
-	testSocketUserSession = types.NewConcurrentUserSession(&types.UserSession{
-		UserSub:  "user-sub",
-		GroupId:  "group-id",
-		RoleBits: 2, // admin is role 2
-	})
-	testTicket, err = testSocket.GetSocketTicket(context.Background(), testSocketUserSession)
-	if err != nil || testTicket == "" {
-		log.Fatal(err)
-	}
-	_, testConnId, err = util.SplitColonJoined(testTicket)
-	if err != nil {
-		log.Fatal(err)
-	}
-	testSocketMessage = &types.SocketMessage{
-		Action:     44,
-		Topic:      "topic",
-		Payload:    "payload",
-		Store:      false,
-		Historical: false,
-		Sender:     "sender",
-		Timestamp:  "timestamp",
-	}
-}
 
 func TestInitSocket(t *testing.T) {
 	tests := []struct {

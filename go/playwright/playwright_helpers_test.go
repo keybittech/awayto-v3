@@ -6,13 +6,13 @@ import (
 	"fmt"
 	"log"
 	"math/rand/v2"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/playwright-community/playwright-go"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
@@ -108,12 +108,12 @@ func (p *Page) ByIdStartsWith(selector string) Locator {
 
 func getBrowserPage(t *testing.T) *Page {
 	defaultOptions := playwright.BrowserNewPageOptions{
-		BaseURL:           playwright.String("https://localhost:" + os.Getenv("GO_HTTPS_PORT")),
+		BaseURL:           playwright.String(fmt.Sprintf("https://localhost:%d", util.E_GO_HTTPS_PORT)),
 		IgnoreHttpsErrors: playwright.Bool(true),
 		ColorScheme:       playwright.ColorSchemeDark,
 		NoViewport:        playwright.Bool(true),
 		RecordVideo: &playwright.RecordVideo{
-			Dir:  filepath.Join(os.Getenv("PROJECT_DIR"), "demos/"),
+			Dir:  filepath.Join(util.E_PROJECT_DIR, "demos/"),
 			Size: &playwright.Size{Width: 1556, Height: 900},
 		},
 	}
@@ -296,7 +296,7 @@ func expectResponseWrapper[T proto.Message](page playwright.Page, urlSubstring s
 		err = protojson.Unmarshal([]byte(body), result)
 		if err != nil {
 			// For better error messages, check if the body is valid JSON
-			var jsonCheck interface{}
+			var jsonCheck any
 			jsonErr := json.Unmarshal([]byte(body), &jsonCheck)
 			if jsonErr != nil {
 				return zero, fmt.Errorf("response is not valid JSON: %w\nBody: %s", jsonErr, body)

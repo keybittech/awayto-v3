@@ -38,9 +38,6 @@ limitations under the License.
 
 ## MIT Licensed Dependencies
 
-### github.com/joho/godotenv
-Copyright (c) 2013 John Barton
-
 ### github.com/cespare/xxhash/v2
 Copyright (c) 2016 Caleb Spare
 

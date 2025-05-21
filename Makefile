@@ -87,7 +87,6 @@ DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
 DOCKER_DB_EXEC:=${SUDO} docker exec --user postgres -it
 DOCKER_DB_CMD:=${SUDO} docker exec --user postgres -i
 
-
 #################################
 #          DEPLOY PROPS         #
 #################################
@@ -119,7 +118,7 @@ define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
 endef
 
-LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR_NAME}
+LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR}
 define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
 endef
@@ -163,14 +162,15 @@ endef
 
 DOCKER_COMPOSE:=compose -f $(DOCKER_COMPOSE_SCRIPT) --env-file $(ENVFILE)
 RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
-GO_ENVFILE_FLAG=GO_ENVFILE_LOC=$(PROJECT_DIR)/.env
+GO_ENVFILE_FLAG=GO_ENVFILE_LOC=${PROJECT_DIR}/.env
 GO_DEV_FLAGS=$(GO_ENVFILE_FLAG) LOG_LEVEL=debug
-GO_TEST_FLAGS=-run=$${TEST:-.} -count=$${COUNT:-1} -v=$${V:-false}
-GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false}
-GO_BENCH_FLAGS=-bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} # -cpuprofile=cpu.prof
-GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} # $${PROF:-} # -cpuprofile=cpu.prof
+GO_TEST_FLAGS=-run=$${TEST:-.} -bench=^$$ -count=$${COUNT:-1} -v=$${V:-false} -logLevel=
+GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false} -logLevel=
+GO_BENCH_FLAGS=-run=^$$ -bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} -logLevel= # -cpuprofile=cpu.prof
+GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} -logLevel= # $${PROF:-} # -cpuprofile=cpu.prof
+NO_LIMIT=-rateLimit=10000 -rateLimitBurst=10000
 
-GO=go#GOEXPERIMENT=jsonv2 gotip# go
+GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 
 #################################
@@ -264,7 +264,7 @@ $(PROTO_GEN_FILES): $(PROTO_FILES)
 		$(PROTO_FILES)
 
 $(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
-	go build -C $(GO_PROTO_MUTEX_CMD_DIR) -o $@ .
+	$(GO) build -C $(GO_PROTO_MUTEX_CMD_DIR) -o $@ .
 
 $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX)
 	protoc --proto_path=proto \
@@ -274,7 +274,7 @@ $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX)
 		$(PROTO_FILES)
 
 $(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go
-	go run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
+	$(GO) run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
 
 $(GO_TARGET): $(GO_FILES)
 	$(call set_local_unix_sock_dir)
@@ -294,7 +294,7 @@ go_dev:
 go_dev_ts: 
 	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
-	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) -tags=dev . -requestsPerSecond=500 -requestsPerSecondBurst=500
+	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) -tags=dev . $(NO_LIMIT)
 
 .PHONY: go_tidy
 go_tidy:
@@ -351,7 +351,7 @@ go_test_gen:
 
 .PHONY: go_coverage
 go_coverage:
-	go test -C $(GO_SRC) -coverpkg=./... ./...
+	$(GO) test -C $(GO_SRC) -coverpkg=./... ./...
 
 .PHONY: go_test_gen_ui
 test_gen:
@@ -377,7 +377,7 @@ go_test_unit: $(GO_TARGET) go_test_unit_build
 go_test_ui: $(GO_TARGET)
 	rm -f demos/*.webm
 	$(call clean_test)
-	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
+	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST) $(NO_LIMIT)
 	-$(GO_ENVFILE_FLAG) exec $(GO_PLAYWRIGHT_DIR)/playwright.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 
@@ -545,6 +545,11 @@ host_sync_env:
 host_deploy: go_test_unit host_sync_env
 	$(SSH) 'cd $(H_REM_DIR) && make host_update && SUDO=sudo make docker_up && make host_deploy_op && make host_service_start_op'
 
+.PHONY: host_deploy_op
+host_deploy_op: 
+	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
+	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) /usr/local/bin
+
 .PHONY: host_update_cert
 host_update_cert:
 	$(SSH) 'cd $(H_REM_DIR) && make host_update_cert_op'
@@ -595,11 +600,6 @@ host_update:
 	git reset --hard HEAD
 	git pull
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
-
-.PHONY: host_deploy_op
-host_deploy_op: 
-	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
-	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) /usr/local/bin
 
 .PHONY: host_update_cert_op
 host_update_cert_op:

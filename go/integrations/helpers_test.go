@@ -19,7 +19,6 @@ import (
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
-	"os"
 	"strings"
 	"sync"
 	"time"
@@ -204,14 +203,14 @@ func getPublicKey() {
 
 func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 	data := url.Values{}
-	data.Set("client_id", os.Getenv("KC_CLIENT"))
+	data.Set("client_id", util.E_KC_CLIENT)
 	data.Set("username", "1@"+userId)
 	data.Set("password", "1")
 	data.Set("grant_type", "password")
 
 	req, err := http.NewRequest(
 		"POST",
-		"http://localhost:8080/auth/realms/"+os.Getenv("KC_REALM")+"/protocol/openid-connect/token",
+		"http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token",
 		strings.NewReader(data.Encode()),
 	)
 	if err != nil {
@@ -270,7 +269,7 @@ func registerKeycloakUserViaForm(email, pass string, code ...string) (bool, erro
 		"https://localhost:7443/auth/realms/%s/protocol/openid-connect/registrations?"+
 			"client_id=%s&redirect_uri=%s&state=%s&response_mode=fragment&response_type=code&"+
 			"scope=openid&nonce=%s&code_challenge=%s&code_challenge_method=S256",
-		os.Getenv("KC_REALM"), clientID, redirectURI, state, nonce, codeChallenge,
+		util.E_KC_REALM, clientID, redirectURI, state, nonce, codeChallenge,
 	)
 
 	resp, err := client.Get(registrationURL)

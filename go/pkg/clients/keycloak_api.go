@@ -12,7 +12,6 @@ import (
 	"log"
 	"net/http"
 	"net/url"
-	"os"
 	"strconv"
 	"strings"
 
@@ -36,8 +35,6 @@ type KeycloakUserWithClaims struct {
 
 type KeycloakClient struct {
 	GroupAdminRoles []*types.KeycloakRole
-	Server          string
-	Realm           string
 	AppClient       *types.KeycloakRealmClient
 	ApiClient       *types.KeycloakRealmClient
 	Token           *types.OIDCToken
@@ -55,7 +52,7 @@ func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
 func (keycloakClient KeycloakClient) FetchPublicKey() (*rsa.PublicKey, error) {
 
 	resp, err := util.Get(
-		keycloakClient.Server+"/realms/"+keycloakClient.Realm,
+		util.E_KC_URL,
 		keycloakClient.BasicHeaders(),
 	)
 	if err != nil {
@@ -89,19 +86,19 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCTok
 
 	headers := http.Header{}
 
-	clientSecret, err := util.GetEnvFile("KC_API_CLIENT_SECRET_FILE", 128)
+	clientSecret, err := util.GetEnvFilePath("KC_API_CLIENT_SECRET_FILE", 128)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	body := url.Values{
 		"grant_type":    {"client_credentials"},
-		"client_id":     {os.Getenv("KC_API_CLIENT")},
+		"client_id":     {util.E_KC_API_CLIENT},
 		"client_secret": {string(clientSecret)},
 	}
 
 	resp, err := util.PostFormData(
-		keycloakClient.Server+"/realms/"+keycloakClient.Realm+"/protocol/openid-connect/token",
+		util.E_KC_URL+"/protocol/openid-connect/token",
 		headers,
 		body,
 	)
@@ -129,7 +126,7 @@ func (keycloakClient KeycloakClient) FindResource(resource, search string, first
 	queryParams.Add("search", search)
 
 	resp, err := util.GetWithParams(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/"+resource,
+		util.E_KC_ADMIN_URL+"/"+resource,
 		keycloakClient.BasicHeaders(),
 		queryParams,
 	)
@@ -144,7 +141,7 @@ func (keycloakClient KeycloakClient) FindResource(resource, search string, first
 func (keycloakClient KeycloakClient) GetUserListInRealm() ([]*types.KeycloakUser, error) {
 
 	resp, err := util.Get(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/users",
+		util.E_KC_ADMIN_URL+"/users",
 		keycloakClient.BasicHeaders(),
 	)
 
@@ -163,7 +160,7 @@ func (keycloakClient KeycloakClient) GetUserListInRealm() ([]*types.KeycloakUser
 func (keycloakClient KeycloakClient) GetUserGroups(userId string) ([]*types.KeycloakUserGroup, error) {
 
 	resp, err := util.Get(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/users/"+userId+"/groups",
+		util.E_KC_ADMIN_URL+"/users/"+userId+"/groups",
 		keycloakClient.BasicHeaders(),
 	)
 
@@ -182,7 +179,7 @@ func (keycloakClient KeycloakClient) GetUserGroups(userId string) ([]*types.Keyc
 func (keycloakClient KeycloakClient) GetGroupRoleMappings(groupId string) ([]*types.ClientRoleMappingRole, error) {
 
 	resp, err := util.Get(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId+"/role-mappings",
+		util.E_KC_ADMIN_URL+"/groups/"+groupId+"/role-mappings",
 		keycloakClient.BasicHeaders(),
 	)
 
@@ -211,7 +208,7 @@ func (keycloakClient KeycloakClient) GetGroupRoleMappings(groupId string) ([]*ty
 
 func (keycloakClient KeycloakClient) GetAppClientRoles() ([]*types.KeycloakRole, error) {
 	resp, err := util.Get(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/clients/"+keycloakClient.AppClient.Id+"/roles",
+		util.E_KC_ADMIN_URL+"/clients/"+keycloakClient.AppClient.Id+"/roles",
 		keycloakClient.BasicHeaders(),
 	)
 
@@ -229,7 +226,7 @@ func (keycloakClient KeycloakClient) GetAppClientRoles() ([]*types.KeycloakRole,
 
 func (keycloakClient KeycloakClient) GetRealmClients() ([]*types.KeycloakRealmClient, error) {
 	resp, err := util.Get(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/clients",
+		util.E_KC_ADMIN_URL+"/clients",
 		keycloakClient.BasicHeaders(),
 	)
 
@@ -260,7 +257,7 @@ func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName stri
 
 	_, err = util.Mutate(
 		"PUT",
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/users/"+userId,
+		util.E_KC_ADMIN_URL+"/users/"+userId,
 		keycloakClient.BasicHeaders(),
 		kcUserJson,
 	)
@@ -277,7 +274,7 @@ func (keycloakClient KeycloakClient) CreateGroup(name string) (string, error) {
 	client := &http.Client{}
 	req, err := http.NewRequest(
 		"POST",
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups",
+		util.E_KC_ADMIN_URL+"/groups",
 		bytes.NewBuffer([]byte(`{ "name": "`+name+`" }`)),
 	)
 
@@ -311,7 +308,7 @@ func (keycloakClient KeycloakClient) CreateGroup(name string) (string, error) {
 func (keycloakClient KeycloakClient) DeleteGroup(groupId string) error {
 	_, err := util.Mutate(
 		"DELETE",
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId,
+		util.E_KC_ADMIN_URL+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
 		[]byte(""),
 	)
@@ -325,7 +322,7 @@ func (keycloakClient KeycloakClient) DeleteGroup(groupId string) error {
 func (keycloakClient KeycloakClient) UpdateGroup(groupId, groupName string) error {
 	_, err := util.Mutate(
 		"PUT",
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId,
+		util.E_KC_ADMIN_URL+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
 		[]byte(`{ "name": "`+groupName+`" }`),
 	)
@@ -338,7 +335,7 @@ func (keycloakClient KeycloakClient) UpdateGroup(groupId, groupName string) erro
 
 func (keycloakClient KeycloakClient) GetGroup(groupId string) (*types.KeycloakGroup, error) {
 	resp, err := util.Get(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId,
+		util.E_KC_ADMIN_URL+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
 	)
 
@@ -357,7 +354,7 @@ func (keycloakClient KeycloakClient) GetGroup(groupId string) (*types.KeycloakGr
 func (keycloakClient KeycloakClient) CreateSubgroup(groupId, subgroupName string) (*types.KeycloakGroup, error) {
 	resp, err := util.Mutate(
 		"POST",
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId+"/children",
+		util.E_KC_ADMIN_URL+"/groups/"+groupId+"/children",
 		keycloakClient.BasicHeaders(),
 		[]byte(`{ "name": "`+subgroupName+`" }`),
 	)
@@ -380,7 +377,7 @@ func (keycloakClient KeycloakClient) GetGroupSubgroups(groupId string) ([]*types
 	queryParams.Add("max", "11")
 
 	resp, err := util.GetWithParams(
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId+"/children",
+		util.E_KC_ADMIN_URL+"/groups/"+groupId+"/children",
 		keycloakClient.BasicHeaders(),
 		queryParams,
 	)
@@ -406,7 +403,7 @@ func (keycloakClient KeycloakClient) MutateGroupRoles(method, groupId string, ro
 
 	_, err = util.Mutate(
 		method,
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId+"/role-mappings/clients/"+keycloakClient.AppClient.Id,
+		util.E_KC_ADMIN_URL+"/groups/"+groupId+"/role-mappings/clients/"+keycloakClient.AppClient.Id,
 		keycloakClient.BasicHeaders(),
 		rolesBytes,
 	)
@@ -422,7 +419,7 @@ func (keycloakClient KeycloakClient) MutateUserGroupMembership(method, userId, g
 
 	_, err := util.Mutate(
 		method,
-		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/users/"+userId+"/groups/"+groupId,
+		util.E_KC_ADMIN_URL+"/users/"+userId+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
 		[]byte(""),
 	)

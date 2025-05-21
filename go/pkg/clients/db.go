@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
 	"reflect"
 	"strconv"
 	"strings"
@@ -44,16 +43,13 @@ func (db *Database) AdminRoleId() string {
 }
 
 func InitDatabase() *Database {
-	dbDriver := os.Getenv("DB_DRIVER")
-	pgUser := os.Getenv("PG_WORKER")
-	pgDb := os.Getenv("PG_DB")
-	pgPass, err := util.GetEnvFile("PG_WORKER_PASS_FILE", 128)
+	pgPass, err := util.GetEnvFilePath("PG_WORKER_PASS_FILE", 128)
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	connString := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", dbDriver, pgUser, pgPass, pgDb, os.Getenv("UNIX_SOCK_DIR"))
+	connString := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", util.E_DB_DRIVER, util.E_PG_WORKER, pgPass, util.E_PG_DB, util.E_UNIX_SOCK_DIR)
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		log.Fatalf("Unable to parse db config: %v\n", err)

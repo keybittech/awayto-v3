@@ -54,9 +54,11 @@ func registerHandlers(h *handlers.Handlers) {
 // collect all elements into a callable function which will assign
 // the runtime funcs to the API
 func main() {
+	util.ParseEnv()
+
 	fset := token.NewFileSet()
 
-	handlersPath := strings.TrimSpace(filepath.Join(os.Getenv("PROJECT_DIR"), os.Getenv("GO_HANDLERS_DIR"))) + "/"
+	handlersPath := strings.TrimSpace(filepath.Join(util.E_PROJECT_DIR, "go", "pkg", "handlers"))
 
 	packages, err := parser.ParseDir(fset, handlersPath, nil, 0)
 	if err != nil {
@@ -116,7 +118,9 @@ func main() {
 		}
 	}
 
-	file, err := util.GetCleanPath(os.Getenv("GO_HANDLERS_REGISTER"), os.O_CREATE)
+	handlersRegisterFile := filepath.Join("go", "pkg", "api", "register.go")
+
+	file, err := util.GetCleanPath(handlersRegisterFile, os.O_CREATE)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error cleaning register.go: %v\n", err)
 		os.Exit(1)
@@ -135,5 +139,5 @@ func main() {
 		os.Exit(1)
 	}
 
-	fmt.Printf("Successfully generated %s with %d handlers\n", os.Getenv("GO_HANDLERS_REGISTER"), len(data.Handlers))
+	fmt.Printf("Successfully generated %s with %d handlers\n", handlersRegisterFile, len(data.Handlers))
 }

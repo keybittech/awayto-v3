@@ -15,6 +15,11 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
+func TestMain(m *testing.M) {
+	ParseEnv()
+	m.Run()
+}
+
 func BenchmarkMapSyncWrite(b *testing.B) {
 	var m sync.Map
 	reset(b)
@@ -200,72 +205,6 @@ func BenchmarkPaddedLenNegative(b *testing.B) {
 		_ = PaddedLen(-5, -3)
 	}
 }
-
-// func TestEnvFile(t *testing.T) {
-// 	tmpDirName := "test-project-dir"
-// 	tmpDir, err := os.MkdirTemp("", tmpDirName)
-// 	if err != nil {
-// 		t.Fatalf("Failed to create temp directory: %v", err)
-// 	}
-// 	defer os.RemoveAll(tmpDir)
-// 	os.Setenv("PROJECT_DIR", tmpDir)
-// 	type args struct {
-// 		loc     string
-// 		content string
-// 	}
-// 	tests := []struct {
-// 		name    string
-// 		args    args
-// 		want    string
-// 		wantErr bool
-// 	}{
-// 		{name: "valid file", args: args{loc: "test.txt", content: "test content\n\n"}, want: "test content", wantErr: false},
-// 		{name: "empty file", args: args{loc: "empty.txt", content: ""}, want: "", wantErr: false},
-// 		{name: "nonexistent file", args: args{loc: "nonexistent.txt", content: ""}, wantErr: true},
-// 	}
-//
-// 	for _, tc := range tests {
-// 		if tc.name != "nonexistent file" {
-// 			filePath := filepath.Join(tmpDir, tc.args.loc)
-// 			err := os.WriteFile(filePath, []byte(tc.args.content), 0644)
-// 			if err != nil {
-// 				t.Fatalf("Failed to create test file %s: %v", tc.args.loc, err)
-// 			}
-// 		}
-// 	}
-//
-// 	for _, tt := range tests {
-// 		t.Run(tt.name, func(t *testing.T) {
-// 			got, err := EnvFile(tt.args.loc)
-// 			if (err != nil) != tt.wantErr {
-// 				t.Errorf("EnvFile() error = %v, wantErr %v", err, tt.wantErr)
-// 				return
-// 			}
-// 			if got != tt.want {
-// 				t.Errorf("EnvFile() = %v, want %v", got, tt.want)
-// 			}
-// 		})
-// 	}
-// }
-//
-// func BenchmarkEnvFile(b *testing.B) {
-// 	tmpDirName := "test-project-dir"
-// 	tmpDir, err := os.MkdirTemp("", tmpDirName)
-// 	if err != nil {
-// 		b.Fatalf("Failed to create temp directory: %v", err)
-// 	}
-// 	defer os.RemoveAll(tmpDir)
-// 	oldDir := os.Getenv("PROJECT_DIR")
-// 	os.Setenv("PROJECT_DIR", tmpDir)
-// 	defer func() { os.Setenv("PROJECT_DIR", oldDir) }()
-// 	filePath := filepath.Join(tmpDir, "test.txt")
-// 	err = os.WriteFile(filePath, []byte("test content\n\n"), 0644)
-//
-// 	reset(b)
-// 	for b.Loop() {
-// 		_, _ = EnvFile("test.txt")
-// 	}
-// }
 
 func TestAnonIp(t *testing.T) {
 	type args struct {

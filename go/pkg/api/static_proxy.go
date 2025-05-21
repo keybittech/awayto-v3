@@ -8,7 +8,6 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
-	"os"
 
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -16,7 +15,7 @@ import (
 func setupStaticBuildOrProxy(a *API) {
 	util.DebugLog.Println("Using live reload")
 
-	devServerUrl, err := url.Parse(os.Getenv("TS_DEV_SERVER_URL"))
+	devServerUrl, err := url.Parse(util.E_TS_DEV_SERVER_URL)
 	if err != nil {
 		fmt.Printf("please set TS_DEV_SERVER_URL %s", err.Error())
 	}

@@ -3,7 +3,6 @@ module github.com/keybittech/awayto-v3/go
 go 1.24.3
 
 require (
-	github.com/joho/godotenv v1.5.1
 	github.com/playwright-community/playwright-go v0.5101.0
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
 	golang.org/x/time v0.11.0

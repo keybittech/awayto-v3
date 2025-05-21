@@ -14,6 +14,7 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
@@ -23,8 +24,10 @@ var (
 	publicKey       *rsa.PublicKey
 )
 
-func init() {
-	jsonBytes, err := os.ReadFile(filepath.Join(os.Getenv("PROJECT_DIR"), "go", "integrations", "integration_results.json"))
+func TestMain(m *testing.M) {
+	util.ParseEnv()
+
+	jsonBytes, err := os.ReadFile(filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json"))
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -37,6 +40,8 @@ func init() {
 	kc := clients.InitKeycloak()
 	publicKey = kc.Client.PublicKey
 	kc.Close()
+
+	m.Run()
 }
 
 func BenchmarkApiCache(b *testing.B) {

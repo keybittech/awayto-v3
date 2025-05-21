@@ -1,7 +1,6 @@
 package util
 
 import (
-	"flag"
 	"fmt"
 	"log"
 	"net"
@@ -15,40 +14,35 @@ import (
 )
 
 var (
-	LoggingMode = flag.String("log", "", "Debug mode")
-	AccessLog   *CustomLogger
-	AuthLog     *CustomLogger
-	DebugLog    *CustomLogger
-	ErrorLog    *CustomLogger
-	SockLog     *CustomLogger
+	AccessLog *CustomLogger
+	AuthLog   *CustomLogger
+	DebugLog  *CustomLogger
+	ErrorLog  *CustomLogger
+	SockLog   *CustomLogger
 )
-
-func init() {
-	if LoggingMode == nil || *LoggingMode == "" {
-		logLevel := os.Getenv("LOG_LEVEL")
-		LoggingMode = &logLevel
-	}
-}
 
 type CustomLogger struct {
 	*log.Logger
 }
 
-func (e *CustomLogger) Println(v ...any) {
-	if v == nil || e == nil || e.Logger == nil {
-		return
-	}
-
-	e.Logger.Println(v...)
-
-	if *LoggingMode == "debug" && DebugLog != nil {
-		fmt.Println("DEBUG:", fmt.Sprint(v...))
-		DebugLog.Logger.Printf("DEBUG: %v\n", fmt.Sprint(v...))
+func debugLog(val string) {
+	if E_LOG_LEVEL == "debug" {
+		fmt.Println("DEBUG:", val)
 	}
 }
 
+func (e *CustomLogger) Printf(format string, v ...any) {
+	debugLog(fmt.Sprintf(format, v...))
+	e.Logger.Printf(format, v...)
+}
+
+func (e *CustomLogger) Println(v ...any) {
+	debugLog(fmt.Sprint(v...))
+	e.Logger.Println(v...)
+}
+
 func makeLogger(prop string) *CustomLogger {
-	loc := os.Getenv(prop)
+	loc := envVarStrs[prop]
 	if loc == "" {
 		log.Fatalf("Empty file path for log file %s", prop)
 	}
@@ -59,11 +53,9 @@ func makeLogger(prop string) *CustomLogger {
 		log.Fatal("invalid file path: path traversal attempt detected")
 	}
 
-	logDir := os.Getenv("LOG_DIR")
+	logFilePath := filepath.Join(E_LOG_DIR, loc)
 
-	logFilePath := filepath.Join(logDir, loc)
-
-	if !strings.HasPrefix(filepath.Clean(logFilePath), filepath.Clean(logDir)) {
+	if !strings.HasPrefix(filepath.Clean(logFilePath), filepath.Clean(E_LOG_DIR)) {
 		log.Fatalf("invalid file path: path is outside of log directory, %s", logFilePath)
 	}
 
@@ -72,10 +64,10 @@ func makeLogger(prop string) *CustomLogger {
 		log.Fatalf("Failed to open %s log %v", prop, err)
 	}
 
-	return &CustomLogger{log.New(logFile, "", log.Ldate|log.Ltime)}
+	return &CustomLogger{Logger: log.New(logFile, "", log.Ldate|log.Ltime)}
 }
 
-func MakeLoggers() {
+func makeLoggers() {
 	AccessLog = makeLogger("GO_ACCESS_LOG")
 	AuthLog = makeLogger("GO_AUTH_LOG")
 	DebugLog = makeLogger("GO_DEBUG_LOG")
