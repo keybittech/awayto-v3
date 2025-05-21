@@ -309,7 +309,7 @@ func (keycloakClient KeycloakClient) CreateGroup(name string) (string, error) {
 }
 
 func (keycloakClient KeycloakClient) DeleteGroup(groupId string) error {
-	deleteGroupRes, err := util.Mutate(
+	_, err := util.Mutate(
 		"DELETE",
 		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
@@ -319,13 +319,11 @@ func (keycloakClient KeycloakClient) DeleteGroup(groupId string) error {
 		return util.ErrCheck(err)
 	}
 
-	println("DELETED A GROUP/SUBGROUP RESPONSE", string(deleteGroupRes))
-
 	return nil
 }
 
 func (keycloakClient KeycloakClient) UpdateGroup(groupId, groupName string) error {
-	groupResponse, err := util.Mutate(
+	_, err := util.Mutate(
 		"PUT",
 		keycloakClient.Server+"/admin/realms/"+keycloakClient.Realm+"/groups/"+groupId,
 		keycloakClient.BasicHeaders(),
@@ -334,8 +332,6 @@ func (keycloakClient KeycloakClient) UpdateGroup(groupId, groupName string) erro
 	if err != nil {
 		return util.ErrCheck(err)
 	}
-
-	println("KEYCLOAK UPDATE GROUP RESPONSE", string(groupResponse))
 
 	return nil
 }

@@ -160,7 +160,6 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 }
 
 func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*types.PatchGroupResponse, error) {
-
 	sessionGroupPath := info.Session.GetGroupPath()
 	cachedGroup := h.Cache.Groups.Load(sessionGroupPath)
 	nameChanged := cachedGroup.GetName() != data.Name

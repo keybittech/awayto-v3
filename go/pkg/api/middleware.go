@@ -133,9 +133,9 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 				}
 
 				cachedGroup := &types.CachedGroup{
-					SubGroupPaths: make([]string, len(kcSubGroups)),
+					SubGroupPaths: make([]string, 0, len(kcSubGroups)),
 					Id:            group.Id,
-					Name:          group.Name,
+					Name:          groupName,
 					ExternalId:    group.ExternalId,
 					Sub:           group.Sub,
 					Ai:            group.Ai,
