@@ -14,6 +14,8 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
+type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession)
+
 type responseCodeWriter struct {
 	http.ResponseWriter
 	statusCode int
@@ -57,7 +59,7 @@ func (a *API) LimitMiddleware(rl *RateLimiter) func(next http.Handler) http.Hand
 	}
 }
 
-func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFunc {
+func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFunc { // This converts a regular HandlerFunc into a SessionHandler
 	return func(next SessionHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
 			token := req.Header.Get("Authorization")
