@@ -46,7 +46,7 @@ func (ts *Interval) ScanInterval(v pgtype.Interval) error {
 		hours := v.Microseconds / microsecondsPerHourInternal
 		if hours > 0 {
 			sb.WriteString(strconv.FormatInt(hours, 10))
-			sb.WriteString("M")
+			sb.WriteString("H")
 			hasTimeComponent = true
 		}
 

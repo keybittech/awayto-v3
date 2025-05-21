@@ -285,10 +285,16 @@ $(GO_TARGET): $(GO_FILES)
 #################################
 
 .PHONY: go_dev
-go_dev:
+go_dev: 
 	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) .
+
+.PHONY: go_dev_ts
+go_dev_ts: 
+	$(call clean_logs)
+	$(call set_local_unix_sock_dir)
+	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) -tags=dev . -requestsPerSecond=500 -requestsPerSecondBurst=500
 
 .PHONY: go_tidy
 go_tidy:

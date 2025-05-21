@@ -1,22 +1,13 @@
 package api
 
 import (
-	"compress/gzip"
-	"crypto/tls"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"net/http"
-	"net/http/httptest"
-	"net/http/httputil"
-	"net/url"
 	"os"
-	"regexp"
 	"strconv"
-	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
@@ -62,11 +53,6 @@ func (sr *StaticRedirect) WriteHeader(code int) {
 func (a *API) InitStatic() {
 	staticDir := os.Getenv("PROJECT_DIR")
 
-	devServerUrl, err := url.Parse(os.Getenv("TS_DEV_SERVER_URL"))
-	if err != nil {
-		fmt.Printf("please set TS_DEV_SERVER_URL %s", err.Error())
-	}
-
 	// Attach landing/ to domain url root /
 	landingFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/landing/public/", staticDir)))
 	a.Server.Handler.(*http.ServeMux).Handle("/", http.StripPrefix("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -81,7 +67,7 @@ func (a *API) InitStatic() {
 	a.Server.Handler.(*http.ServeMux).Handle("GET /demos/", http.StripPrefix("/demos/",
 		a.LimitMiddleware(demoRl)(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			if util.CookieExpired(req) {
-				util.ErrorLog.Println(util.ErrCheck(err))
+				util.ErrorLog.Println("cookie expired when loading demo")
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			}
 
@@ -92,77 +78,5 @@ func (a *API) InitStatic() {
 		})),
 	))
 
-	// use dev server or built for /app
-	_, err = http.Get(devServerUrl.String())
-	if err != nil && !strings.Contains(err.Error(), "failed to verify certificate") {
-		util.DebugLog.Println("Using build folder")
-
-		fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", staticDir)))
-
-		a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			redirect := &StaticRedirect{ResponseWriter: w}
-
-			if strings.HasSuffix(req.URL.Path, ".js") || strings.HasSuffix(req.URL.Path, ".css") || strings.HasSuffix(req.URL.Path, ".mjs") {
-				w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
-				w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
-				w.Header().Set("Content-Encoding", "gzip")
-				gz := gzip.NewWriter(w)
-				defer gz.Close()
-				gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
-				fileServer.ServeHTTP(gzr, req)
-			} else if strings.HasSuffix(req.URL.Path, ".png") {
-				fileServer.ServeHTTP(redirect, req)
-			} else {
-				req.URL.Path = "/"
-
-				nonceData := uuid.NewString()
-				nonceB64 := base64.StdEncoding.EncodeToString([]byte(nonceData))
-
-				w.Header().Set(
-					"Content-Security-Policy",
-					"object-src 'none';"+
-						"script-src 'nonce-"+nonceB64+"' 'strict-dynamic';"+
-						"base-uri 'none';")
-				recorder := httptest.NewRecorder()
-
-				fileServer.ServeHTTP(recorder, req)
-
-				// Read the response body
-				originalBody, err := io.ReadAll(recorder.Body)
-				if err != nil {
-					http.Error(w, "Error reading file", http.StatusInternalServerError)
-					return
-				}
-
-				modifiedBody := regexp.MustCompile(`VITE_NONCE`).ReplaceAll(originalBody, []byte(nonceB64))
-
-				_, err = w.Write(modifiedBody)
-				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(err))
-				}
-				return
-			}
-
-			if redirect.StatusCode == http.StatusNotFound {
-				w.WriteHeader(http.StatusNotFound)
-				_, err = w.Write([]byte(""))
-				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(err))
-				}
-			}
-		})))
-	} else {
-		util.DebugLog.Println("Using live reload")
-		var proxy *httputil.ReverseProxy
-		proxy = httputil.NewSingleHostReverseProxy(devServerUrl)
-		proxy.Transport = &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402
-		}
-
-		a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app/",
-			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-				proxy.ServeHTTP(w, req)
-			}),
-		))
-	}
+	setupStaticBuildOrProxy(a)
 }

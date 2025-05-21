@@ -16,7 +16,9 @@ func testIntegrationUser(t *testing.T) {
 
 	t.Run("user can register and connect", func(t *testing.T) {
 		userId := fmt.Sprint(time.Now().UnixNano())
-		registerKeycloakUserViaForm(userId)
+		userEmail := "1@" + userId
+		userPass := "1"
+		registerKeycloakUserViaForm(userEmail, userPass)
 
 		session, connection, token, ticket, connId := getUser(userId)
 
@@ -25,8 +27,8 @@ func testIntegrationUser(t *testing.T) {
 		}
 
 		testUser := &types.TestUser{
-			TestEmail:   "1@" + userId,
-			TestPass:    "1",
+			TestEmail:   userEmail,
+			TestPass:    userPass,
 			TestUserId:  userId,
 			TestToken:   token,
 			TestTicket:  ticket,

@@ -20,8 +20,8 @@ var (
 	turnListenerPort       = 7788
 	turnInternalPort       = 3478
 	unixPath               = "/tmp/goapp.sock"
-	requestsPerSecond      = 50
-	requestsPerSecondBurst = 50
+	requestsPerSecond      = 20
+	requestsPerSecondBurst = 20
 )
 
 var (
@@ -35,6 +35,8 @@ var (
 )
 
 func init() {
+	flag.Parse()
+
 	httpPort = *httpPortFlag
 	httpsPort = *httpsPortFlag
 	turnListenerPort = *turnListenerPortFlag
@@ -78,6 +80,7 @@ func init() {
 }
 
 func main() {
+
 	util.MakeLoggers()
 
 	server := api.NewAPI(httpsPort)

@@ -87,7 +87,7 @@ func getTestApi(limit rate.Limit, burst int) *API {
 // 	testReq.RemoteAddr = "127.0.0.1:9999"
 // 	testReq.Header.Set("Authorization", "Bearer "+token)
 // 	testReq.Header.Set("Accept", "application/x-protobuf")
-// 	testReq.Header.Set("X-TZ", "America/Los_Angeles")
+// 	testReq.Header.Set("X-Tz", "America/Los_Angeles")
 // 	if bodyMessage != nil {
 // 		testReq.Header.Set("Content-Type", "application/x-protobuf")
 // 	}
@@ -102,7 +102,7 @@ func getTestReq(token, method, url string, body io.Reader) *http.Request {
 	testReq.RemoteAddr = "127.0.0.1:9999"
 	testReq.Header.Set("Authorization", "Bearer "+token)
 	testReq.Header.Set("Accept", "application/json")
-	testReq.Header.Set("X-TZ", "America/Los_Angeles")
+	testReq.Header.Set("X-Tz", "America/Los_Angeles")
 	if body != nil {
 		testReq.Header.Set("Content-Type", "application/json")
 	}
@@ -186,7 +186,7 @@ func setupRouteRequest(userId int32, limit rate.Limit, burst int, method, path, 
 	}
 	req := getTestReq(token, method, path, nil)
 	req.RemoteAddr = "127.0.0.1:9999"
-	req.Header.Set("X-TZ", "America/Los_Angeles")
+	req.Header.Set("X-Tz", "America/Los_Angeles")
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", contentType)
 	req.Header.Set("Content-Type", contentType)

@@ -109,7 +109,7 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 		req.Header.Set("Content-Type", "application/json")
 	}
 	req.Header.Set("Accept", "application/json")
-	req.Header.Add("X-TZ", "America/Los_Angeles")
+	req.Header.Add("X-Tz", "America/Los_Angeles")
 
 	if token != "" {
 		req.Header.Add("Authorization", "Bearer "+token)
@@ -164,7 +164,7 @@ func apiRequest(token, method, path string, body []byte, queryParams map[string]
 // 		req.Header.Set("Content-Type", "application/json")
 // 	}
 // 	req.Header.Set("Accept", "application/json")
-// 	req.Header.Add("X-TZ", "America/Los_Angeles")
+// 	req.Header.Add("X-Tz", "America/Los_Angeles")
 //
 // 	req.Header.Add("Authorization", "Bearer "+token)
 //
@@ -248,7 +248,7 @@ func getKeycloakToken(userId string) (string, *types.UserSession, error) {
 	return token, session, nil
 }
 
-func registerKeycloakUserViaForm(userId string, code ...string) (bool, error) {
+func registerKeycloakUserViaForm(email, pass string, code ...string) (bool, error) {
 	// Setup client with cookie jar and TLS skip
 	jar, _ := cookiejar.New(nil)
 	client := &http.Client{
@@ -267,10 +267,10 @@ func registerKeycloakUserViaForm(userId string, code ...string) (bool, error) {
 
 	// Load registration page
 	registrationURL := fmt.Sprintf(
-		"https://localhost:7443/auth/realms/"+os.Getenv("KC_REALM")+"/protocol/openid-connect/registrations?"+
+		"https://localhost:7443/auth/realms/%s/protocol/openid-connect/registrations?"+
 			"client_id=%s&redirect_uri=%s&state=%s&response_mode=fragment&response_type=code&"+
 			"scope=openid&nonce=%s&code_challenge=%s&code_challenge_method=S256",
-		clientID, redirectURI, state, nonce, codeChallenge,
+		os.Getenv("KC_REALM"), clientID, redirectURI, state, nonce, codeChallenge,
 	)
 
 	resp, err := client.Get(registrationURL)
@@ -296,11 +296,11 @@ func registerKeycloakUserViaForm(userId string, code ...string) (bool, error) {
 		formData.Set("groupCode", code[0])
 	}
 
-	formData.Set("email", "1@"+userId)
+	formData.Set("email", email)
 	formData.Set("firstName", "first-name")
 	formData.Set("lastName", "last-name")
-	formData.Set("password", "1")
-	formData.Set("password-confirm", "1")
+	formData.Set("password", pass)
+	formData.Set("password-confirm", pass)
 
 	req, err := http.NewRequest("POST", formAction, strings.NewReader(formData.Encode()))
 	if err != nil {
@@ -315,8 +315,13 @@ func registerKeycloakUserViaForm(userId string, code ...string) (bool, error) {
 	defer submitResp.Body.Close()
 
 	// Registration success check
+	didRegister := submitResp.StatusCode == http.StatusOK
 
-	return submitResp.StatusCode == http.StatusOK, nil
+	if didRegister {
+		println(fmt.Sprintf("Registered user %s with pass %s", email, pass))
+	}
+
+	return didRegister, nil
 }
 
 func extractFormAction(html []byte) string {

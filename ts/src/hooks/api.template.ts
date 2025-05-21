@@ -1,6 +1,6 @@
 import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, retry, reactHooksModule, buildCreateApi, coreModule } from '@reduxjs/toolkit/query/react'
 
-import { keycloak, refreshToken } from './auth';
+import { keycloak, refreshToken, setAuthHeaders } from './auth';
 import { RootState } from './store';
 import { utilSlice } from './util';
 
@@ -21,8 +21,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = as
         throw 'no token for api fetch';
       }
 
-      headers.set('X-TZ', Intl.DateTimeFormat().resolvedOptions().timeZone);
-      headers.set('Authorization', 'Bearer ' + keycloak.token);
+      headers = setAuthHeaders(headers);
 
       const lastModified = modifiedResources[args.url];
       if (lastModified) {

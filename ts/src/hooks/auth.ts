@@ -31,21 +31,26 @@ export const refreshToken = async (dur?: number) => {
   return true;
 }
 
-const getHeaders = () => {
-  return { headers: { 'Authorization': 'Bearer ' + keycloak.token } }
+export const setAuthHeaders = (headers?: Headers) => {
+  if (!headers) {
+    headers = new Headers();
+  }
+  headers.set('X-Tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
+  headers.set('Authorization', 'Bearer ' + keycloak.token);
+  return headers;
 }
 
 export const login = async () => {
   const authenticated = await keycloak.init({ onLoad: 'login-required' });
   if (authenticated) {
-    await fetch('/login', getHeaders());
+    await fetch('/login', { headers: setAuthHeaders() });
   }
   return authenticated;
 }
 
 export const logout = async () => {
   localStorage.clear();
-  await fetch('/logout', getHeaders());
+  await fetch('/logout', { headers: setAuthHeaders() });
   await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
 }
 

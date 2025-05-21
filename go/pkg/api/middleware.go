@@ -16,26 +16,20 @@ import (
 
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession)
 
-type responseCodeWriter struct {
-	http.ResponseWriter
-	statusCode int
-}
-
-func newResponseWriter(w http.ResponseWriter) *responseCodeWriter {
-	return &responseCodeWriter{w, http.StatusOK}
-}
-
-func (rw *responseCodeWriter) WriteHeader(code int) {
-	rw.statusCode = code
-	rw.ResponseWriter.WriteHeader(code)
-}
-
 func (a *API) AccessRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		rw := newResponseWriter(w)
+		if rw == nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 		next.ServeHTTP(rw, req)
-		util.WriteAccessRequest(req, time.Since(start).Milliseconds(), rw.statusCode)
+		if !rw.hijacked {
+			util.WriteAccessRequest(req, time.Since(start).Milliseconds(), rw.statusCode)
+		} else {
+			util.WriteAccessRequest(req, time.Since(start).Milliseconds(), http.StatusSwitchingProtocols)
+		}
 	})
 }
 
@@ -68,14 +62,13 @@ func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFu
 				return
 			}
 			session, err := a.Cache.UserSessions.LoadOrSet(token, func() (*types.UserSession, error) {
-				return ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token, req.Header.Get("X-TZ"), util.AnonIp(req.RemoteAddr))
+				return ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token, req.Header.Get("X-Tz"), util.AnonIp(req.RemoteAddr))
 			})
 			if err != nil {
 				util.ErrorLog.Println(err)
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
-
 			next(w, req, session)
 		}
 	}
