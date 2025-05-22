@@ -696,3 +696,38 @@ host_db_upgrade: host_service_stop host_db_upgrade_op host_service_start
 .PHONY: check_logs
 check_logs:
 	exec $(CRON_SCRIPTS)/check-logs
+
+#################################
+#              AUTO             #
+#################################
+
+.PHONY: auto_review
+auto_review:
+	cat working/test_thing > working/auto_text
+	@while IFS= read -r line || [ -n "$$line" ]; do \
+		echo -e "$$line" >> working/auto_text; \
+	done
+
+.PHONY: auto_fix
+auto_fix:
+	echo "$(shell cat working/auto_text)" | $(MAKE) auto_ask
+
+.PHONY: auto_clean
+auto_clean:
+	docker stop $(docker ps -aqf "name=openhands") && docker rm $(docker ps -aqf "name=openhands")
+
+.PHONY: auto_ask
+auto_ask:
+	@input_data="$$(cat)"; docker run -t  --rm --pull=always \
+	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik \
+	-e SANDBOX_USER_ID=$(shell id -u) \
+	-e SANDBOX_VOLUMES=$(PROJECT_DIR):/workspace:rw \
+	-e LLM_API_KEY=$(GEMINI_2_5_KEY) \
+	-e LLM_MODEL="gemini/gemini-2.5-flash" \
+	-e LOG_ALL_EVENTS=true \
+	-v /var/run/docker.sock:/var/run/docker.sock \
+	-v ~/.openhands-state:/.openhands-state \
+	--add-host host.docker.internal:host-gateway \
+	--name openhands-app \
+	docker.all-hands.dev/all-hands-ai/openhands:0.39 \
+	python -m openhands.core.main -t "$$input_data"
