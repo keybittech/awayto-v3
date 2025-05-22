@@ -157,20 +157,7 @@ func TestRoutes(t *testing.T) {
 		body                            proto.Message
 		expectedStatus                  int
 	}{
-		{"get roles basic is successful", http.MethodGet, "/api/v1/roles", "application/json", 0, nil, http.StatusOK},
-		// {"get role by id is successful", http.MethodGet, "/api/v1/roles/123e4567-e89b-12d3-a456-426614174000", "application/json", 0, nil, http.StatusOK},
-		// {"post role creates new role", http.MethodPost, "/api/v1/roles", "application/json", 0, &types.PostRoleRequest{Name: "TestRole"}, http.StatusOK},
-		// {"post role with existing name returns existing role id", http.MethodPost, "/api/v1/roles", "application/json", 0, &types.PostRoleRequest{Name: "ExistingRole"}, http.StatusOK},
-		// {"post role with empty name fails validation", http.MethodPost, "/api/v1/roles", "application/json", 0, &types.PostRoleRequest{Name: ""}, http.StatusBadRequest},
-		// {"delete role is successful", http.MethodDelete, "/api/v1/roles/123e4567-e89b-12d3-a456-426614174000", "application/json", 0, nil, http.StatusOK},
-		// {"delete multiple roles is successful", http.MethodDelete, "/api/v1/roles/123e4567-e89b-12d3-a456-426614174000,223e4567-e89b-12d3-a456-426614174001", "application/json", 0, nil, http.StatusOK},
-		// {"delete non-existent role is still successful", http.MethodDelete, "/api/v1/roles/non-existent-id", "application/json", 0, nil, http.StatusOK},
-		// {"get role by invalid id format returns error", http.MethodGet, "/api/v1/roles/invalid-uuid-format", "application/json", 0, nil, http.StatusBadRequest},
-		// {"post role with malformed json fails", http.MethodPost, "/api/v1/roles", "application/json", 0, &types.PostRoleRequest{}, http.StatusBadRequest},
-		// {"get roles accepts correct content type", http.MethodGet, "/api/v1/roles", "application/json", 0, nil, http.StatusOK},
-		// {"post role accepts correct content type", http.MethodPost, "/api/v1/roles", "application/json", 0, &types.PostRoleRequest{Name: "ContentTypeTest"}, http.StatusOK},
-		// {"get roles rejects incorrect content type", http.MethodGet, "/api/v1/roles", "text/plain", 0, nil, http.StatusUnsupportedMediaType},
-		// {"post role rejects incorrect content type", http.MethodPost, "/api/v1/roles", "text/plain", 0, &types.PostRoleRequest{Name: "ContentTypeTest"}, http.StatusUnsupportedMediaType}
+		{"get roles basic is successful", http.MethodGet, "/api/v1/group/roles", "application/json", 0, nil, http.StatusOK},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
