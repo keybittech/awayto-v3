@@ -16,34 +16,34 @@ func testIntegrationRoles(t *testing.T) {
 		staffRoleRequest := &types.PostGroupRoleRequest{Name: "Staff"}
 		staffRoleRequestBytes, err := protojson.Marshal(staffRoleRequest)
 		if err != nil {
-			t.Errorf("error marshalling staff role request: %v", err)
+			t.Fatalf("error marshalling staff role request: %v", err)
 		}
 
 		staffRoleResponse := &types.PostGroupRoleResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/roles", staffRoleRequestBytes, nil, staffRoleResponse)
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/roles", staffRoleRequestBytes, nil, staffRoleResponse)
 		if err != nil {
-			t.Errorf("error posting staff role request: %v", err)
+			t.Fatalf("error posting staff role request: %v", err)
 		}
 		if !util.IsUUID(staffRoleResponse.GetGroupRoleId()) {
-			t.Errorf("staff role id is not a uuid: %s", staffRoleResponse.GetGroupRoleId())
+			t.Fatalf("staff role id is not a uuid: %s", staffRoleResponse.GetGroupRoleId())
 		}
 
 		memberRoleRequest := &types.PostGroupRoleRequest{Name: "Member"}
 		memberRoleRequestBytes, err := protojson.Marshal(memberRoleRequest)
 		if err != nil {
-			t.Errorf("error marshalling member role request: %v", err)
+			t.Fatalf("error marshalling member role request: %v", err)
 		}
 
 		memberRoleResponse := &types.PostGroupRoleResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/roles", memberRoleRequestBytes, nil, memberRoleResponse)
+		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/roles", memberRoleRequestBytes, nil, memberRoleResponse)
 		if err != nil {
-			t.Errorf("error posting member role request: %v", err)
+			t.Fatalf("error posting member role request: %v", err)
 		}
 
 		groupRoleId := memberRoleResponse.GetGroupRoleId()
 
 		if !util.IsUUID(groupRoleId) {
-			t.Errorf("member role id is not a uuid: %s", groupRoleId)
+			t.Fatalf("member role id is not a uuid: %s", groupRoleId)
 		}
 
 		roles := make(map[string]*types.IGroupRole, 2)
@@ -62,13 +62,13 @@ func testIntegrationRoles(t *testing.T) {
 		}
 		patchGroupRolesRequestBytes, err := protojson.Marshal(patchGroupRolesRequest)
 		if err != nil {
-			t.Errorf("error marshalling group roles request: %v", err)
+			t.Fatalf("error marshalling group roles request: %v", err)
 		}
 
 		patchGroupRolesResponse := &types.PatchGroupRolesResponse{}
 		err = apiRequest(admin.TestToken, http.MethodPatch, "/api/v1/group/roles", patchGroupRolesRequestBytes, nil, patchGroupRolesResponse)
 		if err != nil {
-			t.Errorf("error patching group roles request: %v", err)
+			t.Fatalf("error patching group roles request: %v", err)
 		}
 
 		integrationTest.Roles = roles

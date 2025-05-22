@@ -24,7 +24,7 @@ func testIntegrationQuotes(t *testing.T) {
 		var err error
 		integrationTest.DateSlots, err = getDateSlots(admin.TestToken, integrationTest.MasterSchedule.Id)
 		if err != nil {
-			t.Errorf("date slot retrieval error: %v", err)
+			t.Fatalf("date slot retrieval error: %v", err)
 		}
 	})
 
@@ -38,12 +38,12 @@ func testIntegrationQuotes(t *testing.T) {
 		firstSlot := integrationTest.DateSlots[0]
 		_, err := postQuote(staff2.TestToken, serviceTierId, firstSlot, nil, nil)
 		if err == nil {
-			t.Error("user created quote without APP_GROUP_BOOKINGS permissions")
+			t.Fatalf("user created quote without APP_GROUP_BOOKINGS permissions")
 		}
 
 		quote, err := postQuote(member1.TestToken, serviceTierId, firstSlot, nil, nil)
 		if err != nil {
-			t.Errorf("user can request quote error: %v", err)
+			t.Fatalf("user can request quote error: %v", err)
 		} else {
 			t.Logf("quote created with id %s", quote.Id)
 		}
@@ -55,18 +55,18 @@ func testIntegrationQuotes(t *testing.T) {
 		disableQuoteResponse := &types.DisableQuoteResponse{}
 		err := apiRequest(staff1.TestToken, http.MethodPatch, "/api/v1/quotes/disable/"+member1.Quotes[0].Id, nil, nil, disableQuoteResponse)
 		if err != nil {
-			t.Errorf("error disabling quote request: %v", err)
+			t.Fatalf("error disabling quote request: %v", err)
 		}
 
 		if !disableQuoteResponse.Success {
-			t.Error("disabling the quote was not successful")
+			t.Fatalf("disabling the quote was not successful")
 		}
 		member1.Quotes[0] = nil
 	})
 
 	t.Run("multiple users can request the same slot", func(tt *testing.T) {
 		if len(integrationTest.DateSlots) < 2 {
-			t.Errorf("date slots wrong len, expected 2, got: %d", len(integrationTest.DateSlots))
+			t.Fatalf("date slots wrong len, expected 2, got: %d", len(integrationTest.DateSlots))
 		}
 		for i := range 2 {
 			bracketSlot := integrationTest.DateSlots[i]
@@ -74,28 +74,28 @@ func testIntegrationQuotes(t *testing.T) {
 			for _, member := range []*types.TestUser{member1, member2, member3} {
 				quote, err := postQuote(member.TestToken, serviceTierId, bracketSlot, nil, nil)
 				if err != nil {
-					t.Errorf("multiple users %s can request quote error: %v", member.TestUserId, err)
+					t.Fatalf("multiple users %s can request quote error: %v", member.TestUserId, err)
 				}
 
 				if !util.IsUUID(quote.Id) {
-					t.Errorf("user #%s quote id invalid %s", member.TestUserId, quote.Id)
+					t.Fatalf("user #%s quote id invalid %s", member.TestUserId, quote.Id)
 				}
 
 				// Staff can see the quote info
 				if _, err := getQuoteById(staff1.TestToken, quote.Id); err != nil {
-					t.Errorf("user #%s quote id %s bad get %v", member.TestUserId, quote.Id, err)
+					t.Fatalf("user #%s quote id %s bad get %v", member.TestUserId, quote.Id, err)
 				}
 
 				if _, err := time.Parse("2006-01-02", quote.SlotDate); err != nil {
-					t.Errorf("user %s quote %d slot date invalid %s", member.TestUserId, i, quote.SlotDate)
+					t.Fatalf("user %s quote %d slot date invalid %s", member.TestUserId, i, quote.SlotDate)
 				}
 
 				if !util.IsUUID(quote.ScheduleBracketSlotId) {
-					t.Errorf("user %s quote %d sbs id invalid %s", member.TestUserId, i, quote.SlotDate)
+					t.Fatalf("user %s quote %d sbs id invalid %s", member.TestUserId, i, quote.SlotDate)
 				}
 
 				if quote.ScheduleBracketSlotId != bracketSlot.ScheduleBracketSlotId {
-					t.Errorf("user %s quote %d sbs id %s doesn't match requested slot id %s", member.TestUserId, i, quote.SlotDate, bracketSlot.ScheduleBracketSlotId)
+					t.Fatalf("user %s quote %d sbs id %s doesn't match requested slot id %s", member.TestUserId, i, quote.SlotDate, bracketSlot.ScheduleBracketSlotId)
 				}
 
 				member.Quotes[i] = quote
@@ -106,10 +106,10 @@ func testIntegrationQuotes(t *testing.T) {
 	t.Run("secondary quote creation", func(tt *testing.T) {
 		dateSlots, err := getDateSlots(admin.TestToken, integrationTest.MasterSchedules[0].Id)
 		if err != nil {
-			t.Errorf("date slot retrieval error: %v", err)
+			t.Fatalf("date slot retrieval error: %v", err)
 		}
 		if len(dateSlots) < 2 {
-			t.Errorf("secondary date slots wrong len, wanted 2, got %d", len(dateSlots))
+			t.Fatalf("secondary date slots wrong len, wanted 2, got %d", len(dateSlots))
 		}
 		for i := range 2 {
 			bracketSlot := dateSlots[i]
@@ -117,7 +117,7 @@ func testIntegrationQuotes(t *testing.T) {
 			for _, member := range []*types.TestUser{member1, member2, member3} {
 				quote, err := postQuote(member.TestToken, serviceTierId, bracketSlot, nil, nil)
 				if err != nil {
-					t.Errorf("secondary request quote error: %v", err)
+					t.Fatalf("secondary request quote error: %v", err)
 				}
 
 				integrationTest.Quotes = append(integrationTest.Quotes, quote)

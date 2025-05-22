@@ -33,7 +33,7 @@ func testIntegrationBookings(t *testing.T) {
 
 		_, err := postBooking(member1.TestToken, bookingRequests)
 		if err != nil && !strings.Contains(err.Error(), "403") {
-			t.Errorf("booking post without permissions was not 403, %v", err)
+			t.Fatalf("booking post without permissions was not 403, %v", err)
 		}
 	})
 
@@ -49,7 +49,7 @@ func testIntegrationBookings(t *testing.T) {
 
 		_, err := postBooking(admin.TestToken, bookingRequests)
 		if err == nil {
-			t.Error("slot was approved by non-owner approver")
+			t.Fatalf("slot was approved by non-owner approver")
 		}
 	})
 
@@ -72,7 +72,7 @@ func testIntegrationBookings(t *testing.T) {
 
 		_, err := postBooking(staff1.TestToken, bookingRequests)
 		if err == nil {
-			t.Errorf("different booking approve was allowed, id 1 %s, id 2 %s", member1.Quotes[0].ScheduleBracketSlotId, member1.Quotes[1].ScheduleBracketSlotId)
+			t.Fatalf("different booking approve was allowed, id 1 %s, id 2 %s", member1.Quotes[0].ScheduleBracketSlotId, member1.Quotes[1].ScheduleBracketSlotId)
 		}
 	})
 
@@ -87,11 +87,11 @@ func testIntegrationBookings(t *testing.T) {
 		}
 		bookings, err := postBooking(staff1.TestToken, bookingRequests)
 		if err != nil {
-			t.Errorf("single booking approve error %v", err)
+			t.Fatalf("single booking approve error %v", err)
 		}
 
 		if len(bookings) != 1 {
-			t.Errorf("expected %d bookings, received %d", 1, len(bookings))
+			t.Fatalf("expected %d bookings, received %d", 1, len(bookings))
 		}
 	})
 
@@ -102,7 +102,7 @@ func testIntegrationBookings(t *testing.T) {
 		}
 		_, err := postQuote(member3.TestToken, serviceTierId, reservedSlot, nil, nil)
 		if err == nil {
-			t.Errorf("user was able to request a booked slot")
+			t.Fatalf("user was able to request a booked slot")
 		}
 	})
 
@@ -125,19 +125,19 @@ func testIntegrationBookings(t *testing.T) {
 
 		bookings, err := postBooking(staff1.TestToken, bookingRequests)
 		if err != nil {
-			t.Errorf("batch booking approve error %v", err)
+			t.Fatalf("batch booking approve error %v", err)
 		}
 
 		if len(bookings) != 2 {
-			t.Errorf("expected %d bookings, received %d", 2, len(bookings))
+			t.Fatalf("expected %d bookings, received %d", 2, len(bookings))
 		}
 
 		if !util.IsUUID(bookings[0].Id) {
-			t.Errorf("booking id 1 is not a uuid %s", bookings[0].Id)
+			t.Fatalf("booking id 1 is not a uuid %s", bookings[0].Id)
 		}
 
 		if !util.IsUUID(bookings[1].Id) {
-			t.Errorf("booking id 2 is not a uuid %s", bookings[1].Id)
+			t.Fatalf("booking id 2 is not a uuid %s", bookings[1].Id)
 		}
 
 		integrationTest.Bookings = append(integrationTest.Bookings, bookings...)

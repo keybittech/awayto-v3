@@ -54,7 +54,7 @@ func testIntegrationUserSchedule(t *testing.T) {
 	t.Run("APP_GROUP_SCHEDULE permission is required to create a personal schedule", func(tt *testing.T) {
 		_, err := postSchedule(member1.TestToken, &types.PostScheduleRequest{})
 		if err == nil || !strings.Contains(err.Error(), "403") {
-			t.Error("user request to create schedule without permissions was not 403")
+			t.Fatal("user request to create schedule without permissions was not 403")
 		}
 	})
 
@@ -71,7 +71,7 @@ func testIntegrationUserSchedule(t *testing.T) {
 			SlotDuration:       integrationTest.MasterSchedule.SlotDuration,
 		})
 		if err != nil {
-			t.Errorf("staff post schedule err %v", err)
+			t.Fatalf("staff post schedule err %v", err)
 		}
 
 		t.Logf("created user schedule with id %s", schedule.Id)
@@ -92,7 +92,7 @@ func testIntegrationUserSchedule(t *testing.T) {
 			SlotDuration:       integrationTest.MasterSchedules[0].SlotDuration,
 		})
 		if err != nil {
-			t.Errorf("secondary staff post schedule err %v", err)
+			t.Fatalf("secondary staff post schedule err %v", err)
 		}
 
 		integrationTest.UserSchedules = append(integrationTest.UserSchedules, schedule)

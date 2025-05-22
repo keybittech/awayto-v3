@@ -38,15 +38,15 @@ func testIntegrationJoinGroup(t *testing.T) {
 			session, connection, token, ticket, connId := getUser(t, userId)
 
 			if len(ticket) != 73 {
-				t.Errorf("bad ticket: got ticket (auth:connid) %s %d", ticket, len(ticket))
+				t.Fatalf("bad ticket: got ticket (auth:connid) %s %d", ticket, len(ticket))
 			}
 
 			if !util.IsUUID(session.UserSub) {
-				t.Errorf("user sub is not a uuid: %v", session)
+				t.Fatalf("user sub is not a uuid: %v", session)
 			}
 
 			if integrationTest.Group.Code == "" {
-				t.Errorf("no group id to join with %v", integrationTest.Group)
+				t.Fatalf("no group id to join with %v", integrationTest.Group)
 			}
 
 			if !joinViaRegister {
@@ -55,16 +55,16 @@ func testIntegrationJoinGroup(t *testing.T) {
 					Code: integrationTest.Group.Code,
 				})
 				if err != nil {
-					t.Errorf("error marshalling join group request, user: %d error: %v", c, err)
+					t.Fatalf("error marshalling join group request, user: %d error: %v", c, err)
 				}
 
 				joinGroupResponse := &types.JoinGroupResponse{}
 				err = apiRequest(token, http.MethodPost, "/api/v1/group/join", joinGroupRequestBytes, nil, joinGroupResponse)
 				if err != nil {
-					t.Errorf("error posting join group request, user: %d error: %v", c, err)
+					t.Fatalf("error posting join group request, user: %d error: %v", c, err)
 				}
 				if !joinGroupResponse.Success {
-					t.Errorf("join group internal was unsuccessful %v", joinGroupResponse)
+					t.Fatalf("join group internal was unsuccessful %v", joinGroupResponse)
 				}
 
 				// Attach User to Group -- adds the user to keycloak records
@@ -72,37 +72,37 @@ func testIntegrationJoinGroup(t *testing.T) {
 					Code: integrationTest.Group.Code,
 				})
 				if err != nil {
-					t.Errorf("error marshalling attach user request, user: %d error: %v", c, err)
+					t.Fatalf("error marshalling attach user request, user: %d error: %v", c, err)
 				}
 
 				attachUserResponse := &types.AttachUserResponse{}
 				err = apiRequest(token, http.MethodPost, "/api/v1/group/attach/user", attachUserRequestBytes, nil, attachUserResponse)
 				if err != nil {
-					t.Errorf("error posting attach user request, user: %d error: %v", c, err)
+					t.Fatalf("error posting attach user request, user: %d error: %v", c, err)
 				}
 				if !attachUserResponse.Success {
-					t.Errorf("attach user internal was unsuccessful %v", attachUserResponse)
+					t.Fatalf("attach user internal was unsuccessful %v", attachUserResponse)
 				}
 
 				// Activate Profile -- lets the user view the internal login pages
 				activateProfileResponse := &types.ActivateProfileResponse{}
 				err = apiRequest(token, http.MethodPatch, "/api/v1/profile/activate", nil, nil, activateProfileResponse)
 				if err != nil {
-					t.Errorf("error patch activate profile group request, user: %d error: %v", c, err)
+					t.Fatalf("error patch activate profile group request, user: %d error: %v", c, err)
 				}
 				if !activateProfileResponse.Success {
-					t.Errorf("activate profile internal was unsuccessful %v", activateProfileResponse)
+					t.Fatalf("activate profile internal was unsuccessful %v", activateProfileResponse)
 				}
 
 				// Get new token after group setup to check group membersip
 				token, session, err = getKeycloakToken(userId)
 				if err != nil {
-					t.Errorf("failed to get new token after joining group %v", err)
+					t.Fatalf("failed to get new token after joining group %v", err)
 				}
 			}
 
 			if len(session.SubGroupPaths) == 0 {
-				t.Errorf("no subgroup paths after getting new token %v", session)
+				t.Fatalf("no subgroup paths after getting new token %v", session)
 			}
 
 			testUser := &types.TestUser{

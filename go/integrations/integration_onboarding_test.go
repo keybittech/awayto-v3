@@ -19,39 +19,39 @@ func testIntegrationOnboarding(t *testing.T) {
 		}
 		onboardingRequestBytes, err := protojson.Marshal(onboardingRequest)
 		if err != nil {
-			t.Errorf("error marshalling onboarding request: %v", err)
+			t.Fatalf("error marshalling onboarding request: %v", err)
 		}
 
 		onboardingResponse := &types.CompleteOnboardingResponse{}
 		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/onboard", onboardingRequestBytes, nil, onboardingResponse)
 		if err != nil {
-			t.Errorf("error posting onboarding request: %v", err)
+			t.Fatalf("error posting onboarding request: %v", err)
 		}
 
 		if !util.IsUUID(onboardingResponse.ServiceId) {
-			t.Errorf("service id is not a uuid: %s", onboardingResponse.ServiceId)
+			t.Fatalf("service id is not a uuid: %s", onboardingResponse.ServiceId)
 		}
 
 		if !util.IsUUID(onboardingResponse.GroupServiceId) {
-			t.Errorf("group service 2 id is not a uuid: %s", onboardingResponse.GroupServiceId)
+			t.Fatalf("group service 2 id is not a uuid: %s", onboardingResponse.GroupServiceId)
 		}
 
 		if !util.IsUUID(onboardingResponse.ScheduleId) {
-			t.Errorf("schedule 2 id is not a uuid: %s", onboardingResponse.ScheduleId)
+			t.Fatalf("schedule 2 id is not a uuid: %s", onboardingResponse.ScheduleId)
 		}
 
 		if !util.IsUUID(onboardingResponse.GroupScheduleId) {
-			t.Errorf("group schedule 2 id is not a uuid: %s", onboardingResponse.GroupScheduleId)
+			t.Fatalf("group schedule 2 id is not a uuid: %s", onboardingResponse.GroupScheduleId)
 		}
 
 		masterService, err := getServiceById(admin.TestToken, onboardingResponse.ServiceId)
 		if err != nil {
-			t.Errorf("service by id err: %v", err)
+			t.Fatalf("service by id err: %v", err)
 		}
 
 		masterGroupSchedule, err := getMasterScheduleById(admin.TestToken, onboardingResponse.ScheduleId)
 		if err != nil {
-			t.Errorf("master schedule by id err: %v", err)
+			t.Fatalf("master schedule by id err: %v", err)
 		}
 
 		integrationTest.MasterService = masterService

@@ -39,11 +39,11 @@ func testIntegrationSchedule(t *testing.T) {
 		lookupsResponse := &types.GetLookupsResponse{}
 		err := apiRequest(admin.TestToken, http.MethodGet, "/api/v1/lookup", nil, nil, lookupsResponse)
 		if err != nil {
-			t.Errorf("error getting lookups request: %v", err)
+			t.Fatalf("error getting lookups request: %v", err)
 		}
 
 		if lookupsResponse.TimeUnits == nil {
-			t.Error("did not get integration time units")
+			t.Fatalf("did not get integration time units")
 		}
 
 		for _, tu := range lookupsResponse.TimeUnits {
@@ -72,23 +72,23 @@ func testIntegrationSchedule(t *testing.T) {
 			SlotDuration:       slotDuration,
 		})
 		if err != nil {
-			t.Errorf("failed to post master schedule %v", err)
+			t.Fatalf("failed to post master schedule %v", err)
 		}
 		if !util.IsUUID(schedule.Id) {
-			t.Error("master schedule id is not uuid")
+			t.Fatalf("master schedule id is not uuid")
 		}
 
 		err = postGroupSchedule(admin.TestToken, schedule.Id)
 		if err != nil {
-			t.Errorf("master schedule creation attach group err: %v", err)
+			t.Fatalf("master schedule creation attach group err: %v", err)
 		}
 
 		groupMasterSchedule, err := getMasterScheduleById(admin.TestToken, schedule.Id)
 		if err != nil {
-			t.Errorf("master schedule creation err: %v", err)
+			t.Fatalf("master schedule creation err: %v", err)
 		}
 		if groupMasterSchedule.Schedule.Id == "" {
-			t.Errorf("no master schedule > schedule id: %v", groupMasterSchedule.Schedule)
+			t.Fatalf("no master schedule > schedule id: %v", groupMasterSchedule.Schedule)
 		}
 
 		integrationTest.MasterSchedules = append(integrationTest.MasterSchedules, groupMasterSchedule.Schedule)

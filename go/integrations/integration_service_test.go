@@ -19,33 +19,33 @@ func testIntegrationService(t *testing.T) {
 		postServiceAddon1Request := &types.PostServiceAddonRequest{Name: "test addon 1"}
 		postServiceAddon1RequestBytes, err := protojson.Marshal(postServiceAddon1Request)
 		if err != nil {
-			t.Errorf("error marshalling addon 1 request: %v", err)
+			t.Fatalf("error marshalling addon 1 request: %v", err)
 		}
 
 		postServiceAddon1Response := &types.PostServiceAddonResponse{}
 		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon1RequestBytes, nil, postServiceAddon1Response)
 		if err != nil {
-			t.Errorf("error requesting addon 1 request: %v", err)
+			t.Fatalf("error requesting addon 1 request: %v", err)
 		}
 
 		if !util.IsUUID(postServiceAddon1Response.Id) {
-			t.Errorf("addon 1 id is not a uuid: %s", postServiceAddon1Response.Id)
+			t.Fatalf("addon 1 id is not a uuid: %s", postServiceAddon1Response.Id)
 		}
 
 		postServiceAddon2Request := &types.PostServiceAddonRequest{Name: "test addon 2"}
 		postServiceAddon2RequestBytes, err := protojson.Marshal(postServiceAddon2Request)
 		if err != nil {
-			t.Errorf("error marshalling addon 2 request: %v", err)
+			t.Fatalf("error marshalling addon 2 request: %v", err)
 		}
 
 		postServiceAddon2Response := &types.PostServiceAddonResponse{}
 		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon2RequestBytes, nil, postServiceAddon2Response)
 		if err != nil {
-			t.Errorf("error posting addon 2 request: %v", err)
+			t.Fatalf("error posting addon 2 request: %v", err)
 		}
 
 		if !util.IsUUID(postServiceAddon2Response.Id) {
-			t.Errorf("addon 2 id is not a uuid: %s", postServiceAddon2Response.Id)
+			t.Fatalf("addon 2 id is not a uuid: %s", postServiceAddon2Response.Id)
 		}
 
 		serviceAddons := make(map[string]*types.IServiceAddon, 2)
