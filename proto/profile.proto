@@ -4,14 +4,12 @@ package types;
 import "quote.proto";
 import "booking.proto";
 import "group.proto";
-import "role.proto";
 import "util.proto";
 
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
-
 
 service UserProfileService {
   rpc PostUserProfile(PostUserProfileRequest) returns (PostUserProfileResponse) {
@@ -69,9 +67,8 @@ message IUserProfile {
   map<string, IBooking> bookings = 15;
   bool seenBookings = 16;
   map<string, IGroup> groups = 17;
-  map<string, IRole> roles = 18;
-  SiteRoles roleBits = 19;
-  string roleName = 22;
+  SiteRoles roleBits = 18;
+  string roleName = 19;
 }
 
 message PostUserProfileRequest {

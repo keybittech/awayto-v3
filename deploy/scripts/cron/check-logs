@@ -1,0 +1,45 @@
+#! /bin/sh
+
+daily_log=$(mktemp)
+
+LOG_FILES="access auth debug errors sock"
+
+for file in $LOG_FILES; do
+  printf $file" log\n" >> $daily_log
+  cat $LOG_DIR/${file}.log >> $daily_log
+  printf "\n\n" >> $daily_log
+done
+
+cat $daily_log
+# mail -s "test from server" $ADMIN_EMAIL
+#
+#
+#
+#
+#
+#
+#
+# LOG_FILE="/log/my.log"
+# MAX_SIZE_MB=100
+#
+# if [ -z "$ADMIN_EMAIL" ]; then
+#   echo "Error: ADMIN_EMAIL environment variable is not set." >&2
+#   exit 1
+# fi
+#
+# if [ ! -f "$LOG_FILE" ]; then
+#   exit 0
+# fi
+#
+# MAX_SIZE_BYTES=$((MAX_SIZE_MB * 1024 * 1024))
+# CURRENT_SIZE_BYTES=$(stat -c%s "$LOG_FILE")
+#
+# if [ "$CURRENT_SIZE_BYTES" -gt "$MAX_SIZE_BYTES" ]; then
+#   CURRENT_SIZE_HUMAN=$(du -h "$LOG_FILE" | cut -f1)
+#   SUBJECT="PING: Log file $LOG_FILE is over ${MAX_SIZE_MB}MB"
+#   BODY="Log file $LOG_FILE is over ${MAX_SIZE_MB}MB. Current size: $CURRENT_SIZE_HUMAN."
+#   
+#   echo "$BODY" | mail -s "$SUBJECT" "$ADMIN_EMAIL"
+# fi
+#
+# exit 0

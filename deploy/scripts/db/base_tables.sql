@@ -76,22 +76,6 @@ BEGIN
   INSERT INTO dbtable_schema.roles (name, created_sub) VALUES ('Admin', admin_id);
 END $$;
 
-CREATE TABLE dbtable_schema.user_roles (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-  role_id uuid NOT NULL REFERENCES dbtable_schema.roles (id) ON DELETE CASCADE,
-  user_id uuid NOT NULL REFERENCES dbtable_schema.users (id) ON DELETE CASCADE,
-  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
-  updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
-  enabled BOOLEAN NOT NULL DEFAULT true,
-  UNIQUE (role_id, user_id)
-);
-ALTER TABLE dbtable_schema.user_roles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY table_select ON dbtable_schema.user_roles FOR SELECT TO $PG_WORKER USING ($IS_CREATOR);
-CREATE POLICY table_insert ON dbtable_schema.user_roles FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
-CREATE POLICY table_delete ON dbtable_schema.user_roles FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
-
 CREATE TABLE dbtable_schema.file_types (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
   name VARCHAR (50) NOT NULL UNIQUE,

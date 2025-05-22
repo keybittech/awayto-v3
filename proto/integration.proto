@@ -2,12 +2,12 @@ syntax = "proto3";
 package types;
 
 import "session.proto";
-import "role.proto";
 import "quote.proto";
 import "booking.proto";
 import "group.proto";
 import "service.proto";
 import "schedule.proto";
+import "group_role.proto";
 import "group_service.proto";
 import "group_schedule.proto";
 
@@ -27,9 +27,9 @@ message TestUser {
 
 message IntegrationTest {
   map<int32, TestUser> testUsers = 1;
-  map<string, IRole> roles = 2;
-  IRole memberRole = 3;
-  IRole staffRole = 4;
+  map<string, IGroupRole> roles = 2;
+  IGroupRole memberRole = 3;
+  IGroupRole staffRole = 4;
   IGroup group = 5;
   IService masterService = 6;
   IGroupService groupService = 7;

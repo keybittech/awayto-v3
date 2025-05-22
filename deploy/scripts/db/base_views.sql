@@ -30,19 +30,6 @@ WHERE
   enabled = true;
 
 CREATE
-OR REPLACE VIEW dbview_schema.enabled_user_roles AS
-SELECT
-  id,
-  role_id as "roleId",
-  user_id as "userId",
-  created_sub as "createdSub",
-  created_on as "createdOn"
-FROM
-  dbtable_schema.user_roles
-WHERE
-  enabled = true;
-
-CREATE
 OR REPLACE VIEW dbview_schema.enabled_groups AS
 SELECT
   id,

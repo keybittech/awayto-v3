@@ -9,25 +9,24 @@ import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
 import Checkbox from '@mui/material/Checkbox';
 
-import { useUtil, siteApi, IRole, targets } from 'awayto/hooks';
+import { useUtil, siteApi, IGroupRole, targets } from 'awayto/hooks';
 import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 
 interface ManageRoleModalProps extends IComponent {
-  editRole?: IRole;
+  editRole?: IGroupRole;
   isDefault?: boolean;
 }
 
 export function ManageRoleModal({ editRole, isDefault, closeModal }: ManageRoleModalProps): React.JSX.Element {
   const { setSnack } = useUtil();
-  const [postRole] = siteApi.useRoleServicePostRoleMutation();
   const [patchGroupRole] = siteApi.useGroupRoleServicePatchGroupRoleMutation();
   const [postGroupRole] = siteApi.useGroupRoleServicePostGroupRoleMutation();
 
   const [role, setRole] = useState({
     name: '',
     ...editRole
-  } as Required<IRole>);
+  } as Required<IGroupRole>);
 
   const [defaultRole, setDefaultRole] = useState(isDefault);
 
@@ -42,8 +41,7 @@ export function ManageRoleModal({ editRole, isDefault, closeModal }: ManageRoleM
     if (id) {
       await patchGroupRole({ patchGroupRoleRequest: { roleId: id, name, defaultRole } }).unwrap().catch(console.error);
     } else {
-      const { id } = await postRole({ postRoleRequest: role }).unwrap();
-      await postGroupRole({ postGroupRoleRequest: { roleId: id, name, defaultRole } }).unwrap().catch(console.error);
+      await postGroupRole({ postGroupRoleRequest: { name, defaultRole } }).unwrap().catch(console.error);
     }
 
     if (closeModal)

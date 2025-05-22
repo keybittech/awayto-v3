@@ -117,10 +117,11 @@ DEPLOYING:=$(if $(filter ${HOST_OPERATOR},${CURRENT_USER}),true,)
 define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
 endef
-
-LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR}
+ifeq ($(ORIGINAL_SOCK_DIR),)
+ORIGINAL_SOCK_DIR:=${UNIX_SOCK_DIR}
+endif
 define set_local_unix_sock_dir
-	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
+	$(eval UNIX_SOCK_DIR=$(shell pwd)/$(ORIGINAL_SOCK_DIR))
 	setfacl -m g:1000:rwx $(UNIX_SOCK_DIR)
 	setfacl -d -m g:1000:rwx $(UNIX_SOCK_DIR)
 endef
@@ -188,7 +189,7 @@ build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_F
 clean:
 	rm -rf $(LOG_DIR) $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) # $(MOCK_TARGET)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_HANDLERS_REGISTER) # $(MOCK_TARGET)
 
 $(LOG_DIR):
 ifeq ($(DEPLOYING),)
@@ -691,3 +692,7 @@ host_db_upgrade_op:
 
 .PHONY: host_db_upgrade
 host_db_upgrade: host_service_stop host_db_upgrade_op host_service_start
+
+.PHONY: check_logs
+check_logs:
+	exec $(CRON_SCRIPTS)/check-logs

@@ -29,7 +29,7 @@ interface SelectLookupProps extends IComponent {
   invalidValues?: string[];
   refetchAction?: (props?: { [prop: string]: string }) => void;
   attachAction?: (p: ActionBody) => Promise<void>;
-  createAction?: (p: ActionBody) => Promise<{ id: string }>;
+  createAction?: (p: ActionBody) => Promise<Record<string, string>>;
   deleteAction?: (p: ActionBody) => Promise<void>;
   deleteComplete?(value: string | string[]): void;
   parentUuidName?: string;
@@ -104,8 +104,8 @@ export function SelectLookup({ lookupChange, required = false, disabled = false,
   // If a value is required to be selected upon load, pre populate it with the first existing lookup
   useEffect(() => {
     if (lookupValue && lookups && lookups?.length && noEmptyValue && !lookupValue?.length) {
-      const firstLookup = lookups.at(0) as Required<ILookup>;
-      lookupChange(isStringArray(lookupValue) ? [firstLookup.id] : firstLookup.id);
+      const firstLookup = lookups[0] as Required<ILookup>;
+      lookupChange(!firstLookup ? '' : isStringArray(lookupValue) ? [firstLookup.id] : firstLookup.id);
     }
   }, [lookups, lookupValue, noEmptyValue]);
 

@@ -8,10 +8,11 @@ import (
 )
 
 func (h *Handlers) PostUserProfile(info ReqInfo, data *types.PostUserProfileRequest) (*types.PostUserProfileResponse, error) {
+	userSub := info.Session.GetUserSub()
 	_, err := info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_sub, ip_address, timezone)
 		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::uuid, $8, $9)
-	`, info.Session.GetUserSub(), data.Username, data.FirstName, data.LastName, data.Email, data.Image, info.Session.GetUserSub(), info.Session.GetAnonIp(), info.Session.GetTimezone())
+	`, userSub, data.Username, data.FirstName, data.LastName, data.Email, data.Image, userSub, info.Session.GetAnonIp(), info.Session.GetTimezone())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -20,20 +21,21 @@ func (h *Handlers) PostUserProfile(info ReqInfo, data *types.PostUserProfileRequ
 }
 
 func (h *Handlers) PatchUserProfile(info ReqInfo, data *types.PatchUserProfileRequest) (*types.PatchUserProfileResponse, error) {
+	userSub := info.Session.GetUserSub()
 	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.users
 		SET first_name = $2, last_name = $3, email = $4, image = $5, updated_sub = $1, updated_on = $6
 		WHERE sub = $1
-	`, info.Session.GetUserSub(), data.FirstName, data.LastName, data.Email, data.Image, time.Now())
+	`, userSub, data.FirstName, data.LastName, data.Email, data.Image, time.Now())
 
 	info.Batch.Send(info.Ctx)
 
-	err := h.Keycloak.UpdateUser(info.Ctx, info.Session.GetUserSub(), info.Session.GetUserSub(), data.FirstName, data.LastName)
+	err := h.Keycloak.UpdateUser(info.Ctx, userSub, userSub, data.FirstName, data.LastName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
+	h.Redis.Client().Del(info.Ctx, userSub+"profile/details")
 
 	return &types.PatchUserProfileResponse{Success: true}, nil
 }
@@ -50,8 +52,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	`, userSub)
 
 	var groupsReq *map[string]*types.IGroup
-	var groupRolesReq *map[string]*types.IRole
-	var rolesReq *map[string]*types.IRole
+	var groupRolesReq *map[string]*types.IGroupRole
 	var quotesReq *map[string]*types.IQuote
 	var bookingsReq *map[string]*types.IBooking
 
@@ -62,19 +63,12 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 			WHERE code = $1
 		`, groupCode)
 
-		groupRolesReq = util.BatchQueryMap[types.IRole](info.Batch, "id", `
+		groupRolesReq = util.BatchQueryMap[types.IGroupRole](info.Batch, "id", `
 			SELECT er.id, er.name
 			FROM dbview_schema.enabled_group_roles egr
 			JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
 			WHERE egr."groupId" = $1
 		`, groupId)
-
-		rolesReq = util.BatchQueryMap[types.IRole](info.Batch, "id", `
-			SELECT er.id, er.name, eur."createdOn"
-			FROM dbview_schema.enabled_user_roles eur
-			JOIN dbview_schema.enabled_roles er ON er.id = eur."roleId"
-			WHERE eur."createdSub" = $1
-		`, userSub)
 
 		quotesReq = util.BatchQueryMap[types.IQuote](info.Batch, "id", `
 			SELECT id, "slotDate", "startTime", "scheduleBracketSlotId", "serviceTierName", "serviceName", "createdOn"
@@ -93,23 +87,19 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	up := *upReq
 
-	if info.Session.GetGroupId() != "" {
+	if groupId != "" {
 		up.Groups = *groupsReq
 		up.Groups[groupCode].Roles = *groupRolesReq
-		up.Roles = *rolesReq
 		up.Quotes = *quotesReq
 		up.Bookings = *bookingsReq
 	}
 
-	roleBits := info.Session.GetRoleBits()
-	up.RoleBits = roleBits
-
-	roleName := info.Session.GetSubGroupName()
-	up.RoleName = roleName
+	up.RoleBits = info.Session.GetRoleBits()
+	up.RoleName = info.Session.GetSubGroupName()
 
 	// Try to send a request if the user has an active socket connection
 	// but no need to catch errors as they may not yet have a connection
-	go h.Socket.RoleCall(info.Session.GetUserSub())
+	go h.Socket.RoleCall(userSub)
 
 	return &types.GetUserProfileDetailsResponse{UserProfile: up}, nil
 }

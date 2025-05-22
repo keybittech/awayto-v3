@@ -554,7 +554,7 @@ func (k *Keycloak) CreateOrGetSubGroup(ctx context.Context, userSub, groupExtern
 		return nil, util.ErrCheck(err)
 	}
 
-	if kcCreateSubgroup.AuthResponseParams.Group != nil {
+	if kcCreateSubgroup.AuthResponseParams != nil {
 		return kcCreateSubgroup.AuthResponseParams.Group, nil
 	} else {
 		groupSubgroupsReply, err := k.SendCommand(ctx, GetGroupSubgroupsKeycloakCommand, &types.AuthRequestParams{

@@ -1,7 +1,6 @@
 syntax = "proto3";
 package types;
 
-import "role.proto";
 import "util.proto";
 
 import "google/api/annotations.proto";
@@ -53,6 +52,8 @@ service GroupRoleService {
     option (site_role) = APP_GROUP_ROLES; 
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetGroupRoles";
+    option (invalidates) = "GetUserProfileDetails";
   }
 }
 
@@ -61,14 +62,13 @@ message IGroupRole {
   string groupId = 2;
   string roleId = 3;
   string externalId = 4;
-  IRole role = 5;
+  string name = 5;
   string createdOn = 6;
 }
 
 message PostGroupRoleRequest {
-  string roleId = 1 [(google.api.field_behavior) = REQUIRED];
-  string name = 2 [(google.api.field_behavior) = REQUIRED];
-  bool defaultRole = 3;
+  string name = 1 [(google.api.field_behavior) = REQUIRED];
+  bool defaultRole = 2;
 }
 
 message PostGroupRoleResponse {
@@ -87,7 +87,7 @@ message PatchGroupRoleResponse {
 
 message PatchGroupRolesRequest {
   string defaultRoleId = 1 [(google.api.field_behavior) = REQUIRED];
-  map<string, IRole> roles = 2 [(google.api.field_behavior) = REQUIRED];
+  map<string, IGroupRole> roles = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PatchGroupRolesResponse {
