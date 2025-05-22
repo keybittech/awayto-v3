@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
@@ -10,7 +9,7 @@ import (
 )
 
 func testIntegrationGroup(t *testing.T) {
-	t.Run("admin can create a group", func(t *testing.T) {
+	t.Run("admin can create a group", func(tt *testing.T) {
 		admin := integrationTest.TestUsers[0]
 		groupRequest := &types.PostGroupRequest{
 			Name:           "the_test_group_" + string(admin.TestUserId),
@@ -21,17 +20,17 @@ func testIntegrationGroup(t *testing.T) {
 		}
 		requestBytes, err := protojson.Marshal(groupRequest)
 		if err != nil {
-			panic(fmt.Sprintf("error marshalling group request: %v", err))
+			t.Fatalf("error marshalling group request: %v", err)
 		}
 
 		postGroupResponse := &types.PostGroupResponse{}
 		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group", requestBytes, nil, postGroupResponse)
 		if err != nil {
-			panic(fmt.Sprintf("error posting group: %v", err))
+			t.Fatalf("error posting group: %v", err)
 		}
 
 		if len(postGroupResponse.Code) != 8 {
-			panic(fmt.Sprintf("group code is not 8 length: %s", postGroupResponse.Code))
+			t.Fatalf("group code is not 8 length: %s", postGroupResponse.Code)
 		}
 
 		integrationTest.Group = &types.IGroup{

@@ -10,7 +10,7 @@ import (
 )
 
 func testIntegrationRoles(t *testing.T) {
-	t.Run("admin can create roles", func(t *testing.T) {
+	t.Run("admin can create roles", func(tt *testing.T) {
 		admin := integrationTest.TestUsers[0]
 
 		staffRoleRequest := &types.PostRoleRequest{Name: "Staff"}

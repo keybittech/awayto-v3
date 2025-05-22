@@ -20,7 +20,7 @@ func testIntegrationQuotes(t *testing.T) {
 	member3 := integrationTest.TestUsers[6]
 	member3.Quotes = make([]*types.IQuote, 10)
 
-	t.Run("date slots are retrieved prior to getting a quote", func(t *testing.T) {
+	t.Run("date slots are retrieved prior to getting a quote", func(tt *testing.T) {
 		var err error
 		integrationTest.DateSlots, err = getDateSlots(admin.TestToken, integrationTest.MasterSchedule.Id)
 		if err != nil {
@@ -34,7 +34,7 @@ func testIntegrationQuotes(t *testing.T) {
 		break
 	}
 
-	t.Run("APP_GROUP_BOOKINGS is required to request quote", func(t *testing.T) {
+	t.Run("APP_GROUP_BOOKINGS is required to request quote", func(tt *testing.T) {
 		firstSlot := integrationTest.DateSlots[0]
 		_, err := postQuote(staff2.TestToken, serviceTierId, firstSlot, nil, nil)
 		if err == nil {
@@ -51,7 +51,7 @@ func testIntegrationQuotes(t *testing.T) {
 		member1.Quotes[0] = quote
 	})
 
-	t.Run("APP_GROUP_SCHEDULES is required to disable a quote", func(t *testing.T) {
+	t.Run("APP_GROUP_SCHEDULES is required to disable a quote", func(tt *testing.T) {
 		disableQuoteResponse := &types.DisableQuoteResponse{}
 		err := apiRequest(staff1.TestToken, http.MethodPatch, "/api/v1/quotes/disable/"+member1.Quotes[0].Id, nil, nil, disableQuoteResponse)
 		if err != nil {
@@ -64,7 +64,7 @@ func testIntegrationQuotes(t *testing.T) {
 		member1.Quotes[0] = nil
 	})
 
-	t.Run("multiple users can request the same slot", func(t *testing.T) {
+	t.Run("multiple users can request the same slot", func(tt *testing.T) {
 		if len(integrationTest.DateSlots) < 2 {
 			t.Errorf("date slots wrong len, expected 2, got: %d", len(integrationTest.DateSlots))
 		}
@@ -103,7 +103,7 @@ func testIntegrationQuotes(t *testing.T) {
 		}
 	})
 
-	t.Run("secondary quote creation", func(t *testing.T) {
+	t.Run("secondary quote creation", func(tt *testing.T) {
 		dateSlots, err := getDateSlots(admin.TestToken, integrationTest.MasterSchedules[0].Id)
 		if err != nil {
 			t.Errorf("date slot retrieval error: %v", err)

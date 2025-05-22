@@ -21,7 +21,7 @@ func testIntegrationBookings(t *testing.T) {
 		break
 	}
 
-	t.Run("APP_GROUP_SCHEDULES is required by approver", func(t *testing.T) {
+	t.Run("APP_GROUP_SCHEDULES is required by approver", func(tt *testing.T) {
 		bookingRequests := make([]*types.IBooking, 1)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
@@ -37,7 +37,7 @@ func testIntegrationBookings(t *testing.T) {
 		}
 	})
 
-	t.Run("slot must be owned by approver", func(t *testing.T) {
+	t.Run("slot must be owned by approver", func(tt *testing.T) {
 		bookingRequests := make([]*types.IBooking, 1)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
@@ -53,7 +53,7 @@ func testIntegrationBookings(t *testing.T) {
 		}
 	})
 
-	t.Run("different sbsids cannot be batch approved", func(t *testing.T) {
+	t.Run("different sbsids cannot be batch approved", func(tt *testing.T) {
 		bookingRequests := make([]*types.IBooking, 2)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
@@ -76,7 +76,7 @@ func testIntegrationBookings(t *testing.T) {
 		}
 	})
 
-	t.Run("staff can create a booking from quote info, reserving slots", func(t *testing.T) {
+	t.Run("staff can create a booking from quote info, reserving slots", func(tt *testing.T) {
 		bookingRequests := make([]*types.IBooking, 1)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
@@ -95,7 +95,7 @@ func testIntegrationBookings(t *testing.T) {
 		}
 	})
 
-	t.Run("reserved slots are not usable in future quotes", func(t *testing.T) {
+	t.Run("reserved slots are not usable in future quotes", func(tt *testing.T) {
 		reservedSlot := &types.IGroupScheduleDateSlots{
 			StartDate:             member1.Quotes[0].SlotDate,
 			ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
@@ -106,7 +106,7 @@ func testIntegrationBookings(t *testing.T) {
 		}
 	})
 
-	t.Run("slots can be batch approved", func(t *testing.T) {
+	t.Run("slots can be batch approved", func(tt *testing.T) {
 		bookingRequests := make([]*types.IBooking, 2)
 		bookingRequests[0] = &types.IBooking{
 			Quote: &types.IQuote{
@@ -143,11 +143,11 @@ func testIntegrationBookings(t *testing.T) {
 		integrationTest.Bookings = append(integrationTest.Bookings, bookings...)
 	})
 
-	t.Run("master schedules can be disabled, preserving all records", func(t *testing.T) {
+	t.Run("master schedules can be disabled, preserving all records", func(tt *testing.T) {
 
 	})
 
-	t.Run("master schedules can be deleted, destroying all records", func(t *testing.T) {
+	t.Run("master schedules can be deleted, destroying all records", func(tt *testing.T) {
 
 	})
 }

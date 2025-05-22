@@ -13,7 +13,7 @@ import (
 
 func testIntegrationJoinGroup(t *testing.T) {
 	existingUsers := 1
-	t.Run("users can join a group with a code after log in", func(t *testing.T) {
+	t.Run("users can join a group with a code after log in", func(tt *testing.T) {
 		for c := existingUsers; c < existingUsers+6; c++ {
 			joinViaRegister := c%2 == 0
 			userId := fmt.Sprint(time.Now().UnixNano())
@@ -35,7 +35,7 @@ func testIntegrationJoinGroup(t *testing.T) {
 				}
 			}
 
-			session, connection, token, ticket, connId := getUser(userId)
+			session, connection, token, ticket, connId := getUser(t, userId)
 
 			if len(ticket) != 73 {
 				t.Errorf("bad ticket: got ticket (auth:connid) %s %d", ticket, len(ticket))

@@ -27,7 +27,7 @@ func testIntegrationSchedule(t *testing.T) {
 	}
 	endDate := et.AsTime().Format(time.RFC3339)
 
-	t.Run("admin can get lookups and generate a schedule", func(t *testing.T) {
+	t.Run("admin can get lookups and generate a schedule", func(tt *testing.T) {
 		integrationTest.MasterSchedule = &types.ISchedule{
 			Name:         name + " Master",
 			Timezone:     timezone,
@@ -60,7 +60,7 @@ func testIntegrationSchedule(t *testing.T) {
 		}
 	})
 
-	t.Run("master schedule can be created and attached to the group", func(t *testing.T) {
+	t.Run("master schedule can be created and attached to the group", func(tt *testing.T) {
 		schedule, err := postSchedule(admin.TestToken, &types.PostScheduleRequest{
 			AsGroup:            true,
 			Name:               name + " Master Creation Test",

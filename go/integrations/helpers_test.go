@@ -21,6 +21,7 @@ import (
 	"net/url"
 	"strings"
 	"sync"
+	"testing"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
@@ -408,17 +409,15 @@ func getSocketTicket(userId string) (*types.UserSession, string, string, string)
 // 	return subscriberSocketResponse.SocketResponseParams, userSession, ticket, connId
 // }
 
-func getClientSocketConnection(ticket string) net.Conn {
+func getClientSocketConnection(ticket string) (net.Conn, error) {
 	u, err := url.Parse("wss://localhost:7443/sock?ticket=" + ticket)
 	if err != nil {
-		log.Fatal(err)
-		return nil
+		return nil, err
 	}
 
 	sockConn, err := tls.Dial("tcp", u.Host, &tls.Config{InsecureSkipVerify: true})
 	if err != nil {
-		log.Fatal(err)
-		return nil
+		return nil, err
 	}
 
 	// Generate WebSocket key
@@ -439,23 +438,22 @@ func getClientSocketConnection(ticket string) net.Conn {
 	for {
 		line, err := reader.ReadString('\n')
 		if err != nil {
-			log.Fatal(err)
-			return nil
+			return nil, err
 		}
 		if line == "\r\n" {
 			break
 		}
 	}
 
-	return sockConn
+	return sockConn, nil
 }
 
-func getUser(userId string) (*types.UserSession, net.Conn, string, string, string) {
+func getUser(t *testing.T, userId string) (*types.UserSession, net.Conn, string, string, string) {
 	userSession, token, ticket, connId := getSocketTicket(userId)
 
-	connection := getClientSocketConnection(ticket)
-	if connection == nil {
-		log.Fatal("count not establish socket connection for user ", userId, ticket, connId)
+	connection, err := getClientSocketConnection(ticket)
+	if err != nil {
+		t.Fatalf("count not establish socket connection for user %s, ticket %s, connId %s", userId, ticket, connId)
 	}
 	connection.SetDeadline(time.Now().Add(10 * time.Second))
 

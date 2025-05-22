@@ -12,7 +12,7 @@ import (
 )
 
 func testIntegrationService(t *testing.T) {
-	t.Run("admin can create service addons and generate a schedule", func(t *testing.T) {
+	t.Run("admin can create service addons and generate a schedule", func(tt *testing.T) {
 
 		admin := integrationTest.TestUsers[0]
 

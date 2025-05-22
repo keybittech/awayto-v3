@@ -10,7 +10,7 @@ import (
 )
 
 func testIntegrationOnboarding(t *testing.T) {
-	t.Run("admin can complete onboarding with group, roles, service, schedule", func(t *testing.T) {
+	t.Run("admin can complete onboarding with group, roles, service, schedule", func(tt *testing.T) {
 		admin := integrationTest.TestUsers[0]
 
 		onboardingRequest := &types.CompleteOnboardingRequest{

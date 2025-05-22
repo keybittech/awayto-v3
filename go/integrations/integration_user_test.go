@@ -14,13 +14,13 @@ func testIntegrationUser(t *testing.T) {
 	integrationTest.TestUsers = make(map[int32]*types.TestUser, 10)
 	connections = make(map[string]net.Conn, 10)
 
-	t.Run("user can register and connect", func(t *testing.T) {
+	t.Run("user can register and connect", func(tt *testing.T) {
 		userId := fmt.Sprint(time.Now().UnixNano())
 		userEmail := "1@" + userId
 		userPass := "1"
 		registerKeycloakUserViaForm(userEmail, userPass)
 
-		session, connection, token, ticket, connId := getUser(userId)
+		session, connection, token, ticket, connId := getUser(t, userId)
 
 		if !util.IsUUID(session.UserSub) {
 			t.Fatalf("user sub is not a uuid: %s", session.UserSub)

@@ -18,13 +18,14 @@ func testIntegrationPromoteUser(t *testing.T) {
 	staffRoleFullName := "/" + integrationTest.Group.Name + "/" + integrationTest.StaffRole.Name
 	memberRoleFullName := "/" + integrationTest.Group.Name + "/" + integrationTest.MemberRole.Name
 
-	t.Log("initialize group assignments cache")
-	err := apiRequest(admin.TestToken, http.MethodGet, "/api/v1/group/assignments", nil, nil, nil)
-	if err != nil {
-		t.Errorf("error get group assignments request: %v", err)
-	}
+	t.Run("role assignments can be retrieved", func(tt *testing.T) {
+		err := apiRequest(admin.TestToken, http.MethodGet, "/api/v1/group/assignments", nil, nil, nil)
+		if err != nil {
+			t.Errorf("error get group assignments request: %v", err)
+		}
+	})
 
-	t.Run("user cannot update role permissions", func(t *testing.T) {
+	t.Run("user cannot update role permissions", func(tt *testing.T) {
 		t.Logf("user add admin ability to member role %s", memberRoleFullName)
 		err := patchGroupAssignments(member1.TestToken, memberRoleFullName, types.SiteRoles_APP_GROUP_ADMIN.String())
 		if err == nil {
@@ -34,7 +35,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 		}
 	})
 
-	t.Run("admin can update role permissions", func(t *testing.T) {
+	t.Run("admin can update role permissions", func(tt *testing.T) {
 		t.Logf("admin add scheduling ability to staff role %s", staffRoleFullName)
 		err := patchGroupAssignments(admin.TestToken, staffRoleFullName, types.SiteRoles_APP_GROUP_SCHEDULES.String())
 		if err != nil {
@@ -48,7 +49,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 		}
 	})
 
-	t.Run("user cannot change their own role", func(t *testing.T) {
+	t.Run("user cannot change their own role", func(tt *testing.T) {
 		t.Log("user attempt to modify their own role to staff")
 		err := patchGroupUser(member1.TestToken, member1.UserSession.UserSub, integrationTest.StaffRole.Id)
 		if err != nil && !strings.Contains(err.Error(), "403") {
@@ -65,7 +66,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 		}
 	})
 
-	t.Run("admin can promote users to staff", func(t *testing.T) {
+	t.Run("admin can promote users to staff", func(tt *testing.T) {
 		t.Log("admin attempt to modify user to staff")
 		err := patchGroupUser(admin.TestToken, staff1.UserSession.UserSub, integrationTest.StaffRole.Id)
 		if err != nil {
@@ -82,7 +83,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 		}
 	})
 
-	t.Run("APP_GROUP_USERS permission allows user role changes", func(t *testing.T) {
+	t.Run("APP_GROUP_USERS permission allows user role changes", func(tt *testing.T) {
 		err := patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
 		if err != nil && !strings.Contains(err.Error(), "403") {
 			t.Errorf("staff promotes staff without permissions was not 403: %v", err)
@@ -135,7 +136,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 		staff2.TestToken = token
 	})
 
-	t.Run("new roles have been assigned", func(t *testing.T) {
+	t.Run("new roles have been assigned", func(tt *testing.T) {
 		// Update TestUser states
 		staffs := make([]*types.TestUser, 3)
 		staffs[0] = integrationTest.TestUsers[1]

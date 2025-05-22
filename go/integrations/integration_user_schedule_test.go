@@ -51,14 +51,14 @@ func testIntegrationUserSchedule(t *testing.T) {
 		Slots:      slots,
 	}
 
-	t.Run("APP_GROUP_SCHEDULE permission is required to create a personal schedule", func(t *testing.T) {
+	t.Run("APP_GROUP_SCHEDULE permission is required to create a personal schedule", func(tt *testing.T) {
 		_, err := postSchedule(member1.TestToken, &types.PostScheduleRequest{})
 		if err == nil || !strings.Contains(err.Error(), "403") {
 			t.Error("user request to create schedule without permissions was not 403")
 		}
 	})
 
-	t.Run("user can create a personal schedule using a group schedule id", func(t *testing.T) {
+	t.Run("user can create a personal schedule using a group schedule id", func(tt *testing.T) {
 		schedule, err := postSchedule(staff1.TestToken, &types.PostScheduleRequest{
 			Brackets:           brackets,
 			GroupScheduleId:    integrationTest.MasterSchedule.Id,
@@ -79,7 +79,7 @@ func testIntegrationUserSchedule(t *testing.T) {
 		integrationTest.UserSchedule = schedule
 	})
 
-	t.Run("secondary user schedule creation", func(t *testing.T) {
+	t.Run("secondary user schedule creation", func(tt *testing.T) {
 		schedule, err := postSchedule(staff2.TestToken, &types.PostScheduleRequest{
 			Brackets:           brackets,
 			GroupScheduleId:    integrationTest.MasterSchedules[0].Id,
