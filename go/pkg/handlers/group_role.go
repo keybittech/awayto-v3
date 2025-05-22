@@ -109,7 +109,7 @@ func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest)
 	h.Redis.Client().Del(info.Ctx, userSub+"group/assignments")
 
 	undos = nil
-	return &types.PostGroupRoleResponse{GroupRoleId: groupRoleId}, nil
+	return &types.PostGroupRoleResponse{GroupRoleId: groupRoleId, RoleId: roleId}, nil
 }
 
 func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleRequest) (*types.PatchGroupRoleResponse, error) {
@@ -202,8 +202,8 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 	}
 
 	roleIds := make([]string, 0, len(data.GetRoles()))
-	for roleId := range data.GetRoles() {
-		roleIds = append(roleIds, roleId)
+	for _, role := range data.GetRoles() {
+		roleIds = append(roleIds, role.GetRoleId())
 	}
 
 	var diffs []*types.IGroupRole
@@ -283,14 +283,13 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 	}()
 
 	// Add new roles to keycloak and group records
-	for _, roleId := range roleIds {
-		role := data.GetRoles()[roleId]
+	for _, role := range data.GetRoles() {
 
-		if strings.ToLower(role.Name) == "admin" {
+		if strings.ToLower(role.GetName()) == "admin" {
 			continue
 		}
 
-		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, userSub, groupExternalId, role.Name)
+		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, userSub, groupExternalId, role.GetName())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -306,7 +305,7 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 			VALUES ($1, $2, $3, $4, $5::uuid)
 			ON CONFLICT (group_id, role_id) DO NOTHING
-		`, groupId, roleId, kcSubGroup.Id, time.Now(), userSub)
+		`, groupId, role.GetRoleId(), kcSubGroup.Id, time.Now(), userSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

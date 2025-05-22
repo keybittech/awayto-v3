@@ -19,13 +19,25 @@ func testIntegrationRoles(t *testing.T) {
 			t.Fatalf("error marshalling staff role request: %v", err)
 		}
 
+		roles := make(map[string]*types.IGroupRole, 2)
+
 		staffRoleResponse := &types.PostGroupRoleResponse{}
 		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/roles", staffRoleRequestBytes, nil, staffRoleResponse)
 		if err != nil {
 			t.Fatalf("error posting staff role request: %v", err)
 		}
-		if !util.IsUUID(staffRoleResponse.GetGroupRoleId()) {
-			t.Fatalf("staff role id is not a uuid: %s", staffRoleResponse.GetGroupRoleId())
+		staffRoleId := staffRoleResponse.GetRoleId()
+		staffGroupRoleId := staffRoleResponse.GetGroupRoleId()
+		if !util.IsUUID(staffRoleId) {
+			t.Fatalf("staffRoleId is not a uuid: %s", staffRoleId)
+		}
+		if !util.IsUUID(staffGroupRoleId) {
+			t.Fatalf("staffGroupRoleId is not a uuid: %s", staffGroupRoleId)
+		}
+		roles[staffGroupRoleId] = &types.IGroupRole{
+			Id:     staffGroupRoleId,
+			RoleId: staffRoleId,
+			Name:   staffRoleRequest.Name,
 		}
 
 		memberRoleRequest := &types.PostGroupRoleRequest{Name: "Member"}
@@ -39,26 +51,23 @@ func testIntegrationRoles(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error posting member role request: %v", err)
 		}
-
-		groupRoleId := memberRoleResponse.GetGroupRoleId()
-
-		if !util.IsUUID(groupRoleId) {
-			t.Fatalf("member role id is not a uuid: %s", groupRoleId)
+		memberRoleId := memberRoleResponse.GetRoleId()
+		memberGroupRoleId := memberRoleResponse.GetGroupRoleId()
+		if !util.IsUUID(memberRoleId) {
+			t.Fatalf("memberRoleId is not a uuid: %s", memberRoleId)
 		}
-
-		roles := make(map[string]*types.IGroupRole, 2)
-		roles[groupRoleId] = &types.IGroupRole{
-			Id:   groupRoleId,
-			Name: staffRoleRequest.Name,
+		if !util.IsUUID(memberGroupRoleId) {
+			t.Fatalf("memberGroupRoleId is not a uuid: %s", memberGroupRoleId)
 		}
-		roles[groupRoleId] = &types.IGroupRole{
-			Id:   groupRoleId,
-			Name: memberRoleRequest.Name,
+		roles[memberGroupRoleId] = &types.IGroupRole{
+			Id:     memberGroupRoleId,
+			RoleId: memberRoleId,
+			Name:   memberRoleRequest.Name,
 		}
 
 		patchGroupRolesRequest := &types.PatchGroupRolesRequest{
 			Roles:         roles,
-			DefaultRoleId: groupRoleId,
+			DefaultRoleId: memberRoleId,
 		}
 		patchGroupRolesRequestBytes, err := protojson.Marshal(patchGroupRolesRequest)
 		if err != nil {
@@ -72,7 +81,7 @@ func testIntegrationRoles(t *testing.T) {
 		}
 
 		integrationTest.Roles = roles
-		integrationTest.MemberRole = roles[groupRoleId]
-		integrationTest.StaffRole = roles[groupRoleId]
+		integrationTest.StaffRole = roles[staffGroupRoleId]
+		integrationTest.MemberRole = roles[memberGroupRoleId]
 	})
 }

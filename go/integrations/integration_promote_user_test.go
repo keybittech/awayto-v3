@@ -51,7 +51,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 
 	t.Run("user cannot change their own role", func(tt *testing.T) {
 		t.Log("user attempt to modify their own role to staff")
-		err := patchGroupUser(member1.TestToken, member1.UserSession.UserSub, integrationTest.StaffRole.Id)
+		err := patchGroupUser(member1.TestToken, member1.UserSession.UserSub, integrationTest.StaffRole.GetRoleId())
 		if err != nil && !strings.Contains(err.Error(), "403") {
 			t.Fatalf("user patches self err %v", err)
 		}
@@ -68,7 +68,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 
 	t.Run("admin can promote users to staff", func(tt *testing.T) {
 		t.Log("admin attempt to modify user to staff")
-		err := patchGroupUser(admin.TestToken, staff1.UserSession.UserSub, integrationTest.StaffRole.Id)
+		err := patchGroupUser(admin.TestToken, staff1.UserSession.UserSub, integrationTest.StaffRole.GetRoleId())
 		if err != nil {
 			t.Fatalf("admin promotes staff err %v", err)
 		}
@@ -84,7 +84,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 	})
 
 	t.Run("APP_GROUP_USERS permission allows user role changes", func(tt *testing.T) {
-		err := patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
+		err := patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.GetRoleId())
 		if err != nil && !strings.Contains(err.Error(), "403") {
 			t.Fatalf("staff promotes staff without permissions was not 403: %v", err)
 		}
@@ -114,12 +114,12 @@ func testIntegrationPromoteUser(t *testing.T) {
 
 		staff1.TestToken = token
 
-		err = patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.Id)
+		err = patchGroupUser(staff1.TestToken, staff2.UserSession.UserSub, integrationTest.StaffRole.GetRoleId())
 		if err != nil {
 			t.Fatalf("staff promotes user with permissions err %v", err)
 		}
 
-		err = patchGroupUser(admin.TestToken, staff3.UserSession.UserSub, integrationTest.StaffRole.Id)
+		err = patchGroupUser(admin.TestToken, staff3.UserSession.UserSub, integrationTest.StaffRole.GetRoleId())
 		if err != nil {
 			t.Fatalf("staff promotes other user with permissions err %v", err)
 		}

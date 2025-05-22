@@ -714,11 +714,11 @@ auto_fix:
 
 .PHONY: auto_clean
 auto_clean:
-	docker stop $(shell docker ps -aqf "name=openhands") && docker rm $(shell docker ps -aqf "name=openhands")
+	docker stop $(shell docker ps -aqf "name=openhands") && docker rm $(shell docker ps -aqf "name=openhands") || true
 
 .PHONY: auto_ask
 auto_ask: auto_clean
-	@input_data="$$(cat)"; docker run -t  --rm --pull=always \
+	@docker run -t --rm --pull=always \
 	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik \
 	-e SANDBOX_USER_ID=$(shell id -u) \
 	-e SANDBOX_VOLUMES=$(PROJECT_DIR):/workspace:rw \
@@ -730,4 +730,5 @@ auto_ask: auto_clean
 	--add-host host.docker.internal:host-gateway \
 	--name openhands-app \
 	docker.all-hands.dev/all-hands-ai/openhands:0.39 \
-	python -m openhands.core.main -t "$$input_data"
+	python -m openhands.core.main -t "$(shell cat working/test_thing) $(shell cat)"
+

@@ -73,6 +73,7 @@ message PostGroupRoleRequest {
 
 message PostGroupRoleResponse {
   string groupRoleId = 1 [(google.api.field_behavior) = REQUIRED];
+  string roleId = 2;
 }
 
 message PatchGroupRoleRequest {
