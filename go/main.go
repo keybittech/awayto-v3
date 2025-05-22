@@ -64,8 +64,8 @@ func main() {
 		}
 	}()
 
-	util.DebugLog.Printf("\nListening on %d ", util.E_GO_HTTPS_PORT)
-	util.DebugLog.Printf("\nCert Locations: %s %s", util.E_CERT_LOC, util.E_CERT_KEY_LOC)
+	util.DebugLog.Printf("Listening on %d ", util.E_GO_HTTPS_PORT)
+	util.DebugLog.Printf("Cert Locations: %s %s", util.E_CERT_LOC, util.E_CERT_KEY_LOC)
 
 	err := server.Server.ListenAndServeTLS(util.E_CERT_LOC, util.E_CERT_KEY_LOC)
 	if err != nil {

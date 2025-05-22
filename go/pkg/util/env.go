@@ -54,7 +54,6 @@ func ParseEnv() {
 	E_RATE_LIMIT_BURST = ParseEnvFileVar[int]("RATE_LIMIT_BURST")
 	E_REDIS_URL = ParseEnvFileVar[string]("REDIS_URL")
 	E_TS_DEV_SERVER_URL = ParseEnvFileVar[string]("TS_DEV_SERVER_URL")
-	E_UNIX_SOCK_DIR = ParseEnvFileVar[string]("UNIX_SOCK_DIR")
 	E_UNIX_SOCK_FILE = ParseEnvFileVar[string]("UNIX_SOCK_FILE")
 	E_UNIX_PATH = filepath.Join(E_UNIX_SOCK_DIR, E_UNIX_SOCK_FILE)
 	E_KC_URL = E_KC_INTERNAL + "/realms/" + E_KC_REALM

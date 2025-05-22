@@ -121,6 +121,8 @@ endef
 LOCAL_UNIX_SOCK_DIR=$(shell pwd)/${UNIX_SOCK_DIR}
 define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=${LOCAL_UNIX_SOCK_DIR})
+	setfacl -m g:1000:rwx $(UNIX_SOCK_DIR)
+	setfacl -d -m g:1000:rwx $(UNIX_SOCK_DIR)
 endef
 
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
@@ -162,13 +164,15 @@ endef
 
 DOCKER_COMPOSE:=compose -f $(DOCKER_COMPOSE_SCRIPT) --env-file $(ENVFILE)
 RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
-GO_ENVFILE_FLAG=GO_ENVFILE_LOC=${PROJECT_DIR}/.env
-GO_DEV_FLAGS=$(GO_ENVFILE_FLAG) LOG_LEVEL=debug
-GO_TEST_FLAGS=-run=$${TEST:-.} -bench=^$$ -count=$${COUNT:-1} -v=$${V:-false} -logLevel=
-GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false} -logLevel=
-GO_BENCH_FLAGS=-run=^$$ -bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} -logLevel= # -cpuprofile=cpu.prof
-GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} -logLevel= # $${PROF:-} # -cpuprofile=cpu.prof
 NO_LIMIT=-rateLimit=10000 -rateLimitBurst=10000
+LOG_DEBUG=-logLevel=debug
+LOG_NONE=-logLevel=
+GO_ENVFILE_FLAG=GO_ENVFILE_LOC=${PROJECT_DIR}/.env
+GO_DEV_FLAGS=$(GO_ENVFILE_FLAG)
+GO_TEST_FLAGS=-run=$${TEST:-.} -bench=^$$ -count=$${COUNT:-1} -v=$${V:-false} $(LOG_NONE)
+GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE)
+GO_BENCH_FLAGS=-run=^$$ -bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} $(LOG_NONE) # -cpuprofile=cpu.prof
+GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE) # $${PROF:-} # -cpuprofile=cpu.prof
 
 GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
@@ -288,13 +292,13 @@ $(GO_TARGET): $(GO_FILES)
 go_dev: 
 	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
-	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) .
+	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) . $(LOG_DEBUG)
 
 .PHONY: go_dev_ts
 go_dev_ts: 
 	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
-	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) -tags=dev . $(NO_LIMIT)
+	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) -tags=dev . $(NO_LIMIT) $(LOG_DEBUG)
 
 .PHONY: go_tidy
 go_tidy:
@@ -429,6 +433,7 @@ docker_up: build
 	
 .PHONY: docker_down
 docker_down:
+	$(call set_local_unix_sock_dir)
 	${SUDO} docker $(DOCKER_COMPOSE) down -v
 	${SUDO} docker volume remove $(PG_DATA) || true
 	${SUDO} docker volume remove $(REDIS_DATA) || true
@@ -443,10 +448,12 @@ docker_build:
 
 .PHONY: docker_start
 docker_start: docker_build
+	$(call set_local_unix_sock_dir)
 	${SUDO} docker $(DOCKER_COMPOSE) up -d
 
 .PHONY: docker_stop
 docker_stop:
+	$(call set_local_unix_sock_dir)
 	${SUDO} docker $(DOCKER_COMPOSE) stop 
 
 .PHONY: docker_db
