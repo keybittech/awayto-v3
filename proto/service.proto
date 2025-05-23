@@ -25,6 +25,7 @@ service ServiceService {
       body: "*"
     };
     option (use_tx) = true;
+    option (invalidates) = "GetServiceById";
   }
 
   rpc GetServices(GetServicesRequest) returns (GetServicesResponse) {
@@ -50,6 +51,7 @@ service ServiceService {
     option (google.api.http) = {
       patch: "/v1/services/{ids}/disable"
     };
+    option (invalidates) = "GetServiceById";
   }
 }
 

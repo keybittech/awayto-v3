@@ -50,13 +50,6 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/users")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/users/"+userId)
-
-	// Target user will see their roles persisted through cache with this
-	h.Redis.Client().Del(info.Ctx, data.UserSub+"profile/details")
-
 	return &types.PatchGroupUserResponse{Success: true}, nil
 }
 
@@ -122,7 +115,6 @@ func (h *Handlers) DeleteGroupUser(info ReqInfo, data *types.DeleteGroupUserRequ
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
-		h.Redis.Client().Del(info.Ctx, u.UserSub+"profile/details")
 	}
 
 	return &types.DeleteGroupUserResponse{Success: true}, nil
@@ -137,8 +129,6 @@ func (h *Handlers) LockGroupUser(info ReqInfo, data *types.LockGroupUserRequest)
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/users")
-
 	return &types.LockGroupUserResponse{Success: true}, nil
 }
 
@@ -150,8 +140,6 @@ func (h *Handlers) UnlockGroupUser(info ReqInfo, data *types.UnlockGroupUserRequ
 	`, info.Session.GetGroupId(), pq.Array(strings.Split(data.Ids, ",")))
 
 	info.Batch.Send(info.Ctx)
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/users")
 
 	return &types.UnlockGroupUserResponse{Success: true}, nil
 }

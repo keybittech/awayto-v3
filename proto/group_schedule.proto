@@ -23,6 +23,7 @@ service GroupScheduleService {
       patch: "/v1/group/schedules"
       body: "*"
     };
+    option (invalidates) = "GetGroupScheduleMasterById";
   }
   rpc GetGroupSchedules(GetGroupSchedulesRequest) returns (GetGroupSchedulesResponse) {
     option (google.api.http) = {
@@ -51,6 +52,7 @@ service GroupScheduleService {
       delete: "/v1/group/schedules/{groupScheduleIds}"
     };
     option (use_tx) = true;
+    option (invalidates) = "GetSchedules";
   }
 }
 

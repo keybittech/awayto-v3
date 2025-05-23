@@ -54,6 +54,7 @@ service GroupUtilService {
     option (cache) = SKIP;
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetUserProfileDetails";
   }
 
   rpc CompleteOnboarding(CompleteOnboardingRequest) returns (CompleteOnboardingResponse) {
@@ -64,6 +65,7 @@ service GroupUtilService {
     option (cache) = SKIP;
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetUserProfileDetails";
   }
 }
 

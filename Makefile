@@ -422,7 +422,6 @@ go_test_bench: $(GO_TARGET) go_test_bench_build
 	-$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
 	-$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
 	-$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
-	@cat $(LOG_DIR)/errors.log
 
 #################################
 #            DOCKER             #

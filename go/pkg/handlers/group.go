@@ -152,7 +152,6 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 	_ = h.Socket.RoleCall(info.Session.GetUserSub())
 
 	undos = nil
@@ -208,8 +207,6 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 			h.Cache.SubGroups.Delete(subGroupPath)
 		}
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return &types.PatchGroupResponse{Success: true}, nil
 }
@@ -297,8 +294,6 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 			}
 		}
 	}
-
-	// h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/assignments")
 
 	return &types.PatchGroupAssignmentsResponse{Success: true}, nil
 }

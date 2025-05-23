@@ -17,6 +17,8 @@ service GroupRoleService {
     option (site_role) = APP_GROUP_ROLES;
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetUserProfileDetails";
+    option (invalidates) = "GetGroupAssignments";
   }
 
   rpc PatchGroupRole(PatchGroupRoleRequest) returns (PatchGroupRoleResponse) {
@@ -27,6 +29,8 @@ service GroupRoleService {
     option (site_role) = APP_GROUP_ROLES; 
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetUserProfileDetails";
+    option (invalidates) = "GetGroupAssignments";
   }
 
   rpc PatchGroupRoles(PatchGroupRolesRequest) returns (PatchGroupRolesResponse) {
@@ -37,6 +41,8 @@ service GroupRoleService {
     option (site_role) = APP_GROUP_ROLES; 
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetUserProfileDetails";
+    option (invalidates) = "GetGroupAssignments";
   }
 
   rpc GetGroupRoles(GetGroupRolesRequest) returns (GetGroupRolesResponse) {
@@ -52,8 +58,8 @@ service GroupRoleService {
     option (site_role) = APP_GROUP_ROLES; 
     option (use_tx) = true;
     option (resets_group) = true;
-    option (invalidates) = "GetGroupRoles";
     option (invalidates) = "GetUserProfileDetails";
+    option (invalidates) = "GetGroupAssignments";
   }
 }
 

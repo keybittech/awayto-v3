@@ -17,6 +17,8 @@ service GroupUsersService {
     option (site_role) = APP_GROUP_USERS;
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetUserProfileDetails";
+    option (invalidates) = "GetGroupUserById";
   }
   rpc GetGroupUsers(GetGroupUsersRequest) returns (GetGroupUsersResponse) {
     option (google.api.http) = {
@@ -44,6 +46,7 @@ service GroupUsersService {
     };
     option (site_role) = APP_GROUP_USERS;
     option (resets_group) = true;
+    option (invalidates) = "GetGroupUsers";
   }
   rpc UnlockGroupUser(UnlockGroupUserRequest) returns (UnlockGroupUserResponse) {
     option (google.api.http) = {
@@ -51,6 +54,7 @@ service GroupUsersService {
     };
     option (site_role) = APP_GROUP_USERS;
     option (resets_group) = true;
+    option (invalidates) = "GetGroupUsers";
   }
 }
 

@@ -18,6 +18,7 @@ service QuoteService {
     };
     option (site_role) = APP_GROUP_BOOKINGS;
     option (use_tx) = true;
+    option (invalidates) = "GetUserProfileDetails";
   }
   rpc PatchQuote(PatchQuoteRequest) returns (PatchQuoteResponse) {
     option (google.api.http) = {
@@ -50,6 +51,8 @@ service QuoteService {
       patch: "/v1/quotes/disable/{ids}"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
+    option (invalidates) = "GetQuotes";
+    option (invalidates) = "GetUserProfileDetails";
   }
 }
 

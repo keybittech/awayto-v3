@@ -25,8 +25,6 @@ func (h *Handlers) PostServiceAddon(info ReqInfo, data *types.PostServiceAddonRe
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
-
 	return &types.PostServiceAddonResponse{Id: (*serviceAddonInsert).Id}, nil
 }
 
@@ -38,8 +36,6 @@ func (h *Handlers) PatchServiceAddon(info ReqInfo, data *types.PatchServiceAddon
 	`, data.Id, data.Name, info.Session.GetUserSub(), time.Now())
 
 	info.Batch.Send(info.Ctx)
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.PatchServiceAddonResponse{Success: true}, nil
 }
@@ -76,8 +72,6 @@ func (h *Handlers) DeleteServiceAddon(info ReqInfo, data *types.DeleteServiceAdd
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
-
 	return &types.DeleteServiceAddonResponse{Success: true}, nil
 }
 
@@ -89,8 +83,6 @@ func (h *Handlers) DisableServiceAddon(info ReqInfo, data *types.DisableServiceA
 	`, data.Id, time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.DisableServiceAddonResponse{Success: true}, nil
 }

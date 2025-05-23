@@ -23,7 +23,6 @@ service BookingService {
     option (site_role) = APP_GROUP_SCHEDULES;
     option (use_tx) = true;
   }
-
   rpc PatchBooking(PatchBookingRequest) returns (PatchBookingResponse) {
     option (google.api.http) = {
       patch: "/v1/bookings"
@@ -31,28 +30,6 @@ service BookingService {
     };
     option (site_role) = APP_GROUP_SCHEDULES;
   }
-
-  rpc GetBookings(GetBookingsRequest) returns (GetBookingsResponse) {
-    option (google.api.http) = {
-      get: "/v1/bookings"
-    };
-    option (site_role) = APP_GROUP_SCHEDULES;
-  }
-
-  rpc GetBookingById(GetBookingByIdRequest) returns (GetBookingByIdResponse) {
-    option (google.api.http) = {
-      get: "/v1/bookings/{id}"
-    };
-    option (site_role) = APP_GROUP_SCHEDULES;
-  }
-
-  rpc GetBookingFiles(GetBookingFilesRequest) returns (GetBookingFilesResponse) {
-    option (google.api.http) = {
-      get: "/v1/bookings/{id}/files"
-    };
-    option (site_role) = APP_GROUP_SCHEDULES;
-  }
-
   rpc PatchBookingRating(PatchBookingRatingRequest) returns (PatchBookingRatingResponse) {
     option (google.api.http) = {
       patch: "/v1/bookings/rating"
@@ -60,15 +37,32 @@ service BookingService {
     };
     option (site_role) = APP_GROUP_SCHEDULES;
     option (throttle) = 1;
+    option (invalidates) = "GetBookingById";
   }
-
+  rpc GetBookings(GetBookingsRequest) returns (GetBookingsResponse) {
+    option (google.api.http) = {
+      get: "/v1/bookings"
+    };
+    option (site_role) = APP_GROUP_SCHEDULES;
+  }
+  rpc GetBookingById(GetBookingByIdRequest) returns (GetBookingByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/bookings/{id}"
+    };
+    option (site_role) = APP_GROUP_SCHEDULES;
+  }
+  rpc GetBookingFiles(GetBookingFilesRequest) returns (GetBookingFilesResponse) {
+    option (google.api.http) = {
+      get: "/v1/bookings/{id}/files"
+    };
+    option (site_role) = APP_GROUP_SCHEDULES;
+  }
   rpc DeleteBooking(DeleteBookingRequest) returns (DeleteBookingResponse) {
     option (google.api.http) = {
       delete: "/v1/bookings/{id}"
     };
     option (site_role) = APP_GROUP_SCHEDULES;
   }
-
   rpc DisableBooking(DisableBookingRequest) returns (DisableBookingResponse) {
     option (google.api.http) = {
       patch: "/v1/bookings/{id}/disable"

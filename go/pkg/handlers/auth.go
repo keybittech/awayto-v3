@@ -83,10 +83,11 @@ func (h *Handlers) AuthWebhook_REGISTER_VALIDATE(info ReqInfo, authEvent *types.
 
 	batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
 
+	// Cast the check for roleId against defaultRoleId as defaultRoleId could be empty
 	groupLookup := util.BatchQueryRow[types.IGroup](batch, `
 		SELECT eg."displayName", eg."allowedDomains", egr."externalId"
 		FROM dbview_schema.enabled_groups eg
-		JOIN dbview_schema.enabled_group_roles egr ON egr."groupId" = eg.id AND egr."roleId" = eg."defaultRoleId"
+		JOIN dbview_schema.enabled_group_roles egr ON egr."groupId" = eg.id AND egr."roleId"::TEXT = eg."defaultRoleId"
 		WHERE code = $1
 	`, authEvent.GroupCode)
 

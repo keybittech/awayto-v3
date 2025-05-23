@@ -190,10 +190,6 @@ func (h *Handlers) PostScheduleBrackets(info ReqInfo, data *types.PostScheduleBr
 		}
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules/"+data.UserScheduleId)
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/user_schedules/"+data.GroupScheduleId)
-
 	return &types.PostScheduleBracketsResponse{Success: true}, nil
 }
 

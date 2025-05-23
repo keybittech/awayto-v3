@@ -228,7 +228,7 @@ func (b *Batchable) Send(ctx context.Context) {
 	closeErr := br.Close()
 	if opErr != nil {
 		if closeErr != nil {
-			ErrorLog.Println("closing error with op error as well ", ErrCheck(closeErr))
+			ErrorLog.Println("closing error with op error as well ", ErrCheckN(2, closeErr))
 		}
 		panic(opErr)
 	}

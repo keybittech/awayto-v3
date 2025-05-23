@@ -104,10 +104,6 @@ func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest)
 		}
 	}
 
-	h.Redis.Client().Del(info.Ctx, userSub+"profile/details")
-	h.Redis.Client().Del(info.Ctx, userSub+"group/roles")
-	h.Redis.Client().Del(info.Ctx, userSub+"group/assignments")
-
 	undos = nil
 	return &types.PostGroupRoleResponse{GroupRoleId: groupRoleId, RoleId: roleId}, nil
 }
@@ -178,10 +174,6 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 		}
 
 		h.Cache.SubGroups.Delete(info.Session.GetSubGroupPath())
-
-		h.Redis.Client().Del(info.Ctx, userSub+"profile/details")
-		h.Redis.Client().Del(info.Ctx, userSub+"group/roles")
-		h.Redis.Client().Del(info.Ctx, userSub+"group/assignments")
 	}
 
 	return &types.PatchGroupRoleResponse{Success: true}, nil
@@ -315,8 +307,6 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 			return nil, util.ErrCheck(err)
 		}
 	}
-
-	h.Redis.Client().Del(info.Ctx, userSub+"profile/details")
 
 	undos = nil
 	return &types.PatchGroupRolesResponse{Success: true}, nil

@@ -155,9 +155,6 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
-	h.Redis.Client().Del(info.Ctx, createdSub+"profile/details")
-
 	return &types.AttachUserResponse{Success: true}, nil
 }
 
@@ -215,8 +212,6 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 		ScheduleId:      postScheduleRes.Id,
 		GroupScheduleId: postGroupScheduleRes.Id,
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return onboardingResponse, nil
 }

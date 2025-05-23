@@ -54,7 +54,7 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 			return nil, util.ErrCheck(err)
 		}
 
-		h.Redis.Client().Del(info.Ctx, quoteCreatedSub+"profile/details")
+		h.Redis.Client().Del(info.Ctx, quoteCreatedSub+"/api/v1/profile/details")
 
 		if err := h.Socket.RoleCall(quoteCreatedSub); err != nil {
 			return nil, util.ErrCheck(err)
@@ -63,7 +63,6 @@ func (h *Handlers) PostBooking(info ReqInfo, data *types.PostBookingRequest) (*t
 		newBookings = append(newBookings, &newBooking)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 	return &types.PostBookingResponse{Bookings: newBookings}, nil
 }
 
@@ -127,8 +126,6 @@ func (h *Handlers) PatchBookingRating(info ReqInfo, data *types.PatchBookingRati
 	`, data.Id, data.Rating)
 
 	info.Batch.Send(info.Ctx)
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"bookings/"+data.Id)
 
 	return &types.PatchBookingRatingResponse{Success: true}, nil
 }

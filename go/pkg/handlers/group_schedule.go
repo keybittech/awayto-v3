@@ -20,8 +20,6 @@ func (h *Handlers) PostGroupSchedule(info ReqInfo, data *types.PostGroupSchedule
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
-
 	return &types.PostGroupScheduleResponse{Id: groupScheduleId}, nil
 }
 
@@ -30,9 +28,6 @@ func (h *Handlers) PatchGroupSchedule(info ReqInfo, data *types.PatchGroupSchedu
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules/master/"+data.GetGroupSchedule().GetSchedule().GetId())
 
 	return &types.PatchGroupScheduleResponse{Success: scheduleResp.Success}, nil
 }
@@ -235,9 +230,6 @@ func (h *Handlers) DeleteGroupSchedule(info ReqInfo, data *types.DeleteGroupSche
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
 
 	return &types.DeleteGroupScheduleResponse{Success: true}, nil
 }

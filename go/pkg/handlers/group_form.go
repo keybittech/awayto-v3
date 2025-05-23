@@ -54,8 +54,6 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
-
 	return &types.PostGroupFormResponse{Id: formResp.Id}, nil
 }
 
@@ -65,9 +63,6 @@ func (h *Handlers) PostGroupFormVersion(info ReqInfo, data *types.PostGroupFormV
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms/"+data.FormId)
-
 	return &types.PostGroupFormVersionResponse{Id: formVersionResp.GetId()}, nil
 }
 
@@ -76,9 +71,6 @@ func (h *Handlers) PatchGroupForm(info ReqInfo, data *types.PatchGroupFormReques
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms/"+data.GetGroupForm().GetForm().GetId())
 
 	return &types.PatchGroupFormResponse{Success: true}, nil
 }
@@ -127,8 +119,6 @@ func (h *Handlers) DeleteGroupForm(info ReqInfo, data *types.DeleteGroupFormRequ
 	`, pq.Array(formIds))
 
 	info.Batch.Send(info.Ctx)
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/forms")
 
 	return &types.DeleteGroupFormResponse{Success: true}, nil
 }

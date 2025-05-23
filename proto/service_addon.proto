@@ -1,6 +1,8 @@
 syntax = "proto3";
 package types;
 
+import "util.proto";
+
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -12,37 +14,36 @@ service ServiceAddonService {
       post: "/v1/service_addons"
       body: "*"
     };
+    option (invalidates) = "GetGroupServiceAddons";
   }
-
   rpc PatchServiceAddon(PatchServiceAddonRequest) returns (PatchServiceAddonResponse) {
     option (google.api.http) = {
       patch: "/v1/service_addons"
       body: "*"
     };
+    option (invalidates) = "GetGroupServiceAddons";
   }
-
   rpc GetServiceAddons(GetServiceAddonsRequest) returns (GetServiceAddonsResponse) {
     option (google.api.http) = {
       get: "/v1/service_addons"
     };
   }
-
   rpc GetServiceAddonById(GetServiceAddonByIdRequest) returns (GetServiceAddonByIdResponse) {
     option (google.api.http) = {
       get: "/v1/service_addons/{id}"
     };
   }
-
   rpc DeleteServiceAddon(DeleteServiceAddonRequest) returns (DeleteServiceAddonResponse) {
     option (google.api.http) = {
       delete: "/v1/service_addons/{id}"
     };
+    option (invalidates) = "GetGroupServiceAddons";
   }
-
   rpc DisableServiceAddon(DisableServiceAddonRequest) returns (DisableServiceAddonResponse) {
     option (google.api.http) = {
       patch: "/v1/service_addons/{id}/disable"
     };
+    option (invalidates) = "GetGroupServiceAddons";
   }
 }
 

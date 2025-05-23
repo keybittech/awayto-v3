@@ -14,8 +14,6 @@ func (h *Handlers) PostGroupServiceAddon(info ReqInfo, data *types.PostGroupServ
 
 	info.Batch.Send(info.Ctx)
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
-
 	return &types.PostGroupServiceAddonResponse{}, nil
 }
 
@@ -61,8 +59,6 @@ func (h *Handlers) DeleteGroupServiceAddon(info ReqInfo, data *types.DeleteGroup
 	if (*res).RowsAffected() == 0 {
 		return nil, util.ErrCheck(util.UserError("Deletion was skipped because the record is still associated with a group service."))
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/service_addons")
 
 	return &types.DeleteGroupServiceAddonResponse{Success: true}, nil
 }

@@ -22,12 +22,15 @@ service GroupFormService {
       post: "/v1/group/forms/version"
       body: "*"
     };
+    option (invalidates) = "GetGroupForms";
+    option (invalidates) = "GetGroupFormById";
   };
   rpc PatchGroupForm(PatchGroupFormRequest) returns (PatchGroupFormResponse) {
     option (google.api.http) = {
       patch: "/v1/group/forms"
       body: "*"
     };
+    option (invalidates) = "GetGroupFormById";
   };
   rpc GetGroupForms(GetGroupFormsRequest) returns (GetGroupFormsResponse) {
     option (google.api.http) = {

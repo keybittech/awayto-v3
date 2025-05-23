@@ -86,9 +86,6 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, staffSub+"quotes")
-	h.Redis.Client().Del(info.Ctx, staffSub+"profile/details")
-
 	if err := h.Socket.RoleCall(staffSub); err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -160,9 +157,6 @@ func (h *Handlers) DisableQuote(info ReqInfo, data *types.DisableQuoteRequest) (
 	`, pq.Array(strings.Split(data.Ids, ",")), time.Now(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"quotes")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
 
 	return &types.DisableQuoteResponse{Success: true}, nil
 }

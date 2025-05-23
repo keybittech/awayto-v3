@@ -20,8 +20,6 @@ func (h *Handlers) PostGroupService(info ReqInfo, data *types.PostGroupServiceRe
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/services")
-
 	return &types.PostGroupServiceResponse{Id: groupServiceId}, nil
 }
 
@@ -53,8 +51,6 @@ func (h *Handlers) DeleteGroupService(info ReqInfo, data *types.DeleteGroupServi
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/services")
 
 	return &types.DeleteGroupServiceResponse{Success: true}, nil
 }

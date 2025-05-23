@@ -22,10 +22,6 @@ func (h *Handlers) PostGroupUserSchedule(info ReqInfo, data *types.PostGroupUser
 		return nil, util.ErrCheck(err)
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/user_schedules/"+data.GroupScheduleId)
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/user_schedules_stubs")
-
 	return &types.PostGroupUserScheduleResponse{Id: groupScheduleId}, nil
 }
 

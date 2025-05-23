@@ -18,6 +18,7 @@ service GroupService {
     };
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetUserProfileDetails";
   }
 
   rpc PatchGroup(PatchGroupRequest) returns (PatchGroupResponse) {
