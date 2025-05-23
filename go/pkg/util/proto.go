@@ -321,7 +321,7 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 }
 
 // Make wildcard patterns out of urls /path/{param} -> /path/*
-func parseInvalidation(i string) string {
+func serviceMethodWildcard(i string) string {
 	return string(regexp.MustCompile("{[^}]+}").ReplaceAll([]byte(i), []byte("*")))
 }
 
@@ -329,7 +329,7 @@ func ParseInvalidations(handlerOptions map[string]*HandlerOptions) {
 	for _, opts := range handlerOptions {
 		// Unless needing to permanently store results in redis, mutations should invalidate the GET
 		if !opts.Unpack().ShouldStore {
-			opts.Invalidations = append(opts.Invalidations, parseInvalidation(opts.ServiceMethodURL))
+			opts.Invalidations = append(opts.Invalidations, serviceMethodWildcard(opts.ServiceMethodURL))
 		}
 
 		inputOpts := opts.ServiceMethod.Options().(*descriptor.MethodOptions)
@@ -340,7 +340,7 @@ func ParseInvalidations(handlerOptions map[string]*HandlerOptions) {
 				if !ok {
 					log.Fatalf("%s invalidates unknown handler %s", opts.ServiceMethodName, invalidation)
 				}
-				opts.Invalidations = append(opts.Invalidations, parseInvalidation(invalidateHandler.ServiceMethodURL))
+				opts.Invalidations = append(opts.Invalidations, serviceMethodWildcard(invalidateHandler.ServiceMethodURL))
 			}
 		}
 	}

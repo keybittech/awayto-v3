@@ -266,6 +266,7 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 
 $(PROTO_GEN_FILES): $(PROTO_FILES) 
 	@mkdir -p $(@D) $(GO_GEN_DIR)
+	rm $(GO_GEN_DIR)/*.pb.go
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
@@ -275,7 +276,7 @@ $(PROTO_GEN_FILES): $(PROTO_FILES)
 $(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
 	$(GO) build -C $(GO_PROTO_MUTEX_CMD_DIR) -o $@ .
 
-$(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX)
+$(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 	protoc --proto_path=proto \
 		--plugin=protoc-gen-mutex=$(PROTO_GEN_MUTEX) \
 		--mutex_out=$(GO_GEN_DIR) \

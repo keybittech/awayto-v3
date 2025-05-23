@@ -353,28 +353,33 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 }
 
 func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*types.DeleteGroupResponse, error) {
-	for _, id := range data.Ids {
-		var groupExternalId string
+	groupId := info.Session.GetGroupId()
+	userSub := info.Session.GetUserSub()
 
-		err := info.Tx.QueryRow(info.Ctx, `
-			SELECT external_id FROM dbtable_schema.groups WHERE id = $1
-		`, id).Scan(&groupExternalId)
-		if err != nil || groupExternalId == "" {
-			return nil, util.ErrCheck(err)
-		}
+	var groupExternalId, groupCreatedSub string
+	err := info.Tx.QueryRow(info.Ctx, `
+		SELECT external_id, created_sub
+		FROM dbtable_schema.groups WHERE id = $1
+	`, groupId).Scan(&groupExternalId, &groupCreatedSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-		err = h.Keycloak.DeleteGroup(info.Ctx, info.Session.GetUserSub(), groupExternalId)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
+	if groupCreatedSub != userSub {
+		return nil, util.ErrCheck(err)
+	}
 
-		_, err = info.Tx.Exec(info.Ctx, `
-			DELETE FROM dbtable_schema.group_roles WHERE group_id = $1;
-			DELETE FROM dbtable_schema.groups WHERE id = $1;
-		`, id)
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
+	_, err = info.Tx.Exec(info.Ctx, `
+		DELETE FROM dbtable_schema.groups
+		WHERE id = $1;
+	`, groupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = h.Keycloak.DeleteGroup(info.Ctx, userSub, groupExternalId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	return &types.DeleteGroupResponse{Success: true}, nil

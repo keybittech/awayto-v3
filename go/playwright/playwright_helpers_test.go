@@ -1,13 +1,16 @@
 package main
 
 import (
-	"encoding/json"
 	"errors"
 	"fmt"
 	"math/rand/v2"
 	"path/filepath"
+	"reflect"
+	"regexp"
 	"runtime/debug"
+	"strconv"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -18,13 +21,71 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
+var (
+	pages      = make(map[string]*Page)
+	responses  = make([]*PageResponse, 0)
+	responseMu sync.Mutex
+)
+
+type PageResponse struct {
+	body        []byte
+	method, url string
+}
+
+type UserWithPass struct {
+	Password string
+	UserId   string
+	Profile  *types.IUserProfile
+}
+
+type Page struct {
+	playwright.Page
+	*testing.T
+	*UserWithPass
+}
+
+func (p *Page) ByRole(role string, name ...string) Locator {
+	opts := playwright.PageGetByRoleOptions{}
+	if len(name) > 0 {
+		opts.Name = name[0]
+	}
+	return Locator{p.GetByRole(playwright.AriaRole(role), opts), p.T}
+}
+
+func (p *Page) ByLabel(label string) Locator {
+	return Locator{p.GetByLabel(label), p.T}
+}
+
+func (p *Page) ByText(text string) Locator {
+	return Locator{p.GetByText(text), p.T}
+}
+
+func (p *Page) ByLocator(selector string) Locator {
+	return Locator{p.Locator(selector), p.T}
+}
+
+func (p *Page) ByTestId(selector string) Locator {
+	return Locator{p.GetByTestId(selector), p.T}
+}
+
+func (p *Page) ById(selector string) Locator {
+	return Locator{p.Locator(`[id="` + selector + `"]`), p.T}
+}
+
+func (p *Page) ByIdStartsWith(selector string) Locator {
+	return Locator{p.Locator(`[id^="` + selector + `"]`), p.T}
+}
+
+func (p *Page) Close(t *testing.T) {
+	err := p.Page.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 type Locator struct {
 	playwright.Locator
 	*testing.T
-}
-
-func debugErr(err error) error {
-	return errors.New(fmt.Sprintf("%s %s", err, debug.Stack()))
 }
 
 // Actionable
@@ -97,51 +158,15 @@ func (l Locator) ByText(text string) Locator {
 	return Locator{l.Locator.GetByText(text), l.T}
 }
 
-type Page struct {
-	playwright.Page
-	*testing.T
+func debugErr(err error) error {
+	return errors.New(fmt.Sprintf("%s %s", err, debug.Stack()))
 }
 
-func (p *Page) ByRole(role string, name ...string) Locator {
-	opts := playwright.PageGetByRoleOptions{}
-	if len(name) > 0 {
-		opts.Name = name[0]
+func getBrowserPage(t *testing.T, userId string) *Page {
+	if p, ok := pages[userId]; ok {
+		return p
 	}
-	return Locator{p.GetByRole(playwright.AriaRole(role), opts), p.T}
-}
 
-func (p *Page) ByLabel(label string) Locator {
-	return Locator{p.GetByLabel(label), p.T}
-}
-
-func (p *Page) ByText(text string) Locator {
-	return Locator{p.GetByText(text), p.T}
-}
-
-func (p *Page) ByLocator(selector string) Locator {
-	return Locator{p.Locator(selector), p.T}
-}
-
-func (p *Page) ByTestId(selector string) Locator {
-	return Locator{p.GetByTestId(selector), p.T}
-}
-
-func (p *Page) ById(selector string) Locator {
-	return Locator{p.Locator(`[id="` + selector + `"]`), p.T}
-}
-
-func (p *Page) ByIdStartsWith(selector string) Locator {
-	return Locator{p.Locator(`[id^="` + selector + `"]`), p.T}
-}
-
-func (p *Page) Close(t *testing.T) {
-	err := p.Page.Close()
-	if err != nil {
-		t.Fatal(err)
-	}
-}
-
-func getBrowserPage(t *testing.T) *Page {
 	defaultOptions := playwright.BrowserNewPageOptions{
 		BaseURL:           playwright.String(fmt.Sprintf("https://localhost:%d", util.E_GO_HTTPS_PORT)),
 		IgnoreHttpsErrors: playwright.Bool(true),
@@ -158,11 +183,118 @@ func getBrowserPage(t *testing.T) *Page {
 		t.Fatal(err)
 	}
 
-	page := &Page{p, t}
+	p.OnResponse(func(response playwright.Response) {
+		go func() {
+			body, err := response.Body()
+			if err != nil || body == nil {
+				return
+			}
+			responseMu.Lock()
+			responses = append(responses, &PageResponse{
+				body:   body,
+				method: response.Request().Method(),
+				url:    response.URL(),
+			})
+			responseMu.Unlock()
+		}()
+	})
+
+	if useRandUser {
+		userId += strconv.Itoa(rand.IntN(1000000) + 1)
+	}
+
+	user := &UserWithPass{
+		UserId: userId,
+		Profile: &types.IUserProfile{
+			Email:     fmt.Sprintf("jsmith%s@myschool.edu", userId),
+			FirstName: "John",
+			LastName:  "Smith",
+		},
+	}
+
+	user.Password = user.Profile.FirstName + user.Profile.LastName
+
+	println("Testing with user:", user.Profile.GetEmail(), "pass:", user.Password)
+
+	page := &Page{p, t, user}
 
 	doEval(page)
 
-	return page
+	pages[userId] = page
+	return pages[userId]
+}
+
+func clearResponses() {
+	responseMu.Lock()
+	responses = make([]*PageResponse, 0)
+	responseMu.Unlock()
+}
+
+func readResponse[T proto.Message](action func()) (T, error) {
+	var empty T
+	emptyT := reflect.TypeOf(empty)
+	emptyTName := emptyT.Elem().Name()
+	var msg proto.Message
+	var matched, ok bool
+	var err error
+
+	// T must be a pointer to a proto type
+	msg, ok = reflect.Zero(emptyT).Interface().(proto.Message)
+	if !ok {
+		return empty, nil
+	}
+
+	var hops *util.HandlerOptions
+
+	descriptorT := msg.ProtoReflect().Descriptor()
+	for _, h := range handlerOpts {
+		if descriptorT == h.ServiceMethod.Output() {
+			hops = h
+			break
+		}
+	}
+	if hops == nil {
+		return empty, fmt.Errorf("type did not resolve to a service output message %s", emptyTName)
+	}
+
+	clearResponses()
+
+	action()
+
+	defer clearResponses()
+
+	responseMu.Lock()
+	defer responseMu.Unlock()
+
+	checked := make([]string, 0)
+	for _, r := range responses {
+		// verify the right method
+		if !strings.HasPrefix(hops.Pattern, r.method) {
+			checked = append(checked, r.method+" "+r.url)
+			continue
+		}
+
+		// verify a matching invalidation path
+		for _, invalidation := range hops.Invalidations {
+			matched, err = regexp.MatchString(invalidation, r.url)
+			if err != nil {
+				return empty, fmt.Errorf("failed to match invalidation %s to url %s", invalidation, r.url)
+			}
+			if matched {
+				pb := reflect.New(reflect.TypeOf(empty).Elem()).Interface().(T)
+
+				err = protojson.Unmarshal(r.body, pb)
+				if err != nil {
+					return empty, fmt.Errorf("failed to unmarshal into message: %s, data: %s, %v", emptyTName, r.body, err)
+				}
+
+				return pb, nil
+			}
+		}
+		checked = append(checked, r.method+" "+r.url)
+	}
+
+	return empty, fmt.Errorf("did not find any responses for output message %s (%s), checked %s", emptyTName, hops.Pattern, checked)
 }
 
 func doEval(page *Page) {
@@ -181,45 +313,8 @@ func doEval(page *Page) {
 	`)
 }
 
-type UserWithPass struct {
-	Password string
-	Profile  *types.IUserProfile
-	UserId   int
-}
-
-var testUserWithPass *UserWithPass
-
-func getUiUser() *UserWithPass {
-	defer func() {
-		println("Testing with user:", testUserWithPass.Profile.GetEmail(), "pass:", testUserWithPass.Password)
-	}()
-
-	if testUserWithPass != nil {
-		return testUserWithPass
-	}
-
-	var userId int
-	if useRandUser {
-		userId = rand.IntN(1000000) + 1
-	} else {
-		userId = 1
-	}
-
-	testUserWithPass = &UserWithPass{
-		UserId: userId,
-		Profile: &types.IUserProfile{
-			Email:     fmt.Sprintf("jsmith%d@myschool.edu", userId),
-			FirstName: "John",
-			LastName:  "Smith",
-		},
-	}
-
-	testUserWithPass.Password = testUserWithPass.Profile.FirstName + testUserWithPass.Profile.LastName
-
-	return testUserWithPass
-}
-
-func login(t *testing.T, page *Page, user *UserWithPass) {
+func login(t *testing.T, userId string) *Page {
+	page := getBrowserPage(t, userId)
 	if !strings.HasSuffix(page.URL(), "app") {
 		page.Goto("/app")
 		doEval(page)
@@ -231,117 +326,16 @@ func login(t *testing.T, page *Page, user *UserWithPass) {
 	}
 
 	if onSignInPage {
-		page.ByRole("textbox", "Email").MouseOver().Fill(user.Profile.Email)
-		page.ByRole("textbox", "Password").MouseOver().Fill(user.Password)
+		page.ByRole("textbox", "Email").MouseOver().Fill(page.UserWithPass.Profile.Email)
+		page.ByRole("textbox", "Password").MouseOver().Fill(page.UserWithPass.Password)
 		page.ByRole("button", "Sign In").MouseOver().Click()
 		time.Sleep(time.Second)
-		doEval(page)
 	}
+
+	return page
 }
 
 func goHome(page *Page) {
 	page.ById("topbar_open_menu").MouseOver().Click()
 	page.ByText("Home").MouseOver().Click()
-}
-
-type ResponseError struct {
-	URL        string
-	StatusCode int
-	Body       string
-	Err        error
-}
-
-func (e ResponseError) Error() string {
-	return fmt.Sprintf("response error from %s (status: %d): %v\nBody: %s",
-		e.URL, e.StatusCode, e.Err, e.Body)
-}
-
-// ExpectResponseWrapper creates a function that, when called, will wait for a response matching
-// the specified URL substring after performing an action (like clicking a button).
-// It returns the response data unmarshaled into the specified protobuf message type T.
-//
-// Usage:
-//
-//	getResponse := ExpectResponseWrapper[*myproto.ResponseType](page, "api/endpoint")
-//
-//	// Call the function, passing a callback that performs the action
-//	response, err := getResponse(func() error {
-//	    // Click button or perform action that triggers the request
-//	    return page.GetByRole("button", playwright.PageGetByRoleOptions{
-//	        Name: playwright.String("Submit"),
-//	    }).Click()
-//	})
-//
-//	if err != nil {
-//	    // Handle error
-//	}
-//	// Use the typed response
-//	fmt.Println(response.SomeField)
-func expectResponseWrapper[T proto.Message](page playwright.Page, urlSubstring string) func(action func() error) (T, error) {
-	var zero T
-
-	// Return a function that executes the action and waits for the response
-	return func(action func() error) (T, error) {
-		// Set up and wait for the response
-		response, err := page.ExpectResponse(
-			// URL matcher function
-			func(r playwright.Response) bool {
-				return contains(r.URL(), urlSubstring)
-			},
-			// Action to trigger the request
-			action,
-		)
-
-		if err != nil {
-			return zero, fmt.Errorf("failed to receive response: %w", err)
-		}
-
-		// Get the response URL for error reporting
-		responseURL := response.URL()
-
-		// Check the status code
-		statusCode := response.Status()
-		if statusCode < 200 || statusCode >= 300 {
-			// Get body for error details
-			body, bodyErr := response.Text()
-			if bodyErr != nil {
-				body = "[failed to extract response body]"
-			}
-			return zero, ResponseError{
-				URL:        responseURL,
-				StatusCode: statusCode,
-				Body:       body,
-				Err:        errors.New("non-success status code"),
-			}
-		}
-
-		// Get the body
-		body, err := response.Text()
-		if err != nil {
-			return zero, fmt.Errorf("failed to get response body: %w", err)
-		}
-
-		// Try to unmarshal as protobuf
-		result := proto.Clone(zero).(T)
-		err = protojson.Unmarshal([]byte(body), result)
-		if err != nil {
-			// For better error messages, check if the body is valid JSON
-			var jsonCheck any
-			jsonErr := json.Unmarshal([]byte(body), &jsonCheck)
-			if jsonErr != nil {
-				return zero, fmt.Errorf("response is not valid JSON: %w\nBody: %s", jsonErr, body)
-			}
-			return zero, fmt.Errorf("failed to unmarshal response as proto: %w", err)
-		}
-
-		return result, nil
-	}
-}
-
-// Helper function to check if a string contains a substring
-func contains(s, substr string) bool {
-	return s != "" && substr != "" && (s == substr ||
-		len(s) >= len(substr) && (s[:len(substr)] == substr ||
-			s[len(s)-len(substr):] == substr ||
-			(len(s) > len(substr)*2 && s[len(s)/2-len(substr)/2:len(s)/2+len(substr)-len(substr)/2] == substr)))
 }
