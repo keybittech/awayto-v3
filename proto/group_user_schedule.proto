@@ -49,6 +49,8 @@ service GroupUserScheduleService {
     };
     option (use_tx) = true;
     option (resets_group) = true;
+    option (invalidates) = "GetGroupSchedules";
+    option (invalidates) = "GetGroupUserScheduleStubs";
   }
 }
 

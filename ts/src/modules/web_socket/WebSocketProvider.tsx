@@ -98,6 +98,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
       const [_, connId] = ticket.split(":");
 
       const ws = new WebSocket(`wss://${VITE_REACT_APP_APP_HOST_NAME}/sock?ticket=${ticket}`)
+      var roleChecking = false;
 
       ws.onopen = () => {
         console.log('socket open', connId);
@@ -154,7 +155,13 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
             generateMessage(SocketActions.PING_PONG, false, false, "", "", "", "PONG")
           );
         } else if (SocketActions.ROLE_CALL == socketResponse.action) {
-          await getUserProfileDetails();
+          if (!roleChecking) {
+            roleChecking = true;
+            getUserProfileDetails()
+            setTimeout(() => {
+              roleChecking = false;
+            }, 5000);
+          }
         } else if (socketResponse.topic) {
           const listeners = messageListeners.current.get(socketResponse.topic);
 

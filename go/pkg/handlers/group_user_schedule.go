@@ -80,15 +80,10 @@ func (h *Handlers) PatchGroupUserScheduleStubReplacement(info ReqInfo, data *typ
 }
 
 func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(info ReqInfo, data *types.DeleteGroupUserScheduleByUserScheduleIdRequest) (*types.DeleteGroupUserScheduleByUserScheduleIdResponse, error) {
-
 	for userScheduleId := range strings.SplitSeq(data.Ids, ",") {
 		rows, err := info.Tx.Query(info.Ctx, `
-			SELECT p."partType", p.ids, (
-				SELECT group_schedule_id
-				FROM dbtable_schema.group_user_schedules
-				WHERE user_schedule_id = $1
-			) as "groupScheduleId"
-			FROM dbfunc_schema.get_scheduled_parts($1) p
+			SELECT "partType", ids
+			FROM dbfunc_schema.get_scheduled_parts($1)
 		`, userScheduleId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
@@ -125,14 +120,7 @@ func (h *Handlers) DeleteGroupUserScheduleByUserScheduleId(info ReqInfo, data *t
 				return nil, util.ErrCheck(err)
 			}
 		}
-
-		if len(parts) > 0 {
-			h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/user_schedules/"+parts[0].GroupScheduleId)
-		}
 	}
-
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"group/user_schedules_stubs")
 
 	return &types.DeleteGroupUserScheduleByUserScheduleIdResponse{Success: true}, nil
 }

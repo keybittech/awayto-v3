@@ -58,6 +58,8 @@ service ScheduleService {
     };
     option (site_role) = APP_GROUP_SCHEDULES;
     option (use_tx) = true;
+    option (invalidates) = "GetSchedules";
+    option (invalidates) = "GetUserProfileDetails";
   }
 
   rpc DisableSchedule(DisableScheduleRequest) returns (DisableScheduleResponse) {

@@ -281,9 +281,6 @@ func (h *Handlers) DeleteSchedule(info ReqInfo, data *types.DeleteScheduleReques
 		}
 	}
 
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"schedules")
-	h.Redis.Client().Del(info.Ctx, info.Session.GetUserSub()+"profile/details")
-
 	return &types.DeleteScheduleResponse{Success: true}, nil
 }
 

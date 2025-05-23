@@ -134,6 +134,13 @@ func (p *Page) ByIdStartsWith(selector string) Locator {
 	return Locator{p.Locator(`[id^="` + selector + `"]`), p.T}
 }
 
+func (p *Page) Close(t *testing.T) {
+	err := p.Page.Close()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func getBrowserPage(t *testing.T) *Page {
 	defaultOptions := playwright.BrowserNewPageOptions{
 		BaseURL:           playwright.String(fmt.Sprintf("https://localhost:%d", util.E_GO_HTTPS_PORT)),
@@ -150,13 +157,6 @@ func getBrowserPage(t *testing.T) *Page {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	t.Cleanup(func() {
-		err := p.Close()
-		if err != nil {
-			t.Fatal(err)
-		}
-	})
 
 	page := &Page{p, t}
 
@@ -214,7 +214,7 @@ func getUiUser() *UserWithPass {
 		},
 	}
 
-	testUserWithPass.Password = strings.ToLower(testUserWithPass.Profile.FirstName + testUserWithPass.Profile.LastName)
+	testUserWithPass.Password = testUserWithPass.Profile.FirstName + testUserWithPass.Profile.LastName
 
 	return testUserWithPass
 }

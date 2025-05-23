@@ -49,7 +49,11 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = as
 
   const lastModified = result.meta?.response?.headers.get('last-modified');
   if (lastModified) {
-    modifiedResources[args.url] = lastModified;
+    if (lastModified != modifiedResources[args.url]) {
+      return result;
+    } else {
+      modifiedResources[args.url] = lastModified;
+    }
   }
 
   if (result.meta?.response?.status === 304 && api.queryCacheKey) {

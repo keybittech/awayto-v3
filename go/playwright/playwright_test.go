@@ -16,15 +16,15 @@ import (
 )
 
 var (
-	aiEnabled, useRandUser bool
-	browser                playwright.Browser
+	aiEnabled   = false
+	useRandUser = false
+	headless    = playwright.Bool(true)
+	slowMo      = playwright.Float(50)
+	browser     playwright.Browser
 )
 
 func TestMain(m *testing.M) {
 	util.ParseEnv()
-
-	useRandUser = true
-	aiEnabled = false
 
 	_, err := net.DialTimeout("tcp", fmt.Sprintf("[::]:%d", util.E_GO_HTTPS_PORT), 2*time.Second)
 	if err != nil {
@@ -56,8 +56,8 @@ func TestMain(m *testing.M) {
 	}
 
 	browser, err = pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		SlowMo:   playwright.Float(750),
-		Headless: playwright.Bool(false),
+		Headless: headless,
+		SlowMo:   slowMo,
 		Devtools: playwright.Bool(false),
 		Args: []string{
 			// "--start-maximized",
@@ -82,9 +82,13 @@ func TestMain(m *testing.M) {
 }
 
 func TestPlaywright(t *testing.T) {
-	testPlaywrightRegistration(t)
-	testPlaywrightCreatePersonalSchedule(t)
-	testPlaywrightCreateForm(t)
+	if useRandUser {
+		testPlaywrightRegistration(t)
+	}
+	for range 2 { // Create -> Delete/Create
+		testPlaywrightCreatePersonalSchedule(t)
+	}
+	// testPlaywrightCreateForm(t)
 }
 
 func testPlaywrightRegistration(t *testing.T) {
@@ -237,11 +241,7 @@ func testPlaywrightRegistration(t *testing.T) {
 		page.ByText("Logout").MouseOver().Click()
 	}
 
-	login(t, page, user)
-
-	if err := page.Close(); err != nil {
-		log.Fatalf("failed to close page: %v", util.ErrCheck(err))
-	}
+	page.Close(t)
 }
 
 func testPlaywrightCreatePersonalSchedule(t *testing.T) {
@@ -269,6 +269,7 @@ func testPlaywrightCreatePersonalSchedule(t *testing.T) {
 	page.ById("grid_cell_box_3_3").MouseOver()
 	for range 4 {
 		page.Mouse().Wheel(0, 150)
+		time.Sleep(100 * time.Millisecond)
 	}
 
 	for _, day := range []string{"Wed", "Thu", "Fri"} {
@@ -283,6 +284,8 @@ func testPlaywrightCreatePersonalSchedule(t *testing.T) {
 	page.ById("manage_personal_schedule_modal_submit").MouseOver().Click()
 
 	goHome(page)
+
+	page.Close(t)
 }
 
 func testPlaywrightCreateForm(t *testing.T) {
@@ -327,4 +330,6 @@ func testPlaywrightCreateForm(t *testing.T) {
 	}
 
 	goHome(page)
+
+	page.Close(t)
 }
