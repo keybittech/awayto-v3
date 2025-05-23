@@ -3,6 +3,7 @@ package main
 import (
 	"fmt"
 	"log"
+	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -25,20 +26,29 @@ func TestMain(m *testing.M) {
 	useRandUser = true
 	aiEnabled = false
 
-	cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME))
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
+	_, err := net.DialTimeout("tcp", fmt.Sprintf("[::]:%d", util.E_GO_HTTPS_PORT), 2*time.Second)
+	if err != nil {
+		cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME))
+		cmd.SysProcAttr = &syscall.SysProcAttr{
+			Pdeathsig: syscall.SIGKILL,
+		}
+		cmd.Stdout = os.Stdout
+		cmd.Stderr = os.Stderr
+		cmd.Stdin = os.Stdin
 
-	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting server:", util.ErrCheck(err))
-		os.Exit(1)
-	}
+		if err := cmd.Start(); err != nil {
+			fmt.Println("Error starting server:", util.ErrCheck(err))
+			os.Exit(1)
+		}
 
-	time.Sleep(2 * time.Second)
+		defer func() {
+			if err := cmd.Process.Kill(); err != nil {
+				fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
+			}
+		}()
+
+		time.Sleep(2 * time.Second)
+	}
 
 	pw, err := playwright.Run()
 	if err != nil {
@@ -66,10 +76,6 @@ func TestMain(m *testing.M) {
 	}
 	if err = pw.Stop(); err != nil {
 		fmt.Printf("could not stop Playwright: %v", util.ErrCheck(err))
-	}
-
-	if err := cmd.Process.Kill(); err != nil {
-		fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
 	}
 
 	os.Exit(code)
@@ -103,6 +109,7 @@ func testPlaywrightRegistration(t *testing.T) {
 		page.ByLocator("#lastName").MouseOver().Fill(user.Profile.LastName)
 
 		page.ByRole("button", "Register").MouseOver().Click()
+		time.Sleep(1 * time.Second)
 
 		if page.ById("input-error-email").IsVisible() {
 			page.ByText("Back to Login").MouseOver().Click()

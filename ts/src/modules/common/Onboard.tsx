@@ -29,11 +29,6 @@ import ScheduleDisplay from '../schedules/ScheduleDisplay';
 
 export function Onboard(_: IComponent): React.JSX.Element {
 
-  useEffect(() => {
-    window.INT_SITE_LOAD = true;
-    console.log('Onboard mounted, window.INT_SITE_LOAD initialized');
-  }, []);
-
   const navigate = useNavigate();
   // const location = useLocation();
   const classes = useStyles();
@@ -68,6 +63,19 @@ export function Onboard(_: IComponent): React.JSX.Element {
 
   const { data: profileReq, refetch: getUserProfileDetails, isUninitialized, isLoading } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
   const [completeOnboarding] = siteApi.useGroupUtilServiceCompleteOnboardingMutation();
+
+  useEffect(() => {
+    const up = profileReq?.userProfile;
+    if (up && !window.INT_SITE_LOAD) {
+      if (!up.groups && location.hash.length) {
+        navigate('/');
+        setCurrentPage(0);
+      }
+
+      window.INT_SITE_LOAD = true;
+      console.log('Onboard mounted, window.INT_SITE_LOAD initialized');
+    }
+  }, [profileReq?.userProfile]);
 
   const reloadProfile = async (): Promise<void> => {
     await refreshToken(61).then(async () => {

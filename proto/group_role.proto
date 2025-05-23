@@ -88,7 +88,7 @@ message PatchGroupRoleResponse {
 
 message PatchGroupRolesRequest {
   string defaultRoleId = 1 [(google.api.field_behavior) = REQUIRED];
-  map<string, IGroupRole> roles = 2 [(google.api.field_behavior) = REQUIRED];
+  map<string, IGroupRole> roles = 2;
 }
 
 message PatchGroupRolesResponse {

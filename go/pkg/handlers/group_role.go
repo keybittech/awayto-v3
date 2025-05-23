@@ -201,7 +201,12 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 		return nil, util.ErrCheck(err)
 	}
 
-	roleIds := make([]string, 0, len(data.GetRoles()))
+	dataRoles := data.GetRoles()
+	if len(dataRoles) == 0 {
+		return &types.PatchGroupRolesResponse{Success: true}, nil
+	}
+
+	roleIds := make([]string, 0, len(dataRoles))
 	for _, role := range data.GetRoles() {
 		roleIds = append(roleIds, role.GetRoleId())
 	}
@@ -283,7 +288,7 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 	}()
 
 	// Add new roles to keycloak and group records
-	for _, role := range data.GetRoles() {
+	for _, role := range dataRoles {
 
 		if strings.ToLower(role.GetName()) == "admin" {
 			continue

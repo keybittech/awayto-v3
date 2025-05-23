@@ -13,6 +13,7 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 
 import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IGroupRole, targets, IValidationAreas, useValid } from 'awayto/hooks';
+import { Input } from '@mui/material';
 
 interface ManageGroupRolesModalProps extends IComponent {
   editGroup?: IGroup;
@@ -130,6 +131,11 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
                   <Chip
                     {...targets(`group roles delete ${i}`, gr.name, `remove ${gr.name} from the list of group roles`)}
                     color="secondary"
+                    onClick={() => {
+                      if (gr.id?.length) {
+                        deleteGroupRole({ ids: gr.id });
+                      }
+                    }}
                     onDelete={() => {
                       if (gr.id?.length) {
                         deleteGroupRole({ ids: gr.id });
@@ -149,6 +155,19 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
               required
               onChange={e => setDefaultRoleId(e.target.value)}
               value={defaultRoleId}
+              slotProps={{
+                input: {
+                  endAdornment: <Button
+                    {...targets(`manage group roles modal update default role`, `update the default group role to the selected one`)}
+                    variant="text"
+                    color="secondary"
+                    sx={{ pr: 4 }}
+                    onClick={_ => {
+                      patchGroupRoles({ patchGroupRolesRequest: { defaultRoleId } });
+                    }}
+                  >Update</Button>
+                }
+              }}
             >
               {groupRolesRequest?.groupRoles.map(groupRole => {
                 return <MenuItem key={`${groupRole.roleId}_primary_role_select`} value={groupRole.roleId}>
