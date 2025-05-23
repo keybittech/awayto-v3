@@ -4,9 +4,9 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"log"
 	"math/rand/v2"
 	"path/filepath"
+	"runtime/debug"
 	"strings"
 	"testing"
 	"time"
@@ -18,60 +18,88 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-func MoveToBoundingBox(loc playwright.Locator) playwright.Locator {
-	rect, _ := loc.BoundingBox()
-	if rect != nil {
-		centerX := rect.X + (rect.Width / 2)
-		centerY := rect.Y + (rect.Height / 2)
-
-		page, _ := loc.Page()
-		page.Mouse().Move(centerX, centerY)
-	}
-	return loc
-}
-
 type Locator struct {
 	playwright.Locator
+	*testing.T
 }
 
-func (p Locator) ByRole(role string, name ...string) Locator {
-	opts := playwright.LocatorGetByRoleOptions{}
-	if len(name) > 0 {
-		opts.Name = name[0]
-	}
-	return Locator{p.GetByRole(playwright.AriaRole(role), opts)}
+func debugErr(err error) error {
+	return errors.New(fmt.Sprintf("%s %s", err, debug.Stack()))
 }
 
+// Actionable
 func (l Locator) MouseOver() Locator {
 	err := l.Hover()
 	if err != nil {
-		log.Fatal(err)
+		l.T.Fatal(debugErr(err))
 	}
 	return l
 }
 
+func (l Locator) Click() {
+	if err := l.Locator.Click(); err != nil {
+		l.T.Fatal(debugErr(err))
+	}
+}
+
+func (l Locator) WaitFor() {
+	if err := l.Locator.WaitFor(); err != nil {
+		l.T.Fatal(debugErr(err))
+	}
+}
+
+func (l Locator) Fill(value string, opts ...playwright.LocatorFillOptions) {
+	if err := l.Locator.Fill(value, opts...); err != nil {
+		l.T.Fatal(debugErr(err))
+	}
+}
+
+func (l Locator) SetChecked(checked bool, opts ...playwright.LocatorSetCheckedOptions) {
+	if err := l.Locator.SetChecked(checked, opts...); err != nil {
+		l.T.Fatal(debugErr(err))
+	}
+}
+
+func (l Locator) IsVisible() bool {
+	visible, err := l.Locator.IsVisible()
+	if err != nil {
+		l.T.Fatal(debugErr(err))
+	}
+	return visible
+}
+
+// Selectors
+func (l Locator) ByRole(role string, name ...string) Locator {
+	opts := playwright.LocatorGetByRoleOptions{}
+	if len(name) > 0 {
+		opts.Name = name[0]
+	}
+	return Locator{l.GetByRole(playwright.AriaRole(role), opts), l.T}
+}
+
 func (l Locator) Nth(num int) Locator {
-	return Locator{l.Locator.Nth(num)}
+	return Locator{l.Locator.Nth(num), l.T}
 }
 
 func (l Locator) First() Locator {
-	return Locator{l.Locator.First()}
+	return Locator{l.Locator.First(), l.T}
 }
 
 func (l Locator) Last() Locator {
-	return Locator{l.Locator.Last()}
+	return Locator{l.Locator.Last(), l.T}
 }
 
 func (l Locator) ByLocator(selector string) Locator {
-	return Locator{l.Locator.Locator(selector)}
+	return Locator{l.Locator.Locator(selector), l.T}
 }
 
 func (l Locator) ByText(text string) Locator {
-	return Locator{l.Locator.GetByText(text)}
+	return Locator{l.Locator.GetByText(text), l.T}
 }
 
 type Page struct {
 	playwright.Page
+	*testing.T
 }
 
 func (p *Page) ByRole(role string, name ...string) Locator {
@@ -79,31 +107,31 @@ func (p *Page) ByRole(role string, name ...string) Locator {
 	if len(name) > 0 {
 		opts.Name = name[0]
 	}
-	return Locator{p.GetByRole(playwright.AriaRole(role), opts)}
+	return Locator{p.GetByRole(playwright.AriaRole(role), opts), p.T}
 }
 
 func (p *Page) ByLabel(label string) Locator {
-	return Locator{p.GetByLabel(label)}
+	return Locator{p.GetByLabel(label), p.T}
 }
 
 func (p *Page) ByText(text string) Locator {
-	return Locator{p.GetByText(text)}
+	return Locator{p.GetByText(text), p.T}
 }
 
 func (p *Page) ByLocator(selector string) Locator {
-	return Locator{p.Locator(selector)}
+	return Locator{p.Locator(selector), p.T}
 }
 
 func (p *Page) ByTestId(selector string) Locator {
-	return Locator{p.GetByTestId(selector)}
+	return Locator{p.GetByTestId(selector), p.T}
 }
 
 func (p *Page) ById(selector string) Locator {
-	return Locator{p.Locator(`[id="` + selector + `"]`)}
+	return Locator{p.Locator(`[id="` + selector + `"]`), p.T}
 }
 
 func (p *Page) ByIdStartsWith(selector string) Locator {
-	return Locator{p.Locator(`[id^="` + selector + `"]`)}
+	return Locator{p.Locator(`[id^="` + selector + `"]`), p.T}
 }
 
 func getBrowserPage(t *testing.T) *Page {
@@ -130,7 +158,7 @@ func getBrowserPage(t *testing.T) *Page {
 		}
 	})
 
-	page := &Page{p}
+	page := &Page{p, t}
 
 	doEval(page)
 
@@ -162,6 +190,10 @@ type UserWithPass struct {
 var testUserWithPass *UserWithPass
 
 func getUiUser() *UserWithPass {
+	defer func() {
+		println("Testing with user:", testUserWithPass.Profile.GetEmail(), "pass:", testUserWithPass.Password)
+	}()
+
 	if testUserWithPass != nil {
 		return testUserWithPass
 	}
@@ -173,7 +205,7 @@ func getUiUser() *UserWithPass {
 		userId = 1
 	}
 
-	user := &UserWithPass{
+	testUserWithPass = &UserWithPass{
 		UserId: userId,
 		Profile: &types.IUserProfile{
 			Email:     fmt.Sprintf("jsmith%d@myschool.edu", userId),
@@ -182,11 +214,9 @@ func getUiUser() *UserWithPass {
 		},
 	}
 
-	user.Password = strings.ToLower(user.Profile.FirstName + user.Profile.LastName)
+	testUserWithPass.Password = strings.ToLower(testUserWithPass.Profile.FirstName + testUserWithPass.Profile.LastName)
 
-	testUserWithPass = user
-
-	return user
+	return testUserWithPass
 }
 
 func login(t *testing.T, page *Page, user *UserWithPass) {

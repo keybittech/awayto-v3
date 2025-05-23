@@ -318,12 +318,17 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 }
 
 func (h *Handlers) GetGroupRoles(info ReqInfo, data *types.GetGroupRolesRequest) (*types.GetGroupRolesResponse, error) {
+	groupId := info.Session.GetGroupId()
+	if groupId == "" {
+		return nil, nil
+	}
+
 	roles := util.BatchQuery[types.IGroupRole](info.Batch, `
-		SELECT egr.id, er.name, egr."roleId", egr."groupId", egr."createdOn"
+		SELECT egr.id, er.name, egr."roleId", egr."createdOn"
 		FROM dbview_schema.enabled_group_roles egr
 		JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
 		WHERE egr."groupId" = $1 AND er.name != 'Admin'
-	`, info.Session.GetGroupId())
+	`, groupId)
 
 	info.Batch.Send(info.Ctx)
 

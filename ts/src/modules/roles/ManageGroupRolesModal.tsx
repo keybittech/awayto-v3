@@ -13,7 +13,6 @@ import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 
 import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IGroupRole, targets, IValidationAreas, useValid } from 'awayto/hooks';
-import SelectLookup from '../common/SelectLookup';
 
 interface ManageGroupRolesModalProps extends IComponent {
   editGroup?: IGroup;
@@ -27,40 +26,44 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
   const { setSnack } = useUtil();
   const { setValid } = useValid();
 
-  const [groupRole, setGroupRole] = useState('');
-  const [groupRoleIds, setGroupRoleIds] = useState<string[]>(Object.keys(editGroup?.roles || {}).filter(rid => editGroup?.roles && editGroup.roles[rid].name !== 'Admin'));
-  const [defaultRoleId, setDefaultRoleId] = useState(editGroup?.defaultRoleId && groupRoleIds.includes(editGroup.defaultRoleId) ? editGroup.defaultRoleId : '');
+  const [groupRoleInput, setGroupRoleInput] = useState('');
+  const [defaultRoleId, setDefaultRoleId] = useState(editGroup?.defaultRoleId || '');
 
   const {
     comp: RoleSuggestions,
     suggest: suggestRoles
   } = useSuggestions('group_roles');
 
-  const { data: groupRolesRequest, refetch: getGroupRoles } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
+  const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const [patchGroupRoles] = siteApi.useGroupRoleServicePatchGroupRolesMutation();
   const [postGroupRole] = siteApi.useGroupRoleServicePostGroupRoleMutation();
   const [deleteGroupRole] = siteApi.useGroupRoleServiceDeleteGroupRoleMutation();
 
-  const handleSubmitRole = useCallback(() => {
-    if (groupRole.length) {
-      postGroupRole({ postGroupRoleRequest: { name: groupRole } }).unwrap().then(() => {
-        setGroupRole('');
-      });
+  const handleSubmitRole = useCallback((name?: string) => {
+    if (name?.length) {
+      postGroupRole({ postGroupRoleRequest: { name } });
+      setGroupRoleInput('');
     }
-  }, [groupRole]);
+  }, []);
 
   const handleSubmitRoles = useCallback(() => {
-    if (!groupRoleIds.length || !defaultRoleId) {
+    if (!groupRolesRequest?.groupRoles.length || !defaultRoleId) {
       setSnack({ snackType: 'error', snackOn: 'All fields are required.' });
       return;
     }
 
-    const newRoles = Object.fromEntries(groupRoleIds.map(id => [id, groupRolesRequest?.groupRoles.find(r => r.id === id)] as [string, IGroupRole]));
+    const newRoles = groupRolesRequest.groupRoles.reduce((m, groupRole) => {
+      if (!groupRole.id) return m;
+      return {
+        ...m,
+        [groupRole.id]: groupRole
+      };
+    }, {} as Record<string, IGroupRole>);
 
     void patchGroupRoles({ patchGroupRolesRequest: { roles: newRoles, defaultRoleId } }).unwrap().then(() => {
       closeModal && closeModal({ roles: newRoles, defaultRoleId });
     });
-  }, [groupRoleIds, defaultRoleId]);
+  }, [editGroup, defaultRoleId, groupRolesRequest?.groupRoles]);
 
   // Onboarding handling
   useEffect(() => {
@@ -72,9 +75,9 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
   // Onboarding handling
   useEffect(() => {
     if (validArea) {
-      setValid({ area: validArea, schema: 'roles', valid: Boolean(defaultRoleId.length && groupRoleIds.length) });
+      setValid({ area: validArea, schema: 'roles', valid: Boolean(defaultRoleId.length && groupRolesRequest?.groupRoles.length) });
     }
-  }, [validArea, defaultRoleId, groupRoleIds]);
+  }, [validArea, defaultRoleId, groupRolesRequest?.groupRoles]);
 
   useEffect(() => {
     if (editGroup?.name && editGroup?.purpose) {
@@ -97,104 +100,47 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
                 <RoleSuggestions
                   staticSuggestions='Ex: Consultant, Project Manager, Advisor, Business Analyst'
                   handleSuggestion={suggestedRole => {
-                    // The currently suggested role in the user detail's role list
+                    // The currently suggested role in the group roles request
                     const existingId = groupRolesRequest?.groupRoles.find(r => r.name === suggestedRole)?.id;
 
-                    // If the role is not in the user detail roles list, or it is, but it doesn't exist in the current list, continue
-                    if (!existingId || (existingId && !groupRoleIds.includes(existingId))) {
-
-                      // If the role is in the user details roles list
-                      if (existingId) {
-                        setGroupRoleIds([...groupRoleIds, existingId])
-                      } else {
-                        postGroupRole({ postGroupRoleRequest: { name: suggestedRole } }).unwrap().then(async ({ groupRoleId }) => {
-                          await getGroupRoles();
-                          !groupRoleIds.includes(groupRoleId) && setGroupRoleIds([...groupRoleIds, groupRoleId]);
-                        }).catch(console.error);
-                      }
+                    // If the role is not in the group roles request list, post it
+                    if (!existingId) {
+                      handleSubmitRole(suggestedRole);
                     }
                   }}
                 />
               }
-              onKeyDown={(e) => 'Enter' === e.key && handleSubmitRole()}
-              onChange={e => setGroupRole(e.target.value)}
-              value={groupRole}
+              onKeyDown={e => 'Enter' === e.key && handleSubmitRole(groupRoleInput)}
+              onChange={e => setGroupRoleInput(e.target.value)}
+              value={groupRoleInput}
               slotProps={{
                 input: {
                   endAdornment: <Button
                     {...targets(`manage group roles modal add role`, `add the typed role to the group`)}
                     variant="text"
                     color="secondary"
-                    onClick={() => handleSubmitRole}
+                    onClick={_ => handleSubmitRole(groupRoleInput)}
                   >Add</Button>
                 }
               }}
             />
             <Grid container>
-              {groupRolesRequest?.groupRoles && groupRolesRequest?.groupRoles.map((gr, i) => <Box key={`group-role-selection-${i}`} mt={2} mr={2}>
-                <Chip
-                  {...targets(`group roles delete ${i}`, gr.name, `remove ${gr.name} from the list of group roles`)}
-                  color="secondary"
-                  onDelete={() => {
-                    if (gr.id?.length) {
-                      deleteGroupRole({ ids: gr.id });
-                    }
-                  }}
-                />
-              </Box>)}
+              {groupRolesRequest?.groupRoles && groupRolesRequest?.groupRoles.map((gr, i) =>
+                <Box key={`group-role-selection-${i}`} mt={2} mr={2}>
+                  <Chip
+                    {...targets(`group roles delete ${i}`, gr.name, `remove ${gr.name} from the list of group roles`)}
+                    color="secondary"
+                    onDelete={() => {
+                      if (gr.id?.length) {
+                        deleteGroupRole({ ids: gr.id });
+                      }
+                    }}
+                  />
+                </Box>
+              )}
             </Grid>
-
-
-
-
-            {/* <SelectLookup */}
-            {/*   multiple */}
-            {/*   required */}
-            {/*   helperText={ */}
-            {/*     <RoleSuggestions */}
-            {/*       staticSuggestions='Ex: Consultant, Project Manager, Advisor, Business Analyst' */}
-            {/*       handleSuggestion={suggestedRole => { */}
-            {/*         // The currently suggested role in the user detail's role list */}
-            {/*         const existingId = groupRolesRequest?.groupRoles.find(r => r.name === suggestedRole)?.id; */}
-            {/**/}
-            {/*         // If the role is not in the user detail roles list, or it is, but it doesn't exist in the current list, continue */}
-            {/*         if (!existingId || (existingId && !groupRoleIds.includes(existingId))) { */}
-            {/**/}
-            {/*           // If the role is in the user details roles list */}
-            {/*           if (existingId) { */}
-            {/*             setGroupRoleIds([...groupRoleIds, existingId]) */}
-            {/*           } else { */}
-            {/*             postGroupRole({ postGroupRoleRequest: { name: suggestedRole } }).unwrap().then(async ({ groupRoleId }) => { */}
-            {/*               await getGroupRoles(); */}
-            {/*               !groupRoleIds.includes(groupRoleId) && setGroupRoleIds([...groupRoleIds, groupRoleId]); */}
-            {/*             }).catch(console.error); */}
-            {/*           } */}
-            {/*         } */}
-            {/*       }} */}
-            {/*     /> */}
-            {/*   } */}
-            {/*   lookupName='Group Role' */}
-            {/*   lookups={groupRolesRequest?.groupRoles} */}
-            {/*   lookupChange={(newIds: string[]) => { */}
-            {/*     if (!newIds.length || !newIds.includes(defaultRoleId)) { */}
-            {/*       setDefaultRoleId(''); */}
-            {/*     } */}
-            {/*     setGroupRoleIds(newIds); */}
-            {/*   }} */}
-            {/*   lookupValue={groupRoleIds} */}
-            {/*   invalidValues={['admin']} */}
-            {/*   refetchAction={getGroupRoles} */}
-            {/*   createAction={async ({ name }) => { */}
-            {/*     return await postGroupRole({ postGroupRoleRequest: { name } }).unwrap(); */}
-            {/*   }} */}
-            {/*   deleteAction={async ({ ids }) => { */}
-            {/*     await deleteGroupRole({ ids }).unwrap(); */}
-            {/*   }} */}
-            {/*   deleteActionIdentifier='ids' */}
-            {/*   {...props} */}
-            {/* /> */}
           </Grid>
-          {!!groupRoleIds.length && <Grid size={12}>
+          {groupRolesRequest?.groupRoles && groupRolesRequest?.groupRoles.length && <Grid size={12}>
             <TextField
               {...targets(`manage group roles modal default role selection`, `Default Role`, `select the group's default role from the list`)}
               select
@@ -204,11 +150,11 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
               onChange={e => setDefaultRoleId(e.target.value)}
               value={defaultRoleId}
             >
-              {groupRoleIds.map(roleId =>
-                <MenuItem key={`${roleId}_primary_role_select`} value={roleId}>
-                  {groupRolesRequest?.groupRoles.find(role => role.id === roleId)?.name || ''}
+              {groupRolesRequest?.groupRoles.map(groupRole => {
+                return <MenuItem key={`${groupRole.roleId}_primary_role_select`} value={groupRole.roleId}>
+                  {groupRole.name}
                 </MenuItem>
-              )}
+              })}
             </TextField>
           </Grid>}
           <Grid size="grow">

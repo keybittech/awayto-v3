@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	cmd.Stdin = os.Stdin
 
 	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting server:", err)
+		fmt.Println("Error starting server:", util.ErrCheck(err))
 		os.Exit(1)
 	}
 
@@ -42,12 +42,12 @@ func TestMain(m *testing.M) {
 
 	pw, err := playwright.Run()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(util.ErrCheck(err))
 	}
 
 	browser, err = pw.Chromium.Launch(playwright.BrowserTypeLaunchOptions{
-		// SlowMo:   playwright.Float(750),
-		Headless: playwright.Bool(true),
+		SlowMo:   playwright.Float(750),
+		Headless: playwright.Bool(false),
 		Devtools: playwright.Bool(false),
 		Args: []string{
 			// "--start-maximized",
@@ -62,31 +62,37 @@ func TestMain(m *testing.M) {
 	code := m.Run()
 
 	if err = browser.Close(); err != nil {
-		fmt.Printf("could not close browser: %v", err)
+		fmt.Printf("could not close browser: %v", util.ErrCheck(err))
 	}
 	if err = pw.Stop(); err != nil {
-		fmt.Printf("could not stop Playwright: %v", err)
+		fmt.Printf("could not stop Playwright: %v", util.ErrCheck(err))
 	}
 
 	if err := cmd.Process.Kill(); err != nil {
-		fmt.Printf("Failed to close server: %v", err)
+		fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
 	}
 
 	os.Exit(code)
 }
 
 func TestPlaywright(t *testing.T) {
+	testPlaywrightRegistration(t)
+	testPlaywrightCreatePersonalSchedule(t)
+	testPlaywrightCreateForm(t)
+}
+
+func testPlaywrightRegistration(t *testing.T) {
 	page := getBrowserPage(t)
 	user := getUiUser()
 
 	if useRandUser {
 		if _, err := page.Goto(""); err != nil {
-			t.Fatalf("could not goto: %v", err)
+			t.Fatalf("could not goto: %v", util.ErrCheck(err))
 		}
 
 		// Register user
 		page.ByRole("link", "Open Registration!").MouseOver().Click()
-		page.ByText("Register").WaitFor()
+		page.ByRole("button", "Register").WaitFor()
 
 		// On registration page
 		doEval(page)
@@ -98,13 +104,7 @@ func TestPlaywright(t *testing.T) {
 
 		page.ByRole("button", "Register").MouseOver().Click()
 
-		time.Sleep(2 * time.Second)
-
-		registrationFailed, err := page.ById("input-error-email").IsVisible()
-		if err != nil {
-			t.Fatalf("registration failed err %v", err)
-		}
-		if registrationFailed {
+		if page.ById("input-error-email").IsVisible() {
 			page.ByText("Back to Login").MouseOver().Click()
 
 			// On login page
@@ -112,18 +112,11 @@ func TestPlaywright(t *testing.T) {
 		}
 	} else {
 		if _, err := page.Goto("/app"); err != nil {
-			t.Fatalf("could not goto: %v", err)
+			t.Fatalf("could not goto: %v", util.ErrCheck(err))
 		}
 	}
 
-	time.Sleep(2 * time.Second)
-
-	onRegistration, err := page.ByText("Watch the tutorial").IsVisible()
-	if err != nil {
-		t.Fatalf("registration select err %v", err)
-	}
-
-	if onRegistration {
+	if page.ByText("Watch the tutorial").IsVisible() {
 		doEval(page)
 
 		println(fmt.Sprintf("Registered user %s with pass %s", user.Profile.Email, user.Password))
@@ -136,20 +129,17 @@ func TestPlaywright(t *testing.T) {
 		page.ByRole("button", "Next").MouseOver().Click()
 
 		// Add group roles
-		time.Sleep(2 * time.Second)
 		if aiEnabled {
 			page.ByLocator(`span[id^="suggestion-"]`).Nth(0).MouseOver().Click()
 			page.ByLocator(`span[id^="suggestion-"]`).Nth(1).MouseOver().Click()
 		} else {
-			page.ByRole("combobox", "Group Roles").MouseOver().Click()
-			page.ByLocator(`button[id="lookup_creation_toggle_group_role"]`).MouseOver().Click()
-			page.ByRole("textbox", "Group Role Name").MouseOver().Fill("Advisor")
-			page.ByLocator(`button[id="select_lookup_input_submit_group_role"]`).MouseOver().Click()
+			page.ById("group_role_entry").MouseOver().Click()
+			page.ById("group_role_entry").Fill("Advisor")
+			page.ById("manage_group_roles_modal_add_role").MouseOver().Click()
 
-			page.ByRole("combobox", "Group Roles").MouseOver().Click()
-			page.ByLocator(`button[id="lookup_creation_toggle_group_role"]`).MouseOver().Click()
-			page.ByRole("textbox", "Group Role Name").MouseOver().Fill("Tutee")
-			page.ByLocator(`button[id="select_lookup_input_submit_group_role"]`).MouseOver().Click()
+			page.ById("group_role_entry").MouseOver().Click()
+			page.ById("group_role_entry").Fill("Student")
+			page.ById("manage_group_roles_modal_add_role").MouseOver().Click()
 		}
 		page.ByRole("combobox", "Default Role").MouseOver().Click()
 		page.ByRole("listbox").ByLocator("li").Last().Click()
@@ -187,7 +177,10 @@ func TestPlaywright(t *testing.T) {
 			page.ByRole("textbox", "Service Name").MouseOver().Fill("Writing Tutoring")
 			page.ByRole("textbox", "Tier Name").MouseOver().Fill("Basic")
 			for range 2 {
-				page.Mouse().Wheel(0, 100)
+				err := page.Mouse().Wheel(0, 100)
+				if err != nil {
+					panic(util.ErrCheck(err))
+				}
 			}
 			featuresBox := page.ByRole("combobox", "Features")
 			featuresBox.MouseOver().Click()
@@ -206,7 +199,6 @@ func TestPlaywright(t *testing.T) {
 		for range 2 {
 			page.Mouse().Wheel(0, 100)
 		}
-		time.Sleep(2 * time.Second)
 		page.ByRole("button", "Next").ScrollIntoViewIfNeeded()
 		page.ByRole("button", "Next").MouseOver().Click()
 
@@ -215,10 +207,9 @@ func TestPlaywright(t *testing.T) {
 		page.ByRole("textbox", "Name").MouseOver().Fill("Fall 2025 Learning Center")
 		page.ByTestId("CalendarIcon").First().MouseOver().Click()
 		page.ByLocator(`button[role="gridcell"]`).First().MouseOver().Click()
-		for range 3 {
+		for range 2 {
 			page.Mouse().Wheel(0, 300)
 		}
-		time.Sleep(2 * time.Second)
 		page.ByRole("button", "Next").MouseOver().Click()
 
 		// Review group creation
@@ -233,39 +224,28 @@ func TestPlaywright(t *testing.T) {
 		page.ByRole("button", "Next").MouseOver().Click()
 		page.ByLocator(`button[id="confirmation_approval"]`).MouseOver().Click()
 
-		time.Sleep(2 * time.Second)
-
 		// Logout
 		page.ById("topbar_open_menu").WaitFor()
 		page.ById("topbar_open_menu").MouseOver().Click()
 		page.ByText("Logout").MouseOver().Click()
 	}
 
-	time.Sleep(1 * time.Second)
-
 	login(t, page, user)
 
 	if err := page.Close(); err != nil {
-		log.Fatalf("failed to close page: %v", err)
+		log.Fatalf("failed to close page: %v", util.ErrCheck(err))
 	}
-
 }
 
-func TestPlaywrightCreatePersonalSchedule(t *testing.T) {
+func testPlaywrightCreatePersonalSchedule(t *testing.T) {
 	page := getBrowserPage(t)
 	user := getUiUser()
 	login(t, page, user)
 
-	time.Sleep(time.Second)
 	page.ById("topbar_open_menu").WaitFor()
 
 	createPersonalScheduleButton := page.ById("request_quote_create_personal_schedule")
-	createPersonalScheduleButtonVisible, err := createPersonalScheduleButton.IsVisible()
-	if err != nil {
-		t.Fatalf("create personal schedule button visible err %v", err)
-	}
-
-	if createPersonalScheduleButtonVisible {
+	if createPersonalScheduleButton.IsVisible() {
 		createPersonalScheduleButton.MouseOver().Click()
 	} else {
 		page.ById("available_role_actions_edit_personal_schedule").MouseOver().Click()
@@ -298,7 +278,7 @@ func TestPlaywrightCreatePersonalSchedule(t *testing.T) {
 	goHome(page)
 }
 
-func TestPlaywrightCreateForm(t *testing.T) {
+func testPlaywrightCreateForm(t *testing.T) {
 	page := getBrowserPage(t)
 	user := getUiUser()
 	login(t, page, user)
@@ -309,7 +289,7 @@ func TestPlaywrightCreateForm(t *testing.T) {
 
 	formCount, err := page.ByRole("checkbox", "Select row").Count()
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(util.ErrCheck(err))
 	}
 
 	if formCount == 0 {
@@ -319,8 +299,6 @@ func TestPlaywrightCreateForm(t *testing.T) {
 		page.ByRole("button", "add row").MouseOver().Click()
 		page.ByRole("row").ByRole("gridcell").First().ByRole("button").MouseOver().Click()
 		page.ByRole("textbox", "Label").MouseOver().Fill("Assignment Name")
-
-		time.Sleep(2 * time.Second)
 
 		page.ByRole("button", "add column").MouseOver().Click()
 		page.ByRole("row").ByRole("gridcell").Nth(1).ByRole("button").MouseOver().Click()
@@ -336,8 +314,6 @@ func TestPlaywrightCreateForm(t *testing.T) {
 		page.ByRole("textbox", "Label").MouseOver().Fill("Class Start Time")
 		page.ByRole("textbox", "Default Value").MouseOver().Fill("17:55")
 		page.ByRole("button", "Close").MouseOver().Click()
-
-		time.Sleep(3 * time.Second)
 
 		page.ByRole("button", "Submit").MouseOver().Click()
 

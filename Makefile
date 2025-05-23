@@ -127,19 +127,23 @@ define set_local_unix_sock_dir
 endef
 
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
-CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${CERTS_DIR})
+CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${PWD}/${CERTS_DIR})
+CURRENT_CERT_LOC=$(CURRENT_CERTS_DIR)/cert.pem
+CURRENT_CERT_KEY_LOC=$(CURRENT_CERTS_DIR)/privkey.pem
 CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
 CURRENT_LOG_DIR=$(call if_deploying,/var/log/${PROJECT_PREFIX},${PWD}/${LOG_DIR})
 CURRENT_HOST_LOCAL_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${HOST_LOCAL_DIR},${PWD}/${HOST_LOCAL_DIR})
 
 $(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
-$(shell sed -i -e "/^\(#\|\)CERTS_DIR=/s&^.*$$&CERTS_DIR=$(CURRENT_CERTS_DIR)&;" $(ENVFILE))
+$(shell sed -i -e "/^\(#\|\)CERT_LOC=/s&^.*$$&CERT_LOC=$(CURRENT_CERT_LOC)&;" $(ENVFILE))
+$(shell sed -i -e "/^\(#\|\)CERT_KEY_LOC=/s&^.*$$&CERT_KEY_LOC=$(CURRENT_CERT_KEY_LOC)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)PROJECT_DIR=/s&^.*$$&PROJECT_DIR=$(CURRENT_PROJECT_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)LOG_DIR=/s&^.*$$&LOG_DIR=$(CURRENT_LOG_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)HOST_LOCAL_DIR=/s&^.*$$&HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR)&;" $(ENVFILE))
 
 $(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
-$(eval CERTS_DIR=$(CURRENT_CERTS_DIR))
+$(eval CERT_LOC=$(CURRENT_CERT_LOC))
+$(eval CERT_KEY_LOC=$(CURRENT_CERT_KEY_LOC))
 $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 $(eval LOG_DIR=$(CURRENT_LOG_DIR))
 $(eval HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR))
@@ -182,7 +186,7 @@ SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 #           TARGETS             #
 #################################
 
-build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} ${CERT_LOC} ${CERT_KEY_LOC} $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
+build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -198,7 +202,7 @@ ifeq ($(DEPLOYING),)
 	setfacl -d -m g:1000:rwx $(LOG_DIR)/db
 endif
 
-${CERT_LOC} ${CERT_KEY_LOC}:
+$(CERT_LOC) $(CERT_KEY_LOC):
 ifeq ($(DEPLOYING),true)
 	sudo certbot certificates
 	sudo ip6tables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
@@ -208,14 +212,14 @@ ifeq ($(DEPLOYING),true)
 	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt
-	sudo chmod 600 ${CERT_LOC} ${CERT_KEY_LOC}
+	sudo chmod 600 $(CERT_LOC) $(CERT_KEY_LOC)
 else
 	mkdir -p $(@D)
 	chmod 750 $(@D)
-	openssl req -nodes -new -x509 -keyout ${CERT_KEY_LOC} -out ${CERT_LOC} -days 365 -subj "/CN=${APP_HOST_NAME}"
-	chmod 600 ${CERT_KEY_LOC} ${CERT_LOC}
+	openssl req -nodes -new -x509 -keyout $(CERT_KEY_LOC) -out $(CERT_LOC) -days 365 -subj "/CN=${APP_HOST_NAME}"
+	chmod 600 $(CERT_KEY_LOC) $(CERT_LOC)
 	echo "pwd required to update cert chain"
-	sudo cp ${CERT_LOC} /usr/local/share/ca-certificates
+	sudo cp $(CERT_LOC) /usr/local/share/ca-certificates
 	sudo update-ca-certificates
 endif
 
@@ -382,8 +386,8 @@ go_test_unit: $(GO_TARGET) go_test_unit_build
 go_test_ui: $(GO_TARGET)
 	rm -f demos/*.webm
 	$(call clean_test)
-	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST) $(NO_LIMIT)
-	-$(GO_ENVFILE_FLAG) exec $(GO_PLAYWRIGHT_DIR)/playwright.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
+	-$(GO_ENVFILE_FLAG) exec $(GO_PLAYWRIGHT_DIR)/playwright.$(BINARY_TEST) $(NO_LIMIT) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_integration
@@ -616,7 +620,7 @@ host_update_cert_op:
 	sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt
-	sudo chmod 600 ${CERTS_DIR}/cert.pem ${CERTS_DIR}/privkey.pem
+	sudo chmod 600 $(CERT_LOC) $(CERT_KEY_LOC)
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo certbot certificates
 	sudo systemctl is-active $(BINARY_SERVICE)

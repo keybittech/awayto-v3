@@ -36,7 +36,7 @@ SELECT
   name,
   sub,
   code,
-  default_role_id as "defaultRoleId",
+  COALESCE(default_role_id::TEXT, '') as "defaultRoleId",
   allowed_domains as "allowedDomains",
   external_id as "externalId",
   display_name as "displayName",

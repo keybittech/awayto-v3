@@ -58,16 +58,16 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	if groupId != "" {
 		groupsReq = util.BatchQueryMap[types.IGroup](info.Batch, "code", `
-			SELECT code, name, "displayName", "createdOn", purpose, ai, true as active
+			SELECT code, name, "defaultRoleId", "displayName", "createdOn", purpose, ai, true as active
 			FROM dbview_schema.enabled_groups
 			WHERE code = $1
 		`, groupCode)
 
 		groupRolesReq = util.BatchQueryMap[types.IGroupRole](info.Batch, "id", `
-			SELECT er.id, er.name
+			SELECT egr.id, egr."roleId", er.name
 			FROM dbview_schema.enabled_group_roles egr
 			JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
-			WHERE egr."groupId" = $1
+			WHERE egr."groupId" = $1 AND er.name != 'Admin'
 		`, groupId)
 
 		quotesReq = util.BatchQueryMap[types.IQuote](info.Batch, "id", `
