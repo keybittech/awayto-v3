@@ -20,7 +20,7 @@ var (
 	aiEnabled   = false
 	useRandUser = false
 	headless    = playwright.Bool(false)
-	slowMo      = playwright.Float(1000)
+	slowMo      = playwright.Float(100)
 	browser     playwright.Browser
 	handlerOpts map[string]*util.HandlerOptions
 )

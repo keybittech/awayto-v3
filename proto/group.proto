@@ -56,6 +56,7 @@ service GroupService {
     };
     option (site_role) = APP_GROUP_ADMIN;
     option (use_tx) = true;
+    option (invalidates) = "GetUserProfileDetails";
   }
 }
 

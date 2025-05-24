@@ -105,11 +105,12 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 }
 
 func (h *Handlers) DisableUserProfile(info ReqInfo, data *types.DisableUserProfileRequest) (*types.DisableUserProfileResponse, error) {
+	userSub := info.Session.GetUserSub()
 	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.users
 		SET enabled = false, updated_on = $2, updated_sub = $3
-		WHERE id = $1
-	`, data.Id, time.Now(), info.Session.GetUserSub())
+		WHERE sub = $1
+	`, userSub, time.Now(), userSub)
 
 	info.Batch.Send(info.Ctx)
 
@@ -130,13 +131,14 @@ func (h *Handlers) ActivateProfile(info ReqInfo, data *types.ActivateProfileRequ
 }
 
 func (h *Handlers) DeactivateProfile(info ReqInfo, data *types.DeactivateProfileRequest) (*types.DeactivateProfileResponse, error) {
-	util.BatchExec(info.Batch, `
+	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.users
 		SET active = false, updated_on = $2, updated_sub = $1
 		WHERE sub = $1
 	`, info.Session.GetUserSub(), time.Now())
-
-	info.Batch.Send(info.Ctx)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	return &types.DeactivateProfileResponse{Success: true}, nil
 }

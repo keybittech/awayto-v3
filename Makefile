@@ -384,7 +384,7 @@ go_test_unit: $(GO_TARGET) go_test_unit_build
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_ui
-go_test_ui: $(GO_TARGET)
+go_test_ui: $(GO_TARGET) docker_db_restore_op
 	rm -f demos/*.webm
 	$(call clean_test)
 	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
@@ -444,7 +444,7 @@ docker_down:
 	${SUDO} docker volume remove $(REDIS_DATA) || true
 
 .PHONY: docker_cycle
-docker_cycle: docker_down docker_up
+docker_cycle: docker_down docker_up docker_db_backup
 
 .PHONY: docker_build
 docker_build:
@@ -649,8 +649,8 @@ docker_db_backup:
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_dump --column-inserts --data-only --on-conflict-do-nothing -n dbtable_schema -Fc ${PG_DB} \
 		> $(DB_BACKUP_DIR)/${PG_DB}_app_$(shell TZ=UTC date +%Y%m%d%H%M%S).dump
 
-.PHONY: docker_db_upgrade_op
-docker_db_upgrade_op:
+.PHONY: docker_db_restore_op
+docker_db_restore_op:
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d keycloak \
 		< $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_app*" $(DB_BACKUP_DIR) | tail -n 1) || true
 	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") psql -U postgres -d ${PG_DB} -c " \
@@ -664,8 +664,8 @@ docker_db_upgrade_op:
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -a --disable-triggers --superuser=postgres -d ${PG_DB} \
 		< $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_keycloak*" $(DB_BACKUP_DIR) | tail -n 1) || true
 
-.PHONY: docker_db_upgrade
-docker_db_upgrade: docker_db_redeploy docker_db_upgrade_op docker_start
+.PHONY: docker_db_restore
+docker_db_restore: docker_db_redeploy docker_db_restore_op docker_start
 
 .PHONY: docker_db_redeploy_views
 docker_db_redeploy_views:
@@ -690,12 +690,12 @@ host_db_backup:
 host_db_backup_restore:
 	rsync ${RSYNC_FLAGS} "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/" "$(H_SIGN):$(H_REM_DIR)/$(DB_BACKUP_DIR)/"
 
-.PHONY: host_db_upgrade_op
-host_db_upgrade_op:
-	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo make docker_db_upgrade"
+.PHONY: host_db_restore_op
+host_db_restore_op:
+	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo make docker_db_restore"
 
-.PHONY: host_db_upgrade
-host_db_upgrade: host_service_stop host_db_upgrade_op host_service_start
+.PHONY: host_db_restore
+host_db_restore: host_service_stop host_db_restore_op host_service_start
 
 .PHONY: check_logs
 check_logs:

@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from 'react';
 
-import { useUtil, SocketResponseHandler, siteApi, SocketActions, SocketResponse } from 'awayto/hooks';
+import { useUtil, SocketResponseHandler, siteApi, SocketActions, SocketResponse, refreshToken } from 'awayto/hooks';
 
 import WebSocketContext, { WebSocketContextType } from './WebSocketContext';
 
@@ -157,6 +157,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
         } else if (SocketActions.ROLE_CALL == socketResponse.action) {
           if (!roleChecking) {
             roleChecking = true;
+            await refreshToken(60);
             getUserProfileDetails()
             setTimeout(() => {
               roleChecking = false;

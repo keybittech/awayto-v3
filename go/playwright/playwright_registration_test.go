@@ -1,12 +1,14 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"github.com/playwright-community/playwright-go"
 )
 
 func testPlaywrightRegistration(t *testing.T) {
@@ -14,30 +16,73 @@ func testPlaywrightRegistration(t *testing.T) {
 
 	t.Run("admin can register and create a group", func(tt *testing.T) {
 		page := login(t, "admin")
-		t.Cleanup(func() {
-			page.Close(t)
-		})
 
 		// Login as the admin
 		// If we haven't registered before, go through the full process of user and group registration
 		// If we're on the inner app screens, then delete the group and go back to group registration
 
+		ctx, cancel := context.WithTimeout(context.Background(), 6*time.Second)
+		defer cancel()
+
+		resultChan := make(chan string, 1)
+
+		// Check if we're logged in normally
+		go func() {
+			err := page.ById("topbar_open_menu").WaitFor(playwright.LocatorWaitForOptions{
+				State:   playwright.WaitForSelectorStateVisible,
+				Timeout: playwright.Float(2000),
+			})
+			if err == nil {
+				resultChan <- "Internal"
+			}
+		}()
+
+		// Check if login failed and we need to register
+		go func() {
+			err := page.ById("kc-page-title").WaitFor(playwright.LocatorWaitForOptions{
+				State:   playwright.WaitForSelectorStateVisible,
+				Timeout: playwright.Float(2000),
+			})
+			if err == nil {
+				resultChan <- "Registration"
+			}
+		}()
+
 		var flow string
+		// Wait for the first successful result
+		select {
+		case res := <-resultChan:
+			flow = res
+			close(resultChan)
+		case <-ctx.Done():
+			t.Fatalf("did not find internal page or registration page after waiting")
+		}
 
 		// On inner screens
-		if page.ById("topbar_open_menu").IsVisible() {
-			flow = "group deletion"
+		if flow == "Internal" {
 			request := page.Request()
-			request.Delete("/api/v1/groups")
-			page.Reload()
+			deleteResponse, err := request.Delete("/api/v1/group", playwright.APIRequestContextDeleteOptions{
+				Headers: page.UserWithPass.AuthorizationHeader,
+			})
+			if err != nil {
+				t.Fatalf("failed to delete group %v", err)
+			}
 
-			// On the login screen
-		} else if page.ByText("Register").IsVisible() {
-			flow = "initial registration"
+			if deleteResponse.Ok() {
+				_, err := page.Page.Evaluate("() => window.localStorage.clear()")
+				if err != nil {
+					t.Fatalf("error cleaning local storage on delete login %v", err)
+				}
+				page.Page.Reload()
+			} else {
+				t.Fatal("failed to delete group on later pass")
+			}
+		}
 
+		// On the login screen
+		if flow == "Registration" {
 			// Register user
 			page.ByRole("link", "Register").MouseOver().Click()
-			page.ByRole("button", "Register").WaitFor()
 
 			// On registration page
 			doEval(page)
@@ -51,10 +96,11 @@ func testPlaywrightRegistration(t *testing.T) {
 			println(fmt.Sprintf("Registered user %s with pass %s", page.UserWithPass.Profile.Email, page.UserWithPass.Password))
 		}
 
-		time.Sleep(2 * time.Second)
-
-		onRegistrationPage := page.ByText("Watch the tutorial").IsVisible()
-		if !onRegistrationPage {
+		err := page.ByText("Watch the tutorial").WaitFor(playwright.LocatorWaitForOptions{
+			State:   playwright.WaitForSelectorStateVisible,
+			Timeout: playwright.Float(5000),
+		})
+		if err != nil {
 			t.Fatalf("admin didn't land on registration page after %s flow", flow)
 		}
 
@@ -62,7 +108,7 @@ func testPlaywrightRegistration(t *testing.T) {
 		doEval(page)
 
 		// Verify group name check
-		checkNameResponse, err := readResponse[*types.CheckGroupNameResponse](func() {
+		checkNameResponse, err := readHandlerResponse[*types.CheckGroupNameResponse](func() {
 			page.ByRole("textbox", "Group Name").MouseOver().Fill(fmt.Sprintf("Downtown Writing Center %s", page.UserWithPass.UserId))
 		})
 		if err != nil {
@@ -79,7 +125,7 @@ func testPlaywrightRegistration(t *testing.T) {
 		}
 
 		// Verify post group response and set groupCode
-		postGroupResponse, err := readResponse[*types.PostGroupResponse](func() {
+		postGroupResponse, err := readHandlerResponse[*types.PostGroupResponse](func() {
 			page.ByRole("button", "Next").MouseOver().Click()
 		})
 		if err != nil {

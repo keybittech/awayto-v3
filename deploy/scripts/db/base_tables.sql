@@ -53,7 +53,8 @@ CREATE INDEX user_sub_index ON dbtable_schema.users (sub);
 ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
 CREATE POLICY table_select ON dbtable_schema.users FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR);
 CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT TO $PG_WORKER WITH CHECK (true);
-CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE TO $PG_WORKER USING ($IS_USER);
+CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $IS_USER);
+CREATE POLICY table_delete ON dbtable_schema.users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
 CREATE TABLE dbtable_schema.roles (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -133,14 +134,14 @@ CREATE TABLE dbtable_schema.groups (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
   external_id uuid NOT NULL UNIQUE,
   admin_role_external_id TEXT NOT NULL UNIQUE,
-  default_role_id uuid REFERENCES dbtable_schema.roles (id) ON DELETE CASCADE,
+  default_role_id uuid REFERENCES dbtable_schema.roles (id),
   display_name VARCHAR (100) NOT NULL UNIQUE,
   name VARCHAR (50) NOT NULL UNIQUE,
   purpose VARCHAR (200) NOT NULL,
   allowed_domains TEXT,
   code TEXT NOT NULL,
   ai BOOLEAN NOT NULL DEFAULT true,
-  sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
   updated_on TIMESTAMP,
@@ -149,13 +150,13 @@ CREATE TABLE dbtable_schema.groups (
 );
 ALTER TABLE dbtable_schema.groups ENABLE ROW LEVEL SECURITY;
 CREATE POLICY table_select ON dbtable_schema.groups FOR SELECT TO $PG_WORKER USING (
-  $IS_WORKER OR $IS_CREATOR OR id = $GROUP_ID OR external_id = $GROUP_ID OR code IS NOT NULL
+  $IS_WORKER OR $IS_CREATOR OR code IS NOT NULL
 );
 CREATE POLICY table_insert ON dbtable_schema.groups FOR INSERT TO $PG_WORKER WITH CHECK (
   NOT EXISTS(SELECT 1 FROM dbtable_schema.groups WHERE $IS_CREATOR)
 );
-CREATE POLICY table_update ON dbtable_schema.groups FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR id = $GROUP_ID);
-CREATE POLICY table_delete ON dbtable_schema.groups FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR id = $GROUP_ID);
+CREATE POLICY table_update ON dbtable_schema.groups FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
+CREATE POLICY table_delete ON dbtable_schema.groups FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
 CREATE TABLE dbtable_schema.group_roles (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

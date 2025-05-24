@@ -17,6 +17,8 @@ import (
 var groupNameInUseError error = util.UserError("Group name in use.")
 
 func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types.PostGroupResponse, error) {
+	userSub := info.Session.GetUserSub()
+
 	var undos []func()
 
 	defer func() {
@@ -47,12 +49,10 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	groupSub := gs.String()
 	info.Session.SetGroupSub(groupSub)
 
-	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
-
-	_, err = ds.SessionBatchExec(info.Ctx, `
-		INSERT INTO dbtable_schema.users (sub, created_sub, username, created_on)
-		VALUES ($1::uuid, $1::uuid, $2, $3)
-	`, info.Session.GetGroupSub(), data.Name, time.Now())
+	_, err = info.Tx.Exec(info.Ctx, `
+		INSERT INTO dbtable_schema.users (created_sub, sub, username, created_on)
+		VALUES ($1::uuid, $2::uuid, $3, $4)
+	`, userSub, groupSub, data.Name, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -64,13 +64,13 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, created_sub, name, purpose, allowed_domains, display_name, ai, sub)
 		VALUES ($1::uuid, $1, $1::uuid, $1::uuid, $2, $3, $4, $5, $6, $7)
 		RETURNING id, name
-	`, info.Session.GetUserSub(), data.Name, data.Purpose, data.AllowedDomains, data.DisplayName, data.Ai, info.Session.GetGroupSub()).Scan(&groupId, &groupName)
+	`, userSub, data.Name, data.Purpose, data.AllowedDomains, data.DisplayName, data.Ai, groupSub).Scan(&groupId, &groupName)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	// Create group resource in Keycloak
-	kcGroupIdOnly, err := h.Keycloak.CreateGroup(info.Ctx, info.Session.GetUserSub(), data.GetName())
+	kcGroupIdOnly, err := h.Keycloak.CreateGroup(info.Ctx, userSub, data.GetName())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -79,7 +79,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		kcGroupExternalId = kcGroupIdOnly.Id
 
 		undos = append(undos, func() {
-			err = h.Keycloak.DeleteGroup(info.Ctx, info.Session.GetUserSub(), kcGroupExternalId)
+			err = h.Keycloak.DeleteGroup(info.Ctx, userSub, kcGroupExternalId)
 			if err != nil {
 				util.ErrorLog.Println(util.ErrCheck(err))
 			}
@@ -89,7 +89,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	}
 
 	// Create Admin role subgroup
-	kcAdminSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, info.Session.GetUserSub(), kcGroupExternalId, "Admin")
+	kcAdminSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, userSub, kcGroupExternalId, "Admin")
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -101,24 +101,24 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
 		VALUES ($1, $2, $3, $4, $5::uuid)
 		ON CONFLICT (group_id, role_id) DO NOTHING
-	`, groupId, h.Database.AdminRoleId(), kcAdminSubGroupExternalId, time.Now(), info.Session.GetUserSub())
+	`, groupId, h.Database.AdminRoleId(), kcAdminSubGroupExternalId, time.Now(), userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	// Add admin roles to the admin subgroup
-	roles, err := h.Keycloak.GetGroupAdminRoles(info.Ctx, info.Session.GetUserSub())
+	roles, err := h.Keycloak.GetGroupAdminRoles(info.Ctx, userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddRolesToGroup(info.Ctx, info.Session.GetUserSub(), kcAdminSubGroupExternalId, roles)
+	err = h.Keycloak.AddRolesToGroup(info.Ctx, userSub, kcAdminSubGroupExternalId, roles)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	// Attach the user to the admin subgroup
-	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetUserSub(), kcAdminSubGroupExternalId)
+	err = h.Keycloak.AddUserToGroup(info.Ctx, userSub, userSub, kcAdminSubGroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -128,9 +128,9 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	err = info.Tx.QueryRow(info.Ctx, `
 		UPDATE dbtable_schema.groups 
 		SET external_id = $2, admin_role_external_id = $3, purpose = $4
-		WHERE id = $1
+		WHERE created_sub = $1
 		RETURNING code
-	`, groupId, kcGroupExternalId, kcAdminSubGroupExternalId, data.Purpose).Scan(&groupCode)
+	`, userSub, kcGroupExternalId, kcAdminSubGroupExternalId, data.Purpose).Scan(&groupCode)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -138,7 +138,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	var adminUserId string
 	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT id FROM dbview_schema.enabled_users WHERE sub = $1
-	`, info.Session.GetUserSub()).Scan(&adminUserId)
+	`, userSub).Scan(&adminUserId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -147,19 +147,21 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
 		VALUES ($1, $2, $3, $4::uuid)
 		ON CONFLICT (user_id, group_id) DO NOTHING
-	`, adminUserId, groupId, kcAdminSubGroupExternalId, info.Session.GetUserSub())
+	`, adminUserId, groupId, kcAdminSubGroupExternalId, userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	_ = h.Socket.RoleCall(info.Session.GetUserSub())
+	_ = h.Socket.RoleCall(userSub)
 
 	undos = nil
 	return &types.PostGroupResponse{Code: groupCode}, nil
 }
 
 func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*types.PatchGroupResponse, error) {
+	userSub := info.Session.GetUserSub()
 	sessionGroupPath := info.Session.GetGroupPath()
+
 	cachedGroup := h.Cache.Groups.Load(sessionGroupPath)
 	nameChanged := cachedGroup.GetName() != data.Name
 
@@ -177,26 +179,25 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.groups
 		SET name = $2, purpose = $3, display_name = $4, updated_sub = $5, updated_on = $6, ai = $7
-		WHERE id = $1
-	`, info.Session.GetGroupId(), data.Name, data.Purpose, data.DisplayName, info.Session.GetUserSub(), time.Now(), data.Ai)
+		WHERE created_sub = $1
+	`, userSub, data.Name, data.Purpose, data.DisplayName, userSub, time.Now(), data.Ai)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
-
-	_, err = ds.SessionBatchExec(info.Ctx, `
-		UPDATE dbtable_schema.users
+	_, err = info.Tx.Exec(info.Ctx, `
+		UPDATE dbtable_schema.users u
 		SET username = $2, updated_sub = $3, updated_on = $4
-		WHERE sub = $1
-	`, info.Session.GetGroupSub(), data.Name, info.Session.GetUserSub(), time.Now())
+		FROM dbtable_schema.groups g
+		WHERE g.sub = u.sub AND u.created_sub = $1
+	`, userSub, data.Name, userSub, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	// If the group name changed, make a new group cache entry
 	if nameChanged {
-		err = h.Keycloak.UpdateGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetGroupExternalId(), data.Name)
+		err = h.Keycloak.UpdateGroup(info.Ctx, userSub, info.Session.GetGroupExternalId(), data.Name)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -212,6 +213,8 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 }
 
 func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAssignmentsRequest) (*types.PatchGroupAssignmentsResponse, error) {
+	userSub := info.Session.GetUserSub()
+
 	assignmentsBytes, err := h.Redis.Client().Get(info.Ctx, "group_role_assignments:"+info.Session.GetGroupId()).Bytes()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, util.ErrCheck(err)
@@ -224,7 +227,7 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 		return nil, util.ErrCheck(err)
 	}
 
-	adminRoles, err := h.Keycloak.GetGroupAdminRoles(info.Ctx, info.Session.GetUserSub())
+	adminRoles, err := h.Keycloak.GetGroupAdminRoles(info.Ctx, userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -256,7 +259,7 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 
 			if len(deletions) > 0 {
 				_, err := h.Keycloak.SendCommand(info.Ctx, clients.DeleteRolesFromGroupKeycloakCommand, &types.AuthRequestParams{
-					UserSub: info.Session.GetUserSub(),
+					UserSub: userSub,
 					GroupId: sgRoleActions.Id,
 					Roles:   deletions,
 				})
@@ -287,7 +290,7 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 			}
 
 			if len(additions) > 0 {
-				err = h.Keycloak.AddRolesToGroup(info.Ctx, info.Session.GetUserSub(), sgRoleActions.Id, additions)
+				err = h.Keycloak.AddRolesToGroup(info.Ctx, userSub, sgRoleActions.Id, additions)
 				if err != nil {
 					util.ErrorLog.Println(util.ErrCheck(err))
 				}
@@ -299,7 +302,9 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 }
 
 func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignmentsRequest) (*types.GetGroupAssignmentsResponse, error) {
-	kcGroup, err := h.Keycloak.GetGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetGroupExternalId())
+	userSub := info.Session.GetUserSub()
+
+	kcGroup, err := h.Keycloak.GetGroup(info.Ctx, userSub, info.Session.GetGroupExternalId())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -307,7 +312,7 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 	assignments := make(map[string]*types.IGroupRoleAuthActions)
 	assignmentsWithoutId := make(map[string]*types.IGroupRoleAuthActions)
 
-	subGroups, err := h.Keycloak.GetGroupSubGroups(info.Ctx, info.Session.GetUserSub(), kcGroup.Id)
+	subGroups, err := h.Keycloak.GetGroupSubGroups(info.Ctx, userSub, kcGroup.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -321,7 +326,7 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 			Actions: []*types.IGroupRoleAuthAction{},
 		}
 
-		sgRoles, err := h.Keycloak.GetGroupSiteRoles(info.Ctx, info.Session.GetUserSub(), sg.Id)
+		sgRoles, err := h.Keycloak.GetGroupSiteRoles(info.Ctx, userSub, sg.Id)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -353,26 +358,20 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 }
 
 func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*types.DeleteGroupResponse, error) {
-	groupId := info.Session.GetGroupId()
 	userSub := info.Session.GetUserSub()
+	groupExternalId := info.Session.GetGroupExternalId()
 
-	var groupExternalId, groupCreatedSub string
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT external_id, created_sub
-		FROM dbtable_schema.groups WHERE id = $1
-	`, groupId).Scan(&groupExternalId, &groupCreatedSub)
+	// Cascades to group
+	_, err := info.Tx.Exec(info.Ctx, `
+		DELETE FROM dbtable_schema.users u
+		USING dbtable_schema.groups g
+		WHERE g.sub = u.sub AND g.created_sub = $1 AND u.created_sub = $1;
+	`, userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	if groupCreatedSub != userSub {
-		return nil, util.ErrCheck(err)
-	}
-
-	_, err = info.Tx.Exec(info.Ctx, `
-		DELETE FROM dbtable_schema.groups
-		WHERE id = $1;
-	`, groupId)
+	_, err = h.DeactivateProfile(info, nil)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -77,31 +77,17 @@ func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFu
 func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 	return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 		sessionSubGroups := session.GetSubGroupPaths()
-		sessionGroupId := session.GetGroupId()
-
 		if len(sessionSubGroups) == 0 {
-			if sessionGroupId != "" { // user had a group but no more
-				session.SetGroupId("")
-				session.SetGroupCode("")
-				session.SetGroupName("")
-				session.SetGroupPath("")
-				session.SetSubGroupName("")
-				session.SetSubGroupPath("")
-				session.SetGroupExternalId("")
-				session.SetSubGroupExternalId("")
-				session.SetGroupAi(false)
-				session.SetGroupSub("")
-				session.SetGroupSessionVersion(0)
-			}
 			next(w, req, session)
 			return
 		}
 
+		sessionGroupId := session.GetGroupId()
 		refresh := sessionGroupId == ""
 
 		if !refresh {
 			currentGroupVersion, found := a.Cache.GroupSessionVersions.Load(sessionGroupId)
-			if !found || currentGroupVersion != session.GetGroupSessionVersion() {
+			if !found || currentGroupVersion > session.GetGroupSessionVersion() {
 				refresh = true
 			}
 		}
@@ -270,6 +256,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			}
 
 			ctx := req.Context()
+			userSub := session.GetUserSub()
 
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
@@ -283,7 +270,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				scanKeys := make([]string, 0, iLen*2) // double num to make room for ModTime keys
 
 				for _, val := range opts.Invalidations {
-					invCacheKey := session.GetUserSub() + val
+					invCacheKey := userSub + val
 
 					// If it's not a dynamically generated path, we don't need to scan redis for keys
 					if strings.Index(val, "*") == -1 {
@@ -324,7 +311,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				return
 			}
 
-			cacheKey := session.GetUserSub() + req.URL.String()
+			cacheKey := userSub + req.URL.String()
 			cacheKeyModTime := cacheKey + cacheKeySuffixModTime
 
 			// Check redis cache for request

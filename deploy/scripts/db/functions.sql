@@ -12,18 +12,6 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION dbfunc_schema.delete_group(
-  sub UUID  
-) RETURNS TABLE (
-  id UUID
-) AS $$
-BEGIN
-  RETURN QUERY
-  DELETE FROM dbtable_schema.groups WHERE created_sub = sub
-  RETURNING dbtable_schema.groups.id;
-END;
-$$ LANGUAGE PLPGSQL;
-
 CREATE OR REPLACE FUNCTION dbfunc_schema.make_group_code() RETURNS TRIGGER 
 AS $$
   BEGIN

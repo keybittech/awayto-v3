@@ -129,13 +129,15 @@ message KeycloakRealmClient {
 }
 
 message OIDCToken {
-  string accessToken = 1 [json_name = "access_token"];
-  double expiresIn = 2 [json_name = "expires_in"];
-  double refreshExpiresIn = 3 [json_name = "refresh_expires_in"];
-  string refreshToken = 4 [json_name = "refresh_token"];
-  string tokenType = 5 [json_name = "token_type"];
-  uint32 notBeforePolicy = 6 [json_name = "not-before-policy"];
-  string scope = 7;
+  string idToken = 1 [json_name = "id_token"];
+  string accessToken = 2 [json_name = "access_token"];
+  string refreshToken = 3 [json_name = "refresh_token"];
+  string tokenType = 4 [json_name = "token_type"];
+  string sessionState = 5 [json_name = "session_state"];
+  string scope = 6;
+  double expiresIn = 7 [json_name = "expires_in"];
+  double refreshExpiresIn = 8 [json_name = "refresh_expires_in"];
+  uint32 notBeforePolicy = 9 [json_name = "not-before-policy"];
 }
 
 message AuthWebhookResponse {

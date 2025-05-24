@@ -46,6 +46,7 @@ service UserProfileService {
     option (google.api.http) = {
       patch: "/v1/profile/deactivate"
     };
+    option (use_tx) = true;
   }
 }
 

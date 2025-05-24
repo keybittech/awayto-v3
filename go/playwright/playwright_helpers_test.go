@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
+	"net/http"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -33,9 +34,10 @@ type PageResponse struct {
 }
 
 type UserWithPass struct {
-	Password string
-	UserId   string
-	Profile  *types.IUserProfile
+	Password            string
+	UserId              string
+	AuthorizationHeader map[string]string
+	Profile             *types.IUserProfile
 }
 
 type Page struct {
@@ -103,10 +105,8 @@ func (l Locator) Click() {
 	}
 }
 
-func (l Locator) WaitFor() {
-	if err := l.Locator.WaitFor(); err != nil {
-		l.T.Fatal(debugErr(err))
-	}
+func (l Locator) WaitFor(options ...playwright.LocatorWaitForOptions) error {
+	return l.Locator.WaitFor(options...)
 }
 
 func (l Locator) Fill(value string, opts ...playwright.LocatorFillOptions) {
@@ -186,7 +186,7 @@ func getBrowserPage(t *testing.T, userId string) *Page {
 	p.OnResponse(func(response playwright.Response) {
 		go func() {
 			body, err := response.Body()
-			if err != nil || body == nil {
+			if err != nil || body == nil || strings.Contains(response.URL(), "src") || strings.Contains(response.URL(), "node_modules") {
 				return
 			}
 			responseMu.Lock()
@@ -224,13 +224,80 @@ func getBrowserPage(t *testing.T, userId string) *Page {
 	return pages[userId]
 }
 
+func login(t *testing.T, userId string) *Page {
+	page := getBrowserPage(t, userId)
+	if !strings.HasSuffix(strings.Trim(page.URL(), "/"), "app") {
+		page.Goto("/app")
+		doEval(page)
+	}
+
+	onSignInPage, err := page.GetByText("Sign in to your account").IsVisible()
+	if err != nil {
+		t.Fatalf("sign in error %v", err)
+	}
+
+	if onSignInPage {
+		page.ByRole("textbox", "Email").MouseOver().Fill(page.UserWithPass.Profile.Email)
+		page.ByRole("textbox", "Password").MouseOver().Fill(page.UserWithPass.Password)
+		tokenResponse, err := readResponse[*types.OIDCToken](http.MethodPost, "/auth/realms/.*/protocol/openid-connect/token", func() {
+			page.ByRole("button", "Sign In").MouseOver().Click()
+			time.Sleep(time.Second)
+		})
+		if err == nil {
+			authHeader := make(map[string]string)
+			authHeader["Authorization"] = "Bearer " + tokenResponse.GetAccessToken()
+			page.UserWithPass.AuthorizationHeader = authHeader
+		}
+	}
+
+	return page
+}
+
 func clearResponses() {
 	responseMu.Lock()
 	responses = make([]*PageResponse, 0)
 	responseMu.Unlock()
 }
 
-func readResponse[T proto.Message](action func()) (T, error) {
+func readResponse[T proto.Message](method, path string, action func()) (T, error) {
+	var empty T
+	clearResponses()
+
+	action()
+
+	time.Sleep(1 * time.Second)
+
+	defer clearResponses()
+
+	responseMu.Lock()
+	defer responseMu.Unlock()
+
+	checked := make([]string, 0)
+	for _, r := range responses {
+		if method != r.method {
+			checked = append(checked, "\n"+r.method+" "+r.url)
+			continue
+		}
+
+		matched, err := regexp.MatchString(path, r.url)
+		if err != nil {
+			return empty, fmt.Errorf("failed to match path %s to url %s", path, r.url)
+		}
+
+		if matched {
+			pb := reflect.New(reflect.TypeOf(empty).Elem()).Interface().(T)
+			err := protojson.Unmarshal(r.body, pb)
+			if err != nil {
+				return empty, fmt.Errorf("failed to unmarshal during %s parsing, %v", path, err)
+			}
+			return pb, nil
+		}
+	}
+
+	return empty, fmt.Errorf("did not find any responses for path %s, checked %v", path, checked)
+}
+
+func readHandlerResponse[T proto.Message](action func()) (T, error) {
 	var empty T
 	emptyT := reflect.TypeOf(empty)
 	emptyTName := emptyT.Elem().Name()
@@ -260,6 +327,8 @@ func readResponse[T proto.Message](action func()) (T, error) {
 	clearResponses()
 
 	action()
+
+	time.Sleep(1 * time.Second)
 
 	defer clearResponses()
 
@@ -311,28 +380,6 @@ func doEval(page *Page) {
 			trailDot.style.transform = 'translate(' + (event.clientX - 20) + 'px, ' + (event.clientY - 20) + 'px)';
 		});
 	`)
-}
-
-func login(t *testing.T, userId string) *Page {
-	page := getBrowserPage(t, userId)
-	if !strings.HasSuffix(page.URL(), "app") {
-		page.Goto("/app")
-		doEval(page)
-	}
-
-	onSignInPage, err := page.GetByText("Sign in to your account").IsVisible()
-	if err != nil {
-		t.Fatalf("sign in error %v", err)
-	}
-
-	if onSignInPage {
-		page.ByRole("textbox", "Email").MouseOver().Fill(page.UserWithPass.Profile.Email)
-		page.ByRole("textbox", "Password").MouseOver().Fill(page.UserWithPass.Password)
-		page.ByRole("button", "Sign In").MouseOver().Click()
-		time.Sleep(time.Second)
-	}
-
-	return page
 }
 
 func goHome(page *Page) {

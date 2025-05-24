@@ -125,37 +125,3 @@ FROM
 WHERE
   un.enabled = true;
 
-CREATE
-OR REPLACE VIEW dbview_schema.enabled_groups_ext AS
-SELECT
-  eg.*,
-  ug."usersCount",
-  rls.* as roles
-FROM
-  dbview_schema.enabled_groups eg
-  JOIN dbtable_schema.groups g ON g.id = eg.id
-  LEFT JOIN LATERAL (
-    SELECT
-      JSONB_OBJECT_AGG(r.id, TO_JSONB(r)) as roles
-    FROM
-      (
-        SELECT
-          er.id,
-          er.name
-        FROM
-          dbview_schema.enabled_group_roles egr
-          JOIN dbview_schema.enabled_roles er ON egr."roleId" = er.id
-        WHERE
-          egr."groupId" = eg.id
-      ) r
-  ) as rls ON true
-  LEFT JOIN (
-    SELECT
-      egu."groupId",
-      COUNT(egu."userId") as "usersCount"
-    FROM
-      dbview_schema.enabled_group_users egu
-      JOIN dbview_schema.enabled_users u ON u.id = egu."userId"
-    GROUP BY
-      egu."groupId"
-  ) ug ON ug."groupId" = eg.id;

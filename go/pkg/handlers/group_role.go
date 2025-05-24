@@ -140,8 +140,8 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 		_, err = info.Tx.Exec(info.Ctx, `
 			UPDATE dbtable_schema.groups
 			SET default_role_id = $2
-			WHERE id = $1
-		`, groupId, roleId)
+			WHERE created_sub = $1
+		`, userSub, roleId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -187,8 +187,8 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 	_, err := info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.groups
 		SET default_role_id = $2, updated_sub = $3, updated_on = $4 
-		WHERE id = $1
-	`, groupId, data.GetDefaultRoleId(), userSub, time.Now())
+		WHERE created_sub = $1
+	`, userSub, data.GetDefaultRoleId(), userSub, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -342,8 +342,8 @@ func (h *Handlers) DeleteGroupRole(info ReqInfo, data *types.DeleteGroupRoleRequ
 		SELECT gr.id
 		FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
-		WHERE g.id = $1
-	`, groupId).Scan(&defaultGroupRoleId)
+		WHERE g.created_sub = $1
+	`, userSub).Scan(&defaultGroupRoleId)
 	if err != nil && !errors.Is(err, pgx.ErrNoRows) {
 		return nil, util.ErrCheck(err)
 	}
