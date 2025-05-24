@@ -1,5 +1,5 @@
 [DEFAULT]
-banaction = ufw
+banaction = ufw-subnet
 
 [sshd]
 enabled = true
@@ -8,18 +8,18 @@ enabled = true
 enabled = true
 port = http,https
 filter = http-auth
-logpath = /home/dummyuser/project-prefix/log/auth.log
+logpath = /var/log/project-prefix/auth.log
 maxretry = 5
-bantime = 900
-findtime = 600
+bantime = 60
+findtime = 10
 ignoreip = 127.0.0.1/8
 
 [http-access]
 enabled = true
 port = http,https
 filter = http-access
-logpath = /home/dummyuser/project-prefix/log/access.log
-maxretry = 30
-bantime = 900
-findtime = 600
+logpath = /var/log/project-prefix/access.log
+maxretry = 20
+bantime = 10
+findtime = 1
 ignoreip = 127.0.0.1/8

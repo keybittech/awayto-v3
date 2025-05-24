@@ -109,7 +109,6 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 					FROM dbview_schema.enabled_groups
 					WHERE name = $1
 				`, groupName)
-
 				batch.Send(ctx)
 
 				group := *groupReq

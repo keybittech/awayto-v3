@@ -192,14 +192,12 @@ func (b *Batchable) Send(ctx context.Context) {
 	var currentOpLoc string
 	defer func() {
 		if r := recover(); r != nil {
-			if err, ok := r.(error); ok {
-				var sb strings.Builder
-				sb.WriteString("Error sending batch: ")
-				sb.WriteString(err.Error())
-				sb.WriteByte(' ')
-				sb.WriteString(strings.TrimSpace(currentOpLoc))
-				panic(sb.String())
-			}
+			var sb strings.Builder
+			sb.WriteString("Error sending batch: ")
+			sb.WriteString(fmt.Sprint(r))
+			sb.WriteByte(' ')
+			sb.WriteString(strings.TrimSpace(currentOpLoc))
+			panic(sb.String())
 		}
 	}()
 

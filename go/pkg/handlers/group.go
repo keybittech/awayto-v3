@@ -359,14 +359,14 @@ func (h *Handlers) GetGroupAssignments(info ReqInfo, data *types.GetGroupAssignm
 
 func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*types.DeleteGroupResponse, error) {
 	userSub := info.Session.GetUserSub()
+	groupSub := info.Session.GetGroupSub()
 	groupExternalId := info.Session.GetGroupExternalId()
 
 	// Cascades to group
 	_, err := info.Tx.Exec(info.Ctx, `
-		DELETE FROM dbtable_schema.users u
-		USING dbtable_schema.groups g
-		WHERE g.sub = u.sub AND g.created_sub = $1 AND u.created_sub = $1;
-	`, userSub)
+		DELETE FROM dbtable_schema.users
+		WHERE sub = $1 AND created_sub = $2
+	`, groupSub, userSub) // created_sub used for RLS check
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -35,21 +35,23 @@ func SnipUserError(err string) string {
 	return err[start+ErrorForUserLen : end-1]
 }
 
-func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []protoreflect.Name, pbVal proto.Message) {
+func MaskNologFields(pb proto.Message, ignoreFields []protoreflect.Name) {
+	reflectMsg := pb.ProtoReflect()
+	fields := reflectMsg.Descriptor().Fields()
+	for _, ignoreField := range ignoreFields {
+		if fieldDescriptor := fields.ByName(ignoreField); fieldDescriptor != nil {
+			reflectMsg.Set(fieldDescriptor, protoreflect.ValueOfString("NOLOG_FIELD"))
+		}
+	}
+}
+
+func RequestError(w http.ResponseWriter, givenErr string, ignoreFields []protoreflect.Name, pb proto.Message) {
 	requestId := uuid.NewString()
 
 	var reqParams strings.Builder
-	if pbVal != nil {
-		reflectMsg := pbVal.ProtoReflect()
-		fields := reflectMsg.Descriptor().Fields()
-
-		for _, ignoreField := range ignoreFields {
-			if fieldDescriptor := fields.ByName(ignoreField); fieldDescriptor != nil {
-				reflectMsg.Set(fieldDescriptor, protoreflect.ValueOfString("NOLOG_FIELD"))
-			}
-		}
-
-		pbValJson, err := protojson.Marshal(pbVal)
+	if pb != nil {
+		MaskNologFields(pb, ignoreFields)
+		pbValJson, err := protojson.Marshal(pb)
 		if err != nil {
 			reqParams.WriteString("ERROR PARSING REQPARAMS: ")
 			reqParams.WriteString(err.Error())

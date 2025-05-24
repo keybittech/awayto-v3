@@ -25,27 +25,18 @@ func (h *Handlers) CheckGroupName(info ReqInfo, data *types.CheckGroupNameReques
 }
 
 func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types.JoinGroupResponse, error) {
-	var userId, allowedDomains, defaultRoleId string
+	userSub := info.Session.GetUserSub()
 
-	var groupId string
+	// Get group information using the group code
+	var groupId, allowedDomains, kcRoleSubGroupExternalId string
 	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT id, allowed_domains, default_role_id
-		FROM dbtable_schema.groups
-		WHERE code = $1
-	`, data.GetCode()).Scan(&groupId, &allowedDomains, &defaultRoleId)
+		SELECT g.id, g.allowed_domains, gr.external_id
+		FROM dbtable_schema.groups g
+		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
+		WHERE g.code = $1
+	`, data.GetCode()).Scan(&groupId, &allowedDomains, &kcRoleSubGroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))
-	}
-
-	info.Session.SetGroupId(groupId)
-
-	err = info.Tx.QueryRow(info.Ctx, `
-		SELECT id
-		FROM dbtable_schema.users
-		WHERE sub = $1
-	`, info.Session.GetUserSub()).Scan(&userId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
 	}
 
 	if allowedDomains != "" {
@@ -55,25 +46,26 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 		}
 	}
 
-	err = info.Tx.SetSession(info.Ctx, info.Session)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	var kcSubgroupExternalId string
-	err = info.Tx.QueryRow(info.Ctx, `
-		SELECT external_id
-		FROM dbtable_schema.group_roles
-		WHERE role_id = $1
-	`, defaultRoleId).Scan(&kcSubgroupExternalId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	_, err = info.Tx.Exec(info.Ctx, `
 		INSERT INTO dbtable_schema.group_users (user_id, group_id, external_id, created_sub)
-		VALUES ($1, $2, $3, $4::uuid)
-	`, userId, info.Session.GetGroupId(), kcSubgroupExternalId, info.Session.GetUserSub())
+		SELECT id, $2, $3, $1::uuid
+		FROM dbtable_schema.users
+		WHERE created_sub = $1
+	`, userSub, groupId, kcRoleSubGroupExternalId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	// Skip add to group for registation joiners, keycloak must complete the registration
+	if !data.GetRegistering() {
+		// User sub twice for worker queue id + user id to add to role group
+		err = h.Keycloak.AddUserToGroup(info.Ctx, userSub, userSub, kcRoleSubGroupExternalId)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
+
+	_, err = h.ActivateProfile(info, nil)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -113,7 +105,7 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 
 // AttachUser
 func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*types.AttachUserResponse, error) {
-	var kcRoleSubgroupExternalId, createdSub string
+	var kcRoleSubgroupExternalId string
 
 	var groupId string
 	err := info.Tx.QueryRow(info.Ctx, `
@@ -130,7 +122,7 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
 
 	row, done, err := ds.SessionBatchQueryRow(info.Ctx, `
-		SELECT g.created_sub, gr.external_id
+		SELECT gr.external_id
 		FROM dbtable_schema.groups g
 		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
 		WHERE g.id = $1
@@ -140,7 +132,7 @@ func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*typ
 	}
 	defer done()
 
-	err = row.Scan(&createdSub, &kcRoleSubgroupExternalId)
+	err = row.Scan(&kcRoleSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

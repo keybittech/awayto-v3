@@ -92,6 +92,7 @@ message CheckGroupNameResponse {
 
 message JoinGroupRequest {
   string code = 1 [(google.api.field_behavior) = REQUIRED];
+  bool registering = 2;
 }
 
 message JoinGroupResponse {

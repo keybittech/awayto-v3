@@ -16,6 +16,7 @@ import (
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
+	"google.golang.org/protobuf/reflect/protoregistry"
 )
 
 type HandlerOptionsConfig struct {
@@ -318,6 +319,39 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	}
 
 	return hops
+}
+
+func GenerateOptions() map[string]*HandlerOptions {
+	opts := make(map[string]*HandlerOptions)
+	protoregistry.GlobalFiles.RangeFiles(func(fd protoreflect.FileDescriptor) bool {
+		if fd.Services().Len() == 0 {
+			return true
+		}
+
+		services := fd.Services().Get(0)
+
+		for i := 0; i <= services.Methods().Len()-1; i++ {
+			serviceMethod := services.Methods().Get(i)
+			handlerOpts := ParseHandlerOptions(serviceMethod)
+
+			protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
+				if mt.Descriptor().FullName() == serviceMethod.Input().FullName() {
+					handlerOpts.ServiceMethodType = mt
+					return false
+				}
+				return true
+			})
+
+			opts[handlerOpts.ServiceMethodName] = handlerOpts
+		}
+
+		return true
+	})
+
+	// Do this after when all opts are configured
+	ParseInvalidations(opts)
+
+	return opts
 }
 
 // Make wildcard patterns out of urls /path/{param} -> /path/*

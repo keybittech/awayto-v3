@@ -51,7 +51,7 @@ CREATE TABLE dbtable_schema.users (
 );
 CREATE INDEX user_sub_index ON dbtable_schema.users (sub);
 ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
-CREATE POLICY table_select ON dbtable_schema.users FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR);
+CREATE POLICY table_select ON dbtable_schema.users FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR OR $IS_USER);
 CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT TO $PG_WORKER WITH CHECK (true);
 CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $IS_USER);
 CREATE POLICY table_delete ON dbtable_schema.users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
@@ -171,7 +171,12 @@ CREATE TABLE dbtable_schema.group_roles (
   UNIQUE (role_id, group_id)
 );
 ALTER TABLE dbtable_schema.group_roles ENABLE ROW LEVEL SECURITY;
-CREATE POLICY table_select ON dbtable_schema.group_roles FOR SELECT TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
+CREATE POLICY table_select ON dbtable_schema.group_roles FOR SELECT TO $PG_WORKER USING (
+  $IS_CREATOR OR $HAS_GROUP OR EXISTS (
+    SELECT 1 FROM dbtable_schema.groups g 
+    WHERE g.id = group_roles.group_id AND g.code IS NOT NULL
+  )
+);
 CREATE POLICY table_insert ON dbtable_schema.group_roles FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR OR $HAS_GROUP);
 CREATE POLICY table_update ON dbtable_schema.group_roles FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
 CREATE POLICY table_delete ON dbtable_schema.group_roles FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);

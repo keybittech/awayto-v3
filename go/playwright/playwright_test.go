@@ -11,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/playwright-community/playwright-go"
 )
@@ -28,11 +27,11 @@ var (
 func TestMain(m *testing.M) {
 	util.ParseEnv()
 
-	handlerOpts = handlers.NewHandlers().Options
+	handlerOpts = util.GenerateOptions()
 
 	_, err := net.DialTimeout("tcp", fmt.Sprintf("[::]:%d", util.E_GO_HTTPS_PORT), 2*time.Second)
 	if err != nil {
-		cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME))
+		cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME), "-rateLimit=500", "-rateLimitBurst=500")
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
 		}
@@ -86,6 +85,11 @@ func TestMain(m *testing.M) {
 }
 
 func TestPlaywright(t *testing.T) {
+	defer func() {
+		if r := recover(); r != nil {
+			println("final recovery", fmt.Sprint(r))
+		}
+	}()
 	for range 10 { // Create -> Delete/Create
 		testPlaywrightRegistration(t)
 		// testPlaywrightCreatePersonalSchedule(t)

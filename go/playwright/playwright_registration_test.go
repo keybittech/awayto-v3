@@ -28,10 +28,7 @@ func testPlaywrightRegistration(t *testing.T) {
 
 		// Check if we're logged in normally
 		go func() {
-			err := page.ById("topbar_open_menu").WaitFor(playwright.LocatorWaitForOptions{
-				State:   playwright.WaitForSelectorStateVisible,
-				Timeout: playwright.Float(2000),
-			})
+			err := page.ById("topbar_open_menu").WaitFor()
 			if err == nil {
 				resultChan <- "Internal"
 			}
@@ -39,10 +36,7 @@ func testPlaywrightRegistration(t *testing.T) {
 
 		// Check if login failed and we need to register
 		go func() {
-			err := page.ById("kc-page-title").WaitFor(playwright.LocatorWaitForOptions{
-				State:   playwright.WaitForSelectorStateVisible,
-				Timeout: playwright.Float(2000),
-			})
+			err := page.ById("kc-page-title").WaitFor()
 			if err == nil {
 				resultChan <- "Registration"
 			}
@@ -86,11 +80,11 @@ func testPlaywrightRegistration(t *testing.T) {
 
 			// On registration page
 			doEval(page)
-			page.ByLocator("#email").MouseOver().Fill(page.UserWithPass.Profile.Email)
-			page.ByLocator("#password").MouseOver().Fill(page.UserWithPass.Password)
-			page.ByLocator("#password-confirm").MouseOver().Fill(page.UserWithPass.Password)
-			page.ByLocator("#firstName").MouseOver().Fill(page.UserWithPass.Profile.FirstName)
-			page.ByLocator("#lastName").MouseOver().Fill(page.UserWithPass.Profile.LastName)
+			page.ById("email").MouseOver().Fill(page.UserWithPass.Profile.Email)
+			page.ById("password").MouseOver().Fill(page.UserWithPass.Password)
+			page.ById("password-confirm").MouseOver().Fill(page.UserWithPass.Password)
+			page.ById("firstName").MouseOver().Fill(page.UserWithPass.Profile.FirstName)
+			page.ById("lastName").MouseOver().Fill(page.UserWithPass.Profile.LastName)
 			page.ByRole("button", "Register").MouseOver().Click()
 
 			println(fmt.Sprintf("Registered user %s with pass %s", page.UserWithPass.Profile.Email, page.UserWithPass.Password))
@@ -233,16 +227,45 @@ func testPlaywrightRegistration(t *testing.T) {
 		page.ByRole("button", "Next").MouseOver().Click()
 		page.ByLocator(`button[id="confirmation_approval"]`).MouseOver().Click()
 
-		// Logout
-		page.ById("topbar_open_menu").WaitFor()
-		page.ById("topbar_open_menu").MouseOver().Click()
-		page.ByText("Logout").MouseOver().Click()
-
-		login(t, "admin")
+		// time.Sleep(1 * time.Hour)
 	})
 
-	t.Run("staff member joins with the group code", func(tt *testing.T) {
-		// page := getBrowserPage(t, "admin")
+	t.Run("staff joins on the registration page, with the group code", func(tt *testing.T) {
+		page := login(t, "staff")
+		// Register user
+		page.ByRole("link", "Register").MouseOver().Click()
 
+		// On registration page
+		doEval(page)
+		page.ById("groupCode").MouseOver().Fill(groupCode)
+		page.ById("email").MouseOver().Fill(page.UserWithPass.Profile.Email)
+		page.ById("password").MouseOver().Fill(page.UserWithPass.Password)
+		page.ById("password-confirm").MouseOver().Fill(page.UserWithPass.Password)
+		page.ById("firstName").MouseOver().Fill(page.UserWithPass.Profile.FirstName)
+		page.ById("lastName").MouseOver().Fill(page.UserWithPass.Profile.LastName)
+		page.ByRole("button", "Register").MouseOver().Click()
+
+		println(fmt.Sprintf("Registered user %s with pass %s", page.UserWithPass.Profile.Email, page.UserWithPass.Password))
+	})
+
+	t.Run("user joins internally, with the group code", func(tt *testing.T) {
+		page := login(t, "user")
+		// Register user
+		page.ByRole("link", "Register").MouseOver().Click()
+
+		// On registration page
+		doEval(page)
+		page.ById("email").MouseOver().Fill(page.UserWithPass.Profile.Email)
+		page.ById("password").MouseOver().Fill(page.UserWithPass.Password)
+		page.ById("password-confirm").MouseOver().Fill(page.UserWithPass.Password)
+		page.ById("firstName").MouseOver().Fill(page.UserWithPass.Profile.FirstName)
+		page.ById("lastName").MouseOver().Fill(page.UserWithPass.Profile.LastName)
+		page.ByRole("button", "Register").MouseOver().Click()
+
+		println(fmt.Sprintf("Registered user %s with pass %s", page.UserWithPass.Profile.Email, page.UserWithPass.Password))
+
+		page.ById("use_group_code").MouseOver().Click()
+		page.ById("join_group_input_code").MouseOver().Fill(groupCode)
+		page.ById("join_group_modal_submit").MouseOver().Click()
 	})
 }

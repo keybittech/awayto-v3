@@ -37,8 +37,6 @@ kcadm update realms/$KC_REALM \
   -s adminTheme=kcv2 \
   -s emailTheme=site
 
-kcadm update events/config -r $KC_REALM -s eventsListeners=[\"custom-event-listener\"]
-
 echo "# Configuring authenticator to use custom registration."
 kcadm create authentication/flows/registration/copy -r $KC_REALM -s newName="custom registration"
 

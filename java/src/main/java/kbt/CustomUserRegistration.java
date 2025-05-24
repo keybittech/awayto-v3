@@ -120,31 +120,28 @@ public class CustomUserRegistration extends RegistrationUserCreation {
           validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
         } else {
 
-          if (groupCode != session.getAttribute("groupCode")) {
+          // Get group information for registration
+          JSONObject registrationValidationPayload = new JSONObject();
+          registrationValidationPayload.put("groupCode", groupCode);
+          JSONObject registrationValidationResponse = BackchannelAuth.sendUnixMessage("REGISTER_VALIDATE",
+              registrationValidationPayload);
 
-            // Get group information for registration
-            JSONObject registrationValidationPayload = new JSONObject();
-            registrationValidationPayload.put("groupCode", groupCode);
-            JSONObject registrationValidationResponse = BackchannelAuth.sendUnixMessage("REGISTER_VALIDATE",
-                registrationValidationPayload);
+          if (registrationValidationResponse.getBoolean("success")) {
 
-            if (registrationValidationResponse.getBoolean("success")) {
+            String groupId = registrationValidationResponse.getString("roleGroupId");
 
-              String groupId = registrationValidationResponse.getString("roleGroupId");
-
-              if (context.getRealm().getGroupById(groupId) != null) { // If this is null it'll get caught later on
-                allowedDomains = registrationValidationResponse.getString("allowedDomains");
-                session.setAttribute("groupId", groupId);
-                session.setAttribute("groupCode", groupCode);
-                session.setAttribute("groupName", registrationValidationResponse.getString("groupName"));
-                session.setAttribute("allowedDomains", allowedDomains);
-                session.setAttribute("invalidGroupFlag", false);
-              } else {
-                session.setAttribute("invalidGroupFlag", true);
-              }
-            } else if (registrationValidationResponse.getString("reason").contains("BAD_GROUP")) {
-              validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
+            if (context.getRealm().getGroupById(groupId) != null) { // If this is null it'll get caught later on
+              allowedDomains = registrationValidationResponse.getString("allowedDomains");
+              session.setAttribute("groupId", groupId);
+              session.setAttribute("groupCode", groupCode);
+              session.setAttribute("groupName", registrationValidationResponse.getString("groupName"));
+              session.setAttribute("allowedDomains", allowedDomains);
+              session.setAttribute("invalidGroupFlag", false);
+            } else {
+              session.setAttribute("invalidGroupFlag", true);
             }
+          } else if (registrationValidationResponse.getString("reason").contains("BAD_GROUP")) {
+            validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
           }
         }
       }
@@ -183,9 +180,9 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     UserProfile profile = (UserProfile) session.getAttribute("UP_REGISTER");
     AbstractUserRepresentation up = profile.toRepresentation();
 
-    Object groupIdObj = session.getAttribute("groupId");
+    String groupIdObj = (String) session.getAttribute("groupId");
 
-    String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Forwarded-For").split(":")[0];
+    String xForwardedFor = context.getHttpRequest().getHttpHeaders().getHeaderString("X-Forwarded-For");
 
     JSONObject registrationSuccessPayload = new JSONObject();
 

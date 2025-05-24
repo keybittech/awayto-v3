@@ -162,9 +162,9 @@ func debugErr(err error) error {
 	return errors.New(fmt.Sprintf("%s %s", err, debug.Stack()))
 }
 
-func getBrowserPage(t *testing.T, userId string) *Page {
+func getBrowserPage(t *testing.T, userId string) (*Page, bool) {
 	if p, ok := pages[userId]; ok {
-		return p
+		return p, false
 	}
 
 	defaultOptions := playwright.BrowserNewPageOptions{
@@ -221,14 +221,19 @@ func getBrowserPage(t *testing.T, userId string) *Page {
 	doEval(page)
 
 	pages[userId] = page
-	return pages[userId]
+	return pages[userId], true
 }
 
 func login(t *testing.T, userId string) *Page {
-	page := getBrowserPage(t, userId)
+	page, setup := getBrowserPage(t, userId)
 	if !strings.HasSuffix(strings.Trim(page.URL(), "/"), "app") {
 		page.Goto("/app")
 		doEval(page)
+	}
+
+	_, err := page.Page.Evaluate("() => window.localStorage.clear()")
+	if err != nil {
+		t.Fatalf("error cleaning local storage on delete login %v", err)
 	}
 
 	onSignInPage, err := page.GetByText("Sign in to your account").IsVisible()
@@ -243,11 +248,13 @@ func login(t *testing.T, userId string) *Page {
 			page.ByRole("button", "Sign In").MouseOver().Click()
 			time.Sleep(time.Second)
 		})
-		if err == nil {
-			authHeader := make(map[string]string)
-			authHeader["Authorization"] = "Bearer " + tokenResponse.GetAccessToken()
-			page.UserWithPass.AuthorizationHeader = authHeader
+		if !setup && (err != nil || tokenResponse == nil || tokenResponse.GetAccessToken() == "") {
+			t.Fatalf("failed to read new auth token %v", err)
 		}
+
+		authHeader := make(map[string]string)
+		authHeader["Authorization"] = "Bearer " + tokenResponse.GetAccessToken()
+		page.UserWithPass.AuthorizationHeader = authHeader
 	}
 
 	return page

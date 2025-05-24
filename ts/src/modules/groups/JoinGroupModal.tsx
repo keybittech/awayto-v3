@@ -14,8 +14,6 @@ function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
 
   const { setSnack } = useUtil();
   const [joinGroup] = siteApi.useGroupUtilServiceJoinGroupMutation();
-  const [attachUser] = siteApi.useGroupUtilServiceAttachUserMutation();
-  const [activateProfile] = siteApi.useUserProfileServiceActivateProfileMutation();
   const [code, setCode] = useState('');
 
   const handleSubmit = useCallback(() => {
@@ -25,8 +23,6 @@ function JoinGroupModal({ closeModal }: IComponent): React.JSX.Element {
     }
 
     joinGroup({ joinGroupRequest: { code: code } }).unwrap().then(async () => {
-      await attachUser({ attachUserRequest: { code: code } }).unwrap().catch(console.error);
-      await activateProfile().unwrap().catch(console.error);
       if (closeModal)
         closeModal(true);
     }).catch(console.error);

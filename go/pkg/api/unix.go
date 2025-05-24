@@ -10,15 +10,21 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"runtime/debug"
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
+
+var DEFAULT_UNIX_IGNORED_PROTO_FIELDS = []protoreflect.Name{
+	protoreflect.Name("firstName"),
+	protoreflect.Name("lastName"),
+}
 
 type UnixResponseWriter struct {
 	body       []byte
@@ -45,6 +51,9 @@ func (w *UnixResponseWriter) WriteHeader(statusCode int) {
 }
 
 func (a *API) InitUnixServer(unixPath string) {
+
+	DEFAULT_UNIX_IGNORED_PROTO_FIELDS = append(DEFAULT_UNIX_IGNORED_PROTO_FIELDS, util.DEFAULT_IGNORED_PROTO_FIELDS...)
+
 	_, err := os.Stat(unixPath)
 	if err == nil {
 		err = os.Remove(unixPath)
@@ -74,48 +83,66 @@ func (a *API) InitUnixServer(unixPath string) {
 }
 
 func (a *API) HandleUnixConnection(conn net.Conn) {
-	var deferredError error
-	var authEvent *types.AuthEvent
-
 	defer conn.Close()
 
+	var deferredError error
+	var authEvent *types.AuthEvent
+	var authResponseValue string
+
 	defer func() {
-		if p := recover(); p != nil {
-			util.ErrorLog.Println(fmt.Sprint(p))
+		reqId := uuid.NewString()
+		var sb strings.Builder
+		sb.WriteString("Backchannel: ")
+		sb.WriteString(reqId)
+		sb.WriteByte(' ')
+		sb.WriteString(authEvent.WebhookName)
+		sb.WriteByte(' ')
+		if authEvent == nil {
+			sb.WriteString(" AUTH_EVENT_NIL ")
+		} else if authEvent.GetUserId() != "" {
+			clients.GetGlobalWorkerPool().CleanUpClientMapping(authEvent.GetUserId())
 		}
-	}()
 
-	w := NewUnixResponseWriter()
-
-	defer func() {
 		if p := recover(); p != nil {
-			// ErrCheck handled errors will already have a trace
-			// If there is no trace file hint, print the full stack
-			var sb strings.Builder
-			if authEvent != nil {
-				sb.WriteString("Backchannel: ")
-				sb.WriteString(authEvent.WebhookName)
-				sb.WriteByte(' ')
-				sb.WriteString(fmt.Sprint(p))
-			}
-			errStr := sb.String()
+			sb.WriteString(" PANIC ")
+			sb.WriteString(fmt.Sprint(p))
 
-			util.RequestError(w, errStr, util.DEFAULT_IGNORED_PROTO_FIELDS, authEvent)
-			fmt.Fprint(conn, `{ "success": false, "reason": "UNIX_PANIC" }`)
-
-			if !strings.Contains(errStr, ".go:") {
-				util.ErrorLog.Println(string(debug.Stack()))
+			_, err := fmt.Fprint(conn, `{ "success": false, "reason": "UNIX_PANIC" }`)
+			if err != nil {
+				sb.WriteString(" PANIC_REPLY_ERROR ")
+				sb.WriteString(err.Error())
 			}
 		}
 
 		if deferredError != nil {
-			util.ErrorLog.Println(deferredError)
+			sb.WriteString(" DEFERRED_ERROR ")
+			sb.WriteString(deferredError.Error())
 		}
 
-		if authEvent != nil && authEvent.GetUserId() != "" {
-			clients.GetGlobalWorkerPool().CleanUpClientMapping(authEvent.GetUserId())
+		if authEvent != nil {
+			util.MaskNologFields(authEvent, DEFAULT_UNIX_IGNORED_PROTO_FIELDS)
+			sb.WriteString(" Event: ")
+			authEventBytes, err := json.Marshal(authEvent)
+			if err != nil {
+				sb.WriteString(" NO_EVENT_BYTES ")
+			} else {
+				sb.WriteString(string(authEventBytes))
+			}
+
+			if authResponseValue != "" {
+				sb.WriteString(" Response: ")
+				sb.WriteString(authResponseValue)
+			} else {
+				sb.WriteString(" NO_RESPONSE ")
+			}
+
+			sb.WriteString(" CLIENT ")
+			sb.WriteString(util.AnonIp(authEvent.GetIpAddress()))
+		} else {
+			sb.WriteString(" NO_EVENT ")
 		}
 
+		util.AuthLog.Println(sb.String())
 	}()
 
 	scanner := bufio.NewScanner(conn)
@@ -164,5 +191,7 @@ func (a *API) HandleUnixConnection(conn net.Conn) {
 		return
 	}
 
-	fmt.Fprint(conn, authResponse.GetValue())
+	authResponseValue = authResponse.GetValue()
+
+	fmt.Fprint(conn, authResponseValue)
 }

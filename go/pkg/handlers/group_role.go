@@ -281,12 +281,13 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 
 	// Add new roles to keycloak and group records
 	for _, role := range dataRoles {
+		roleName := role.GetName()
 
-		if strings.ToLower(role.GetName()) == "admin" {
+		if strings.ToLower(roleName) == "admin" {
 			continue
 		}
 
-		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, userSub, groupExternalId, role.GetName())
+		kcSubGroup, err := h.Keycloak.CreateOrGetSubGroup(info.Ctx, userSub, groupExternalId, roleName)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -306,6 +307,12 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
+
+		h.Cache.SubGroups.Store(kcSubGroup.Path, types.NewConcurrentCachedSubGroup(&types.CachedSubGroup{
+			ExternalId: kcSubGroup.Id,
+			Name:       roleName,
+			GroupPath:  info.Session.GetGroupPath(),
+		}))
 	}
 
 	undos = nil

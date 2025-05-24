@@ -9,6 +9,7 @@ import (
 )
 
 func (h *Handlers) AuthWebhook_REGISTER(info ReqInfo, authEvent *types.AuthEvent) (*types.AuthWebhookResponse, error) {
+
 	tx, err := h.Database.DatabaseClient.Pool.Begin(info.Ctx)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -19,16 +20,12 @@ func (h *Handlers) AuthWebhook_REGISTER(info ReqInfo, authEvent *types.AuthEvent
 		Tx: tx,
 	}
 
-	workerSession := types.NewConcurrentUserSession(&types.UserSession{
-		UserSub: "worker",
-	})
+	info.Tx = poolTx
 
-	err = poolTx.SetSession(info.Ctx, workerSession)
+	err = poolTx.SetSession(info.Ctx, info.Session)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-
-	info.Tx = poolTx
 
 	_, err = h.PostUserProfile(info, &types.PostUserProfileRequest{
 		FirstName: authEvent.FirstName,
@@ -42,12 +39,10 @@ func (h *Handlers) AuthWebhook_REGISTER(info ReqInfo, authEvent *types.AuthEvent
 	}
 
 	if authEvent.GroupCode != "" {
-		_, err := h.JoinGroup(info, &types.JoinGroupRequest{Code: authEvent.GroupCode})
-		if err != nil {
-			return nil, util.ErrCheck(err)
-		}
-
-		_, err = h.ActivateProfile(info, &types.ActivateProfileRequest{})
+		_, err := h.JoinGroup(info, &types.JoinGroupRequest{
+			Code:        authEvent.GroupCode,
+			Registering: true,
+		})
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

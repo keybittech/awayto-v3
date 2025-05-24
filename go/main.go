@@ -53,6 +53,12 @@ func main() {
 	// 			m.Sys/1024/1024,
 	// 			m.NumGC,
 	// 		)
+	// 		fmt.Printf("[%s] App Stats: Groups: %d, SubGroups: %d, UserSessions: %d\n",
+	// 			time.Now().Format(time.RFC3339),
+	// 			server.Cache.Groups.Len(),
+	// 			server.Cache.SubGroups.Len(),
+	// 			server.Cache.UserSessions.Len(),
+	// 		)
 	// 	}
 	// }()
 
