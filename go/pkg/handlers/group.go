@@ -381,5 +381,47 @@ func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*t
 		return nil, util.ErrCheck(err)
 	}
 
+	// Cache cleanup
+	var scanKeys []string
+	var cursor uint64
+
+	for {
+		var pathKeys []string
+		var err error
+		pathKeys, cursor, err = h.Redis.RedisClient.Scan(info.Ctx, cursor, userSub+"*", 10).Result()
+		if err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			break
+		}
+
+		for _, pathKey := range pathKeys {
+			scanKeys = append(scanKeys, pathKey)
+		}
+
+		if cursor == 0 {
+			break
+		}
+	}
+
+	if len(scanKeys) > 0 {
+		_, err := h.Redis.RedisClient.Del(info.Ctx, scanKeys...).Result()
+		if err != nil {
+			util.ErrorLog.Printf("failed to perform group deletion cache cleanup %v", err)
+		}
+	}
+
+	cachedGroup, ok := h.Cache.Groups.Get(info.Session.GetGroupPath())
+	if ok {
+		for _, sgPath := range cachedGroup.GetSubGroupPaths() {
+			h.Cache.SubGroups.Delete(sgPath)
+		}
+	}
+
+	h.Cache.Groups.Delete(info.Session.GetGroupPath())
+
+	h.Cache.UserSessions.Delete(info.Req.Header.Get("Authorization"))
+
+	_ = h.Socket.RoleCall(userSub)
+
 	return &types.DeleteGroupResponse{Success: true}, nil
 }

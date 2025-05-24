@@ -158,10 +158,10 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
           if (!roleChecking) {
             roleChecking = true;
             await refreshToken(60);
-            getUserProfileDetails()
+            await getUserProfileDetails().unwrap();
             setTimeout(() => {
               roleChecking = false;
-            }, 5000);
+            }, 1000);
           }
         } else if (socketResponse.topic) {
           const listeners = messageListeners.current.get(socketResponse.topic);
