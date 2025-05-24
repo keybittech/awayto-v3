@@ -55,7 +55,7 @@ DEMOS_DIR=demos/final
 #            TARGETS            #
 #################################
 
-JAVA_TARGET=$(JAVA_TARGET_DIR)/custom-event-listener.jar
+JAVA_TARGET=$(JAVA_TARGET_DIR)/kc-custom.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 
@@ -266,7 +266,7 @@ $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,p
 
 $(PROTO_GEN_FILES): $(PROTO_FILES) 
 	@mkdir -p $(@D) $(GO_GEN_DIR)
-	rm $(GO_GEN_DIR)/*.pb.go
+	rm $(GO_GEN_DIR)/*.pb.go || true
 	protoc --proto_path=proto \
 		--experimental_allow_proto3_optional \
 		--go_out=$(GO_GEN_DIR) \
@@ -384,7 +384,7 @@ go_test_unit: $(GO_TARGET) go_test_unit_build
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_ui
-go_test_ui: $(GO_TARGET) docker_db_restore_op
+go_test_ui: $(GO_TARGET)# docker_db_restore_op
 	rm -f demos/*.webm
 	$(call clean_test)
 	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)

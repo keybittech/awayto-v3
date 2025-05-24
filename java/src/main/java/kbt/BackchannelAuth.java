@@ -21,8 +21,6 @@ public final class BackchannelAuth {
 
   private static final File SOCKET_FILE = new File(
       System.getenv("KC_UNIX_SOCK_DIR") + "/" + System.getenv("KC_UNIX_SOCK_LOC"));
-  // private static final Logger log =
-  // Logger.getLogger(CustomEventListenerProvider.class);
 
   public static String getClientSecret(RealmModel realm) {
     String clientId = System.getenv("KC_API_CLIENT_ID");

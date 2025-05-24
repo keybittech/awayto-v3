@@ -3,12 +3,12 @@
     <modelVersion>4.0.0</modelVersion>
 
     <groupId>kbt</groupId>
-    <artifactId>custom-event-listener</artifactId>
+    <artifactId>kc-custom</artifactId>
     <version>0.0.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
-    <name>Keycloak - Custom Event Listener</name>
-    <description>This event listener will notify an admin about new registrations via Email.</description>
+    <name>Keycloak - Custom</name>
+    <description>Manages registration validations via backchannel.</description>
 
     <properties>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>

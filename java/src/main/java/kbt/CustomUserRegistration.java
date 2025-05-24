@@ -3,7 +3,6 @@ package kbt;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.jboss.logging.Logger;
 import org.json.JSONObject;
 import org.keycloak.Config;
 import org.keycloak.authentication.FormContext;
@@ -22,10 +21,10 @@ import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.ext.Provider;
 
+// private static final Logger log = Logger.getLogger(CustomEventListenerProvider.class);
+
 @Provider
 public class CustomUserRegistration extends RegistrationUserCreation {
-
-  private static final Logger log = Logger.getLogger(CustomEventListenerProvider.class);
 
   @Override
   public void init(Config.Scope config) {
