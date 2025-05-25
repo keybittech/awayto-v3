@@ -421,7 +421,7 @@ CREATE TABLE dbtable_schema.sock_connections (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
   connection_id TEXT NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
   updated_on TIMESTAMP,
   updated_sub uuid REFERENCES dbtable_schema.users (sub),
   enabled BOOLEAN NOT NULL DEFAULT true

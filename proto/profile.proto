@@ -48,6 +48,12 @@ service UserProfileService {
     };
     option (use_tx) = true;
   }
+  rpc DeleteProfile(DeleteProfileRequest) returns (DeleteProfileResponse) {
+    option (google.api.http) = {
+      delete: "/v1/profile"
+    };
+    option (use_tx) = true;
+  }
 }
 
 message IUserProfile {
@@ -122,5 +128,11 @@ message ActivateProfileResponse {
 message DeactivateProfileRequest {}
 
 message DeactivateProfileResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message DeleteProfileRequest {}
+
+message DeleteProfileResponse {
   bool success = 1 [(google.api.field_behavior) = REQUIRED];
 }

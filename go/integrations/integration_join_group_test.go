@@ -50,7 +50,7 @@ func testIntegrationJoinGroup(t *testing.T) {
 			}
 
 			if !joinViaRegister {
-				// Join Group -- puts the user in the app db
+				// Join Group -- puts the user in the app db, adds them to the group, sets profile active = true
 				joinGroupRequestBytes, err := protojson.Marshal(&types.JoinGroupRequest{
 					Code: integrationTest.Group.Code,
 				})
@@ -65,33 +65,6 @@ func testIntegrationJoinGroup(t *testing.T) {
 				}
 				if !joinGroupResponse.Success {
 					t.Fatalf("join group internal was unsuccessful %v", joinGroupResponse)
-				}
-
-				// Attach User to Group -- adds the user to keycloak records
-				attachUserRequestBytes, err := protojson.Marshal(&types.AttachUserRequest{
-					Code: integrationTest.Group.Code,
-				})
-				if err != nil {
-					t.Fatalf("error marshalling attach user request, user: %d error: %v", c, err)
-				}
-
-				attachUserResponse := &types.AttachUserResponse{}
-				err = apiRequest(token, http.MethodPost, "/api/v1/group/attach/user", attachUserRequestBytes, nil, attachUserResponse)
-				if err != nil {
-					t.Fatalf("error posting attach user request, user: %d error: %v", c, err)
-				}
-				if !attachUserResponse.Success {
-					t.Fatalf("attach user internal was unsuccessful %v", attachUserResponse)
-				}
-
-				// Activate Profile -- lets the user view the internal login pages
-				activateProfileResponse := &types.ActivateProfileResponse{}
-				err = apiRequest(token, http.MethodPatch, "/api/v1/profile/activate", nil, nil, activateProfileResponse)
-				if err != nil {
-					t.Fatalf("error patch activate profile group request, user: %d error: %v", c, err)
-				}
-				if !activateProfileResponse.Success {
-					t.Fatalf("activate profile internal was unsuccessful %v", activateProfileResponse)
 				}
 
 				// Get new token after group setup to check group membersip

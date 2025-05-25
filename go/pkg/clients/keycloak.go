@@ -35,6 +35,7 @@ const (
 	AddUserToGroupKeycloakCommand
 	AddRolesToGroupKeycloakCommand
 	DeleteRolesFromGroupKeycloakCommand
+	DeleteUserKeycloakCommand
 )
 
 var (
@@ -183,6 +184,11 @@ func InitKeycloak() *Keycloak {
 				AuthResponseParams: &types.AuthResponseParams{
 					Group: &types.KeycloakGroup{Id: groupId},
 				},
+			}
+		case DeleteUserKeycloakCommand:
+			err := kc.DeleteUser(cmd.Request.GetUserSub())
+			cmd.ReplyChan <- AuthResponse{
+				Error: err,
 			}
 		case DeleteGroupKeycloakCommand:
 			err := kc.DeleteGroup(cmd.Request.GroupId)
@@ -426,26 +432,10 @@ func (k *Keycloak) SendCommand(ctx context.Context, cmdType int32, request *type
 	return res, nil
 }
 
-func (k *Keycloak) UpdateUser(ctx context.Context, userSub, id, firstName, lastName string) error {
-	_, err := k.SendCommand(ctx, UpdateUserKeycloakCommand, &types.AuthRequestParams{
-		UserSub:   userSub,
-		UserId:    id,
-		FirstName: firstName,
-		LastName:  lastName,
-	})
-
-	if err != nil {
-		return util.ErrCheck(err)
-	}
-
-	return nil
-}
-
 func (k *Keycloak) GetGroupAdminRoles(ctx context.Context, userSub string) ([]*types.KeycloakRole, error) {
 	response, err := k.SendCommand(ctx, GetGroupAdminRolesKeycloakCommand, &types.AuthRequestParams{
 		UserSub: userSub,
 	})
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -458,7 +448,6 @@ func (k *Keycloak) GetGroupSiteRoles(ctx context.Context, userSub, groupId strin
 		UserSub: userSub,
 		GroupId: groupId,
 	})
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -466,12 +455,37 @@ func (k *Keycloak) GetGroupSiteRoles(ctx context.Context, userSub, groupId strin
 	return response.AuthResponseParams.Mappings, nil
 }
 
+func (k *Keycloak) UpdateUser(ctx context.Context, userSub, id, firstName, lastName string) error {
+	_, err := k.SendCommand(ctx, UpdateUserKeycloakCommand, &types.AuthRequestParams{
+		UserSub:   userSub,
+		UserId:    id,
+		FirstName: firstName,
+		LastName:  lastName,
+	})
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	return nil
+}
+
+func (k *Keycloak) DeleteUser(ctx context.Context, userSub string) error {
+	_, err := k.SendCommand(ctx, DeleteUserKeycloakCommand, &types.AuthRequestParams{
+		UserSub: userSub,
+		UserId:  userSub,
+	})
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	return nil
+}
+
 func (k *Keycloak) CreateGroup(ctx context.Context, userSub, name string) (*types.KeycloakGroup, error) {
 	response, err := k.SendCommand(ctx, CreateGroupKeycloakCommand, &types.AuthRequestParams{
 		UserSub:   userSub,
 		GroupName: name,
 	})
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -484,7 +498,6 @@ func (k *Keycloak) GetGroup(ctx context.Context, userSub, id string) (*types.Key
 		UserSub: userSub,
 		GroupId: id,
 	})
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -497,7 +510,6 @@ func (k *Keycloak) GetGroupByName(ctx context.Context, userSub, name string) ([]
 		UserSub:   userSub,
 		GroupName: name,
 	})
-
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -522,7 +534,6 @@ func (k *Keycloak) DeleteGroup(ctx context.Context, userSub, id string) error {
 		UserSub: userSub,
 		GroupId: id,
 	})
-
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -536,7 +547,6 @@ func (k *Keycloak) UpdateGroup(ctx context.Context, userSub, id, name string) er
 		GroupId:   id,
 		GroupName: name,
 	})
-
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -582,7 +592,6 @@ func (k *Keycloak) AddRolesToGroup(ctx context.Context, userSub, id string, role
 		GroupId: id,
 		Roles:   roles,
 	})
-
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -596,7 +605,6 @@ func (k *Keycloak) AddUserToGroup(ctx context.Context, userSub, joiningUserId, g
 		GroupId: groupId,
 		UserId:  joiningUserId,
 	})
-
 	if err != nil {
 		return util.ErrCheck(err)
 	}
@@ -610,7 +618,6 @@ func (k *Keycloak) DeleteUserFromGroup(ctx context.Context, userSub, deletingUse
 		GroupId: groupId,
 		UserId:  deletingUserId,
 	})
-
 	if err != nil {
 		return util.ErrCheck(err)
 	}

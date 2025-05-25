@@ -3,6 +3,7 @@ package clients
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -14,7 +15,11 @@ import (
 
 var defaultTrackDuration, _ = time.ParseDuration("86400s")
 
-const socketServerConnectionsKey = "socket_server_connections"
+const (
+	CacheKeySuffixModTime = ":mod"
+
+	socketServerConnectionsKey = "socket_server_connections"
+)
 
 type Redis struct {
 	RedisClient *redis.Client
@@ -259,4 +264,52 @@ func (r *Redis) HasTracking(ctx context.Context, topic, socketId string) (bool, 
 	}
 
 	return isMember, nil
+}
+
+func (r *Redis) ScanAndDelKeys(ctx context.Context, targetKeys []string, prependStr ...string) {
+	var prepend string
+	if len(prependStr) > 0 {
+		prepend = prependStr[0]
+	}
+
+	scanKeys := make([]string, 0, len(targetKeys)*2) // double num to make room for ModTime keys
+
+	for _, val := range targetKeys {
+		invCacheKey := prepend + val
+
+		// If it's not a dynamically generated path, we don't need to scan redis for keys
+		if strings.Index(val, "*") == -1 {
+			scanKeys = append(scanKeys, invCacheKey)
+			scanKeys = append(scanKeys, invCacheKey+CacheKeySuffixModTime)
+			continue
+		}
+
+		var cursor uint64
+
+		for {
+			var pathKeys []string
+			var err error
+			pathKeys, cursor, err = r.RedisClient.Scan(ctx, cursor, invCacheKey, 10).Result()
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				break
+			}
+
+			for _, pathKey := range pathKeys {
+				scanKeys = append(scanKeys, pathKey)
+				scanKeys = append(scanKeys, pathKey+CacheKeySuffixModTime)
+			}
+
+			if cursor == 0 {
+				break
+			}
+		}
+	}
+
+	if len(scanKeys) > 0 {
+		_, err := r.RedisClient.Del(ctx, scanKeys...).Result()
+		if err != nil {
+			util.ErrorLog.Println("failed to perform cache mutation cleanup pipeline", err.Error(), fmt.Sprint(scanKeys))
+		}
+	}
 }

@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"math/rand/v2"
@@ -162,9 +163,10 @@ func debugErr(err error) error {
 	return errors.New(fmt.Sprintf("%s %s", err, debug.Stack()))
 }
 
+// return a page and if it already existed
 func getBrowserPage(t *testing.T, userId string) (*Page, bool) {
 	if p, ok := pages[userId]; ok {
-		return p, false
+		return p, true
 	}
 
 	defaultOptions := playwright.BrowserNewPageOptions{
@@ -221,43 +223,23 @@ func getBrowserPage(t *testing.T, userId string) (*Page, bool) {
 	doEval(page)
 
 	pages[userId] = page
-	return pages[userId], true
+	return pages[userId], false
 }
 
-func login(t *testing.T, userId string) *Page {
-	page, setup := getBrowserPage(t, userId)
-	if !strings.HasSuffix(strings.Trim(page.URL(), "/"), "app") {
-		page.Goto("/app")
-		doEval(page)
-	}
+func doEval(page *Page) {
+	page.Evaluate(`
+		const style = document.createElement("style");
+		style.innerHTML = '.cursor-trail { position: fixed; top: 0; left: 0;	width: 40px; height: 40px; border-radius: 50%; pointer-events: none; z-index: 10000; opacity: 0.5; transition: transform 0.3s ease; background: radial-gradient(circle, rgba(255, 0, 0, 1) 10px, rgba(0, 0, 0, 0) 12px); border: 2px solid white; }';
+		document.head.appendChild(style);
 
-	_, err := page.Page.Evaluate("() => window.localStorage.clear()")
-	if err != nil {
-		t.Fatalf("error cleaning local storage on delete login %v", err)
-	}
+		const trailDot = document.createElement('div');
+		trailDot.classList.add('cursor-trail');
+		document.body.appendChild(trailDot);
 
-	onSignInPage, err := page.GetByText("Sign in to your account").IsVisible()
-	if err != nil {
-		t.Fatalf("sign in error %v", err)
-	}
-
-	if onSignInPage {
-		page.ByRole("textbox", "Email").MouseOver().Fill(page.UserWithPass.Profile.Email)
-		page.ByRole("textbox", "Password").MouseOver().Fill(page.UserWithPass.Password)
-		tokenResponse, err := readResponse[*types.OIDCToken](http.MethodPost, "/auth/realms/.*/protocol/openid-connect/token", func() {
-			page.ByRole("button", "Sign In").MouseOver().Click()
-			time.Sleep(time.Second)
-		})
-		if !setup && (err != nil || tokenResponse == nil || tokenResponse.GetAccessToken() == "") {
-			t.Fatalf("failed to read new auth token %v", err)
-		}
-
-		authHeader := make(map[string]string)
-		authHeader["Authorization"] = "Bearer " + tokenResponse.GetAccessToken()
-		page.UserWithPass.AuthorizationHeader = authHeader
-	}
-
-	return page
+		document.addEventListener('mousemove', (event) => {
+			trailDot.style.transform = 'translate(' + (event.clientX - 20) + 'px, ' + (event.clientY - 20) + 'px)';
+		});
+	`)
 }
 
 func clearResponses() {
@@ -373,23 +355,90 @@ func readHandlerResponse[T proto.Message](action func()) (T, error) {
 	return empty, fmt.Errorf("did not find any responses for output message %s (%s), checked %s", emptyTName, hops.Pattern, checked)
 }
 
-func doEval(page *Page) {
-	page.Evaluate(`
-		const style = document.createElement("style");
-		style.innerHTML = '.cursor-trail { position: fixed; top: 0; left: 0;	width: 40px; height: 40px; border-radius: 50%; pointer-events: none; z-index: 10000; opacity: 0.5; transition: transform 0.3s ease; background: radial-gradient(circle, rgba(255, 0, 0, 1) 10px, rgba(0, 0, 0, 0) 12px); border: 2px solid white; }';
-		document.head.appendChild(style);
+func login(t *testing.T, userId string) *Page {
+	page, existing := getBrowserPage(t, userId)
+	if !strings.HasSuffix(strings.Trim(page.URL(), "/"), "app") {
+		page.Goto("/app")
+		doEval(page)
+	}
 
-		const trailDot = document.createElement('div');
-		trailDot.classList.add('cursor-trail');
-		document.body.appendChild(trailDot);
+	_, err := page.Page.Evaluate("() => window.localStorage.clear()")
+	if err != nil {
+		t.Fatalf("error cleaning local storage on delete login %v", err)
+	}
 
-		document.addEventListener('mousemove', (event) => {
-			trailDot.style.transform = 'translate(' + (event.clientX - 20) + 'px, ' + (event.clientY - 20) + 'px)';
-		});
-	`)
+	onSignInPage, err := page.GetByText("Sign in to your account").IsVisible()
+	if err != nil {
+		t.Fatalf("sign in error %v", err)
+	}
+
+	if onSignInPage {
+		page.ByRole("textbox", "Email").MouseOver().Fill(page.UserWithPass.Profile.Email)
+		page.ByRole("textbox", "Password").MouseOver().Fill(page.UserWithPass.Password)
+		tokenResponse, err := readResponse[*types.OIDCToken](http.MethodPost, "/auth/realms/.*/protocol/openid-connect/token", func() {
+			page.ByRole("button", "Sign In").MouseOver().Click()
+		})
+		if err == nil && tokenResponse != nil && tokenResponse.GetAccessToken() != "" {
+			authHeader := make(map[string]string)
+			authHeader["Authorization"] = "Bearer " + tokenResponse.GetAccessToken()
+			page.UserWithPass.AuthorizationHeader = authHeader
+		} else if existing {
+			t.Fatalf("did not refresh auth token with a setup user, err: %v", err)
+		}
+	}
+
+	return page
+}
+
+func register(page *Page, codeParam ...string) {
+	page.ByRole("link", "Register").MouseOver().Click()
+
+	// On registration page
+	doEval(page)
+	if len(codeParam) > 0 {
+		page.ById("groupCode").MouseOver().Fill(codeParam[0])
+	}
+	page.ById("email").MouseOver().Fill(page.UserWithPass.Profile.Email)
+	page.ById("password").MouseOver().Fill(page.UserWithPass.Password)
+	page.ById("password-confirm").MouseOver().Fill(page.UserWithPass.Password)
+	page.ById("firstName").MouseOver().Fill(page.UserWithPass.Profile.FirstName)
+	page.ById("lastName").MouseOver().Fill(page.UserWithPass.Profile.LastName)
+	page.ByRole("button", "Register").MouseOver().Click()
+
+	println(fmt.Sprintf("Registered user %s with pass %s", page.UserWithPass.Profile.Email, page.UserWithPass.Password))
 }
 
 func goHome(page *Page) {
 	page.ById("topbar_open_menu").MouseOver().Click()
 	page.ByText("Home").MouseOver().Click()
+}
+
+func getFirstVisible(page *Page, ids []string, duration ...time.Duration) (string, error) {
+	var d time.Duration = 6
+	if len(duration) > 0 {
+		d = duration[0]
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), d*time.Second)
+	defer cancel()
+
+	resultChan := make(chan string, 1)
+	defer close(resultChan)
+
+	for _, id := range ids {
+		go func() {
+			err := page.ById(id).WaitFor()
+			if err == nil {
+				resultChan <- id
+			}
+		}()
+	}
+
+	select {
+	case res := <-resultChan:
+		return res, nil
+	case <-ctx.Done():
+		// No result
+	}
+
+	return "", fmt.Errorf("didn't find any of %s after %d seconds", ids, d)
 }

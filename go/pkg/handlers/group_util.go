@@ -4,7 +4,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -101,53 +100,6 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 	}
 
 	return &types.LeaveGroupResponse{Success: true}, nil
-}
-
-// AttachUser
-func (h *Handlers) AttachUser(info ReqInfo, data *types.AttachUserRequest) (*types.AttachUserResponse, error) {
-	var kcRoleSubgroupExternalId string
-
-	var groupId string
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT g.id
-		FROM dbtable_schema.groups g
-		WHERE g.code = $1
-	`, data.GetCode()).Scan(&groupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	info.Session.SetGroupId(groupId)
-
-	ds := clients.NewGroupDbSession(h.Database.DatabaseClient.Pool, info.Session)
-
-	row, done, err := ds.SessionBatchQueryRow(info.Ctx, `
-		SELECT gr.external_id
-		FROM dbtable_schema.groups g
-		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
-		WHERE g.id = $1
-	`, groupId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-	defer done()
-
-	err = row.Scan(&kcRoleSubgroupExternalId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	// Sub passed twice here to act as worker pool key as well as data for the add
-	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetUserSub(), kcRoleSubgroupExternalId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	if err := h.Socket.RoleCall(info.Session.GetUserSub()); err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	return &types.AttachUserResponse{Success: true}, nil
 }
 
 func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardingRequest) (*types.CompleteOnboardingResponse, error) {

@@ -20,38 +20,38 @@ import (
 )
 
 type HandlerOptionsConfig struct {
-	Invalidations     []string
-	NoLogFields       []protoreflect.Name
-	ServiceMethod     protoreflect.MethodDescriptor
-	ServiceMethodType protoreflect.MessageType
-	ServiceMethodName string
-	ServiceMethodURL  string
-	SiteRoleName      string
-	Pattern           string
-	CacheDuration     uint32
-	CacheType         types.CacheType
-	NumInvalidations  uint32
-	Throttle          uint32
-	SiteRole          types.SiteRoles
-	HasQueryParams    bool
-	HasPathParams     bool
-	MultipartResponse bool
-	MultipartRequest  bool
-	ResetsGroup       bool
-	ShouldStore       bool
-	ShouldSkip        bool
-	UseTx             bool
+	Invalidations          []string
+	NoLogFields            []protoreflect.Name
+	ServiceMethod          protoreflect.MethodDescriptor
+	ServiceMethodInputType protoreflect.MessageType
+	ServiceMethodName      string
+	ServiceMethodURL       string
+	SiteRoleName           string
+	Pattern                string
+	CacheDuration          uint32
+	CacheType              types.CacheType
+	NumInvalidations       uint32
+	Throttle               uint32
+	SiteRole               types.SiteRoles
+	HasQueryParams         bool
+	HasPathParams          bool
+	MultipartResponse      bool
+	MultipartRequest       bool
+	ResetsGroup            bool
+	ShouldStore            bool
+	ShouldSkip             bool
+	UseTx                  bool
 }
 
 type HandlerOptions struct {
-	Invalidations     []string
-	NoLogFields       []protoreflect.Name
-	ServiceMethod     protoreflect.MethodDescriptor
-	ServiceMethodType protoreflect.MessageType
-	ServiceMethodName string
-	ServiceMethodURL  string
-	SiteRoleName      string
-	Pattern           string
+	Invalidations          []string
+	NoLogFields            []protoreflect.Name
+	ServiceMethod          protoreflect.MethodDescriptor
+	ServiceMethodInputType protoreflect.MessageType
+	ServiceMethodName      string
+	ServiceMethodURL       string
+	SiteRoleName           string
+	Pattern                string
 
 	packedNumeric  uint32
 	packedBooleans uint8
@@ -166,16 +166,16 @@ func NewHandlerOptions(config HandlerOptionsConfig) (*HandlerOptions, error) {
 	}
 
 	return &HandlerOptions{
-		Invalidations:     config.Invalidations,
-		NoLogFields:       config.NoLogFields,
-		ServiceMethod:     config.ServiceMethod,
-		ServiceMethodType: config.ServiceMethodType,
-		ServiceMethodName: config.ServiceMethodName,
-		ServiceMethodURL:  config.ServiceMethodURL,
-		SiteRoleName:      config.SiteRoleName,
-		Pattern:           config.Pattern,
-		packedNumeric:     packedNumeric,
-		packedBooleans:    packedBooleans,
+		Invalidations:          config.Invalidations,
+		NoLogFields:            config.NoLogFields,
+		ServiceMethod:          config.ServiceMethod,
+		ServiceMethodInputType: config.ServiceMethodInputType,
+		ServiceMethodName:      config.ServiceMethodName,
+		ServiceMethodURL:       config.ServiceMethodURL,
+		SiteRoleName:           config.SiteRoleName,
+		Pattern:                config.Pattern,
+		packedNumeric:          packedNumeric,
+		packedBooleans:         packedBooleans,
 	}, nil
 }
 
@@ -334,13 +334,7 @@ func GenerateOptions() map[string]*HandlerOptions {
 			serviceMethod := services.Methods().Get(i)
 			handlerOpts := ParseHandlerOptions(serviceMethod)
 
-			protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
-				if mt.Descriptor().FullName() == serviceMethod.Input().FullName() {
-					handlerOpts.ServiceMethodType = mt
-					return false
-				}
-				return true
-			})
+			handlerOpts.ServiceMethodInputType = GetMessageType(serviceMethod.Input().FullName())
 
 			opts[handlerOpts.ServiceMethodName] = handlerOpts
 		}
@@ -442,4 +436,16 @@ func ParseProtoPathParams(msg proto.Message, methodParams []string, req *http.Re
 			setProtoFieldValue(msg, paramName, requestParams[i])
 		}
 	}
+}
+
+func GetMessageType(messageName protoreflect.FullName) protoreflect.MessageType {
+	var messageDescriptor protoreflect.MessageType
+	protoregistry.GlobalTypes.RangeMessages(func(mt protoreflect.MessageType) bool {
+		if mt.Descriptor().FullName() == protoreflect.FullName(messageName) {
+			messageDescriptor = mt
+			return false
+		}
+		return true
+	})
+	return messageDescriptor
 }

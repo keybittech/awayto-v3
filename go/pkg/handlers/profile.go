@@ -45,18 +45,20 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 	groupId := info.Session.GetGroupId()
 	groupCode := info.Session.GetGroupCode()
 
+	var up *types.IUserProfile
+
 	upReq := util.BatchQueryRow[types.IUserProfile](info.Batch, `
 		SELECT "firstName", "lastName",	image, email, locked,	active
 		FROM dbview_schema.enabled_users
 		WHERE sub = $1
 	`, userSub)
 
-	var groupsReq *map[string]*types.IGroup
-	var groupRolesReq *map[string]*types.IGroupRole
-	var quotesReq *map[string]*types.IQuote
-	var bookingsReq *map[string]*types.IBooking
-
 	if groupId != "" {
+		var groupsReq *map[string]*types.IGroup
+		var groupRolesReq *map[string]*types.IGroupRole
+		var quotesReq *map[string]*types.IQuote
+		var bookingsReq *map[string]*types.IBooking
+
 		groupsReq = util.BatchQueryMap[types.IGroup](info.Batch, "code", `
 			SELECT code, name, "defaultRoleId", "displayName", "createdOn", purpose, ai, true as active
 			FROM dbview_schema.enabled_groups
@@ -81,17 +83,19 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 			FROM dbview_schema.enabled_bookings eb
 			WHERE "createdSub" = $1 OR "quoteCreatedSub" = $1
 		`, userSub)
-	}
 
-	info.Batch.Send(info.Ctx)
+		info.Batch.Send(info.Ctx)
 
-	up := *upReq
+		up = *upReq
 
-	if groupId != "" {
 		up.Groups = *groupsReq
 		up.Groups[groupCode].Roles = *groupRolesReq
 		up.Quotes = *quotesReq
 		up.Bookings = *bookingsReq
+	} else {
+		info.Batch.Send(info.Ctx)
+
+		up = *upReq
 	}
 
 	up.RoleBits = info.Session.GetRoleBits()
@@ -99,7 +103,7 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	// Try to send a request if the user has an active socket connection
 	// but no need to catch errors as they may not yet have a connection
-	go h.Socket.RoleCall(userSub)
+	_ = h.Socket.RoleCall(userSub)
 
 	return &types.GetUserProfileDetailsResponse{UserProfile: up}, nil
 }
@@ -141,4 +145,26 @@ func (h *Handlers) DeactivateProfile(info ReqInfo, data *types.DeactivateProfile
 	}
 
 	return &types.DeactivateProfileResponse{Success: true}, nil
+}
+
+func (h *Handlers) DeleteProfile(info ReqInfo, data *types.DeleteProfileRequest) (*types.DeleteProfileResponse, error) {
+	userSub := info.Session.GetUserSub()
+	_, err := info.Tx.Exec(info.Ctx, `
+		DELETE FROM dbtable_schema.users
+		WHERE sub = $1
+	`, userSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	err = h.Keycloak.DeleteUser(info.Ctx, userSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	h.Cache.UserSessions.Delete(info.Req.Header.Get("Authorization"))
+
+	h.Redis.ScanAndDelKeys(info.Ctx, []string{userSub + "*"})
+
+	return &types.DeleteProfileResponse{Success: true}, nil
 }

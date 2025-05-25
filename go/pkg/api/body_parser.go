@@ -17,7 +17,7 @@ import (
 type BodyParser func(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message
 
 func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message {
-	pb := handlerOpts.ServiceMethodType.New().Interface().(proto.Message)
+	pb := handlerOpts.ServiceMethodInputType.New().Interface().(proto.Message)
 
 	if req.Body != nil && req.Body != http.NoBody {
 		req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1MB limit

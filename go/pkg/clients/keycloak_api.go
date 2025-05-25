@@ -269,6 +269,20 @@ func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName stri
 	return nil
 }
 
+func (keycloakClient KeycloakClient) DeleteUser(userId string) error {
+	_, err := util.Mutate(
+		"DELETE",
+		util.E_KC_ADMIN_URL+"/users/"+userId,
+		keycloakClient.BasicHeaders(),
+		[]byte(""),
+	)
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	return nil
+}
+
 func (keycloakClient KeycloakClient) CreateGroup(name string) (string, error) {
 
 	client := &http.Client{}

@@ -18,14 +18,6 @@ service GroupUtilService {
     option (cache) = SKIP; 
     option (use_tx) = true;
   }
-
-  // rpc InviteGroupUsers(InviteGroupUsersRequest) returns (InviteGroupUsersResponse) {
-  //   option (google.api.http) = {
-  //     post: "/v1/group/users/invite"
-  //     body: "*"
-  //   };
-  // }
-
   rpc JoinGroup(JoinGroupRequest) returns (JoinGroupResponse) {
     option (google.api.http) = {
       post: "/v1/group/join"
@@ -35,7 +27,6 @@ service GroupUtilService {
     option (use_tx) = true;
     option (resets_group) = true;
   }
-
   rpc LeaveGroup(LeaveGroupRequest) returns (LeaveGroupResponse) {
     option (google.api.http) = {
       post: "/v1/group/leave"
@@ -45,18 +36,6 @@ service GroupUtilService {
     option (use_tx) = true;
     option (resets_group) = true;
   }
-
-  rpc AttachUser(AttachUserRequest) returns (AttachUserResponse) {
-    option (google.api.http) = {
-      post: "/v1/group/attach/user"
-      body: "*"
-    };
-    option (cache) = SKIP;
-    option (use_tx) = true;
-    option (resets_group) = true;
-    option (invalidates) = "GetUserProfileDetails";
-  }
-
   rpc CompleteOnboarding(CompleteOnboardingRequest) returns (CompleteOnboardingResponse) {
     option (google.api.http) = {
       post: "/v1/group/onboard"
@@ -104,14 +83,6 @@ message LeaveGroupRequest {
 }
 
 message LeaveGroupResponse {
-  bool success = 1 [(google.api.field_behavior) = REQUIRED];
-}
-
-message AttachUserRequest {
-  string code = 1 [(google.api.field_behavior) = REQUIRED];
-}
-
-message AttachUserResponse {
   bool success = 1 [(google.api.field_behavior) = REQUIRED];
 }
 

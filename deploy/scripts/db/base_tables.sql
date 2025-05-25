@@ -51,10 +51,12 @@ CREATE TABLE dbtable_schema.users (
 );
 CREATE INDEX user_sub_index ON dbtable_schema.users (sub);
 ALTER TABLE dbtable_schema.users ENABLE ROW LEVEL SECURITY;
+-- $IS_CREATOR checks allow a user to manage their own group user
+-- The group user owns various records like schedules, forms, etc.
 CREATE POLICY table_select ON dbtable_schema.users FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_CREATOR OR $IS_USER);
 CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT TO $PG_WORKER WITH CHECK (true);
 CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $IS_USER);
-CREATE POLICY table_delete ON dbtable_schema.users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
+CREATE POLICY table_delete ON dbtable_schema.users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $IS_USER);
 
 CREATE TABLE dbtable_schema.roles (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),

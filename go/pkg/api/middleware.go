@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"fmt"
 	"log"
 	"net"
 	"net/http"
@@ -10,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -266,52 +266,12 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 					return
 				}
 
-				scanKeys := make([]string, 0, iLen*2) // double num to make room for ModTime keys
-
-				for _, val := range opts.Invalidations {
-					invCacheKey := userSub + val
-
-					// If it's not a dynamically generated path, we don't need to scan redis for keys
-					if strings.Index(val, "*") == -1 {
-						scanKeys = append(scanKeys, invCacheKey)
-						scanKeys = append(scanKeys, invCacheKey+cacheKeySuffixModTime)
-						continue
-					}
-
-					var cursor uint64
-
-					for {
-						var pathKeys []string
-						var err error
-						pathKeys, cursor, err = a.Handlers.Redis.RedisClient.Scan(ctx, cursor, invCacheKey, 10).Result()
-						if err != nil {
-							util.ErrorLog.Println(util.ErrCheck(err))
-							break
-						}
-
-						for _, pathKey := range pathKeys {
-							scanKeys = append(scanKeys, pathKey)
-							scanKeys = append(scanKeys, pathKey+cacheKeySuffixModTime)
-						}
-
-						if cursor == 0 {
-							break
-						}
-					}
-				}
-
-				if len(scanKeys) > 0 {
-					_, err := a.Handlers.Redis.RedisClient.Del(ctx, scanKeys...).Result()
-					if err != nil {
-						util.ErrorLog.Println("failed to perform cache mutation cleanup pipeline", err.Error(), fmt.Sprint(opts.Invalidations))
-					}
-				}
-
+				a.Handlers.Redis.ScanAndDelKeys(ctx, opts.Invalidations, userSub)
 				return
 			}
 
 			cacheKey := userSub + req.URL.String()
-			cacheKeyModTime := cacheKey + cacheKeySuffixModTime
+			cacheKeyModTime := cacheKey + clients.CacheKeySuffixModTime
 
 			// Check redis cache for request
 			cachedResponse := a.Handlers.Redis.RedisClient.MGet(ctx, cacheKey, cacheKeyModTime).Val()
