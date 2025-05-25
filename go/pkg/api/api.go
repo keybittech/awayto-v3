@@ -24,8 +24,6 @@ type API struct {
 func NewAPI(httpsPort int) *API {
 	h := handlers.NewHandlers()
 
-	registerHandlers(h)
-
 	// go func() {
 	// 	ticker := time.NewTicker(time.Duration(5 * time.Second))
 	// 	defer ticker.Stop()

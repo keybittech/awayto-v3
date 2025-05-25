@@ -62,7 +62,7 @@ TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_FILE_DIRS=$(GO_SRC) $(GO_HANDLERS_REGISTER_CMD_DIR) $(GO_GEN_DIR) $(GO_API_DIR) $(GO_CLIENTS_DIR) $(GO_HANDLERS_DIR) $(GO_UTIL_DIR)
 GO_FILES=$(foreach dir,$(GO_FILE_DIRS),$(wildcard $(dir)/*.go))
 GO_TARGET=${PWD}/$(GO_SRC)/$(BINARY_NAME)
-export GO_HANDLERS_REGISTER=$(GO_API_DIR)/register.go
+export GO_HANDLERS_REGISTER=$(GO_HANDLERS_DIR)/register.go
 # GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
 # GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
 
@@ -174,10 +174,12 @@ LOG_DEBUG=-logLevel=debug
 LOG_NONE=-logLevel=
 GO_ENVFILE_FLAG=GO_ENVFILE_LOC=${PROJECT_DIR}/.env
 GO_DEV_FLAGS=$(GO_ENVFILE_FLAG)
-GO_TEST_FLAGS=-run=$${TEST:-.} -bench=^$$ -count=$${COUNT:-1} -v=$${V:-false} $(LOG_NONE)
-GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE)
-GO_BENCH_FLAGS=-run=^$$ -bench=$${BENCH:-.} -count=$${COUNT:-1} $${V:-} $${PROF:-} $(LOG_NONE) # -cpuprofile=cpu.prof
-GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE) # $${PROF:-} # -cpuprofile=cpu.prof
+GO_FUZZ_CACHEDIR=working/fuzz
+GO_FUZZ_FLAGS=-test.fuzzcachedir=$(GO_FUZZ_CACHEDIR) -test.fuzztime=5s
+GO_FUZZ_EXEC_FLAGS=-test.run=^$$ -test.fuzz=$${FUZZ:-.} -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE) $(GO_FUZZ_FLAGS)
+GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.fuzz=^$$ -test.bench=^$$ -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE) $(GO_FUZZ_FLAGS)
+GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.fuzz=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE) $(GO_FUZZ_FLAGS)
+# $${PROF:-} # -cpuprofile=cpu.prof
 
 GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
@@ -283,7 +285,7 @@ $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 		--mutex_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
 
-$(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go
+$(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go $(PROTO_FILES)
 	$(GO) run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
 
 $(GO_TARGET): $(GO_FILES)
@@ -298,7 +300,7 @@ $(GO_TARGET): $(GO_FILES)
 go_dev: 
 	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
-	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) . $(LOG_DEBUG)
+	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) . $(NO_LIMIT) $(LOG_DEBUG)
 
 .PHONY: go_dev_ts
 go_dev_ts: 
@@ -381,6 +383,14 @@ go_test_unit: $(GO_TARGET) go_test_unit_build
 	-$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	-$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	-$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
+
+.PHONY: go_test_fuzz
+go_test_fuzz: $(GO_TARGET)
+	@mkdir -p $(GO_FUZZ_CACHEDIR)
+	@$(call clean_test)
+	$(GO) test -C $(GO_HANDLERS_DIR) -c -o handlers.fuzz.$(BINARY_TEST)
+	-$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.fuzz.$(BINARY_TEST) $(GO_FUZZ_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_ui

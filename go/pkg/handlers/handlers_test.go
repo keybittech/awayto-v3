@@ -1,12 +1,14 @@
 package handlers
 
 import (
+	"context"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/bufbuild/protovalidate-go"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -117,4 +119,56 @@ func TestNewHandlers(t *testing.T) {
 			}
 		})
 	}
+}
+
+func FuzzPostSchedule(f *testing.F) {
+	handlers := NewHandlers()
+	testUser := integrationTest.GetTestUsers()[0]
+	session := types.NewConcurrentUserSession(testUser.GetUserSession())
+	// Create fake context so we can use our regular http handlers
+	fakeReq, err := http.NewRequest("GET", "handlers://fuzz", nil)
+	fakeReq.Header.Add("Authorization", "Bearer "+testUser.TestToken)
+	if err != nil {
+		f.Fatalf("failed to create fuzz request %v", err)
+	}
+
+	groupScheuleId := integrationTest.GetMasterSchedule().GetId()
+	scheduleTimeUnitId := integrationTest.GetMasterSchedule().GetScheduleTimeUnitId()
+	bracketTimeUnitId := integrationTest.GetMasterSchedule().GetBracketTimeUnitId()
+	slotTimeUnitId := integrationTest.GetMasterSchedule().GetSlotTimeUnitId()
+
+	f.Add("my schedule", "03-03-2025", "04-02-2025", int32(30))
+
+	f.Fuzz(func(t *testing.T, name, startDate, endDate string, slotDuration int32) {
+
+		t.Log("PARAMS", name, startDate, endDate, slotDuration)
+
+		pb := &types.PostScheduleRequest{
+			Name:               name,
+			StartDate:          startDate,
+			EndDate:            endDate,
+			ScheduleTimeUnitId: scheduleTimeUnitId,
+			BracketTimeUnitId:  bracketTimeUnitId,
+			SlotTimeUnitId:     slotTimeUnitId,
+			GroupScheduleId:    groupScheuleId,
+			SlotDuration:       slotDuration,
+		}
+
+		err = protovalidate.Validate(pb)
+		if err != nil {
+			t.Skipf("validator caught issue %v", err)
+		}
+
+		ctx, cancel := context.WithTimeout(fakeReq.Context(), 5*time.Second)
+		defer cancel()
+
+		reqInfo := ReqInfo{
+			Ctx:     ctx,
+			W:       nil,
+			Req:     fakeReq,
+			Session: session,
+		}
+
+		handlers.PostSchedule(reqInfo, pb)
+	})
 }

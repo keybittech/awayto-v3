@@ -160,21 +160,21 @@ message ISchedule {
 }
 
 message PostScheduleRequest {
-  string name = 1 [(buf.validate.field).string.min_len = 1];
-  string startDate = 2;
-  string endDate = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
-  string scheduleTimeUnitId = 4 [(buf.validate.field).string.uuid = true];
-  string bracketTimeUnitId = 5 [(buf.validate.field).string.uuid = true];
-  string slotTimeUnitId = 6 [(buf.validate.field).string.uuid = true];
-  int32 slotDuration = 7 [(buf.validate.field).int32.gt = 0];
-  map<string, IScheduleBracket> brackets = 8 [
+  map<string, IScheduleBracket> brackets = 1 [
     (buf.validate.field).map.min_pairs = 1,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string groupScheduleId = 9 [
+  string name = 2 [(buf.validate.field).string.min_len = 1];
+  string startDate = 3;
+  string endDate = 4 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
+  string scheduleTimeUnitId = 5 [(buf.validate.field).string.uuid = true];
+  string bracketTimeUnitId = 6 [(buf.validate.field).string.uuid = true];
+  string slotTimeUnitId = 7 [(buf.validate.field).string.uuid = true];
+  string groupScheduleId = 8 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
+  int32 slotDuration = 9 [(buf.validate.field).int32.gt = 0];
   bool asGroup = 10;
 
   // option (buf.validate.message).cel = {

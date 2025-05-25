@@ -21,7 +21,7 @@ type ReqInfo struct {
 
 type TypedProtoHandler[ReqMsg, ResMsg proto.Message] func(info ReqInfo, message ReqMsg) (ResMsg, error)
 
-type ProtoHandler func(info ReqInfo, messages proto.Message) (proto.Message, error)
+type ProtoHandler func(info ReqInfo, message proto.Message) (proto.Message, error)
 
 type Handlers struct {
 	Functions map[string]ProtoHandler
@@ -45,5 +45,6 @@ func NewHandlers() *Handlers {
 		Cache:     util.NewCache(),
 		Options:   util.GenerateOptions(),
 	}
+	registerHandlers(h)
 	return h
 }
