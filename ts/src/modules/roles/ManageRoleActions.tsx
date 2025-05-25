@@ -76,6 +76,7 @@ export function ManageRoleActions(_: IComponent): React.JSX.Element {
             renderCell: ({ row }) => {
               if (!assignments[subgroup]) return <></>;
               return <Checkbox
+                {...targets(`manage role actions ${name} ${row.id}`, `add the ${row.id} permission to the ${name} role`)}
                 disabled={name.toLowerCase() == "admin"}
                 checked={assignments[subgroup].actions?.some(a => a.name === row.id) ?? false}
                 onChange={e => handleCheck(subgroup, row.id, e.target.checked)}

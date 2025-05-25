@@ -131,10 +131,7 @@ export const targets = (name: string, label?: string, aria?: string): {
 }
 
 export const toSnakeCase = (name: string): string => {
-  return name.replace(/\W+/g, " ")
-    .split(/ |\B(?=[A-Z])/)
-    .map(word => word.toLowerCase())
-    .join('_');
+  return name.replace(/\W+/g, " ").split(" ").join('_').toLowerCase();
 };
 
 export const toTitleCase = (name: string): string => {

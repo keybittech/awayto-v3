@@ -43,6 +43,4 @@ func testPlaywrightCreatePersonalSchedule(t *testing.T) {
 	page.ById("manage_personal_schedule_modal_submit").MouseOver().Click()
 
 	goHome(page)
-
-	page.Close(t)
 }

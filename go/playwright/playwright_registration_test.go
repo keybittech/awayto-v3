@@ -187,8 +187,6 @@ func testPlaywrightRegistration(t *testing.T) {
 
 		page.UserWithPass.AuthorizationHeader = make(map[string]string)
 		page.UserWithPass.AuthorizationHeader["Authorization"] = tokenResponse.GetAccessToken()
-
-		// time.Sleep(1 * time.Hour)
 	})
 
 	t.Run("staff joins on the registration page, with the group code", func(tt *testing.T) {

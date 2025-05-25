@@ -113,7 +113,7 @@ export function ManageUserModal({ editRoleId, editUser, closeModal }: ManageUser
                   onChange={e => setRoleId(e.target.value)}
                 >
                   {groupRolesRequest?.groupRoles?.map(gr =>
-                    <MenuItem key={`${gr.role?.id}_user_profile_role_select`} value={gr.role?.id}>{gr.role?.name}</MenuItem>
+                    <MenuItem key={`${gr.roleId}_user_profile_role_select`} value={gr.roleId}>{gr.name}</MenuItem>
                   )}
                 </TextField>
               </Grid>

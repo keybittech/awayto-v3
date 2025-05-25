@@ -90,9 +90,12 @@ func TestPlaywright(t *testing.T) {
 			println("final recovery", fmt.Sprint(r))
 		}
 	}()
-	for range 10 { // Create -> Delete/Create
+	for range 1 { // Create -> Delete/Create
 		testPlaywrightRegistration(t)
-		// testPlaywrightCreatePersonalSchedule(t)
+		testPlaywrightPermission(t)
+		testPlaywrightUser(t)
+		// testPlaywrightRole(t)
+		testPlaywrightCreatePersonalSchedule(t)
 		// testPlaywrightCreateQuote(t)
 		// testPlaywrightCreateForm(t)
 	}

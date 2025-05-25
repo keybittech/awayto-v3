@@ -83,11 +83,11 @@ func (h *Handlers) PostGroupRole(info ReqInfo, data *types.PostGroupRoleRequest)
 
 	var groupRoleId string
 	err = info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_sub)
+		VALUES ($1, $2, $3, $4)
 		ON CONFLICT (group_id, role_id) DO NOTHING
 		RETURNING id
-	`, groupId, roleId, kcSubGroup.Id, time.Now(), userSub).Scan(&groupRoleId)
+	`, groupId, roleId, kcSubGroup.Id, userSub).Scan(&groupRoleId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -31,15 +31,15 @@ export function ManageRoleModal({ editRole, isDefault, closeModal }: ManageRoleM
   const [defaultRole, setDefaultRole] = useState(isDefault);
 
   const handleSubmit = useCallback(async () => {
-    const { id, name } = role;
+    const { roleId, name } = role;
 
     if (!name) {
       setSnack({ snackType: 'error', snackOn: 'Roles must have a name.' });
       return;
     }
 
-    if (id) {
-      await patchGroupRole({ patchGroupRoleRequest: { roleId: id, name, defaultRole } }).unwrap().catch(console.error);
+    if (roleId) {
+      await patchGroupRole({ patchGroupRoleRequest: { roleId, name, defaultRole } }).unwrap().catch(console.error);
     } else {
       await postGroupRole({ postGroupRoleRequest: { name, defaultRole } }).unwrap().catch(console.error);
     }

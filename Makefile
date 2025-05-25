@@ -394,7 +394,7 @@ go_test_fuzz: $(GO_TARGET)
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_ui
-go_test_ui: $(GO_TARGET)# docker_db_restore_op
+go_test_ui: $(GO_TARGET) docker_db_restore_op
 	rm -f demos/*.webm
 	$(call clean_test)
 	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
