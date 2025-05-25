@@ -85,9 +85,9 @@ func (h *Handlers) PostFileContents(info ReqInfo, data *types.PostFileContentsRe
 		fileUuid, _ := uuid.NewV7()
 
 		_, err := info.Tx.Exec(info.Ctx, `
-			INSERT INTO dbtable_schema.file_contents (uuid, name, content, content_length, created_on, created_sub, upload_id)
-			VALUES ($1::uuid, $2, $3::bytea, $4, $5, $6, $7)
-		`, fileUuid.String(), file.GetName(), pdfDoc, len(pdfDoc), time.Now(), info.Session.GetUserSub(), data.UploadId)
+			INSERT INTO dbtable_schema.file_contents (uuid, name, content, content_length, created_sub, upload_id)
+			VALUES ($1::uuid, $2, $3::bytea, $4, $5, $6)
+		`, fileUuid.String(), file.GetName(), pdfDoc, len(pdfDoc), info.Session.GetUserSub(), data.UploadId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -150,10 +150,10 @@ func (h *Handlers) GetFileContents(info ReqInfo, data *types.GetFileContentsRequ
 func (h *Handlers) PostFile(info ReqInfo, data *types.PostFileRequest) (*types.PostFileResponse, error) {
 	var fileId string
 	err := info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_on, created_sub)
-		VALUES ($1, $2, $3, $4, $5::uuid)
+		INSERT INTO dbtable_schema.files (uuid, name, mime_type, created_sub)
+		VALUES ($1, $2, $3, $4::uuid)
 		RETURNING id
-	`, data.File.Uuid, data.File.Name, data.File.MimeType, time.Now(), info.Session.GetUserSub()).Scan(&fileId)
+	`, data.File.Uuid, data.File.Name, data.File.MimeType, info.Session.GetUserSub()).Scan(&fileId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

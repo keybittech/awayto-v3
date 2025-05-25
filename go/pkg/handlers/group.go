@@ -50,9 +50,9 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	info.Session.SetGroupSub(groupSub)
 
 	_, err = info.Tx.Exec(info.Ctx, `
-		INSERT INTO dbtable_schema.users (created_sub, sub, username, created_on)
-		VALUES ($1::uuid, $2::uuid, $3, $4)
-	`, userSub, groupSub, data.Name, time.Now())
+		INSERT INTO dbtable_schema.users (created_sub, sub, username)
+		VALUES ($1::uuid, $2::uuid, $3)
+	`, userSub, groupSub, data.Name)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -98,10 +98,10 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 
 	// Add admin subgroup/role to the app db
 	_, err = info.Tx.Exec(info.Ctx, `
-		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
-		VALUES ($1, $2, $3, $4, $5::uuid)
+		INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_sub)
+		VALUES ($1, $2, $3, $4::uuid)
 		ON CONFLICT (group_id, role_id) DO NOTHING
-	`, groupId, h.Database.AdminRoleId(), kcAdminSubGroupExternalId, time.Now(), userSub)
+	`, groupId, h.Database.AdminRoleId(), kcAdminSubGroupExternalId, userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -159,10 +159,10 @@ func (h *Handlers) PatchGroupRole(info ReqInfo, data *types.PatchGroupRoleReques
 
 		// create a new group_role attachment pointing to the new role id, retaining the keycloak external id
 		_, err = info.Tx.Exec(info.Ctx, `
-			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
-			VALUES ($1, $2, $3, $4, $5)
+			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_sub)
+			VALUES ($1, $2, $3, $4)
 			ON CONFLICT (group_id, role_id) DO NOTHING
-		`, groupId, roleId, existingRoleExternalId, time.Now(), userSub)
+		`, groupId, roleId, existingRoleExternalId, userSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -300,10 +300,10 @@ func (h *Handlers) PatchGroupRoles(info ReqInfo, data *types.PatchGroupRolesRequ
 		})
 
 		_, err = info.Tx.Exec(info.Ctx, `
-			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_on, created_sub)
-			VALUES ($1, $2, $3, $4, $5::uuid)
+			INSERT INTO dbtable_schema.group_roles (group_id, role_id, external_id, created_sub)
+			VALUES ($1, $2, $3, $4::uuid)
 			ON CONFLICT (group_id, role_id) DO NOTHING
-		`, groupId, role.GetRoleId(), kcSubGroup.Id, time.Now(), userSub)
+		`, groupId, role.GetRoleId(), kcSubGroup.Id, userSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}

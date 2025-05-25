@@ -9,10 +9,10 @@ import (
 
 func (h *Handlers) PostGroupFile(info ReqInfo, data *types.PostGroupFileRequest) (*types.PostGroupFileResponse, error) {
 	groupFileInsert := util.BatchQueryRow[types.ILookup](info.Batch, `
-		INSERT INTO dbtable_schema.group_files (group_id, file_id, created_on, created_sub)
-		VALUES ($1, $2, $3, $4::uuid)
+		INSERT INTO dbtable_schema.group_files (group_id, file_id, created_sub)
+		VALUES ($1, $2, $3::uuid)
 		RETURNING id
-	`, info.Session.GetGroupId(), data.GetFileId(), time.Now(), info.Session.GetUserSub())
+	`, info.Session.GetGroupId(), data.GetFileId(), info.Session.GetUserSub())
 
 	info.Batch.Send(info.Ctx)
 

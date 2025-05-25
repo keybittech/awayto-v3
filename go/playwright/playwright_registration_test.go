@@ -1,12 +1,10 @@
 package main
 
 import (
-	"fmt"
 	"net/http"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/playwright-community/playwright-go"
 )
 
@@ -55,13 +53,13 @@ func testPlaywrightRegistration(t *testing.T) {
 
 		// Verify group name check
 		checkNameResponse, err := readHandlerResponse[*types.CheckGroupNameResponse](func() {
-			page.ByRole("textbox", "Group Name").MouseOver().Fill(fmt.Sprintf("Downtown Writing Center %s", page.UserWithPass.UserId))
+			page.ByRole("textbox", "Group Name").MouseOver().Fill("Downtown Writing Center")
 		})
 		if err != nil {
-			page.T.Fatalf("error when getting response for check name %v", err)
+			t.Fatalf("error when getting response for check name %v", err)
 		}
 		if !checkNameResponse.GetIsValid() {
-			page.T.Fatal("check name returned false")
+			t.Fatal("check name returned false")
 		}
 
 		// Fill out other group fields
@@ -75,12 +73,12 @@ func testPlaywrightRegistration(t *testing.T) {
 			page.ByRole("button", "Next").MouseOver().Click()
 		})
 		if err != nil {
-			page.T.Fatalf("error when getting response for posting group %v", err)
+			t.Fatalf("error when getting response for posting group %v", err)
 		}
 
 		groupCode = postGroupResponse.GetCode()
 		if groupCode == "" {
-			page.T.Fatal("a group code was not created")
+			t.Fatal("a group code was not created")
 		}
 
 		// Add group roles
@@ -134,7 +132,7 @@ func testPlaywrightRegistration(t *testing.T) {
 			for range 2 {
 				err := page.Mouse().Wheel(0, 100)
 				if err != nil {
-					panic(util.ErrCheck(err))
+					t.Fatalf("error scrolling services, err: %v", err)
 				}
 			}
 			featuresBox := page.ByRole("combobox", "Features")

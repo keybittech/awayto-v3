@@ -10,10 +10,10 @@ import (
 func (h *Handlers) PostForm(info ReqInfo, data *types.PostFormRequest) (*types.PostFormResponse, error) {
 	var formId string
 	err := info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.forms (name, created_on, created_sub)
-		VALUES ($1, $2, $3::uuid)
+		INSERT INTO dbtable_schema.forms (name, created_sub)
+		VALUES ($1, $2::uuid)
 		RETURNING id
-	`, data.Form.Name, time.Now(), info.Session.GetUserSub()).Scan(&formId)
+	`, data.Form.Name, info.Session.GetUserSub()).Scan(&formId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -22,6 +22,8 @@ func (h *Handlers) PostForm(info ReqInfo, data *types.PostFormRequest) (*types.P
 }
 
 func (h *Handlers) PostFormVersion(info ReqInfo, data *types.PostFormVersionRequest) (*types.PostFormVersionResponse, error) {
+	userSub := info.Session.GetUserSub()
+
 	formJson, err := data.Version.Form.MarshalJSON()
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -29,10 +31,10 @@ func (h *Handlers) PostFormVersion(info ReqInfo, data *types.PostFormVersionRequ
 
 	var versionId string
 	err = info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.form_versions (form_id, form, created_on, created_sub)
-		VALUES ($1::uuid, $2::jsonb, $3, $4::uuid)
+		INSERT INTO dbtable_schema.form_versions (form_id, form, created_sub)
+		VALUES ($1::uuid, $2::jsonb, $3::uuid)
 		RETURNING id
-	`, data.Version.FormId, formJson, time.Now(), info.Session.GetUserSub()).Scan(&versionId)
+	`, data.Version.FormId, formJson, userSub).Scan(&versionId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -41,7 +43,7 @@ func (h *Handlers) PostFormVersion(info ReqInfo, data *types.PostFormVersionRequ
 		UPDATE dbtable_schema.forms
 		SET name = $1, updated_on = $2, updated_sub = $3
 		WHERE id = $4
-	`, data.Name, time.Now(), info.Session.GetUserSub(), data.Version.FormId)
+	`, data.Name, time.Now(), userSub, data.Version.FormId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
