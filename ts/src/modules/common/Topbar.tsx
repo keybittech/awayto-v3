@@ -98,7 +98,7 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
         const ActionIcon = rd.icon;
 
         actions.push(<MenuItem
-          {...targets(`available role actions ${rd.description}`, `perform the ${rd.description} action`)}
+          {...targets(`topbar available role actions ${rd.description}`, `perform the ${rd.description} action`)}
           key={`role_menu_option_${roleNum}`}
           onClick={e => handleNavAndClose(e, rd.resource)}
         >

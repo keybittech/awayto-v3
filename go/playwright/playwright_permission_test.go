@@ -8,7 +8,7 @@ func testPlaywrightPermission(t *testing.T) {
 	t.Run("admin can update user roles", func(tt *testing.T) {
 		page := login(t, "admin")
 
-		page.ById("available_role_actions_edit_group_permissions").MouseOver().Click()
+		page.ById("home_available_role_actions_edit_group_permissions").MouseOver().Click()
 
 		// Staff can make schedules
 		page.ById("manage_role_actions_advisor_app_group_schedules").MouseOver().Click()

@@ -32,7 +32,7 @@ export function Home(props: IComponent): React.JSX.Element {
       if (roleNum > 0 && roleNum != SiteRoles.APP_GROUP_BOOKINGS && (userRoleBits & roleNum) > 0) {
         const rd = SiteRoleDetails[roleNum as SiteRoles];
         actions.push(<Button
-          {...targets(`available role actions ${rd.description}`, `perform the ${rd.description} action`)}
+          {...targets(`home available role actions ${rd.description}`, `perform the ${rd.description} action`)}
           fullWidth
           key={`role_listing_${roleNum}`}
           variant="underline"

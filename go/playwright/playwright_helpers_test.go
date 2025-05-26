@@ -358,10 +358,6 @@ func readHandlerResponse[T proto.Message](action func()) (T, error) {
 func login(t *testing.T, userId string) *Page {
 	page, existing := getBrowserPage(t, userId)
 
-	if existing {
-		page.Reload()
-	}
-
 	if !strings.HasSuffix(strings.Trim(page.URL(), "/"), "app") {
 		page.Goto("/app")
 		doEval(page)

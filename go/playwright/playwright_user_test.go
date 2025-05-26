@@ -8,7 +8,7 @@ func testPlaywrightUser(t *testing.T) {
 	t.Run("admin can update user", func(tt *testing.T) {
 		page := login(t, "admin")
 
-		page.ById("available_role_actions_edit_group_users").MouseOver().Click()
+		page.ById("home_available_role_actions_edit_group_users").MouseOver().Click()
 
 		staffMemberRow := page.ByText("jsmithstaff@myschool.edu").Locator.Locator("xpath=..").Locator(`[type="checkbox"]`)
 		staffMemberRow.Hover()

@@ -18,10 +18,6 @@ func (a *API) SocketMessageReceiver(data []byte) *types.SocketMessage {
 
 	messageParams := make([]string, 7)
 
-	if len(data) > util.MAX_SOCKET_MESSAGE_LENGTH {
-		return nil
-	}
-
 	cursor := 0
 	var curr string
 	var err error

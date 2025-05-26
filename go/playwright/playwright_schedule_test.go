@@ -14,7 +14,7 @@ func testPlaywrightCreatePersonalSchedule(t *testing.T) {
 	if createPersonalScheduleButton.IsVisible() {
 		createPersonalScheduleButton.MouseOver().Click()
 	} else {
-		page.ById("available_role_actions_edit_personal_schedule").MouseOver().Click()
+		page.ById("home_available_role_actions_edit_personal_schedule").MouseOver().Click()
 		page.ByLocator(`input[type="checkbox"]`).Last().MouseOver().Click()
 		page.ById("manage_schedule_brackets_delete").MouseOver().Click()
 		page.ByLocator(`button[id="confirmation_approval"]`).MouseOver().Click()

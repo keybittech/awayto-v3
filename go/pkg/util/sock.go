@@ -93,6 +93,10 @@ func ReadSocketConnectionMessage(conn net.Conn) ([]byte, error) {
 		actualPayloadLen = int(binary.BigEndian.Uint32(headerExtra[:8]))
 	}
 
+	if actualPayloadLen > MAX_SOCKET_MESSAGE_LENGTH {
+		return nil, errors.New("payload too large")
+	}
+
 	// Extract mask key if present
 	var maskKey [4]byte
 	if mask {
@@ -112,7 +116,7 @@ func ReadSocketConnectionMessage(conn net.Conn) ([]byte, error) {
 
 	// Apply mask if necessary
 	if mask {
-		for i := 0; i < len(data); i++ {
+		for i := range len(data) {
 			data[i] ^= maskKey[i%4]
 		}
 	}

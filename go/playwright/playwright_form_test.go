@@ -12,7 +12,7 @@ func testPlaywrightCreateForm(t *testing.T) {
 	page := login(t, "admin")
 
 	// Create a form
-	page.ById("available_role_actions_manage_group").MouseOver().Click()
+	page.ById("home_available_role_actions_manage_group").MouseOver().Click()
 	page.ByRole("button", "forms").MouseOver().Click()
 
 	formCount, err := page.ByRole("checkbox", "Select row").Count()
