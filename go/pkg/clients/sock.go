@@ -24,6 +24,7 @@ const (
 	SendSocketMessageSocketCommand
 	AddSubscribedTopicSocketCommand
 	GetSubscribedTargetsSocketCommand
+	GetGroupTargetsSocketCommand
 	DeleteSubscribedTopicSocketCommand
 	HasSubscribedTopicSocketCommand
 )
@@ -52,11 +53,13 @@ var (
 
 type Subscribers map[string]*types.Subscriber
 type Connections map[string]net.Conn
+type GroupTargets map[string]string
 type AuthSubscribers map[string]string
 
 type SocketMaps struct {
 	subscribers     Subscribers
 	connections     Connections
+	groupTargets    GroupTargets
 	authSubscribers AuthSubscribers
 	mu              sync.RWMutex
 }
@@ -65,6 +68,7 @@ func NewSocketMaps() *SocketMaps {
 	return &SocketMaps{
 		subscribers:     make(Subscribers),
 		connections:     make(Connections),
+		groupTargets:    make(GroupTargets),
 		authSubscribers: make(AuthSubscribers),
 	}
 }
@@ -162,6 +166,8 @@ func InitSocket() *Socket {
 					break
 				}
 
+				socketMaps.groupTargets[subscriber.GroupId] += connId
+
 				delete(subscriber.Tickets, auth)
 				delete(socketMaps.authSubscribers, auth)
 
@@ -195,15 +201,9 @@ func InitSocket() *Socket {
 				// println("deleting socket connection for", cmd.Request.ConnId)
 				delete(socketMaps.connections, cmd.Request.ConnId)
 
-				connIdStartIdx := strings.Index(subscriber.ConnectionIds, cmd.Request.ConnId)
-				connIdEndIdx := connIdStartIdx + CID_LENGTH // uuid length
-				if connIdStartIdx == -1 || len(subscriber.ConnectionIds) < connIdEndIdx {
-					cmd.ReplyChan <- SocketResponse{
-						Error: noDeletionConnectionId,
-					}
-					break
-				}
-				subscriber.ConnectionIds = subscriber.ConnectionIds[:connIdStartIdx] + subscriber.ConnectionIds[connIdEndIdx:]
+				subscriber.ConnectionIds = strings.Replace(subscriber.ConnectionIds, cmd.Request.ConnId, "", 1)
+				socketMaps.groupTargets[cmd.Request.ConnId] = strings.Replace(socketMaps.groupTargets[cmd.Request.GroupId], cmd.Request.ConnId, "", 1)
+
 				// println("subscriber", cmd.Request.UserSub, "got new connids", subscriber.ConnectionIds)
 				if len(subscriber.ConnectionIds) == 0 {
 					// println("deleted subscriber", cmd.Request.UserSub, "with 0 connid")
@@ -228,10 +228,10 @@ func InitSocket() *Socket {
 
 			// println("user sub:", subscriber.UserSub)
 			// println("conn id:", subscriber.ConnectionId, "is trying to send to", cmd.Request.Targets, string(cmd.Request.MessageBytes))
-			var connectionIds string
-			for k := range socketMaps.connections {
-				connectionIds += k + " "
-			}
+			// var connectionIds string
+			// for k := range socketMaps.connections {
+			// 	connectionIds += k + " "
+			// }
 			// println("tar len", len(cmd.Request.Targets))
 			for i := 0; i+CID_LENGTH <= len(cmd.Request.Targets); i += CID_LENGTH {
 				connId := cmd.Request.Targets[i : i+CID_LENGTH]
@@ -297,6 +297,21 @@ func InitSocket() *Socket {
 			cmd.ReplyChan <- SocketResponse{
 				SocketResponseParams: &types.SocketResponseParams{
 					Targets: subscriber.ConnectionIds,
+				},
+			}
+
+		case GetGroupTargetsSocketCommand:
+			targets, ok := socketMaps.groupTargets[cmd.Request.GroupId]
+			if !ok {
+				cmd.ReplyChan <- SocketResponse{
+					Error: noSubscriberTargets,
+				}
+				break
+			}
+
+			cmd.ReplyChan <- SocketResponse{
+				SocketResponseParams: &types.SocketResponseParams{
+					Targets: targets,
 				},
 			}
 
@@ -491,6 +506,30 @@ func (s *Socket) RoleCall(userSub string) error {
 
 	response, err := s.SendCommand(ctx, GetSubscribedTargetsSocketCommand, &types.SocketRequestParams{
 		UserSub: userSub,
+	})
+	if err != nil {
+		return util.ErrCheck(err)
+	}
+
+	if len(response.Targets) > 0 {
+		err := s.SendMessage(ctx, userSub, response.Targets, &types.SocketMessage{
+			Action: types.SocketActions_ROLE_CALL,
+		})
+		if err != nil {
+			return util.ErrCheck(err)
+		}
+	}
+
+	return nil
+}
+
+func (s *Socket) GroupRoleCall(userSub, groupId string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+
+	response, err := s.SendCommand(ctx, GetGroupTargetsSocketCommand, &types.SocketRequestParams{
+		UserSub: userSub,
+		GroupId: groupId,
 	})
 	if err != nil {
 		return util.ErrCheck(err)

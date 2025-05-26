@@ -214,8 +214,9 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 
 func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAssignmentsRequest) (*types.PatchGroupAssignmentsResponse, error) {
 	userSub := info.Session.GetUserSub()
+	groupId := info.Session.GetGroupId()
 
-	assignmentsBytes, err := h.Redis.Client().Get(info.Ctx, "group_role_assignments:"+info.Session.GetGroupId()).Bytes()
+	assignmentsBytes, err := h.Redis.Client().Get(info.Ctx, "group_role_assignments:"+groupId).Bytes()
 	if err != nil && !errors.Is(err, redis.Nil) {
 		return nil, util.ErrCheck(err)
 	}
@@ -297,6 +298,8 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 			}
 		}
 	}
+
+	_ = h.Socket.GroupRoleCall(userSub, groupId)
 
 	return &types.PatchGroupAssignmentsResponse{Success: true}, nil
 }

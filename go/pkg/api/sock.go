@@ -118,6 +118,7 @@ func (a *API) InitSockServer() {
 		}
 
 		userSub := session.GetUserSub()
+		groupId := session.GetGroupId()
 
 		// Cleanup socket client connection mapping
 		defer func() {
@@ -125,6 +126,7 @@ func (a *API) InitSockServer() {
 			defer cancel()
 			if _, err := a.Handlers.Socket.SendCommand(ctx, clients.DeleteSocketConnectionSocketCommand, &types.SocketRequestParams{
 				UserSub: userSub,
+				GroupId: groupId,
 				ConnId:  connId,
 			}); err != nil {
 				util.ErrorLog.Println(util.ErrCheck(err))
