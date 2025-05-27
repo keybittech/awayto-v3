@@ -61,7 +61,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 			t.Fatalf("failed to get new token after user patches self %v", err)
 		}
 
-		if session.RoleBits&types.SiteRoles_APP_GROUP_ADMIN > 0 {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_ADMIN) > 0 {
 			t.Fatal("user has admin role after trying to add admin role to themselves")
 		}
 	})
@@ -78,7 +78,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 			t.Fatalf("failed to get new token after admin promotes staff %v", err)
 		}
 
-		if session.RoleBits&types.SiteRoles_APP_GROUP_SCHEDULES == 0 {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_SCHEDULES) == 0 {
 			t.Fatal("staff does not have APP_GROUP_SCHEDULES after admin promotion")
 		}
 	})
@@ -94,7 +94,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 			t.Fatalf("failed to get new token after staff modify staff role without permissions %v", err)
 		}
 
-		if session.RoleBits&types.SiteRoles_APP_GROUP_SCHEDULES > 0 {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_SCHEDULES) > 0 {
 			t.Fatal("staff modified staff role without having APP_GROUP_USERS permissions")
 		}
 
@@ -108,7 +108,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 			t.Fatalf("failed to get new token after staff modify user role without permissions %v", err)
 		}
 
-		if session.RoleBits&types.SiteRoles_APP_GROUP_USERS == 0 {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_USERS) == 0 {
 			t.Fatal("staff does not have APP_GROUP_USERS permissions after admin add")
 		}
 
@@ -129,7 +129,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 			t.Fatalf("failed to get new token after staff modify user role with permissions %v", err)
 		}
 
-		if session.RoleBits&types.SiteRoles_APP_GROUP_SCHEDULES == 0 {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_SCHEDULES) == 0 {
 			t.Fatal("staff failed modify user role having APP_GROUP_USERS permissions")
 		}
 
@@ -147,10 +147,10 @@ func testIntegrationPromoteUser(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to get new staff token after role update staffid:%s %v", staff.TestUserId, err)
 			}
-			if session.RoleBits&types.SiteRoles_APP_GROUP_SCHEDULES == 0 {
+			if session.RoleBits&int32(types.SiteRoles_APP_GROUP_SCHEDULES) == 0 {
 				t.Fatalf("staff %s does not have APP_GROUP_SCHEDULES permissions, %d", staff.TestUserId, session.RoleBits)
 			}
-			if session.RoleBits&types.SiteRoles_APP_GROUP_USERS == 0 {
+			if session.RoleBits&int32(types.SiteRoles_APP_GROUP_USERS) == 0 {
 				t.Fatalf("staff %s does not have APP_GROUP_USERS permissions, %d", staff.TestUserId, session.RoleBits)
 			}
 			testUserIdx := int32(i + 1) // skip admin
@@ -167,7 +167,7 @@ func testIntegrationPromoteUser(t *testing.T) {
 			if err != nil {
 				t.Fatalf("failed to get new member token after role update memberid:%s %v", member.TestUserId, err)
 			}
-			if session.RoleBits&types.SiteRoles_APP_GROUP_BOOKINGS == 0 {
+			if session.RoleBits&int32(types.SiteRoles_APP_GROUP_BOOKINGS) == 0 {
 				t.Fatalf("member %s does not have APP_GROUP_BOOKINGS permissions, %d", member.TestUserId, session.RoleBits)
 			}
 			testUserIdx := int32(i + 4) // skip admin + 3 staff

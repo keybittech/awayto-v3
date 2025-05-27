@@ -20,10 +20,13 @@ message UserSession {
   string subGroupPath = 12;
   string anonIp = 13;
   string timezone = 14;
-  SiteRoles roleBits = 15;
-  int64 groupSessionVersion = 16; // References UnixNano int64
-  int64 expiresAt = 17; // References claims ExpiresAt int64
-  bool groupAi = 18;
+  string token = 15;
+  string refreshToken = 16;
+  int64 groupSessionVersion = 17; // References UnixNano int64
+  int64 expiresAt = 18; // References session ExpiresAt int64
+  int64 refreshExpiresAt = 19; // References session RefreshExpiresAt int64
+  int32 roleBits = 20;
+  bool groupAi = 21;
 
   option (types.mutex) = true;
 }

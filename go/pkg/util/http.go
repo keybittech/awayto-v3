@@ -4,6 +4,7 @@ import (
 	"bytes"
 	json "encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"net/url"
@@ -160,7 +161,10 @@ func PostFormData(url string, headers http.Header, data url.Values) ([]byte, err
 	defer resp.Body.Close()
 
 	if !successStatus(resp.StatusCode) {
-		return nil, ErrCheck(errors.New(http.StatusText(resp.StatusCode)))
+		errBytes := make([]byte, 1024)
+		resp.Body.Read(errBytes)
+		err := fmt.Errorf("bad status %d, err: %s", resp.StatusCode, errBytes)
+		return nil, ErrCheck(err)
 	}
 
 	respBody, err := io.ReadAll(resp.Body)

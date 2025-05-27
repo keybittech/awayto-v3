@@ -16,9 +16,7 @@ import EventNoteIcon from '@mui/icons-material/EventNote';
 
 import Icon from '../../img/kbt-icon.png';
 
-const { VITE_REACT_APP_APP_HOST_URL } = import.meta.env;
-
-import { useSecure, useStyles, keycloak, SiteRoles, targets } from 'awayto/hooks';
+import { useSecure, useStyles, SiteRoles, targets, logout } from 'awayto/hooks';
 
 export function Sidebar(): React.JSX.Element {
   const secure = useSecure();
@@ -70,7 +68,7 @@ export function Sidebar(): React.JSX.Element {
         <ListItem sx={classes.menuIcon} onClick={() => {
           async function go() {
             localStorage.clear();
-            await keycloak.logout({ redirectUri: VITE_REACT_APP_APP_HOST_URL });
+            await logout();
           }
           void go();
         }} key={'logout'}>

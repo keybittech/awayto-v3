@@ -24,6 +24,9 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		}
 	}
 
+	msgType := handlerOpts.ServiceMethodInputType
+	methodName := handlerOpts.ServiceMethodName
+	noLogFields := handlerOpts.NoLogFields
 	optPack := handlerOpts.Unpack()
 
 	var queryParser = func(proto.Message, *http.Request) {}
@@ -74,12 +77,12 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 				// If there is no trace file hint, print the full stack
 				var sb strings.Builder
 				sb.WriteString("Service: ")
-				sb.WriteString(handlerOpts.ServiceMethodName)
+				sb.WriteString(methodName)
 				sb.WriteByte(' ')
 				sb.WriteString(fmt.Sprint(p))
 				errStr := sb.String()
 
-				util.RequestError(w, errStr, handlerOpts.NoLogFields, pb)
+				util.RequestError(w, errStr, noLogFields, pb)
 
 				if !strings.Contains(errStr, ".go:") {
 					util.ErrorLog.Println(string(debug.Stack()))
@@ -89,7 +92,7 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.GetUserSub())
 		}()
 
-		pb = bodyParser(w, req, handlerOpts)
+		pb = bodyParser(w, req, msgType)
 		queryParser(pb, req)
 		pathParser(pb, req)
 

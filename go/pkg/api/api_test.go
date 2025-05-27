@@ -2,7 +2,6 @@ package api
 
 import (
 	"context"
-	"crypto/rsa"
 	"fmt"
 	"log"
 	"net/http"
@@ -12,7 +11,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -21,7 +19,6 @@ import (
 
 var (
 	integrationTest = &types.IntegrationTest{}
-	publicKey       *rsa.PublicKey
 )
 
 func TestMain(m *testing.M) {
@@ -36,10 +33,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal(err)
 	}
-
-	kc := clients.InitKeycloak()
-	publicKey = kc.Client.PublicKey
-	kc.Close()
 
 	m.Run()
 }

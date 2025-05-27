@@ -188,7 +188,7 @@ SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
 #           TARGETS             #
 #################################
 
-build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
+build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -225,7 +225,7 @@ else
 	sudo update-ca-certificates
 endif
 
-${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
+${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
 	@mkdir -p $(@D)
 	@chmod 750 $(@D)
 	install -m 640 /dev/null $@
@@ -260,7 +260,7 @@ $(TS_API_BUILD): $(shell find proto/ -type f)
 	npx -y @rtk-query/codegen-openapi $(TS_CONFIG_API)
 
 $(TS_SRC)/.env.local: $(TS_SRC)/.env.template
-	sed -e 's&project-title&${PROJECT_TITLE}&g; s&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&kc-realm&${KC_REALM}&g; s&kc-client&${KC_CLIENT}&g; s&kc-path&${KC_PATH}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g; s&ai-enabled&$(AI_ENABLED)&g;' "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
+	sed -e 's&project-title&${PROJECT_TITLE}&g; s&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g; s&ai-enabled&$(AI_ENABLED)&g;' "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
 
 $(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,package.json,index.html,vite.config.ts} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i

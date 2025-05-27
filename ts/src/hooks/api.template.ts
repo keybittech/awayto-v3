@@ -1,7 +1,6 @@
 import { MutationDefinition, QueryDefinition } from '@reduxjs/toolkit/query';
 import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, TypedUseQueryHookResult, retry, reactHooksModule, buildCreateApi, coreModule } from '@reduxjs/toolkit/query/react'
 
-import { keycloak, refreshToken, setAuthHeaders } from './keycloak';
 import { RootState } from './store';
 import { utilSlice } from './util';
 
@@ -16,24 +15,16 @@ const modifiedResources: Record<string, string> = {};
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = async (args, api) => {
 
   const baseQuery = fetchBaseQuery({
+    credentials: 'include',
     baseUrl: VITE_REACT_APP_APP_HOST_URL + "/api",
     prepareHeaders(headers) {
-      if (!keycloak.token) {
-        throw 'no token for api fetch';
-      }
-
-      headers = setAuthHeaders(headers);
-
       const lastModified = modifiedResources[args.url];
       if (lastModified) {
         headers.set('If-Modified-Since', lastModified);
       }
-
       return headers
     },
   });
-
-  await refreshToken();
 
   let result = await baseQuery(args, api, {});
 

@@ -3,8 +3,6 @@ import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
 
-import { keycloak, setAuthHeaders } from './hooks/keycloak';
-
 import './index.css';
 import './fonts.css';
 
@@ -61,29 +59,26 @@ async function loadExternal() {
       const currentSearch = window.location.search;
 
       if (currentPathname.endsWith('/join') && currentSearch.includes('groupCode')) {
-        await keycloak.init({});
-        const redirectUri = window.location.toString().split('?')[0].replace('/join', '');
-        const kcRegisterUrl = await keycloak.createRegisterUrl({ redirectUri });
-        window.location.href = kcRegisterUrl + '&' + currentSearch.slice(1);
+        window.location.href = `/api/auth/register${currentSearch}`;
         return;
       } else if (currentPathname.endsWith('/register')) {
-        await keycloak.init({});
-        const redirectUri = window.location.toString().replace('/register', '');
-        window.location.href = await keycloak.createRegisterUrl({ redirectUri });
+        window.location.href = '/api/auth/register';
         return;
       }
 
-      const authenticated = await keycloak.init({
-        onLoad: 'login-required'
+      const response = await fetch(`/auth/status`, {
+        credentials: 'include'
       });
 
-      if (authenticated) {
-        await keycloak.updateToken(5);
-        await fetch('/login', { headers: setAuthHeaders() });
-
-        await loadInternal();
+      if (response.ok) {
+        const authResponse = (await response.json()) as { authenticated: boolean };
+        if (authResponse.authenticated) {
+          await loadInternal();
+        } else {
+          window.location.href = `/auth/login`;
+        }
       } else {
-        console.warn("Keycloak initialized but not authenticated with 'login-required'.");
+        window.location.href = `/auth/login`;
       }
     }
   } catch (error) {

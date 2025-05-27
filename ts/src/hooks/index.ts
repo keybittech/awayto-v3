@@ -6,7 +6,6 @@ export * from './exchange';
 export * from './form';
 export * from './middleware';
 export * from './kiosk';
-export * from './keycloak';
 export * from './store';
 export * from './style';
 export * from './time_unit';

@@ -15,7 +15,7 @@ import FormGroup from '@mui/material/FormGroup';
 import FormControlLabel from '@mui/material/FormControlLabel';
 import CircularProgress from '@mui/material/CircularProgress';
 
-import { useDebounce, useUtil, refreshToken, siteApi, IGroup, targets, IValidationAreas, useValid } from 'awayto/hooks';
+import { useDebounce, useUtil, siteApi, IGroup, targets, IValidationAreas, useValid } from 'awayto/hooks';
 
 const {
   VITE_REACT_APP_AI_ENABLED
@@ -54,7 +54,6 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
   const [allowedDomain, setAllowedDomain] = useState('');
   const purposeEdited = useRef(false);
 
-  const [getUserProfileDetails] = siteApi.useLazyUserProfileServiceGetUserProfileDetailsQuery();
   const [postGroup] = siteApi.useGroupServicePostGroupMutation();
   const [patchGroup] = siteApi.useGroupServicePatchGroupMutation();
 
@@ -94,10 +93,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
       }).catch(console.error);
     }
 
-    await refreshToken(61).then(async () => {
-      await getUserProfileDetails();
-      closeModal && closeModal(group);
-    }).catch(console.error);
+    closeModal && closeModal(group);
   }, [group, editGroup]);
 
   const badName = !checkState.isUninitialized && (!group.name || checkState.isFetching || checkState.isError);

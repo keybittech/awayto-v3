@@ -12,12 +12,13 @@ import (
 
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-type BodyParser func(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message
+type BodyParser func(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message
 
-func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message {
-	pb := handlerOpts.ServiceMethodInputType.New().Interface().(proto.Message)
+func ProtoBodyParser(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message {
+	pb := msgType.New().Interface().(proto.Message)
 
 	if req.Body != nil && req.Body != http.NoBody {
 		req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1MB limit
@@ -52,7 +53,7 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util
 	return pb
 }
 
-func MultipartBodyParser(w http.ResponseWriter, req *http.Request, handlerOpts *util.HandlerOptions) proto.Message {
+func MultipartBodyParser(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message {
 	req.Body = http.MaxBytesReader(w, req.Body, 1<<25)
 
 	err := req.ParseMultipartForm(1 << 25) // 32MB payload max

@@ -2,23 +2,16 @@ package util
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
 	"database/sql"
-	"encoding/base64"
 	"errors"
 	"log"
 	"math"
-	"net/http"
 	"strconv"
 	"strings"
-	"time"
 
 	"golang.org/x/text/cases"
 	"golang.org/x/text/language"
 	"google.golang.org/protobuf/reflect/protoreflect"
-
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 var (
@@ -228,70 +221,4 @@ func StringOut(s string, ss []string) []string {
 		ns = append(ns, cs)
 	}
 	return ns
-}
-
-func WriteSigned(name, unsignedValue string) (string, error) {
-	mac := hmac.New(sha256.New, signingToken)
-
-	_, err := mac.Write([]byte(name))
-	if err != nil {
-		return "", ErrCheck(errors.New("invalid base64 signature encoding"))
-	}
-
-	_, err = mac.Write([]byte(unsignedValue))
-	if err != nil {
-		return "", ErrCheck(errors.New("invalid base64 signature encoding"))
-	}
-
-	signature := mac.Sum(nil)
-	return base64.StdEncoding.EncodeToString(signature) + unsignedValue, nil
-}
-
-func VerifySigned(name, signedValue string) (string, error) {
-	if len(signedValue) < sha256.Size {
-		return "", ErrCheck(errors.New("signed value too small"))
-	}
-
-	signatureEncoded := signedValue[:base64.StdEncoding.EncodedLen(sha256.Size)]
-	signature, err := base64.StdEncoding.DecodeString(signatureEncoded)
-	if err != nil {
-		return "", ErrCheck(errors.New("invalid base64 signature encoding"))
-	}
-
-	value := signedValue[base64.StdEncoding.EncodedLen(sha256.Size):]
-
-	mac := hmac.New(sha256.New, signingToken)
-	mac.Write([]byte(name))
-	mac.Write([]byte(value))
-	expectedSignature := mac.Sum(nil)
-
-	if !hmac.Equal(signature, expectedSignature) {
-		return "", ErrCheck(errors.New("invalid signature equality"))
-	}
-
-	return value, nil
-}
-
-func CookieExpired(req *http.Request) bool {
-	cookie, err := req.Cookie("valid_signature")
-	if err == nil && cookie.Value != "" {
-		expiresAtStr, err := VerifySigned(LOGIN_SIGNATURE_NAME, cookie.Value)
-		if err == nil {
-			expiresAt, parseErr := strconv.ParseInt(expiresAtStr, 10, 64)
-			if parseErr == nil && time.Now().Unix() < expiresAt {
-				return false
-			}
-		}
-	}
-	return true
-}
-
-func StringsToSiteRoles(roles []string) types.SiteRoles {
-	var bitmask int32
-	for _, role := range roles {
-		if bit, ok := types.SiteRoles_value[role]; ok {
-			bitmask |= bit
-		}
-	}
-	return types.SiteRoles(bitmask)
 }

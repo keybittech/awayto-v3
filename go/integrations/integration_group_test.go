@@ -47,7 +47,7 @@ func testIntegrationGroup(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if session.RoleBits&types.SiteRoles_APP_GROUP_ADMIN == 0 {
+		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_ADMIN) == 0 {
 			t.Fatal("admin doesn't have admin role")
 		}
 

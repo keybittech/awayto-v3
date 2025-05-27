@@ -56,7 +56,6 @@ services:
     environment:
       - KC_UNIX_SOCK_DIR=/unix_sock
       - KC_UNIX_SOCK_LOC=${UNIX_SOCK_FILE}
-      - KC_API_CLIENT_ID=${KC_CLIENT}
       - KC_PROXY_HEADERS=xforwarded
       - KC_HTTP_ENABLED=true
       - KC_HOSTNAME_STRICT=false

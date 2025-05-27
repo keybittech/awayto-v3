@@ -15,6 +15,19 @@ export type IAuth = {
   authenticated?: boolean;
 }
 
+export async function logout() {
+  try {
+    await fetch(`/auth/logout`, {
+      method: 'POST',
+      credentials: 'include'
+    });
+  } catch (error) {
+    console.error('Logout failed:', error);
+  }
+
+  window.location.href = '/';
+}
+
 export const authConfig = {
   name: 'auth',
   initialState: {

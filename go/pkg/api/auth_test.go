@@ -3,42 +3,8 @@ package api
 import (
 	"net/http"
 	"net/http/httputil"
-	"reflect"
 	"testing"
-
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
-
-func Test_ValidateToken(t *testing.T) {
-	kc := clients.InitKeycloak()
-
-	type args struct {
-		token    string
-		timezone string
-		anonIp   string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *types.UserSession
-		wantErr bool
-	}{
-		{"fails with no token", args{"", "", ""}, nil, true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := ValidateToken(kc.Client.PublicKey, tt.args.token, tt.args.timezone, tt.args.anonIp)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("ValidateToken(%v, %v, %v) error = %v, wantErr %v", tt.args.token, tt.args.timezone, tt.args.anonIp, err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("ValidateToken(%v, %v, %v) = %v, want %v", tt.args.token, tt.args.timezone, tt.args.anonIp, got, tt.want)
-			}
-		})
-	}
-}
 
 func TestSetForwardingHeadersAndServe(t *testing.T) {
 	type args struct {
@@ -73,34 +39,6 @@ func TestAPI_InitAuthProxy(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.a.InitAuthProxy()
-		})
-	}
-}
-
-func TestValidateToken(t *testing.T) {
-	type args struct {
-		token    string
-		timezone string
-		anonIp   string
-	}
-	tests := []struct {
-		name    string
-		args    args
-		want    *types.UserSession
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// got, err := ValidateToken(tt.args.token, tt.args.timezone, tt.args.anonIp)
-			// if (err != nil) != tt.wantErr {
-			// 	t.Errorf("ValidateToken(%v, %v, %v) error = %v, wantErr %v", tt.args.token, tt.args.timezone, tt.args.anonIp, err, tt.wantErr)
-			// 	return
-			// }
-			// if !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("ValidateToken(%v, %v, %v) = %v, want %v", tt.args.token, tt.args.timezone, tt.args.anonIp, got, tt.want)
-			// }
 		})
 	}
 }

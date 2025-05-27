@@ -6,8 +6,6 @@ import (
 	"reflect"
 	"sync"
 	"testing"
-
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func reset(b *testing.B) {
@@ -360,7 +358,7 @@ func TestStringsToSiteRoles(t *testing.T) {
 	tests := []struct {
 		name string
 		args args
-		want types.SiteRoles
+		want int32
 	}{
 		// TODO: Add test cases.
 	}

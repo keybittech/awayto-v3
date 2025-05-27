@@ -9,8 +9,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 
 import org.json.JSONObject;
-import org.keycloak.models.ClientModel;
-import org.keycloak.models.RealmModel;
 import org.newsclub.net.unix.AFUNIXSocket;
 import org.newsclub.net.unix.AFUNIXSocketAddress;
 
@@ -21,16 +19,6 @@ public final class BackchannelAuth {
 
   private static final File SOCKET_FILE = new File(
       System.getenv("KC_UNIX_SOCK_DIR") + "/" + System.getenv("KC_UNIX_SOCK_LOC"));
-
-  public static String getClientSecret(RealmModel realm) {
-    String clientId = System.getenv("KC_API_CLIENT_ID");
-    ClientModel client = realm.getClientByClientId(clientId);
-    if (client != null) {
-      return client.getSecret();
-    } else {
-      return null;
-    }
-  }
 
   public static JSONObject sendUnixMessage(String eventType, JSONObject eventPayload) {
     JSONObject response = new JSONObject();

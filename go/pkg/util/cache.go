@@ -5,6 +5,7 @@ import (
 )
 
 type Cache struct {
+	TempAuthSessions     *types.ConcurrentTempAuthSessionCache
 	UserSessions         *types.ConcurrentUserSessionCache
 	Groups               *types.ConcurrentCachedGroupCache
 	SubGroups            *types.ConcurrentCachedSubGroupCache
@@ -13,6 +14,7 @@ type Cache struct {
 
 func NewCache() *Cache {
 	return &Cache{
+		TempAuthSessions:     types.NewConcurrentTempAuthSessionCache(),
 		UserSessions:         types.NewConcurrentUserSessionCache(),
 		Groups:               types.NewConcurrentCachedGroupCache(),
 		SubGroups:            types.NewConcurrentCachedSubGroupCache(),

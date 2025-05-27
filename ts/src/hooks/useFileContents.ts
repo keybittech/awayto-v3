@@ -1,6 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
 import { BufferResponse, IFile } from './api';
-import { keycloak, refreshToken } from './keycloak';
 import { useUtil } from './useUtil';
 
 export type UseFileContents = () => {
@@ -37,16 +36,10 @@ export const useFileContents: UseFileContents = () => {
       fd.append('contents', f);
     }
 
-    await refreshToken();
-
-    const headers = {
-      'Authorization': `Bearer ${keycloak.token as string}`
-    }
-
     const res = await fetch('/api/v1/files/content', {
       body: fd,
       method: 'POST',
-      headers
+      credentials: 'include'
     });
 
     if (200 !== res.status) {
@@ -66,14 +59,8 @@ export const useFileContents: UseFileContents = () => {
       return undefined;
     }
 
-    await refreshToken();
-
-    const headers = {
-      'Authorization': `Bearer ${keycloak.token as string}`
-    }
-
     const response = await fetch(`/api/v1/files/content/${fileRef.uuid}`, {
-      headers
+      credentials: 'include'
     });
 
     const fileBlob = await response.blob();

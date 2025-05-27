@@ -56,19 +56,19 @@ func (a *API) LimitMiddleware(rl *RateLimiter) func(next http.Handler) http.Hand
 func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFunc { // This converts a regular HandlerFunc into a SessionHandler
 	return func(next SessionHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
-			token := req.Header.Get("Authorization")
-			if token == "" {
+			session := a.Cache.GetSessionFromCookie(req)
+			if session == nil {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
-			session, err := a.Cache.UserSessions.LoadOrSet(token, func() (*types.UserSession, error) {
-				return ValidateToken(a.Handlers.Keycloak.Client.PublicKey, token, req.Header.Get("X-Tz"), util.AnonIp(req.RemoteAddr))
-			})
-			if err != nil {
-				util.ErrorLog.Println(err)
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-				return
+
+			if time.Now().After(time.Unix(0, session.GetExpiresAt()).Add(-30 * time.Second)) {
+				if err := a.Cache.RefreshAccessToken(req); err != nil {
+					http.Error(w, "Token refresh failed in middleware", http.StatusUnauthorized)
+					return
+				}
 			}
+
 			next(w, req, session)
 		}
 	}
@@ -200,15 +200,16 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 }
 
 func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
-	optPack := opts.Unpack()
+	siteRole := opts.Unpack().SiteRole
+	unrestricted := int32(types.SiteRoles_UNRESTRICTED)
 	return func(next SessionHandler) SessionHandler {
-		if optPack.SiteRole == types.SiteRoles_UNRESTRICTED {
+		if siteRole == unrestricted {
 			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 				next(w, req, session)
 			}
 		} else {
 			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-				if session.GetRoleBits()&optPack.SiteRole == 0 {
+				if session.GetRoleBits()&siteRole == 0 {
 					util.WriteAuthRequest(req, session.GetUserSub(), opts.SiteRoleName)
 					w.WriteHeader(http.StatusForbidden)
 					return

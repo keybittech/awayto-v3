@@ -48,7 +48,7 @@ import (
 // ease the task of debugging and general understanding.
 
 var (
-	appGroupSchedulesRole        = types.SiteRoles_APP_GROUP_SCHEDULES
+	appGroupSchedulesRole        = int32(types.SiteRoles_APP_GROUP_SCHEDULES)
 	startDateRequiredWithEndDate = util.UserError("A start date must be provided when using end date.")
 	endDateMustBeAfterStartDate  = util.UserError("End time must be after start time.")
 	onlyOneMasterScheduleError   = util.UserError("You can only join a master schedule once. Instead, edit that schedule, then add another bracket to it.")

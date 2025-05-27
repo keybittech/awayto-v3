@@ -5,7 +5,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/tls"
 	"encoding/base64"
@@ -24,8 +23,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/api"
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -33,7 +30,6 @@ import (
 )
 
 var (
-	publicKey  *rsa.PublicKey
 	httpClient = &http.Client{
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{
@@ -196,56 +192,38 @@ func checkServer() error {
 	return nil
 }
 
-func getPublicKey() {
-	kc := clients.InitKeycloak()
-	publicKey = kc.Client.PublicKey
-	kc.Close()
-}
-
 func getKeycloakToken(userId string) (string, *types.UserSession, error) {
+
 	data := url.Values{}
-	data.Set("client_id", util.E_KC_CLIENT)
+	data.Set("client_id", util.E_KC_USER_CLIENT)
 	data.Set("username", "1@"+userId)
 	data.Set("password", "1")
 	data.Set("grant_type", "password")
 
-	req, err := http.NewRequest(
-		"POST",
-		"http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token",
-		strings.NewReader(data.Encode()),
-	)
+	var header http.Header
+	header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := util.PostFormData("http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token", header, data)
 	if err != nil {
 		return "", nil, err
 	}
 
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	body, err := doAndRead(req)
-	if err != nil {
+	var tokens *types.OIDCToken
+	if err := protojson.Unmarshal(resp, tokens); err != nil {
 		return "", nil, err
 	}
 
-	var result map[string]any
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", nil, err
-	}
+	// session, err := util.ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
+	// if err != nil {
+	// 	log.Fatalf("error validating auth token: %v", err)
+	// }
 
-	token, ok := result["access_token"].(string)
-	if !ok {
-		return "", nil, fmt.Errorf("access token not found in response")
-	}
+	// if integrationTest.Group != nil {
+	// 	groupId := integrationTest.Group.Id
+	// 	session.GroupId = groupId
+	// }
 
-	session, err := api.ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
-	if err != nil {
-		log.Fatalf("error validating auth token: %v", err)
-	}
-
-	if integrationTest.Group != nil {
-		groupId := integrationTest.Group.Id
-		session.GroupId = groupId
-	}
-
-	return token, session, nil
+	return tokens.GetAccessToken(), nil, nil
 }
 
 func registerKeycloakUserViaForm(email, pass string, code ...string) (bool, error) {

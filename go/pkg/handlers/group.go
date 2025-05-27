@@ -152,6 +152,10 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
+	err = h.Cache.RefreshAccessToken(info.Req)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 	_ = h.Socket.RoleCall(userSub)
 
 	undos = nil
@@ -207,6 +211,11 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 		for _, subGroupPath := range cachedGroup.GetSubGroupPaths() {
 			h.Cache.SubGroups.Delete(subGroupPath)
 		}
+	}
+
+	err = h.Cache.RefreshAccessToken(info.Req)
+	if err != nil {
+		return nil, util.ErrCheck(err)
 	}
 
 	return &types.PatchGroupResponse{Success: true}, nil

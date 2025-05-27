@@ -57,25 +57,25 @@ service UserProfileService {
 }
 
 message IUserProfile {
-  string id = 1;
-  string sub = 2;
-  string email = 3;
-  string username = 4;
-  string firstName = 5;
-  string lastName = 6;
-  string image = 7;
-  string createdOn = 8;
-  string updatedOn = 9;
-  bool locked = 10;
-  bool active = 11;
-  bool enabled = 12;
-  map<string, IQuote> quotes = 13;
-  bool seenQuotes = 14;
-  map<string, IBooking> bookings = 15;
-  bool seenBookings = 16;
-  map<string, IGroup> groups = 17;
-  SiteRoles roleBits = 18;
-  string roleName = 19;
+  map<string, IQuote> quotes = 1;
+  map<string, IBooking> bookings = 2;
+  map<string, IGroup> groups = 3;
+  string id = 4;
+  string sub = 5;
+  string email = 6;
+  string username = 7;
+  string firstName = 8;
+  string lastName = 9;
+  string image = 10;
+  string createdOn = 11;
+  string updatedOn = 12;
+  string roleName = 13;
+  int32 roleBits = 14;
+  bool locked = 15;
+  bool active = 16;
+  bool enabled = 17;
+  bool seenQuotes = 18;
+  bool seenBookings = 19;
 }
 
 message PostUserProfileRequest {

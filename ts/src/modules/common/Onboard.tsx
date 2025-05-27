@@ -15,7 +15,7 @@ import Link from '@mui/material/Link';
 import NavigateNextIcon from '@mui/icons-material/NavigateNext';
 import CloseIcon from '@mui/icons-material/Close';
 
-import { logout, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, refreshToken, targets, useAppSelector } from 'awayto/hooks';
+import { logout, useUtil, siteApi, IGroup, IGroupSchedule, IGroupService, useStyles, targets, useAppSelector } from 'awayto/hooks';
 import { Breadcrumbs, CircularProgress, Dialog } from '@mui/material';
 
 import OnboardingVideo from './OnboardingVideo';
@@ -78,10 +78,8 @@ export function Onboard(_: IComponent): React.JSX.Element {
   }, [profileReq?.userProfile]);
 
   const reloadProfile = async (): Promise<void> => {
-    await refreshToken(61).then(async () => {
-      await getUserProfileDetails().unwrap();
-      navigate('/');
-    }).catch(console.error);
+    await getUserProfileDetails().unwrap();
+    navigate('/');
   }
 
   const changePage = (dir: number) => {

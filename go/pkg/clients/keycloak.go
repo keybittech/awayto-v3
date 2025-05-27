@@ -120,7 +120,7 @@ func InitKeycloak() *Keycloak {
 			}
 
 			for _, realmClient := range realmClients {
-				if realmClient.ClientId == util.E_KC_CLIENT {
+				if realmClient.ClientId == util.E_KC_USER_CLIENT {
 					kc.AppClient = realmClient
 				}
 				if realmClient.ClientId == util.E_KC_API_CLIENT {
@@ -363,14 +363,6 @@ func InitKeycloak() *Keycloak {
 				util.ErrorLog.Println(util.ErrCheck(err))
 				continue
 			}
-
-			pk, err := kc.FetchPublicKey()
-			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
-				continue
-			}
-
-			kc.PublicKey = pk
 
 			k.Client = kc
 

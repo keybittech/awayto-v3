@@ -2,16 +2,12 @@ package api
 
 import (
 	"bytes"
-	"crypto/tls"
-	json "encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
 	"strconv"
-	"strings"
 	"testing"
 	"time"
 
@@ -92,62 +88,38 @@ func getTestReq(token, method, url string, body io.Reader) *http.Request {
 	return testReq
 }
 
-func getKeycloakToken(user *types.TestUser) (string, *types.UserSession, error) {
+func getKeycloakToken(userId string) (string, *types.UserSession, error) {
+
 	data := url.Values{}
-	data.Set("client_id", util.E_KC_CLIENT)
-	data.Set("username", "1@"+user.TestUserId)
+	data.Set("client_id", util.E_KC_USER_CLIENT)
+	data.Set("username", "1@"+userId)
 	data.Set("password", "1")
 	data.Set("grant_type", "password")
 
-	req, err := http.NewRequest(
-		"POST",
-		"http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token",
-		strings.NewReader(data.Encode()),
-	)
+	var header http.Header
+	header.Add("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := util.PostFormData("http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token", header, data)
 	if err != nil {
 		return "", nil, err
 	}
 
-	req.Header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	httpClient := &http.Client{
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
-		},
-	}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return "", nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
+	var tokens *types.OIDCToken
+	if err := protojson.Unmarshal(resp, tokens); err != nil {
 		return "", nil, err
 	}
 
-	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
-		return "", nil, fmt.Errorf("API request failed with status %d: %s", resp.StatusCode, string(body))
-	}
+	// session, err := util.ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
+	// if err != nil {
+	// 	log.Fatalf("error validating auth token: %v", err)
+	// }
 
-	var result map[string]any
-	if err := json.Unmarshal(body, &result); err != nil {
-		return "", nil, err
-	}
+	// if integrationTest.Group != nil {
+	// 	groupId := integrationTest.Group.Id
+	// 	session.GroupId = groupId
+	// }
 
-	token, ok := result["access_token"].(string)
-	if !ok {
-		return "", nil, fmt.Errorf("access token not found in response")
-	}
-
-	session, err := ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
-	if err != nil {
-		log.Fatalf("error validating auth token: %v", err)
-	}
-
-	return token, session, nil
+	return tokens.GetAccessToken(), nil, nil
 }
 
 func checkResponseFor(buf []byte, items []byte) bool {
@@ -163,7 +135,7 @@ func checkResponseFor(buf []byte, items []byte) bool {
 }
 
 func setupRouteRequest(userId int32, limit rate.Limit, burst int, method, path, contentType string) (*API, *http.Request, *httptest.ResponseRecorder) {
-	token, _, err := getKeycloakToken(integrationTest.TestUsers[userId])
+	token, _, err := getKeycloakToken(integrationTest.TestUsers[userId].GetTestUserId())
 	if err != nil {
 		panic(util.ErrCheck(err))
 	}

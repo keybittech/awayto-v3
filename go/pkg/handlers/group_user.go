@@ -50,6 +50,8 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 		return nil, util.ErrCheck(err)
 	}
 
+	_ = h.Socket.RoleCall(data.UserSub)
+
 	return &types.PatchGroupUserResponse{Success: true}, nil
 }
 

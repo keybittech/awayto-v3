@@ -14,7 +14,7 @@ import Logout from '@mui/icons-material/Logout';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useSecure, useGrid, useUtil, useStyles, keycloak, siteApi, dayjs, IGroup, SiteRoles, targets } from 'awayto/hooks';
+import { useSecure, useGrid, useUtil, useStyles, siteApi, dayjs, IGroup, SiteRoles, targets } from 'awayto/hooks';
 
 import ManageGroupModal from './ManageGroupModal';
 import JoinGroupModal from './JoinGroupModal';
@@ -53,9 +53,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
               confirmEffect: 'Leave the group ' + gr.name + ' and refresh the session.',
               confirmAction: () => {
                 if (gr.code) {
-                  leaveGroup({ leaveGroupRequest: { code: gr.code } }).unwrap().then(() =>
-                    keycloak.clearToken()
-                  ).catch(console.error);
+                  leaveGroup({ leaveGroupRequest: { code: gr.code } });
                 }
               }
             });
@@ -77,7 +75,7 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
               isConfirming: true,
               confirmEffect: 'Delete the group ' + gr.name + ' and refresh the session.',
               confirmAction: () => {
-                deleteGroup({ ids: selected.join(',') }).unwrap().then(() => keycloak.clearToken()).catch(console.error);
+                deleteGroup();
               }
             });
           }}

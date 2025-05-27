@@ -65,8 +65,6 @@ func TestMain(m *testing.M) {
 
 	startupTicker.Stop()
 
-	getPublicKey()
-
 	code := m.Run()
 
 	jsonBytes, _ := protojson.Marshal(integrationTest)

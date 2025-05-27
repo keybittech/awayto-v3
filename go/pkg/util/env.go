@@ -2,6 +2,7 @@ package util
 
 import (
 	"bufio"
+	"crypto/rsa"
 	"flag"
 	"log"
 	"os"
@@ -22,11 +23,14 @@ var (
 	E_GO_ENVFILE_LOC = os.Getenv("GO_ENVFILE_LOC")
 	E_UNIX_SOCK_DIR  = os.Getenv("UNIX_SOCK_DIR")
 
-	E_APP_HOST_URL, E_API_PATH, E_BINARY_NAME, E_CERT_LOC, E_CERT_KEY_LOC, E_DB_DRIVER,
-	E_KC_API_CLIENT, E_KC_CLIENT, E_KC_REALM, E_KC_INTERNAL, E_KC_URL, E_KC_ADMIN_URL, E_LOG_LEVEL, E_LOG_DIR,
-	E_PG_WORKER, E_PG_DB, E_PROJECT_DIR, E_REDIS_URL, E_TS_DEV_SERVER_URL, E_UNIX_SOCK_FILE, E_UNIX_PATH string
+	E_APP_HOST_URL, E_API_PATH, E_BINARY_NAME, E_CERT_LOC, E_CERT_KEY_LOC, E_DB_DRIVER, E_KC_USER_CLIENT_SECRET,
+	E_KC_OPENID_TOKEN_URL, E_KC_OPENID_AUTH_URL, E_KC_API_CLIENT, E_KC_USER_CLIENT, E_KC_REALM, E_KC_INTERNAL,
+	E_KC_URL, E_KC_ADMIN_URL, E_LOG_LEVEL, E_LOG_DIR, E_PG_WORKER, E_PG_DB, E_PROJECT_DIR, E_REDIS_URL,
+	E_TS_DEV_SERVER_URL, E_UNIX_SOCK_FILE, E_UNIX_PATH string
 
 	E_API_PATH_LEN, E_GO_HTTP_PORT, E_GO_HTTPS_PORT, E_RATE_LIMIT, E_RATE_LIMIT_BURST int
+
+	E_KC_PUBLIC_KEY *rsa.PublicKey
 )
 
 func ParseEnv() {
@@ -42,7 +46,7 @@ func ParseEnv() {
 	E_GO_HTTP_PORT = ParseEnvFileVar[int]("GO_HTTP_PORT")
 	E_GO_HTTPS_PORT = ParseEnvFileVar[int]("GO_HTTPS_PORT")
 	E_KC_API_CLIENT = ParseEnvFileVar[string]("KC_API_CLIENT")
-	E_KC_CLIENT = ParseEnvFileVar[string]("KC_CLIENT")
+	E_KC_USER_CLIENT = ParseEnvFileVar[string]("KC_USER_CLIENT")
 	E_KC_REALM = ParseEnvFileVar[string]("KC_REALM")
 	E_KC_INTERNAL = ParseEnvFileVar[string]("KC_INTERNAL")
 	E_LOG_LEVEL = ParseEnvFileVar[string]("LOG_LEVEL")
@@ -58,6 +62,20 @@ func ParseEnv() {
 	E_UNIX_PATH = filepath.Join(E_UNIX_SOCK_DIR, E_UNIX_SOCK_FILE)
 	E_KC_URL = E_KC_INTERNAL + "/realms/" + E_KC_REALM
 	E_KC_ADMIN_URL = E_KC_INTERNAL + "/admin/realms/" + E_KC_REALM
+	E_KC_OPENID_AUTH_URL = E_APP_HOST_URL + "/auth/realms/" + E_KC_REALM + "/protocol/openid-connect/auth"
+	E_KC_OPENID_TOKEN_URL = E_KC_INTERNAL + "/realms/" + E_KC_REALM + "/protocol/openid-connect/token"
+
+	publicKey, err := FetchPublicKey()
+	if err != nil {
+		log.Fatalf("could not get kc public key, err: %v", err)
+	}
+	E_KC_PUBLIC_KEY = publicKey
+
+	userClientSecret, err := GetEnvFilePath("KC_USER_CLIENT_SECRET_FILE", 128)
+	if err != nil {
+		log.Fatalf("could not get user client secret, err: %v", err)
+	}
+	E_KC_USER_CLIENT_SECRET = userClientSecret
 
 	flag.Parse()
 

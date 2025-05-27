@@ -4,41 +4,26 @@ package clients
 
 import (
 	"bytes"
-	"crypto/rsa"
-	"crypto/x509"
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"net/url"
 	"strconv"
 	"strings"
 
 	json "encoding/json"
-	"encoding/pem"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
-
-	"github.com/golang-jwt/jwt"
 )
-
-type KeycloakUserWithClaims struct {
-	types.KeycloakUser
-	jwt.StandardClaims
-	ResourceAccess map[string]struct {
-		Roles []string `json:"roles,omitempty"`
-	} `json:"resource_access,omitempty"`
-}
 
 type KeycloakClient struct {
 	GroupAdminRoles []*types.KeycloakRole
 	AppClient       *types.KeycloakRealmClient
 	ApiClient       *types.KeycloakRealmClient
 	Token           *types.OIDCToken
-	PublicKey       *rsa.PublicKey
 }
 
 func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
@@ -49,44 +34,11 @@ func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
 	return headers
 }
 
-func (keycloakClient KeycloakClient) FetchPublicKey() (*rsa.PublicKey, error) {
-
-	resp, err := util.Get(
-		util.E_KC_URL,
-		keycloakClient.BasicHeaders(),
-	)
-	if err != nil {
-		log.Fatal(util.ErrCheck(err))
-	}
-
-	var result types.KeycloakRealmInfo
-	if err := protojson.Unmarshal(resp, &result); err != nil {
-		log.Fatal(util.ErrCheck(err))
-	}
-
-	block, _ := pem.Decode([]byte("-----BEGIN PUBLIC KEY-----\n" + result.PublicKey + "\n-----END PUBLIC KEY-----"))
-	if block == nil {
-		log.Fatal(util.ErrCheck(errors.New("empty pem block")))
-	}
-
-	pubKey, err := x509.ParsePKIXPublicKey(block.Bytes)
-	if err != nil {
-		log.Fatal(util.ErrCheck(err))
-	}
-
-	if parsed, ok := pubKey.(*rsa.PublicKey); ok {
-		return parsed, nil
-	}
-
-	log.Fatal(util.ErrCheck(errors.New("key could not be parsed")))
-	return nil, nil
-}
-
 func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCToken, error) {
 
 	headers := http.Header{}
 
-	clientSecret, err := util.GetEnvFilePath("KC_API_CLIENT_SECRET_FILE", 128)
+	apiClientSecret, err := util.GetEnvFilePath("KC_API_CLIENT_SECRET_FILE", 128)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -94,7 +46,7 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCTok
 	body := url.Values{
 		"grant_type":    {"client_credentials"},
 		"client_id":     {util.E_KC_API_CLIENT},
-		"client_secret": {string(clientSecret)},
+		"client_secret": {apiClientSecret},
 	}
 
 	resp, err := util.PostFormData(
@@ -243,8 +195,7 @@ func (keycloakClient KeycloakClient) GetRealmClients() ([]*types.KeycloakRealmCl
 }
 
 func (keycloakClient KeycloakClient) UpdateUser(userId, firstName, lastName string) error {
-
-	kcUser := &KeycloakUserWithClaims{}
+	kcUser := &types.IUserProfile{}
 	kcUser.Id = userId
 	kcUser.FirstName = firstName
 	kcUser.LastName = lastName

@@ -2,8 +2,17 @@ syntax = "proto3";
 package types;
 
 import "session.proto";
+import "util.proto";
 
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+message TempAuthSession {
+  string codeVerifier = 1;
+  string state = 2;
+  int64 createdAt = 3; // references UnixMilli()
+
+  option (types.mutex) = true;
+}
 
 message AuthRequestParams {
   string method = 1;

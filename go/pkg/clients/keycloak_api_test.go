@@ -1,7 +1,6 @@
 package clients
 
 import (
-	"crypto/rsa"
 	"net/http"
 	"reflect"
 	"testing"
@@ -21,29 +20,6 @@ func TestKeycloakClient_BasicHeaders(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := tt.keycloakClient.BasicHeaders(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("KeycloakClient.BasicHeaders() = %v, want %v", got, tt.want)
-			}
-		})
-	}
-}
-
-func TestKeycloakClient_FetchPublicKey(t *testing.T) {
-	tests := []struct {
-		name           string
-		keycloakClient KeycloakClient
-		want           *rsa.PublicKey
-		wantErr        bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.keycloakClient.FetchPublicKey()
-			if (err != nil) != tt.wantErr {
-				t.Errorf("KeycloakClient.FetchPublicKey() error = %v, wantErr %v", err, tt.wantErr)
-				return
-			}
-			if !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("KeycloakClient.FetchPublicKey() = %v, want %v", got, tt.want)
 			}
 		})
 	}

@@ -32,7 +32,7 @@ type HandlerOptionsConfig struct {
 	CacheType              types.CacheType
 	NumInvalidations       uint32
 	Throttle               uint32
-	SiteRole               types.SiteRoles
+	SiteRole               int32
 	HasQueryParams         bool
 	HasPathParams          bool
 	MultipartResponse      bool
@@ -62,7 +62,7 @@ type UnpackedOptionsData struct {
 	CacheType         types.CacheType
 	NumInvalidations  uint32
 	Throttle          uint32
-	SiteRole          types.SiteRoles
+	SiteRole          int32
 	HasQueryParams    bool
 	HasPathParams     bool
 	MultipartResponse bool
@@ -197,7 +197,7 @@ func (h *HandlerOptions) Unpack() UnpackedOptionsData {
 	data.CacheType = types.CacheType(cacheType)
 	data.NumInvalidations = (h.packedNumeric >> numInvalidationsShift) & numInvalidationsMask
 	data.Throttle = (h.packedNumeric >> throttleShift) & throttleMask
-	data.SiteRole = types.SiteRoles(siteRole)
+	data.SiteRole = siteRole
 
 	data.UseTx = (h.packedBooleans & useTxBit) != 0
 	data.ShouldSkip = (h.packedBooleans & shouldSkipBit) != 0
