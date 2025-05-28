@@ -10,9 +10,9 @@ import (
 func (h *Handlers) PostUserProfile(info ReqInfo, data *types.PostUserProfileRequest) (*types.PostUserProfileResponse, error) {
 	userSub := info.Session.GetUserSub()
 	_, err := info.Tx.Exec(info.Ctx, `
-		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_sub, ip_address, timezone)
-		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::uuid, $8, $9)
-	`, userSub, data.Username, data.FirstName, data.LastName, data.Email, data.Image, userSub, info.Session.GetAnonIp(), info.Session.GetTimezone())
+		INSERT INTO dbtable_schema.users (sub, username, first_name, last_name, email, image, created_sub)
+		VALUES ($1::uuid, $2, $3, $4, $5, $6, $7::uuid)
+	`, userSub, data.Username, data.FirstName, data.LastName, data.Email, data.Image, userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

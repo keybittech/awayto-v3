@@ -1,4 +1,4 @@
-package main
+package main_test
 
 import (
 	"net/http"
@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -14,7 +15,7 @@ import (
 func testIntegrationService(t *testing.T) {
 	t.Run("admin can create service addons and generate a schedule", func(tt *testing.T) {
 
-		admin := integrationTest.TestUsers[0]
+		admin := testutil.IntegrationTest.TestUsers[0]
 
 		postServiceAddon1Request := &types.PostServiceAddonRequest{Name: "test addon 1"}
 		postServiceAddon1RequestBytes, err := protojson.Marshal(postServiceAddon1Request)
@@ -23,7 +24,7 @@ func testIntegrationService(t *testing.T) {
 		}
 
 		postServiceAddon1Response := &types.PostServiceAddonResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon1RequestBytes, nil, postServiceAddon1Response)
+		err = admin.DoHandler(http.MethodPost, "/api/v1/service_addons", postServiceAddon1RequestBytes, nil, postServiceAddon1Response)
 		if err != nil {
 			t.Fatalf("error requesting addon 1 request: %v", err)
 		}
@@ -39,7 +40,7 @@ func testIntegrationService(t *testing.T) {
 		}
 
 		postServiceAddon2Response := &types.PostServiceAddonResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/service_addons", postServiceAddon2RequestBytes, nil, postServiceAddon2Response)
+		err = admin.DoHandler(http.MethodPost, "/api/v1/service_addons", postServiceAddon2RequestBytes, nil, postServiceAddon2Response)
 		if err != nil {
 			t.Fatalf("error posting addon 2 request: %v", err)
 		}
@@ -72,7 +73,7 @@ func testIntegrationService(t *testing.T) {
 			Order:     1,
 		}
 
-		integrationTest.MasterService = &types.IService{
+		testutil.IntegrationTest.MasterService = &types.IService{
 			Name:  "test service",
 			Tiers: tiers,
 		}

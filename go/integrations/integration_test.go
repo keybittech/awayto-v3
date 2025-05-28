@@ -1,122 +1,36 @@
-package main
+package main_test
 
 import (
 	"fmt"
-	"io"
-	"net"
 	"os"
-	"os/exec"
-	"path/filepath"
-	"strings"
-	"syscall"
 	"testing"
-	"time"
 
-	"golang.org/x/exp/mmap"
-	"google.golang.org/protobuf/encoding/protojson"
-
-	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
-
-var (
-	integrationTest = &types.IntegrationTest{}
-	connections     map[string]net.Conn
-)
-
-// func reset(b *testing.B) {
-// 	b.ReportAllocs()
-// 	b.ResetTimer()
-// }
 
 func TestMain(m *testing.M) {
 	util.ParseEnv()
 
-	cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME), "-rateLimit=500", "-rateLimitBurst=500")
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
+	cmd, err := testutil.StartTestServer()
+	if err != nil {
+		panic(err)
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	cmd.Stdin = os.Stdin
-
-	if err := cmd.Start(); err != nil {
-		fmt.Println("Error starting server:", err)
-		os.Exit(1)
-	}
-
-	startupTicker := time.NewTicker(1 * time.Second)
-	started := false
-
-	for {
-		select {
-		case <-startupTicker.C:
-			err := checkServer()
-			if err != nil {
-				continue
-			}
-			started = true
-		default:
+	defer func() {
+		if err := cmd.Process.Kill(); err != nil {
+			fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
 		}
-		if started {
-			break
-		}
-	}
-
-	startupTicker.Stop()
+	}()
 
 	code := m.Run()
 
-	jsonBytes, _ := protojson.Marshal(integrationTest)
-	integrationTestPath := filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json")
-	os.WriteFile(integrationTestPath, jsonBytes, 0600)
-
-	if err := cmd.Process.Kill(); err != nil {
-		fmt.Printf("Failed to close server: %v", err)
-	}
+	testutil.SaveIntegrations()
 
 	os.Exit(code)
 }
 
 func TestIntegrations(t *testing.T) {
-	defer func() {
-		if r := recover(); r != nil {
-
-			t.Log("PANIC RECOVERY ERROR: ", r)
-
-			errLogPath := filepath.Join(util.E_PROJECT_DIR, "log", "errors.log")
-			reader, err := mmap.Open(errLogPath)
-			if err != nil {
-				t.Log(err)
-				return
-			}
-			defer reader.Close()
-
-			fileSize := reader.Len()
-			if fileSize == 0 {
-				t.Log("File is empty")
-				return
-			}
-
-			data := make([]byte, fileSize)
-			n, err := reader.ReadAt(data, 0)
-			if err != nil && err != io.EOF {
-				t.Log("Error reading file:", err)
-				return
-			}
-
-			content := string(data[:n])
-			lines := strings.Split(content, "\n")
-
-			lastLineIndex := len(lines) - 1
-			if lines[lastLineIndex] == "" && lastLineIndex > 0 {
-				lastLineIndex--
-			}
-
-			lastLine := lines[lastLineIndex]
-			t.Log("LAST LINE OF ERROR FILE: ", lastLine)
-		}
-	}()
+	defer testutil.TestPanic(t)
 
 	testIntegrationUser(t)
 	testIntegrationGroup(t)

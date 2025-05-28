@@ -12,7 +12,8 @@ message CachedGroup {
   string sub = 4;
   string name = 5;
   string code = 6;
-  bool ai = 7;
+  string path = 7;
+  bool ai = 8;
 
   option (types.mutex) = true;
 }

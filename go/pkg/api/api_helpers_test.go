@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"golang.org/x/time/rate"
@@ -135,7 +136,7 @@ func checkResponseFor(buf []byte, items []byte) bool {
 }
 
 func setupRouteRequest(userId int32, limit rate.Limit, burst int, method, path, contentType string) (*API, *http.Request, *httptest.ResponseRecorder) {
-	token, _, err := getKeycloakToken(integrationTest.TestUsers[userId].GetTestUserId())
+	token, _, err := getKeycloakToken(testutil.IntegrationTest.TestUsers[userId].GetTestUserId())
 	if err != nil {
 		panic(util.ErrCheck(err))
 	}
@@ -203,11 +204,11 @@ func doApiBenchmarkWithBody(b *testing.B, api *API, req *http.Request, recorder 
 func getApiProtoSchedule() *types.PostScheduleRequest {
 	return proto.Clone(&types.PostScheduleRequest{
 		AsGroup:            true,
-		StartDate:          integrationTest.MasterSchedule.GetStartDate(),
-		EndDate:            integrationTest.MasterSchedule.GetEndDate(),
-		ScheduleTimeUnitId: integrationTest.MasterSchedule.GetScheduleTimeUnitId(),
-		BracketTimeUnitId:  integrationTest.MasterSchedule.GetBracketTimeUnitId(),
-		SlotTimeUnitId:     integrationTest.MasterSchedule.GetSlotTimeUnitId(),
-		SlotDuration:       integrationTest.MasterSchedule.GetSlotDuration(),
+		StartDate:          testutil.IntegrationTest.MasterSchedule.GetStartDate(),
+		EndDate:            testutil.IntegrationTest.MasterSchedule.GetEndDate(),
+		ScheduleTimeUnitId: testutil.IntegrationTest.MasterSchedule.GetScheduleTimeUnitId(),
+		BracketTimeUnitId:  testutil.IntegrationTest.MasterSchedule.GetBracketTimeUnitId(),
+		SlotTimeUnitId:     testutil.IntegrationTest.MasterSchedule.GetSlotTimeUnitId(),
+		SlotDuration:       testutil.IntegrationTest.MasterSchedule.GetSlotDuration(),
 	}).(*types.PostScheduleRequest)
 }

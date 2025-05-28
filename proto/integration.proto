@@ -1,10 +1,10 @@
 syntax = "proto3";
 package types;
 
-import "session.proto";
 import "quote.proto";
 import "booking.proto";
 import "group.proto";
+import "profile.proto";
 import "service.proto";
 import "schedule.proto";
 import "group_role.proto";
@@ -14,32 +14,31 @@ import "group_schedule.proto";
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 message TestUser {
-  string testUserId = 1;
-  string testEmail = 2;
-  string testPass = 3;
-  string testToken = 4;
-  string testTicket = 5;
-  string testConnId = 6;
-  UserSession userSession = 7;
-  repeated IQuote quotes = 8;
-  repeated IBooking bookings = 9;
+  repeated IBooking bookings = 1;
+  repeated IQuote quotes = 2;
+  IUserProfile profile = 3;
+  string testUserId = 4;
+  string testEmail = 5;
+  string testPass = 6;
+  string testTicket = 7;
+  string testConnId = 8;
 }
 
 message IntegrationTest {
   map<int32, TestUser> testUsers = 1;
   map<string, IGroupRole> roles = 2;
-  IGroupRole memberRole = 3;
-  IGroupRole staffRole = 4;
-  IGroup group = 5;
-  IService masterService = 6;
-  IGroupService groupService = 7;
-  ISchedule masterSchedule = 8;
-  repeated ISchedule masterSchedules = 9;
-  IGroupSchedule groupSchedule = 10;
-  repeated IGroupSchedule groupSchedules = 11;
-  ISchedule userSchedule = 12;
-  repeated ISchedule userSchedules = 13;
-  repeated IGroupScheduleDateSlots dateSlots = 14;
-  repeated IQuote quotes = 15;
-  repeated IBooking bookings = 16;
+  repeated ISchedule userSchedules = 3;
+  repeated IGroupScheduleDateSlots dateSlots = 4;
+  repeated IQuote quotes = 5;
+  repeated IBooking bookings = 6;
+  repeated IGroupSchedule groupSchedules = 7;
+  repeated ISchedule masterSchedules = 8;
+  IGroupRole memberRole = 9;
+  IGroupRole staffRole = 10;
+  IGroup group = 11;
+  IService masterService = 12;
+  IGroupService groupService = 13;
+  ISchedule masterSchedule = 14;
+  IGroupSchedule groupSchedule = 15;
+  ISchedule userSchedule = 16;
 }

@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"runtime/debug"
 	"strings"
-	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -52,19 +51,14 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		requestExecutor = TxExecutor
 	}
 
+	var resetGroup = func(*http.Request, string) {}
+	if optPack.ResetsGroup {
+		resetGroup = a.Handlers.ResetGroupSession
+	}
+
 	var responseHandler ResponseHandler = ProtoResponseHandler
 	if optPack.MultipartResponse {
 		responseHandler = MultipartResponseHandler
-	}
-
-	var setGroupVersion = func(string) {}
-	if optPack.ResetsGroup {
-		setGroupVersion = func(groupId string) {
-			if groupId == "" {
-				return
-			}
-			a.Cache.GroupSessionVersions.Store(groupId, time.Now().UnixNano())
-		}
 	}
 
 	return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
@@ -99,7 +93,6 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		ctx := req.Context()
 
 		reqInfo, done := requestExecutor(ctx, a.Handlers.Database.DatabaseClient, session)
-		defer done()
 
 		reqInfo.Ctx = ctx
 		reqInfo.W = w
@@ -108,10 +101,12 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 
 		results, err := handlerFunc(reqInfo, pb)
 		if err != nil {
-			panic(err) // ErrCheck unnecessary as handlers do it
+			done()
+			panic(err)
 		}
+		done()
 
-		setGroupVersion(session.GetGroupId())
+		resetGroup(req, session.GetGroupId())
 
 		responseHandler(w, results)
 	}

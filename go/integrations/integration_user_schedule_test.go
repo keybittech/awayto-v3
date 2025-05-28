@@ -1,4 +1,4 @@
-package main
+package main_test
 
 import (
 	"strconv"
@@ -6,13 +6,14 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func testIntegrationUserSchedule(t *testing.T) {
-	staff1 := integrationTest.TestUsers[1]
-	staff2 := integrationTest.TestUsers[2]
-	member1 := integrationTest.TestUsers[4]
+	staff1 := testutil.IntegrationTest.TestUsers[1]
+	staff2 := testutil.IntegrationTest.TestUsers[2]
+	member1 := testutil.IntegrationTest.TestUsers[4]
 
 	brackets := make(map[string]*types.IScheduleBracket, 1)
 	services := make(map[string]*types.IService, 1)
@@ -21,8 +22,8 @@ func testIntegrationUserSchedule(t *testing.T) {
 	bracketId := strconv.Itoa(int(time.Now().UnixMilli()))
 	time.Sleep(time.Millisecond)
 
-	serviceId := integrationTest.MasterService.Id
-	services[serviceId] = integrationTest.MasterService
+	serviceId := testutil.IntegrationTest.MasterService.Id
+	services[serviceId] = testutil.IntegrationTest.MasterService
 
 	slot1Id := strconv.Itoa(int(time.Now().UnixMilli()))
 	time.Sleep(time.Millisecond)
@@ -52,23 +53,23 @@ func testIntegrationUserSchedule(t *testing.T) {
 	}
 
 	t.Run("APP_GROUP_SCHEDULE permission is required to create a personal schedule", func(tt *testing.T) {
-		_, err := postSchedule(member1.TestToken, &types.PostScheduleRequest{})
+		_, err := member1.PostSchedule(&types.PostScheduleRequest{})
 		if err == nil || !strings.Contains(err.Error(), "403") {
 			t.Fatal("user request to create schedule without permissions was not 403")
 		}
 	})
 
 	t.Run("user can create a personal schedule using a group schedule id", func(tt *testing.T) {
-		schedule, err := postSchedule(staff1.TestToken, &types.PostScheduleRequest{
+		schedule, err := staff1.PostSchedule(&types.PostScheduleRequest{
 			Brackets:           brackets,
-			GroupScheduleId:    integrationTest.MasterSchedule.Id,
-			Name:               integrationTest.MasterSchedule.Name,
-			StartDate:          integrationTest.MasterSchedule.StartDate,
-			EndDate:            integrationTest.MasterSchedule.EndDate,
-			ScheduleTimeUnitId: integrationTest.MasterSchedule.ScheduleTimeUnitId,
-			BracketTimeUnitId:  integrationTest.MasterSchedule.BracketTimeUnitId,
-			SlotTimeUnitId:     integrationTest.MasterSchedule.SlotTimeUnitId,
-			SlotDuration:       integrationTest.MasterSchedule.SlotDuration,
+			GroupScheduleId:    testutil.IntegrationTest.MasterSchedule.Id,
+			Name:               testutil.IntegrationTest.MasterSchedule.Name,
+			StartDate:          testutil.IntegrationTest.MasterSchedule.StartDate,
+			EndDate:            testutil.IntegrationTest.MasterSchedule.EndDate,
+			ScheduleTimeUnitId: testutil.IntegrationTest.MasterSchedule.ScheduleTimeUnitId,
+			BracketTimeUnitId:  testutil.IntegrationTest.MasterSchedule.BracketTimeUnitId,
+			SlotTimeUnitId:     testutil.IntegrationTest.MasterSchedule.SlotTimeUnitId,
+			SlotDuration:       testutil.IntegrationTest.MasterSchedule.SlotDuration,
 		})
 		if err != nil {
 			t.Fatalf("staff post schedule err %v", err)
@@ -76,25 +77,25 @@ func testIntegrationUserSchedule(t *testing.T) {
 
 		t.Logf("created user schedule with id %s", schedule.Id)
 
-		integrationTest.UserSchedule = schedule
+		testutil.IntegrationTest.UserSchedule = schedule
 	})
 
 	t.Run("secondary user schedule creation", func(tt *testing.T) {
-		schedule, err := postSchedule(staff2.TestToken, &types.PostScheduleRequest{
+		schedule, err := staff2.PostSchedule(&types.PostScheduleRequest{
 			Brackets:           brackets,
-			GroupScheduleId:    integrationTest.MasterSchedules[0].Id,
-			Name:               integrationTest.MasterSchedules[0].Name,
-			StartDate:          integrationTest.MasterSchedules[0].StartDate,
-			EndDate:            integrationTest.MasterSchedules[0].EndDate,
-			ScheduleTimeUnitId: integrationTest.MasterSchedules[0].ScheduleTimeUnitId,
-			BracketTimeUnitId:  integrationTest.MasterSchedules[0].BracketTimeUnitId,
-			SlotTimeUnitId:     integrationTest.MasterSchedules[0].SlotTimeUnitId,
-			SlotDuration:       integrationTest.MasterSchedules[0].SlotDuration,
+			GroupScheduleId:    testutil.IntegrationTest.MasterSchedules[0].Id,
+			Name:               testutil.IntegrationTest.MasterSchedules[0].Name,
+			StartDate:          testutil.IntegrationTest.MasterSchedules[0].StartDate,
+			EndDate:            testutil.IntegrationTest.MasterSchedules[0].EndDate,
+			ScheduleTimeUnitId: testutil.IntegrationTest.MasterSchedules[0].ScheduleTimeUnitId,
+			BracketTimeUnitId:  testutil.IntegrationTest.MasterSchedules[0].BracketTimeUnitId,
+			SlotTimeUnitId:     testutil.IntegrationTest.MasterSchedules[0].SlotTimeUnitId,
+			SlotDuration:       testutil.IntegrationTest.MasterSchedules[0].SlotDuration,
 		})
 		if err != nil {
 			t.Fatalf("secondary staff post schedule err %v", err)
 		}
 
-		integrationTest.UserSchedules = append(integrationTest.UserSchedules, schedule)
+		testutil.IntegrationTest.UserSchedules = append(testutil.IntegrationTest.UserSchedules, schedule)
 	})
 }

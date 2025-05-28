@@ -70,15 +70,16 @@ async function loadExternal() {
         credentials: 'include'
       });
 
+      const loginUrl = `/auth/login?tz=${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
       if (response.ok) {
         const authResponse = (await response.json()) as { authenticated: boolean };
         if (authResponse.authenticated) {
           await loadInternal();
         } else {
-          window.location.href = `/auth/login`;
+          window.location.href = loginUrl;
         }
       } else {
-        window.location.href = `/auth/login`;
+        window.location.href = loginUrl;
       }
     }
   } catch (error) {

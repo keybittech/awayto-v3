@@ -10,6 +10,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	_ "github.com/lib/pq"
 )
@@ -22,7 +23,7 @@ func BenchmarkDbPgxQueryRow(b *testing.B) {
 	ctx := context.Background()
 	var testStr string
 	reset(b)
-	for c := 0; c < b.N; c++ {
+	for b.Loop() {
 		db.QueryRow(ctx, selectAdminRoleIdSQL).Scan(&testStr)
 	}
 }
@@ -32,7 +33,7 @@ func BenchmarkDbPgxExec(b *testing.B) {
 	defer db.Close()
 	ctx := context.Background()
 	reset(b)
-	for c := 0; c < b.N; c++ {
+	for b.Loop() {
 		db.Exec(ctx, selectAdminRoleIdSQL)
 	}
 }
@@ -43,7 +44,7 @@ func BenchmarkDbPgxTx(b *testing.B) {
 	ctx := context.Background()
 	var adminRoleId string
 	reset(b)
-	for c := 0; c < b.N; c++ {
+	for b.Loop() {
 		tx, _ := db.Begin(ctx)
 		defer tx.Rollback(ctx)
 		tx.QueryRow(ctx, selectAdminRoleIdSQL).Scan(&adminRoleId)
@@ -58,7 +59,7 @@ func BenchmarkDbPgxBatchNoCommit(b *testing.B) {
 	var adminRoleId string
 
 	reset(b)
-	for c := 0; c < b.N; c++ {
+	for b.Loop() {
 		tx, err := db.Begin(ctx)
 		if err != nil {
 			b.Fatal(err)
@@ -105,15 +106,19 @@ func BenchmarkDbPgxBatchNoCommit(b *testing.B) {
 func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
-	bookingId := integrationTest.Bookings[1].Id
+	bookingId := testutil.IntegrationTest.Bookings[1].Id
+	session, err := testutil.IntegrationTest.TestUsers[0].GetUserSession(db.DatabaseClient.Pool)
+	if err != nil {
+		b.Fatalf("could not get user session for socket allowance bench, err: %v", err)
+	}
 	ctx := context.Background()
+	ds := &DbSession{
+		Pool:                  db.DatabaseClient.Pool,
+		ConcurrentUserSession: session,
+	}
 	reset(b)
-	for c := 0; c < b.N; c++ {
+	for b.Loop() {
 		b.StopTimer()
-		ds := &DbSession{
-			Pool:                  db.DatabaseClient.Pool,
-			ConcurrentUserSession: types.NewConcurrentUserSession(integrationTest.TestUsers[int32(c%7)].UserSession),
-		}
 		b.StartTimer()
 		ds.GetSocketAllowances(ctx, bookingId)
 	}
@@ -357,7 +362,7 @@ func TestDbSession_SessionBatch(t *testing.T) {
 	type args struct {
 		ctx          context.Context
 		primaryQuery string
-		params       []interface{}
+		params       []any
 	}
 	tests := []struct {
 		name string
@@ -380,7 +385,7 @@ func TestDbSession_SessionBatchExec(t *testing.T) {
 	type args struct {
 		ctx    context.Context
 		query  string
-		params []interface{}
+		params []any
 	}
 	tests := []struct {
 		name    string
@@ -409,7 +414,7 @@ func TestDbSession_SessionBatchQuery(t *testing.T) {
 	type args struct {
 		ctx    context.Context
 		query  string
-		params []interface{}
+		params []any
 	}
 	tests := []struct {
 		name    string
@@ -442,7 +447,7 @@ func TestDbSession_SessionBatchQueryRow(t *testing.T) {
 	type args struct {
 		ctx    context.Context
 		query  string
-		params []interface{}
+		params []any
 	}
 	tests := []struct {
 		name    string

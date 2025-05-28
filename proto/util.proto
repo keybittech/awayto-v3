@@ -15,6 +15,7 @@ extend google.protobuf.MethodOptions {
   bool use_tx = 50006;
   repeated string invalidates = 50007;
   bool resets_group = 50008;
+  bool resets_session = 50009;
 }
 
 extend google.protobuf.MessageOptions {

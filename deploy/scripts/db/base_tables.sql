@@ -39,8 +39,6 @@ CREATE TABLE dbtable_schema.users (
   first_name VARCHAR (255),
   last_name VARCHAR (255),
   email VARCHAR (255),
-  ip_address VARCHAR (40),
-  timezone VARCHAR (50),
   locked BOOLEAN NOT NULL DEFAULT false,
   active BOOLEAN NOT NULL DEFAULT false,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -57,6 +55,30 @@ CREATE POLICY table_select ON dbtable_schema.users FOR SELECT TO $PG_WORKER USIN
 CREATE POLICY table_insert ON dbtable_schema.users FOR INSERT TO $PG_WORKER WITH CHECK (true);
 CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR OR $IS_USER);
 CREATE POLICY table_delete ON dbtable_schema.users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $IS_USER);
+
+CREATE TABLE dbtable_schema.user_sessions (
+  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
+  group_id VARCHAR (36),
+  id_token VARCHAR (2000) NOT NULL,
+  access_token VARCHAR (2000) NOT NULL,
+  access_expires_at TIMESTAMP NOT NULL,
+  refresh_token VARCHAR (2000) NOT NULL,
+  refresh_expires_at TIMESTAMP NOT NULL,
+  ip_address VARCHAR (128) NOT NULL,
+  timezone VARCHAR (50) NOT NULL,
+  user_agent VARCHAR (1024) NOT NULL,
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  updated_on TIMESTAMP,
+  enabled BOOLEAN NOT NULL DEFAULT true
+);
+CREATE INDEX idx_user_sessions_user_sub ON dbtable_schema.user_sessions(sub);
+CREATE INDEX idx_user_sessions_group_id ON dbtable_schema.user_sessions(group_id);
+ALTER TABLE dbtable_schema.user_sessions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY table_select ON dbtable_schema.user_sessions FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $IS_USER);
+CREATE POLICY table_insert ON dbtable_schema.user_sessions FOR INSERT TO $PG_WORKER WITH CHECK ($IS_WORKER);
+CREATE POLICY table_update ON dbtable_schema.user_sessions FOR UPDATE TO $PG_WORKER USING ($IS_WORKER OR $IS_USER);
+CREATE POLICY table_delete ON dbtable_schema.user_sessions FOR DELETE TO $PG_WORKER USING ($IS_WORKER);
 
 CREATE TABLE dbtable_schema.roles (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
@@ -225,31 +247,4 @@ CREATE POLICY table_select ON dbtable_schema.group_files FOR SELECT TO $PG_WORKE
 CREATE POLICY table_insert ON dbtable_schema.group_files FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP);
 CREATE POLICY table_update ON dbtable_schema.group_files FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
 CREATE POLICY table_delete ON dbtable_schema.group_files FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
-
-CREATE TABLE dbtable_schema.uuid_notes (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-  parent_uuid VARCHAR (50) NOT NULL,
-  note VARCHAR (500),
-  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
-  updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
-  enabled BOOLEAN NOT NULL DEFAULT true,
-  UNIQUE (parent_uuid, note, created_sub)
-);
-
-CREATE TABLE dbtable_schema.request_log (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-  sub VARCHAR (50) NOT NULL,
-  path VARCHAR (500),
-  direction VARCHAR (10),
-  code VARCHAR (5),
-  payload VARCHAR (5000),
-  ip_address VARCHAR (50) NOT NULL,
-  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
-  updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
-  enabled BOOLEAN NOT NULL DEFAULT true
-);
 

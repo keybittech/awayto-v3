@@ -113,15 +113,3 @@ FROM
 WHERE
   gf.enabled = true;
 
-CREATE
-OR REPLACE VIEW dbview_schema.enabled_uuid_notes AS
-SELECT
-  un.id,
-  un.parent_uuid as "parentUuid",
-  un.note,
-  un.created_on as "createdOn"
-FROM
-  dbtable_schema.uuid_notes un
-WHERE
-  un.enabled = true;
-

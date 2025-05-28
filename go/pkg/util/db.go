@@ -196,6 +196,7 @@ func (b *Batchable) Send(ctx context.Context) {
 			sb.WriteString(fmt.Sprint(r))
 			sb.WriteByte(' ')
 			sb.WriteString(strings.TrimSpace(currentOpLoc))
+			ErrorLog.Println(sb.String())
 			panic(sb.String())
 		}
 	}()

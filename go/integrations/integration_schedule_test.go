@@ -1,17 +1,18 @@
-package main
+package main_test
 
 import (
 	"net/http"
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func testIntegrationSchedule(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
+	admin := testutil.IntegrationTest.TestUsers[0]
 
 	var scheduleUnitId, bracketUnitId, slotUnitId string
 	name := "test schedule"
@@ -28,7 +29,7 @@ func testIntegrationSchedule(t *testing.T) {
 	endDate := et.AsTime().Format(time.RFC3339)
 
 	t.Run("admin can get lookups and generate a schedule", func(tt *testing.T) {
-		integrationTest.MasterSchedule = &types.ISchedule{
+		testutil.IntegrationTest.MasterSchedule = &types.ISchedule{
 			Name:         name + " Master",
 			Timezone:     timezone,
 			SlotDuration: slotDuration,
@@ -37,7 +38,7 @@ func testIntegrationSchedule(t *testing.T) {
 		}
 
 		lookupsResponse := &types.GetLookupsResponse{}
-		err := apiRequest(admin.TestToken, http.MethodGet, "/api/v1/lookup", nil, nil, lookupsResponse)
+		err := admin.DoHandler(http.MethodGet, "/api/v1/lookup", nil, nil, lookupsResponse)
 		if err != nil {
 			t.Fatalf("error getting lookups request: %v", err)
 		}
@@ -49,19 +50,19 @@ func testIntegrationSchedule(t *testing.T) {
 		for _, tu := range lookupsResponse.TimeUnits {
 			if tu.Name == "week" {
 				scheduleUnitId = tu.Id
-				integrationTest.MasterSchedule.ScheduleTimeUnitId = tu.Id
+				testutil.IntegrationTest.MasterSchedule.ScheduleTimeUnitId = tu.Id
 			} else if tu.Name == "hour" {
 				bracketUnitId = tu.Id
-				integrationTest.MasterSchedule.BracketTimeUnitId = tu.Id
+				testutil.IntegrationTest.MasterSchedule.BracketTimeUnitId = tu.Id
 			} else if tu.Name == "minute" {
 				slotUnitId = tu.Id
-				integrationTest.MasterSchedule.SlotTimeUnitId = tu.Id
+				testutil.IntegrationTest.MasterSchedule.SlotTimeUnitId = tu.Id
 			}
 		}
 	})
 
 	t.Run("master schedule can be created and attached to the group", func(tt *testing.T) {
-		schedule, err := postSchedule(admin.TestToken, &types.PostScheduleRequest{
+		schedule, err := admin.PostSchedule(&types.PostScheduleRequest{
 			AsGroup:            true,
 			Name:               name + " Master Creation Test",
 			StartDate:          startDate,
@@ -78,12 +79,12 @@ func testIntegrationSchedule(t *testing.T) {
 			t.Fatalf("master schedule id is not uuid")
 		}
 
-		err = postGroupSchedule(admin.TestToken, schedule.Id)
+		err = admin.PostGroupSchedule(schedule.Id)
 		if err != nil {
 			t.Fatalf("master schedule creation attach group err: %v", err)
 		}
 
-		groupMasterSchedule, err := getMasterScheduleById(admin.TestToken, schedule.Id)
+		groupMasterSchedule, err := admin.GetMasterScheduleById(schedule.Id)
 		if err != nil {
 			t.Fatalf("master schedule creation err: %v", err)
 		}
@@ -91,7 +92,7 @@ func testIntegrationSchedule(t *testing.T) {
 			t.Fatalf("no master schedule > schedule id: %v", groupMasterSchedule.Schedule)
 		}
 
-		integrationTest.MasterSchedules = append(integrationTest.MasterSchedules, groupMasterSchedule.Schedule)
-		integrationTest.GroupSchedules = append(integrationTest.GroupSchedules, groupMasterSchedule)
+		testutil.IntegrationTest.MasterSchedules = append(testutil.IntegrationTest.MasterSchedules, groupMasterSchedule.Schedule)
+		testutil.IntegrationTest.GroupSchedules = append(testutil.IntegrationTest.GroupSchedules, groupMasterSchedule)
 	})
 }

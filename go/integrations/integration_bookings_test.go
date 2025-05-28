@@ -1,22 +1,23 @@
-package main
+package main_test
 
 import (
 	"strings"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func testIntegrationBookings(t *testing.T) {
-	admin := integrationTest.TestUsers[0]
-	staff1 := integrationTest.TestUsers[1]
-	member1 := integrationTest.TestUsers[4]
-	member2 := integrationTest.TestUsers[5]
-	member3 := integrationTest.TestUsers[6]
+	admin := testutil.IntegrationTest.TestUsers[0]
+	staff1 := testutil.IntegrationTest.TestUsers[1]
+	member1 := testutil.IntegrationTest.TestUsers[4]
+	member2 := testutil.IntegrationTest.TestUsers[5]
+	member3 := testutil.IntegrationTest.TestUsers[6]
 
 	var serviceTierId string
-	for _, tier := range integrationTest.GroupService.Service.Tiers {
+	for _, tier := range testutil.IntegrationTest.GroupService.Service.Tiers {
 		serviceTierId = tier.Id
 		break
 	}
@@ -31,7 +32,7 @@ func testIntegrationBookings(t *testing.T) {
 			},
 		}
 
-		_, err := postBooking(member1.TestToken, bookingRequests)
+		_, err := member1.PostBooking(bookingRequests)
 		if err != nil && !strings.Contains(err.Error(), "403") {
 			t.Fatalf("booking post without permissions was not 403, %v", err)
 		}
@@ -47,7 +48,7 @@ func testIntegrationBookings(t *testing.T) {
 			},
 		}
 
-		_, err := postBooking(admin.TestToken, bookingRequests)
+		_, err := admin.PostBooking(bookingRequests)
 		if err == nil {
 			t.Fatalf("slot was approved by non-owner approver")
 		}
@@ -70,7 +71,7 @@ func testIntegrationBookings(t *testing.T) {
 			},
 		}
 
-		_, err := postBooking(staff1.TestToken, bookingRequests)
+		_, err := staff1.PostBooking(bookingRequests)
 		if err == nil {
 			t.Fatalf("different booking approve was allowed, id 1 %s, id 2 %s", member1.Quotes[0].ScheduleBracketSlotId, member1.Quotes[1].ScheduleBracketSlotId)
 		}
@@ -85,7 +86,7 @@ func testIntegrationBookings(t *testing.T) {
 				ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
 			},
 		}
-		bookings, err := postBooking(staff1.TestToken, bookingRequests)
+		bookings, err := staff1.PostBooking(bookingRequests)
 		if err != nil {
 			t.Fatalf("single booking approve error %v", err)
 		}
@@ -100,7 +101,7 @@ func testIntegrationBookings(t *testing.T) {
 			StartDate:             member1.Quotes[0].SlotDate,
 			ScheduleBracketSlotId: member1.Quotes[0].ScheduleBracketSlotId,
 		}
-		_, err := postQuote(member3.TestToken, serviceTierId, reservedSlot, nil, nil)
+		_, err := member3.PostQuote(serviceTierId, reservedSlot, nil, nil)
 		if err == nil {
 			t.Fatalf("user was able to request a booked slot")
 		}
@@ -123,7 +124,7 @@ func testIntegrationBookings(t *testing.T) {
 			},
 		}
 
-		bookings, err := postBooking(staff1.TestToken, bookingRequests)
+		bookings, err := staff1.PostBooking(bookingRequests)
 		if err != nil {
 			t.Fatalf("batch booking approve error %v", err)
 		}
@@ -140,7 +141,7 @@ func testIntegrationBookings(t *testing.T) {
 			t.Fatalf("booking id 2 is not a uuid %s", bookings[1].Id)
 		}
 
-		integrationTest.Bookings = append(integrationTest.Bookings, bookings...)
+		testutil.IntegrationTest.Bookings = append(testutil.IntegrationTest.Bookings, bookings...)
 	})
 
 	t.Run("master schedules can be disabled, preserving all records", func(tt *testing.T) {

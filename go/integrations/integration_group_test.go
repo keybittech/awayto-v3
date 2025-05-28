@@ -1,16 +1,17 @@
-package main
+package main_test
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func testIntegrationGroup(t *testing.T) {
 	t.Run("admin can create a group", func(tt *testing.T) {
-		admin := integrationTest.TestUsers[0]
+		admin := testutil.IntegrationTest.TestUsers[0]
 		groupRequest := &types.PostGroupRequest{
 			Name:           "the_test_group_" + string(admin.TestUserId),
 			DisplayName:    "The Test Group #" + string(admin.TestUserId),
@@ -24,7 +25,7 @@ func testIntegrationGroup(t *testing.T) {
 		}
 
 		postGroupResponse := &types.PostGroupResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group", requestBytes, nil, postGroupResponse)
+		err = admin.DoHandler(http.MethodPost, "/api/v1/group", requestBytes, nil, postGroupResponse)
 		if err != nil {
 			t.Fatalf("error posting group: %v", err)
 		}
@@ -33,7 +34,7 @@ func testIntegrationGroup(t *testing.T) {
 			t.Fatalf("group code is not 8 length: %s", postGroupResponse.Code)
 		}
 
-		integrationTest.Group = &types.IGroup{
+		testutil.IntegrationTest.Group = &types.IGroup{
 			Code:           postGroupResponse.Code,
 			Name:           groupRequest.Name,
 			DisplayName:    groupRequest.DisplayName,
@@ -42,16 +43,13 @@ func testIntegrationGroup(t *testing.T) {
 			AllowedDomains: groupRequest.AllowedDomains,
 		}
 
-		token, session, err := getKeycloakToken(admin.TestUserId)
+		profile, err := admin.GetProfileDetails()
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if session.RoleBits&int32(types.SiteRoles_APP_GROUP_ADMIN) == 0 {
+		if profile.GetRoleBits()&int32(types.SiteRoles_APP_GROUP_ADMIN) == 0 {
 			t.Fatal("admin doesn't have admin role")
 		}
-
-		admin.TestToken = token
-		admin.UserSession = session
 	})
 }

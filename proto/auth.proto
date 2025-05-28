@@ -9,34 +9,36 @@ option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 message TempAuthSession {
   string codeVerifier = 1;
   string state = 2;
-  int64 createdAt = 3; // references UnixMilli()
+  string tz = 3;
+  string ua = 4;
+  int64 createdAt = 5; // references UnixMilli()
 
   option (types.mutex) = true;
 }
 
 message AuthRequestParams {
-  string method = 1;
-  string resource = 2;
-  string userSub = 3;
-  string userId = 4;
-  string groupId = 5;
-  string groupName = 6;
-  string firstName = 7;
-  string lastName = 8;
-  string token = 9;
-  repeated KeycloakRole roles = 10;
+  repeated KeycloakRole roles = 1;
+  string method = 2;
+  string resource = 3;
+  string userSub = 4;
+  string userId = 5;
+  string groupId = 6;
+  string groupName = 7;
+  string firstName = 8;
+  string lastName = 9;
+  string token = 10;
   string path = 11;
 }
 
 message AuthResponseParams {
-  KeycloakUser user = 1;
-  UserSession userSession = 2;
-  repeated KeycloakUser users = 3;
-  KeycloakGroup group = 4;
-  KeycloakGroup subGroup = 5;
-  repeated KeycloakGroup groups = 6;
-  repeated KeycloakRole roles = 7;
-  repeated ClientRoleMappingRole mappings = 8;
+  repeated KeycloakGroup groups = 1;
+  repeated KeycloakRole roles = 2;
+  repeated ClientRoleMappingRole mappings = 3;
+  repeated KeycloakUser users = 4;
+  KeycloakUser user = 5;
+  UserSession userSession = 6;
+  KeycloakGroup group = 7;
+  KeycloakGroup subGroup = 8;
   bool valid = 9;
 }
 
@@ -64,27 +66,27 @@ message AuthEvent {
   string firstName = 10;
   string lastName = 11;
   string username = 12;
-  AuthEventDetails details = 13;
-  string timezone = 14;
+  string timezone = 13;
+  AuthEventDetails details = 14;
 }
 
 message KeycloakUser {
-  uint32 createdTimestamp = 3;
-  string username = 4;
-  bool enabled = 5;
-  bool totp = 6;
-  string name = 7;
-  string preferredUsername = 8 [json_name = "preferred_username"];
-  string givenName = 9 [json_name = "given_name"];
-  string familyName = 10 [json_name = "family_name"];
-  bool emailVerified = 11;
-  string firstName = 12;
-  string lastName = 13;
-  string email = 14;
-  string federationLink = 15;
-  repeated string groups = 16;
-  repeated string availableGroupRoles = 17;
-  string azp = 18;
+  repeated string groups = 1;
+  repeated string availableGroupRoles = 2;
+  string username = 3;
+  string name = 4;
+  string preferredUsername = 5 [json_name = "preferred_username"];
+  string givenName = 6 [json_name = "given_name"];
+  string familyName = 7 [json_name = "family_name"];
+  string firstName = 8;
+  string lastName = 9;
+  string email = 10;
+  string federationLink = 11;
+  string azp = 12;
+  uint32 createdTimestamp = 13;
+  bool emailVerified = 14;
+  bool enabled = 15;
+  bool totp = 16;
 }
 
 message KeycloakUserGroup {
@@ -104,11 +106,11 @@ message KeycloakGroup {
 message KeycloakRole {
   string id = 1;
   string name = 2;
-  bool scopeParamRequired = 3;
-  bool composite = 4;
-  bool clientRole = 5;
-  string containerId = 6;
-  string description = 7;
+  string containerId = 3;
+  string description = 4;
+  bool scopeParamRequired = 5;
+  bool composite = 6;
+  bool clientRole = 7;
 }
 
 message ClientRoleMappingRole {

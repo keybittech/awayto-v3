@@ -2,42 +2,23 @@ package handlers
 
 import (
 	"context"
-	"log"
 	"net/http"
 	"net/http/httptest"
-	"os"
-	"path/filepath"
 	"testing"
 	"time"
 
 	"github.com/bufbuild/protovalidate-go"
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 )
 
-var integrationTest = &types.IntegrationTest{}
-
 func TestMain(m *testing.M) {
 	util.ParseEnv()
-
-	jsonBytes, err := os.ReadFile(filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = protojson.Unmarshal(jsonBytes, integrationTest)
-	if err != nil {
-		log.Fatal(err)
-	}
+	testutil.LoadIntegrations()
 
 	m.Run()
-}
-
-func reset(b *testing.B) {
-	b.ReportAllocs()
-	b.ResetTimer()
 }
 
 func setupTestEnv(useTx bool) (*Handlers, ReqInfo, func(), error) {
@@ -46,7 +27,11 @@ func setupTestEnv(useTx bool) (*Handlers, ReqInfo, func(), error) {
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/test", nil)
 
-	session := types.NewConcurrentUserSession(integrationTest.TestUsers[0].UserSession)
+	session, err := testutil.IntegrationTest.TestUsers[0].GetUserSession(h.Database.DatabaseClient.Pool)
+	if err != nil {
+		return nil, ReqInfo{}, nil, util.ErrCheck(err)
+	}
+
 	ctx := req.Context()
 
 	reqInfo := ReqInfo{
@@ -123,25 +108,25 @@ func TestNewHandlers(t *testing.T) {
 
 func FuzzPostSchedule(f *testing.F) {
 	handlers := NewHandlers()
-	testUser := integrationTest.GetTestUsers()[0]
-	session := types.NewConcurrentUserSession(testUser.GetUserSession())
+	testUser := testutil.IntegrationTest.TestUsers[0]
+	session, err := testUser.GetUserSession(handlers.Database.DatabaseClient.Pool)
+	if err != nil {
+		f.Fatalf("failed to get session during fuzz, err: %v", err)
+	}
 	// Create fake context so we can use our regular http handlers
 	fakeReq, err := http.NewRequest("GET", "handlers://fuzz", nil)
-	fakeReq.Header.Add("Authorization", "Bearer "+testUser.TestToken)
 	if err != nil {
 		f.Fatalf("failed to create fuzz request %v", err)
 	}
 
-	groupScheuleId := integrationTest.GetMasterSchedule().GetId()
-	scheduleTimeUnitId := integrationTest.GetMasterSchedule().GetScheduleTimeUnitId()
-	bracketTimeUnitId := integrationTest.GetMasterSchedule().GetBracketTimeUnitId()
-	slotTimeUnitId := integrationTest.GetMasterSchedule().GetSlotTimeUnitId()
+	groupScheuleId := testutil.IntegrationTest.GetMasterSchedule().GetId()
+	scheduleTimeUnitId := testutil.IntegrationTest.GetMasterSchedule().GetScheduleTimeUnitId()
+	bracketTimeUnitId := testutil.IntegrationTest.GetMasterSchedule().GetBracketTimeUnitId()
+	slotTimeUnitId := testutil.IntegrationTest.GetMasterSchedule().GetSlotTimeUnitId()
 
 	f.Add("my schedule", "03-03-2025", "04-02-2025", int32(30))
 
 	f.Fuzz(func(t *testing.T, name, startDate, endDate string, slotDuration int32) {
-
-		t.Log("PARAMS", name, startDate, endDate, slotDuration)
 
 		pb := &types.PostScheduleRequest{
 			Name:               name,

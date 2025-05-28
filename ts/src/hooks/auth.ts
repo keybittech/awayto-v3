@@ -17,15 +17,11 @@ export type IAuth = {
 
 export async function logout() {
   try {
-    await fetch(`/auth/logout`, {
-      method: 'POST',
-      credentials: 'include'
-    });
+    localStorage.clear();
+    window.location.href = '/auth/logout';
   } catch (error) {
     console.error('Logout failed:', error);
   }
-
-  window.location.href = '/';
 }
 
 export const authConfig = {

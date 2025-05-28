@@ -2,6 +2,7 @@ package api
 
 import (
 	json "encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -32,10 +33,10 @@ func (a *API) InitAuthProxy() {
 		// "protocol/openid-connect/3p-cookies/step2.html",
 		// "protocol/openid-connect/login-status-iframe.html",
 		// "protocol/openid-connect/login-status-iframe.html/init",
-		// "protocol/openid-connect/registrations",
+		"protocol/openid-connect/registrations",
 		"protocol/openid-connect/auth",
 		"protocol/openid-connect/token",
-		// "protocol/openid-connect/logout",
+		"protocol/openid-connect/logout",
 	}
 
 	for _, ur := range userRoutes {
@@ -93,8 +94,9 @@ func (a *API) InitAuthProxy() {
 	// a.Server.Handler.(*http.ServeMux).Handle("/login", a.ValidateTokenMiddleware()(loginStatusHandler))
 	// a.Server.Handler.(*http.ServeMux).Handle("/logout", a.ValidateTokenMiddleware()(loginStatusHandler))
 
-	a.Server.Handler.(*http.ServeMux).Handle("/auth/status", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sessionId := util.GetSessionIdFromCookie(r)
+	// The browser checks /auth/status, sees the user is not logged in, then forwards to /auth/login
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/status", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		sessionId := util.GetSessionIdFromCookie(req)
 		if sessionId == "" {
 			w.WriteHeader(http.StatusUnauthorized)
 			return
@@ -106,8 +108,8 @@ func (a *API) InitAuthProxy() {
 			return
 		}
 
-		if time.Now().After(time.Unix(0, session.GetExpiresAt()).Add(-30 * time.Second)) {
-			if err := a.Cache.RefreshAccessToken(r); err != nil {
+		if time.Now().After(time.Unix(0, session.GetAccessExpiresAt()).Add(-30 * time.Second)) {
+			if _, err := a.Handlers.RefreshSession(req); err != nil {
 				util.ErrorLog.Printf("Token refresh failed: %v", err)
 				w.WriteHeader(http.StatusUnauthorized)
 				return
@@ -120,7 +122,8 @@ func (a *API) InitAuthProxy() {
 		})
 	}))
 
-	a.Server.Handler.(*http.ServeMux).Handle("/auth/login", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	// auth/login prepares the user's challenge codes, and sends the user to login
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/login", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		codeVerifier := util.GenerateCodeVerifier()
 		codeChallenge := util.GenerateCodeChallenge(codeVerifier)
 		state := util.GenerateState()
@@ -129,27 +132,30 @@ func (a *API) InitAuthProxy() {
 			CodeVerifier: codeVerifier,
 			State:        state,
 			CreatedAt:    time.Now().UnixNano(),
+			Tz:           req.URL.Query().Get("tz"),
+			Ua:           req.Header.Get("User-Agent"),
 		})
 
 		a.Cache.TempAuthSessions.Store(state, tempSession)
 
 		params := url.Values{
-			"response_type":  {"code"},
-			"client_id":      {util.E_KC_USER_CLIENT},
-			"redirect_uri":   {util.E_APP_HOST_URL + "/auth/callback"},
-			"scope":          {"openid profile email groups"},
-			"state":          {state},
-			"code_challenge": {codeChallenge},
-			// "code_challenge_method": {"S256"},
+			"response_type":         {"code"},
+			"client_id":             {util.E_KC_USER_CLIENT},
+			"redirect_uri":          {util.E_APP_HOST_URL + "/auth/callback"},
+			"scope":                 {"openid profile email groups"},
+			"state":                 {state},
+			"code_challenge":        {codeChallenge},
+			"code_challenge_method": {"S256"},
 		}
 
 		redirectURL := util.E_KC_OPENID_AUTH_URL + "?" + params.Encode()
-		http.Redirect(w, r, redirectURL, http.StatusFound)
+		http.Redirect(w, req, redirectURL, http.StatusFound)
 	}))
 
-	a.Server.Handler.(*http.ServeMux).Handle("/auth/callback", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		code := r.URL.Query().Get("code")
-		state := r.URL.Query().Get("state")
+	// After logging in the user's code is verified and token validated
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/callback", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		code := req.URL.Query().Get("code")
+		state := req.URL.Query().Get("state")
 
 		if code == "" || state == "" {
 			http.Error(w, "Missing code or state", http.StatusBadRequest)
@@ -168,49 +174,51 @@ func (a *API) InitAuthProxy() {
 			"code_verifier": {tempSession.GetCodeVerifier()},
 		}
 
-		util.SetForwardingHeaders(r)
+		util.SetForwardingHeaders(req)
 
-		resp, err := util.PostFormData(util.E_KC_OPENID_TOKEN_URL, r.Header, data)
+		resp, err := util.PostFormData(util.E_KC_OPENID_TOKEN_URL, req.Header, data)
 		if err != nil {
 			util.ErrorLog.Printf("Token exchange failed post: %v", err)
 			http.Error(w, "Token exchange failed", http.StatusInternalServerError)
 			return
 		}
 
-		var tokens types.OIDCToken
-		if err := protojson.Unmarshal(resp, &tokens); err != nil {
+		tokens := &types.OIDCToken{}
+		if err := protojson.Unmarshal(resp, tokens); err != nil {
 			util.ErrorLog.Printf("Token exchange failed token decode: %v", err)
 			http.Error(w, "Token exchange failed", http.StatusInternalServerError)
 			return
 		}
 
-		sessionId := util.GenerateSessionId()
-
-		err = a.Cache.ValidateToken(&tokens, sessionId, r.Header.Get("X-Tz"), util.AnonIp(r.RemoteAddr))
+		session, err := util.ValidateToken(tokens, util.GetUA(tempSession.GetUa()), tempSession.GetTz(), util.AnonIp(req.RemoteAddr))
 		if err != nil {
 			util.ErrorLog.Printf("Token validation failed: %v", err)
 			http.Error(w, "Invalid token", http.StatusUnauthorized)
 			return
 		}
 
+		a.Handlers.StoreSession(req.Context(), session)
+
+		signedSessionId, err := util.WriteSigned("session_id", session.Id)
+		if err != nil {
+			util.ErrorLog.Printf("Failed to sign session ID: %v", err)
+			http.Error(w, "Session creation failed", http.StatusInternalServerError)
+			return
+		}
+
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
-			Value:    sessionId,
+			Value:    signedSessionId,
 			Path:     "/",
 			MaxAge:   int(tokens.RefreshExpiresIn),
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteStrictMode,
 		})
-
-		http.Redirect(w, r, "/app/", http.StatusFound)
+		http.Redirect(w, req, "/app/", http.StatusFound)
 	}))
 
-	a.Server.Handler.(*http.ServeMux).Handle("/auth/logout", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		sessionId := util.GetSessionIdFromCookie(r)
-		if sessionId != "" {
-			a.Cache.UserSessions.Delete(sessionId)
-		}
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/logout", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
@@ -222,7 +230,33 @@ func (a *API) InitAuthProxy() {
 			SameSite: http.SameSiteStrictMode,
 		})
 
-		w.WriteHeader(http.StatusOK)
-	}))
+		sessionId := util.GetSessionIdFromCookie(req)
+		if sessionId == "" {
+			util.ErrorLog.Println(errors.New("no sessionid during logout"))
 
+			return
+		}
+
+		session, ok := a.Handlers.Cache.UserSessions.Get(sessionId)
+		if !ok {
+			util.ErrorLog.Println(errors.New("no cached session during logout"))
+			http.Redirect(w, req, "/", http.StatusOK)
+			return
+		}
+
+		if err := a.Handlers.DeleteSession(req.Context(), sessionId); err != nil {
+			util.ErrorLog.Println(errors.New("could not delete session during logout"))
+			return
+		}
+
+		params := url.Values{
+			"client_id":                {util.E_KC_USER_CLIENT},
+			"post_logout_redirect_uri": {util.E_APP_HOST_URL},
+			"id_token_hint":            {session.GetIdToken()},
+		}
+
+		redirectURL := util.E_KC_OPENID_LOGOUT_URL + "?" + params.Encode()
+
+		http.Redirect(w, req, redirectURL, http.StatusFound)
+	}))
 }

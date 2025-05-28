@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -27,7 +28,9 @@ func TestInitSocket(t *testing.T) {
 	}
 }
 
-func getClientData(numClients int, commandType int32, requestParams *types.SocketRequestParams) ([]string, []func(replyChan chan SocketResponse) SocketCommand) {
+func getClientData(numClients int, commandType int32, requestParams *types.SocketRequestParams) ([]string, []func(replyChan chan SocketResponse) SocketCommand, error) {
+	db := InitDatabase()
+	defer db.Client().Close()
 	if requestParams == nil {
 		requestParams = &types.SocketRequestParams{}
 	}
@@ -35,35 +38,42 @@ func getClientData(numClients int, commandType int32, requestParams *types.Socke
 	clientCommands := make([]func(replyChan chan SocketResponse) SocketCommand, numClients)
 	for i := range numClients {
 		userIter := int32(i % 6)
-		userClient := integrationTest.TestUsers[userIter]
-		clientIds[userIter] = userClient.UserSession.UserSub
-		requestParams.UserSub = userClient.UserSession.UserSub
-		requestParams.GroupId = userClient.UserSession.GroupId
-		requestParams.RoleBits = userClient.UserSession.RoleBits
+		userClient := testutil.IntegrationTest.TestUsers[userIter]
+		session, err := userClient.GetUserSession(db.DatabaseClient.Pool)
+		if err != nil {
+			return nil, nil, util.ErrCheck(err)
+		}
+		clientIds[userIter] = session.GetUserSub()
+		requestParams.UserSub = session.GetUserSub()
+		requestParams.GroupId = session.GetGroupId()
+		requestParams.RoleBits = session.GetRoleBits()
 		request := SocketRequest{SocketRequestParams: requestParams}
 		clientCommands[userIter] = func(replyChan chan SocketResponse) SocketCommand {
 			return SocketCommand{
 				WorkerCommandParams: &types.WorkerCommandParams{
 					Ty:       commandType,
-					ClientId: userClient.UserSession.UserSub,
+					ClientId: session.GetUserSub(),
 				},
 				Request:   request,
 				ReplyChan: replyChan,
 			}
 		}
 	}
-	return clientIds, clientCommands
+	return clientIds, clientCommands, nil
 }
 
 // Benchmark the worker pool
 func doSendCommandBench(clientCount int, b *testing.B) {
 	socket := InitSocket()
 	defer socket.Close()
-	_, createCommands := getClientData(
+	_, createCommands, err := getClientData(
 		clientCount,
 		CreateSocketTicketSocketCommand,
 		nil,
 	)
+	if err != nil {
+		b.Fatalf("could not get client data for command bench, err %v", err)
+	}
 	// b.SetParallelism(clientCount)
 	reset(b)
 

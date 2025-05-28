@@ -3,36 +3,20 @@ package api
 import (
 	"context"
 	"fmt"
-	"log"
 	"net/http"
-	"os"
-	"path/filepath"
 	"strconv"
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
-)
-
-var (
-	integrationTest = &types.IntegrationTest{}
 )
 
 func TestMain(m *testing.M) {
 	util.ParseEnv()
-
-	jsonBytes, err := os.ReadFile(filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = protojson.Unmarshal(jsonBytes, integrationTest)
-	if err != nil {
-		log.Fatal(err)
-	}
+	testutil.LoadIntegrations()
 
 	m.Run()
 }

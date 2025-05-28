@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
@@ -20,10 +19,6 @@ func (a *API) AccessRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		start := time.Now()
 		rw := newResponseWriter(w)
-		if rw == nil {
-			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			return
-		}
 		next.ServeHTTP(rw, req)
 		if !rw.hijacked {
 			util.WriteAccessRequest(req, time.Since(start).Milliseconds(), rw.statusCode)
@@ -62,8 +57,10 @@ func (a *API) ValidateTokenMiddleware() func(next SessionHandler) http.HandlerFu
 				return
 			}
 
-			if time.Now().After(time.Unix(0, session.GetExpiresAt()).Add(-30 * time.Second)) {
-				if err := a.Cache.RefreshAccessToken(req); err != nil {
+			if time.Now().After(time.Unix(0, session.GetAccessExpiresAt()).Add(-30 * time.Second)) {
+				var err error
+				session, err = a.Handlers.RefreshSession(req)
+				if err != nil {
 					http.Error(w, "Token refresh failed in middleware", http.StatusUnauthorized)
 					return
 				}
@@ -96,75 +93,8 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			ctx := req.Context()
 
 			subGroupPath := sessionSubGroups[0]
-			subGroupPathIdx := strings.LastIndex(subGroupPath, "/")
-			subGroupName := subGroupPath[subGroupPathIdx+1:]
 
-			groupPath := subGroupPath[:subGroupPathIdx]
-			groupName := groupPath[1:]
-
-			concurrentCachedGroup, err := a.Cache.Groups.LoadOrSet(groupPath, func() (*types.CachedGroup, error) {
-				batch := util.NewBatchable(a.Handlers.Database.DatabaseClient.Pool, "worker", "", 0)
-				groupReq := util.BatchQueryRow[types.IGroup](batch, `
-					SELECT id, code, "externalId", sub, ai
-					FROM dbview_schema.enabled_groups
-					WHERE name = $1
-				`, groupName)
-				batch.Send(ctx)
-
-				group := *groupReq
-
-				kcSubGroups, err := a.Handlers.Keycloak.GetGroupSubGroups(ctx, "worker", group.ExternalId)
-				if err != nil {
-					return nil, err
-				}
-
-				cachedGroup := &types.CachedGroup{
-					SubGroupPaths: make([]string, 0, len(kcSubGroups)),
-					Id:            group.Id,
-					Code:          group.Code,
-					Name:          groupName,
-					ExternalId:    group.ExternalId,
-					Sub:           group.Sub,
-					Ai:            group.Ai,
-				}
-
-				for _, subGroup := range kcSubGroups {
-					cachedGroup.SubGroupPaths = append(cachedGroup.SubGroupPaths, subGroup.Path)
-				}
-
-				if _, found := a.Cache.GroupSessionVersions.Load(group.Id); !found {
-					a.Cache.GroupSessionVersions.Store(group.Id, time.Now().UnixNano())
-				}
-
-				return cachedGroup, nil
-			})
-			if err != nil {
-				util.ErrorLog.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
-				return
-			}
-
-			concurrentCachedSubGroup, err := a.Cache.SubGroups.LoadOrSet(subGroupPath, func() (*types.CachedSubGroup, error) {
-				batch := util.NewBatchable(a.Handlers.Database.DatabaseClient.Pool, "worker", "", 0)
-				subGroupReq := util.BatchQueryRow[types.IGroupRole](batch, `
-					SELECT egr."externalId"
-					FROM dbview_schema.enabled_roles er
-					JOIN dbview_schema.enabled_group_roles egr ON egr."roleId" = er.id
-					WHERE er.name = $1
-				`, subGroupName)
-
-				batch.Send(ctx)
-
-				subGroup := *subGroupReq
-
-				cachedSubGroup := &types.CachedSubGroup{
-					ExternalId: subGroup.ExternalId,
-					Name:       subGroupName,
-					GroupPath:  groupPath,
-				}
-
-				return cachedSubGroup, nil
-			})
+			concurrentCachedGroup, concurrentCachedSubGroup, err := a.Handlers.CheckGroupInfo(ctx, subGroupPath)
 			if err != nil {
 				util.ErrorLog.Println(err)
 				w.WriteHeader(http.StatusInternalServerError)
@@ -174,7 +104,7 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			groupId := concurrentCachedGroup.GetId()
 
 			session.SetGroupId(groupId)
-			session.SetGroupPath(groupPath)
+			session.SetGroupPath(concurrentCachedGroup.GetPath())
 			session.SetGroupCode(concurrentCachedGroup.GetCode())
 			session.SetGroupName(concurrentCachedGroup.GetName())
 			session.SetGroupExternalId(concurrentCachedGroup.GetExternalId())
@@ -191,8 +121,6 @@ func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
 			} else {
 				session.SetGroupSessionVersion(currentGroupVersion)
 			}
-
-			a.Cache.UserSessions.Store(req.Header.Get("Authorization"), session)
 		}
 
 		next(w, req, session)

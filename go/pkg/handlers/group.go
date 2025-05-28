@@ -69,6 +69,8 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
+	info.Session.SetGroupId(groupId)
+
 	// Create group resource in Keycloak
 	kcGroupIdOnly, err := h.Keycloak.CreateGroup(info.Ctx, userSub, data.GetName())
 	if err != nil {
@@ -152,11 +154,14 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Cache.RefreshAccessToken(info.Req)
+	_, err = info.Tx.Exec(info.Ctx, `
+		UPDATE dbtable_schema.user_sessions
+		SET group_id = $1
+		WHERE sub = $2
+	`, groupId, userSub)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
-	_ = h.Socket.RoleCall(userSub)
 
 	undos = nil
 	return &types.PostGroupResponse{Code: groupCode}, nil
@@ -213,7 +218,7 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 		}
 	}
 
-	err = h.Cache.RefreshAccessToken(info.Req)
+	_, err = h.RefreshSession(info.Req)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -308,8 +313,6 @@ func (h *Handlers) PatchGroupAssignments(info ReqInfo, data *types.PatchGroupAss
 		}
 	}
 
-	_ = h.Socket.GroupRoleCall(userSub, groupId)
-
 	return &types.PatchGroupAssignmentsResponse{Success: true}, nil
 }
 
@@ -403,7 +406,7 @@ func (h *Handlers) DeleteGroup(info ReqInfo, data *types.DeleteGroupRequest) (*t
 
 	h.Cache.Groups.Delete(groupPath)
 
-	h.Cache.UserSessions.Delete(info.Req.Header.Get("Authorization"))
+	h.Cache.UserSessions.Delete(info.Session.GetId())
 
 	h.Redis.ScanAndDelKeys(info.Ctx, []string{userSub + "*"})
 

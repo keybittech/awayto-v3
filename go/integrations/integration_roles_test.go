@@ -1,9 +1,10 @@
-package main
+package main_test
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -11,7 +12,7 @@ import (
 
 func testIntegrationRoles(t *testing.T) {
 	t.Run("admin can create roles", func(tt *testing.T) {
-		admin := integrationTest.TestUsers[0]
+		admin := testutil.IntegrationTest.TestUsers[0]
 
 		staffRoleRequest := &types.PostGroupRoleRequest{Name: "Staff"}
 		staffRoleRequestBytes, err := protojson.Marshal(staffRoleRequest)
@@ -22,7 +23,7 @@ func testIntegrationRoles(t *testing.T) {
 		roles := make(map[string]*types.IGroupRole, 2)
 
 		staffRoleResponse := &types.PostGroupRoleResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/roles", staffRoleRequestBytes, nil, staffRoleResponse)
+		err = admin.DoHandler(http.MethodPost, "/api/v1/group/roles", staffRoleRequestBytes, nil, staffRoleResponse)
 		if err != nil {
 			t.Fatalf("error posting staff role request: %v", err)
 		}
@@ -47,7 +48,7 @@ func testIntegrationRoles(t *testing.T) {
 		}
 
 		memberRoleResponse := &types.PostGroupRoleResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/roles", memberRoleRequestBytes, nil, memberRoleResponse)
+		err = admin.DoHandler(http.MethodPost, "/api/v1/group/roles", memberRoleRequestBytes, nil, memberRoleResponse)
 		if err != nil {
 			t.Fatalf("error posting member role request: %v", err)
 		}
@@ -75,13 +76,13 @@ func testIntegrationRoles(t *testing.T) {
 		}
 
 		patchGroupRolesResponse := &types.PatchGroupRolesResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPatch, "/api/v1/group/roles", patchGroupRolesRequestBytes, nil, patchGroupRolesResponse)
+		err = admin.DoHandler(http.MethodPatch, "/api/v1/group/roles", patchGroupRolesRequestBytes, nil, patchGroupRolesResponse)
 		if err != nil {
 			t.Fatalf("error patching group roles request: %v", err)
 		}
 
-		integrationTest.Roles = roles
-		integrationTest.StaffRole = roles[staffGroupRoleId]
-		integrationTest.MemberRole = roles[memberGroupRoleId]
+		testutil.IntegrationTest.Roles = roles
+		testutil.IntegrationTest.StaffRole = roles[staffGroupRoleId]
+		testutil.IntegrationTest.MemberRole = roles[memberGroupRoleId]
 	})
 }

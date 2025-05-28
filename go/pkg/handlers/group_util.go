@@ -69,6 +69,14 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 		return nil, util.ErrCheck(err)
 	}
 
+	if !data.GetRegistering() {
+		// Refresh token if user is logged in and joining
+		_, err := h.RefreshSession(info.Req)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
+
 	return &types.JoinGroupResponse{Success: true}, nil
 }
 
@@ -95,6 +103,11 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 	}
 
 	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.GetUserSub(), info.Session.GetUserSub(), groupId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = h.RefreshSession(info.Req)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

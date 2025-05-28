@@ -4,22 +4,18 @@ import (
 	"context"
 	"fmt"
 	"log"
-	"os"
-	"path/filepath"
 	"reflect"
 	"strconv"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
-	integrationTest = &types.IntegrationTest{}
-
 	testTicket, auth, testConnId string
 	testSocket                   *Socket
 	testSocketUserSession        *types.ConcurrentUserSession
@@ -28,16 +24,7 @@ var (
 
 func TestMain(m *testing.M) {
 	util.ParseEnv()
-
-	jsonBytes, err := os.ReadFile(filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json"))
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	err = protojson.Unmarshal(jsonBytes, integrationTest)
-	if err != nil {
-		log.Fatal(err)
-	}
+	testutil.LoadIntegrations()
 
 	testSocket = InitSocket()
 	testSocketUserSession = types.NewConcurrentUserSession(&types.UserSession{
@@ -45,7 +32,7 @@ func TestMain(m *testing.M) {
 		GroupId:  "group-id",
 		RoleBits: 2, // admin is role 2
 	})
-	testTicket, err = testSocket.GetSocketTicket(context.Background(), testSocketUserSession)
+	testTicket, err := testSocket.GetSocketTicket(context.Background(), testSocketUserSession)
 	if err != nil || testTicket == "" {
 		log.Fatal(err)
 	}

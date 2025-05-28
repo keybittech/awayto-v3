@@ -11,7 +11,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"net/url"
 	"strconv"
 	"time"
 
@@ -39,56 +38,29 @@ func GetSessionIdFromCookie(r *http.Request) string {
 	if err != nil {
 		return ""
 	}
-	return cookie.Value
+
+	sessionId, err := VerifySigned("session_id", cookie.Value)
+	if err != nil {
+		ErrorLog.Printf("could not verify session id signature: %v", err)
+		return ""
+	}
+	return sessionId
 }
 
-func (c *Cache) RefreshAccessToken(req *http.Request) error {
-	sessionId := GetSessionIdFromCookie(req)
-	if sessionId == "" {
-		return ErrCheck(errors.New("no session id to refresh token"))
-	}
-
-	session, ok := c.UserSessions.Get(sessionId)
-	if !ok {
-		return ErrCheck(errors.New("failed to get user session to refresh token"))
-	}
-
-	data := url.Values{
-		"grant_type":    {"refresh_token"},
-		"client_id":     {E_KC_USER_CLIENT},
-		"client_secret": {E_KC_USER_CLIENT_SECRET},
-		"refresh_token": {session.GetRefreshToken()},
-	}
-
-	SetForwardingHeaders(req)
-
-	resp, err := PostFormData(E_KC_OPENID_TOKEN_URL, req.Header, data)
-	if err != nil {
-		return ErrCheck(err)
-	}
-
-	var tokens types.OIDCToken
-	if err := protojson.Unmarshal(resp, &tokens); err != nil {
-		return ErrCheck(err)
-	}
-
-	err = c.ValidateToken(&tokens, sessionId, req.Header.Get("X-Tz"), AnonIp(req.RemoteAddr))
-	if err != nil {
-		return ErrCheck(err)
-	}
-
-	return nil
-}
-
+// GenerateCodeVerifier creates a cryptographically random code verifier
+// Length should be between 43-128 characters for RFC 7636 compliance
 func GenerateCodeVerifier() string {
+	// Using 32 bytes = 43 characters when base64url encoded (32 * 4/3 = ~43)
 	b := make([]byte, 32)
 	rand.Read(b)
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
+// GenerateCodeChallenge creates a S256 code challenge from the verifier
 func GenerateCodeChallenge(verifier string) string {
-	// For simplicity, using plain challenge. In production, use S256
-	return verifier
+	// S256: base64url(sha256(ascii(code_verifier)))
+	hash := sha256.Sum256([]byte(verifier))
+	return base64.RawURLEncoding.EncodeToString(hash[:])
 }
 
 func GenerateState() string {
@@ -140,7 +112,7 @@ type KeycloakUserWithClaims struct {
 	} `json:"resource_access,omitempty"`
 }
 
-func (c *Cache) ValidateToken(tokens *types.OIDCToken, sessionId, timezone, anonIp string) error {
+func ValidateToken(tokens *types.OIDCToken, userAgent, timezone, anonIp string) (*types.UserSession, error) {
 	parsedToken, err := jwt.ParseWithClaims(tokens.GetAccessToken(), &KeycloakUserWithClaims{}, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
 			return nil, errors.New("bad signing method")
@@ -148,16 +120,16 @@ func (c *Cache) ValidateToken(tokens *types.OIDCToken, sessionId, timezone, anon
 		return E_KC_PUBLIC_KEY, nil
 	})
 	if err != nil {
-		return ErrCheck(err)
+		return nil, ErrCheck(err)
 	}
 
 	if !parsedToken.Valid {
-		return ErrCheck(errors.New("invalid token during parse"))
+		return nil, ErrCheck(errors.New("invalid token during parse"))
 	}
 
 	claims, ok := parsedToken.Claims.(*KeycloakUserWithClaims)
 	if !ok {
-		return ErrCheck(errors.New("could not parse claims"))
+		return nil, ErrCheck(errors.New("could not parse claims"))
 	}
 
 	var roleBits int32
@@ -166,23 +138,20 @@ func (c *Cache) ValidateToken(tokens *types.OIDCToken, sessionId, timezone, anon
 	}
 
 	session := &types.UserSession{
-		UserSub:       claims.Subject,
-		UserEmail:     claims.Email,
-		SubGroupPaths: claims.Groups,
-		RoleBits:      roleBits,
-		ExpiresAt:     claims.ExpiresAt,
-		Timezone:      timezone,
-		AnonIp:        anonIp,
+		UserSub:          claims.Subject,
+		UserEmail:        claims.Email,
+		SubGroupPaths:    claims.Groups,
+		RoleBits:         roleBits,
+		Timezone:         timezone,
+		AnonIp:           anonIp,
+		IdToken:          tokens.GetIdToken(),
+		AccessToken:      tokens.GetAccessToken(),
+		RefreshToken:     tokens.GetRefreshToken(),
+		AccessExpiresAt:  time.Now().Add(time.Duration(tokens.ExpiresIn) * time.Second).UnixNano(),
+		RefreshExpiresAt: time.Now().Add(time.Duration(tokens.RefreshExpiresIn) * time.Second).UnixNano(),
 	}
 
-	session.Token = tokens.AccessToken
-	session.RefreshToken = tokens.RefreshToken
-	session.ExpiresAt = time.Now().Add(time.Duration(tokens.ExpiresIn) * time.Second).UnixNano()
-	session.RefreshExpiresAt = time.Now().Add(time.Duration(tokens.RefreshExpiresIn) * time.Second).UnixNano()
-
-	c.UserSessions.Store(sessionId, types.NewConcurrentUserSession(session))
-
-	return nil
+	return session, nil
 }
 
 func WriteSigned(name, unsignedValue string) (string, error) {
@@ -255,4 +224,11 @@ func SetForwardingHeaders(r *http.Request) {
 	r.Header.Add("X-Forwarded-For", r.RemoteAddr)
 	r.Header.Add("X-Forwarded-Proto", "https")
 	r.Header.Add("X-Forwarded-Host", r.Host)
+}
+
+func GetUA(ua string) string {
+	if ua == "" {
+		return "unknown"
+	}
+	return ua
 }

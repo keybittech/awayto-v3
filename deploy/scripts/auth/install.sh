@@ -52,11 +52,20 @@ kcadm create authentication/executions/$CUSTOM_REGISTRATION_USER_CREATION_ID/rai
 
 kcadm update authentication/flows/custom%20registration/executions -r $KC_REALM -b '{"id":"'"$CUSTOM_REGISTRATION_USER_CREATION_ID"'","requirement":"REQUIRED"}'
 
-kcadm update realms/$KC_REALM -b '{ "registrationFlow": "custom registration", "attributes": { "userProfileEnabled": true } }'
+kcadm update realms/$KC_REALM \
+  -b '{ "registrationFlow": "custom registration", "attributes": { "userProfileEnabled": true } }' 
 
 echo "# Configuring front-end auth client."
-USER_CLIENT_ID=$(kcadm create clients -r $KC_REALM -s clientId=$KC_USER_CLIENT -s 'redirectUris=["'"$APP_HOST_URL/*"'"]' -s rootUrl=$APP_HOST_URL -s baseUrl=$APP_HOST_URL -s standardFlowEnabled=true -s directAccessGrantsEnabled=false -s attributes='{ "post.logout.redirect.uris": "'"$APP_HOST_URL"'" }' -i)
-echo "Site Client ID "$USER_CLIENT_ID
+USER_CLIENT_ID=$(kcadm create clients -r $KC_REALM \
+  -s clientId=$KC_USER_CLIENT \
+  -s 'redirectUris=["'"$APP_HOST_URL/*"'"]' \
+  -s rootUrl=$APP_HOST_URL \
+  -s baseUrl=$APP_HOST_URL \
+  -s standardFlowEnabled=true \
+  -s directAccessGrantsEnabled=false \
+  -s attributes='{ "post.logout.redirect.uris": "'"$APP_HOST_URL"'" }' \
+  -i)
+echo "User Client ID "$USER_CLIENT_ID
 
 echo "# Attaching roles."
 # GROUP_FEATURES
@@ -75,7 +84,11 @@ kcadm create client-scopes/$GROUP_SCOPE_ID/protocol-mappers/models -r $KC_REALM 
 kcadm update clients/$USER_CLIENT_ID/default-client-scopes/$GROUP_SCOPE_ID -r $KC_REALM
 
 echo "# Configuring api client."
-API_CLIENT_ID=$(kcadm create clients -r $KC_REALM -s clientId=$KC_API_CLIENT -s standardFlowEnabled=true -s serviceAccountsEnabled=true -i)
+API_CLIENT_ID=$(kcadm create clients -r $KC_REALM \
+  -s clientId=$KC_API_CLIENT \
+  -s standardFlowEnabled=true \
+  -s serviceAccountsEnabled=true \
+  -i)
 
 kcadm add-roles -r $KC_REALM --uusername service-account-$KC_API_CLIENT --cclientid realm-management --rolename manage-clients --rolename manage-realm --rolename manage-users
 
@@ -84,4 +97,7 @@ kcadm update clients/$API_CLIENT_ID -r $KC_REALM -s "secret=$(cat $KC_API_CLIENT
 
 echo "# Keycloak configuration finished."
 
+
 exit 0
+
+

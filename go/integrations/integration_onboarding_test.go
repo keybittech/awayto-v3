@@ -1,9 +1,10 @@
-package main
+package main_test
 
 import (
 	"net/http"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -11,11 +12,11 @@ import (
 
 func testIntegrationOnboarding(t *testing.T) {
 	t.Run("admin can complete onboarding with group, roles, service, schedule", func(tt *testing.T) {
-		admin := integrationTest.TestUsers[0]
+		admin := testutil.IntegrationTest.TestUsers[0]
 
 		onboardingRequest := &types.CompleteOnboardingRequest{
-			Service:  integrationTest.MasterService,
-			Schedule: integrationTest.MasterSchedule,
+			Service:  testutil.IntegrationTest.MasterService,
+			Schedule: testutil.IntegrationTest.MasterSchedule,
 		}
 		onboardingRequestBytes, err := protojson.Marshal(onboardingRequest)
 		if err != nil {
@@ -23,7 +24,7 @@ func testIntegrationOnboarding(t *testing.T) {
 		}
 
 		onboardingResponse := &types.CompleteOnboardingResponse{}
-		err = apiRequest(admin.TestToken, http.MethodPost, "/api/v1/group/onboard", onboardingRequestBytes, nil, onboardingResponse)
+		err = admin.DoHandler(http.MethodPost, "/api/v1/group/onboard", onboardingRequestBytes, nil, onboardingResponse)
 		if err != nil {
 			t.Fatalf("error posting onboarding request: %v", err)
 		}
@@ -44,25 +45,25 @@ func testIntegrationOnboarding(t *testing.T) {
 			t.Fatalf("group schedule 2 id is not a uuid: %s", onboardingResponse.GroupScheduleId)
 		}
 
-		masterService, err := getServiceById(admin.TestToken, onboardingResponse.ServiceId)
+		masterService, err := admin.GetServiceById(onboardingResponse.ServiceId)
 		if err != nil {
 			t.Fatalf("service by id err: %v", err)
 		}
 
-		masterGroupSchedule, err := getMasterScheduleById(admin.TestToken, onboardingResponse.ScheduleId)
+		masterGroupSchedule, err := admin.GetMasterScheduleById(onboardingResponse.ScheduleId)
 		if err != nil {
 			t.Fatalf("master schedule by id err: %v", err)
 		}
 
-		integrationTest.MasterService = masterService
-		integrationTest.MasterSchedule = masterGroupSchedule.Schedule
+		testutil.IntegrationTest.MasterService = masterService
+		testutil.IntegrationTest.MasterSchedule = masterGroupSchedule.Schedule
 
-		integrationTest.GroupService = &types.IGroupService{
+		testutil.IntegrationTest.GroupService = &types.IGroupService{
 			Id:      onboardingResponse.GroupServiceId,
-			GroupId: integrationTest.Group.Id,
-			Service: integrationTest.MasterService,
+			GroupId: testutil.IntegrationTest.Group.Id,
+			Service: testutil.IntegrationTest.MasterService,
 		}
 
-		integrationTest.GroupSchedule = masterGroupSchedule
+		testutil.IntegrationTest.GroupSchedule = masterGroupSchedule
 	})
 }

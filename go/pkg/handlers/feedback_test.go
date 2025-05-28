@@ -4,6 +4,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -78,7 +79,7 @@ func BenchmarkHandlers_PostSiteFeedback(b *testing.B) {
 	}
 	response := &types.PostSiteFeedbackResponse{}
 
-	reset(b)
+	testutil.ResetB(b)
 
 	for b.Loop() {
 		info.Batch.Reset()

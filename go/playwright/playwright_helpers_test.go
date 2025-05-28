@@ -1,4 +1,4 @@
-package main
+package main_test
 
 import (
 	"context"
@@ -16,6 +16,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/playwright-community/playwright-go"
@@ -303,7 +304,7 @@ func readHandlerResponse[T proto.Message](action func()) (T, error) {
 	var hops *util.HandlerOptions
 
 	descriptorT := msg.ProtoReflect().Descriptor()
-	for _, h := range handlerOpts {
+	for _, h := range testutil.HandlerOptions {
 		if descriptorT == h.ServiceMethod.Output() {
 			hops = h
 			break
