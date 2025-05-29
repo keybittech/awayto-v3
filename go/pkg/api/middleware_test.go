@@ -31,28 +31,6 @@ func TestAPI_LimitMiddleware(t *testing.T) {
 	}
 }
 
-func TestAPI_ValidateTokenMiddleware(t *testing.T) {
-	type args struct {
-		limit rate.Limit
-		burst int
-	}
-	tests := []struct {
-		name string
-		a    *API
-		args args
-		want func(next SessionHandler) http.HandlerFunc
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			// if got := tt.a.ValidateTokenMiddleware(tt.args.limit, tt.args.burst); !reflect.DeepEqual(got, tt.want) {
-			// 	t.Errorf("API.ValidateTokenMiddleware(%v, %v) = %v, want %v", tt.args.limit, tt.args.burst, got, tt.want)
-			// }
-		})
-	}
-}
-
 func TestAPI_GroupInfoMiddleware(t *testing.T) {
 	type args struct {
 		next SessionHandler

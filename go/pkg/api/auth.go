@@ -58,42 +58,6 @@ func (a *API) InitAuthProxy() {
 		authProxy.ServeHTTP(w, req)
 	})))
 
-	// loginStatusHandler := func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-	// 	var cookieVal string
-	// 	var cookieExpires int
-	//
-	//
-	// 	if strings.HasSuffix(req.URL.Path, "login") {
-	// 		if !util.CookieExpired(req) {
-	// 			return
-	// 		}
-	//
-	// 		cookieVal, err = util.WriteSigned(util.LOGIN_SIGNATURE_NAME, strconv.FormatInt(session.GetExpiresAt(), 10))
-	// 		if err != nil {
-	// 			util.ErrorLog.Println(util.ErrCheck(err))
-	// 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-	// 			return
-	// 		}
-	//
-	// 		cookieExpires = 24
-	// 	} else {
-	// 		cookieExpires = -24
-	// 	}
-	//
-	// 	http.SetCookie(w, &http.Cookie{
-	// 		Name:     "valid_signature",
-	// 		Value:    cookieVal,
-	// 		Path:     "/",
-	// 		Expires:  time.Now().Add(time.Duration(cookieExpires) * time.Hour),
-	// 		SameSite: http.SameSiteStrictMode,
-	// 		Secure:   true,
-	// 		HttpOnly: true,
-	// 	})
-	// }
-	//
-	// a.Server.Handler.(*http.ServeMux).Handle("/login", a.ValidateTokenMiddleware()(loginStatusHandler))
-	// a.Server.Handler.(*http.ServeMux).Handle("/logout", a.ValidateTokenMiddleware()(loginStatusHandler))
-
 	// The browser checks /auth/status, sees the user is not logged in, then forwards to /auth/login
 	a.Server.Handler.(*http.ServeMux).Handle("/auth/status", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 		sessionId := util.GetSessionIdFromCookie(req)

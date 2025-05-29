@@ -2,7 +2,6 @@ package util
 
 import (
 	"database/sql"
-	"net/http"
 	"reflect"
 	"sync"
 	"testing"
@@ -418,26 +417,6 @@ func TestItoi32(t *testing.T) {
 			}
 			if got != tt.want {
 				t.Errorf("Itoi32(%v) = %v, want %v", tt.args.i, got, tt.want)
-			}
-		})
-	}
-}
-
-func TestCookieExpired(t *testing.T) {
-	type args struct {
-		req *http.Request
-	}
-	tests := []struct {
-		name string
-		args args
-		want bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := CookieExpired(tt.args.req); got != tt.want {
-				t.Errorf("CookieExpired(%v) = %v, want %v", tt.args.req, got, tt.want)
 			}
 		})
 	}

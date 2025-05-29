@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
@@ -62,17 +63,15 @@ func (a *API) InitStatic() {
 	demoFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/demos/final/", util.E_PROJECT_DIR)))
 	demoRl := NewRateLimit("demos", .1, 1, time.Duration(5*time.Minute))
 	a.Server.Handler.(*http.ServeMux).Handle("GET /demos/", http.StripPrefix("/demos/",
-		a.LimitMiddleware(demoRl)(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			if util.CookieExpired(req) {
-				util.ErrorLog.Println("cookie expired when loading demo")
-				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			}
-
-			w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
-			w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
-
-			demoFiles.ServeHTTP(w, req)
-		})),
+		a.LimitMiddleware(demoRl)(
+			a.ValidateSessionMiddleware()(
+				SessionHandler(func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
+					w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+					w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
+					demoFiles.ServeHTTP(w, req)
+				}),
+			),
+		),
 	))
 
 	setupStaticBuildOrProxy(a)

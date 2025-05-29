@@ -11,7 +11,6 @@ import (
 	"errors"
 	"log"
 	"net/http"
-	"strconv"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -194,20 +193,6 @@ func VerifySigned(name, signedValue string) (string, error) {
 	}
 
 	return value, nil
-}
-
-func CookieExpired(req *http.Request) bool {
-	cookie, err := req.Cookie("valid_signature")
-	if err == nil && cookie.Value != "" {
-		expiresAtStr, err := VerifySigned(LOGIN_SIGNATURE_NAME, cookie.Value)
-		if err == nil {
-			expiresAt, parseErr := strconv.ParseInt(expiresAtStr, 10, 64)
-			if parseErr == nil && time.Now().Unix() < expiresAt {
-				return false
-			}
-		}
-	}
-	return true
 }
 
 func StringsToSiteRoles(roles []string) int32 {
