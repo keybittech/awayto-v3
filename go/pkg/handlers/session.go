@@ -45,21 +45,21 @@ func (h *Handlers) CheckGroupInfo(ctx context.Context, subGroupPath string) (ccg
 
 		cachedGroup := &types.CachedGroup{
 			SubGroupPaths: make([]string, 0, len(kcSubGroups)),
-			Id:            group.Id,
-			Code:          group.Code,
+			Id:            group.GetId(),
+			Code:          group.GetCode(),
 			Name:          groupName,
-			ExternalId:    group.ExternalId,
-			Sub:           group.Sub,
+			ExternalId:    group.GetExternalId(),
+			Sub:           group.GetSub(),
 			Path:          groupPath,
-			Ai:            group.Ai,
+			Ai:            group.GetAi(),
 		}
 
 		for _, subGroup := range kcSubGroups {
-			cachedGroup.SubGroupPaths = append(cachedGroup.SubGroupPaths, subGroup.Path)
+			cachedGroup.SubGroupPaths = append(cachedGroup.SubGroupPaths, subGroup.GetPath())
 		}
 
 		if _, found := h.Cache.GroupSessionVersions.Load(group.Id); !found {
-			h.Cache.GroupSessionVersions.Store(group.Id, time.Now().UnixNano())
+			h.Cache.GroupSessionVersions.Store(group.GetId(), time.Now().UnixNano())
 		}
 
 		return cachedGroup, nil
@@ -83,7 +83,7 @@ func (h *Handlers) CheckGroupInfo(ctx context.Context, subGroupPath string) (ccg
 		subGroup := *subGroupReq
 
 		cachedSubGroup := &types.CachedSubGroup{
-			ExternalId: subGroup.ExternalId,
+			ExternalId: subGroup.GetExternalId(),
 			Name:       subGroupName,
 			GroupPath:  groupPath,
 		}

@@ -31,8 +31,8 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT g.id, g.allowed_domains, gr.external_id
 		FROM dbtable_schema.groups g
-		JOIN dbtable_schema.group_roles gr ON gr.role_id = g.default_role_id
-		WHERE g.code = $1
+		JOIN dbtable_schema.group_roles gr ON gr.group_id = g.id 
+		WHERE g.code = $1 AND g.default_role_id = gr.role_id
 	`, data.GetCode()).Scan(&groupId, &allowedDomains, &kcRoleSubGroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(util.UserError("Group not found."))

@@ -10,6 +10,8 @@ import (
 )
 
 func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserRequest) (*types.PatchGroupUserResponse, error) {
+	userSub := info.Session.GetUserSub()
+
 	var userId, oldSubgroupExternalId string
 	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT gu.external_id, gu.user_id
@@ -31,12 +33,12 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, info.Session.GetUserSub(), data.UserSub, oldSubgroupExternalId)
+	err = h.Keycloak.DeleteUserFromGroup(info.Ctx, userSub, data.UserSub, oldSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
-	err = h.Keycloak.AddUserToGroup(info.Ctx, info.Session.GetUserSub(), data.UserSub, newSubgroupExternalId)
+	err = h.Keycloak.AddUserToGroup(info.Ctx, userSub, data.UserSub, newSubgroupExternalId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

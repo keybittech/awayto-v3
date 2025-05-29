@@ -107,7 +107,6 @@ func (h *Handlers) PatchQuote(info ReqInfo, data *types.PatchQuoteRequest) (*typ
 		SET service_tier_id = $2, updated_sub = $3, updated_on = $4 
 		WHERE id = $1
 	`, data.Id, data.ServiceTierId, info.Session.GetUserSub(), time.Now())
-
 	info.Batch.Send(info.Ctx)
 
 	return &types.PatchQuoteResponse{Success: true}, nil
@@ -120,7 +119,6 @@ func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types
 		JOIN dbtable_schema.schedule_bracket_slots sbs ON sbs.id = q."scheduleBracketSlotId"
 		WHERE sbs.created_sub = $1
 	`, info.Session.GetUserSub())
-
 	info.Batch.Send(info.Ctx)
 
 	return &types.GetQuotesResponse{Quotes: *quotes}, nil
@@ -128,11 +126,10 @@ func (h *Handlers) GetQuotes(info ReqInfo, data *types.GetQuotesRequest) (*types
 
 func (h *Handlers) GetQuoteById(info ReqInfo, data *types.GetQuoteByIdRequest) (*types.GetQuoteByIdResponse, error) {
 	quote := util.BatchQueryRow[types.IQuote](info.Batch, `
-		SELECT id, "slotDate", "serviceFormVersionSubmission", "tierFormVersionSubmission", "createdOn"
-		FROM dbview_schema.enabled_quotes_ext
+		SELECT id, "slotDate", "scheduleBracketSlotId", "serviceFormVersionSubmissionId", "tierFormVersionSubmissionId", "createdOn"
+		FROM dbview_schema.enabled_quotes
 		WHERE id = $1
 	`, data.Id)
-
 	info.Batch.Send(info.Ctx)
 
 	return &types.GetQuoteByIdResponse{Quote: *quote}, nil
@@ -143,7 +140,6 @@ func (h *Handlers) DeleteQuote(info ReqInfo, data *types.DeleteQuoteRequest) (*t
 		DELETE FROM dbtable_schema.quotes
 		WHERE id = $1
 	`, data.Id)
-
 	info.Batch.Send(info.Ctx)
 
 	return &types.DeleteQuoteResponse{Success: true}, nil
@@ -155,7 +151,6 @@ func (h *Handlers) DisableQuote(info ReqInfo, data *types.DisableQuoteRequest) (
 		SET enabled = false, updated_on = $2, updated_sub = $3
 		WHERE id = ANY($1)
 	`, pq.Array(strings.Split(data.Ids, ",")), time.Now(), info.Session.GetUserSub())
-
 	info.Batch.Send(info.Ctx)
 
 	return &types.DisableQuoteResponse{Success: true}, nil
