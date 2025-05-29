@@ -1,11 +1,9 @@
 package main_test
 
 import (
-	"net/http"
 	"testing"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
-	"github.com/playwright-community/playwright-go"
 )
 
 func testPlaywrightRegistration(t *testing.T) {
@@ -25,9 +23,7 @@ func testPlaywrightRegistration(t *testing.T) {
 		} else {
 			// On logged in dashboard
 			request := page.Request()
-			deleteResponse, err := request.Delete("/api/v1/group", playwright.APIRequestContextDeleteOptions{
-				Headers: page.UserWithPass.AuthorizationHeader,
-			})
+			deleteResponse, err := request.Delete("/api/v1/group")
 			if err != nil {
 				t.Fatalf("failed to delete group %v", err)
 			}
@@ -176,15 +172,7 @@ func testPlaywrightRegistration(t *testing.T) {
 		}
 		page.ByRole("button", "Next").MouseOver().Click()
 
-		tokenResponse, err := readResponse[*types.OIDCToken](http.MethodPost, "/auth/realms/.*/protocol/openid-connect/token", func() {
-			page.ByLocator(`button[id="confirmation_approval"]`).MouseOver().Click()
-		})
-		if err != nil {
-			t.Fatalf("bad onboarding token, err %v", err)
-		}
-
-		page.UserWithPass.AuthorizationHeader = make(map[string]string)
-		page.UserWithPass.AuthorizationHeader["Authorization"] = tokenResponse.GetAccessToken()
+		page.ByLocator(`button[id="confirmation_approval"]`).MouseOver().Click()
 	})
 
 	t.Run("staff joins on the registration page, with the group code", func(tt *testing.T) {
@@ -194,9 +182,7 @@ func testPlaywrightRegistration(t *testing.T) {
 
 			// On logged in dashboard
 			request := page.Request()
-			deleteResponse, err := request.Delete("/api/v1/profile", playwright.APIRequestContextDeleteOptions{
-				Headers: page.UserWithPass.AuthorizationHeader,
-			})
+			deleteResponse, err := request.Delete("/api/v1/profile")
 			if err != nil {
 				t.Fatalf("failed to call delete staff %v", err)
 			}
@@ -212,15 +198,7 @@ func testPlaywrightRegistration(t *testing.T) {
 			}
 		}
 
-		tokenResponse, err := readResponse[*types.OIDCToken](http.MethodPost, "/auth/realms/.*/protocol/openid-connect/token", func() {
-			register(page, groupCode)
-		})
-		if err != nil {
-			t.Fatalf("bad onboarding token, err %v", err)
-		}
-
-		page.UserWithPass.AuthorizationHeader = make(map[string]string)
-		page.UserWithPass.AuthorizationHeader["Authorization"] = tokenResponse.GetAccessToken()
+		register(page, groupCode)
 	})
 
 	t.Run("user joins internally, with the group code", func(tt *testing.T) {
@@ -229,9 +207,7 @@ func testPlaywrightRegistration(t *testing.T) {
 		if !firstRun {
 			// On logged in dashboard
 			request := page.Request()
-			deleteResponse, err := request.Delete("/api/v1/profile", playwright.APIRequestContextDeleteOptions{
-				Headers: page.UserWithPass.AuthorizationHeader,
-			})
+			deleteResponse, err := request.Delete("/api/v1/profile")
 			if err != nil {
 				t.Fatalf("failed to call delete user %v", err)
 			}
@@ -251,15 +227,6 @@ func testPlaywrightRegistration(t *testing.T) {
 
 		page.ById("use_group_code").MouseOver().Click()
 		page.ById("join_group_input_code").MouseOver().Fill(groupCode)
-
-		tokenResponse, err := readResponse[*types.OIDCToken](http.MethodPost, "/auth/realms/.*/protocol/openid-connect/token", func() {
-			page.ById("join_group_modal_submit").MouseOver().Click()
-		})
-		if err != nil {
-			t.Fatalf("bad onboarding token, err %v", err)
-		}
-
-		page.UserWithPass.AuthorizationHeader = make(map[string]string)
-		page.UserWithPass.AuthorizationHeader["Authorization"] = tokenResponse.GetAccessToken()
+		page.ById("join_group_modal_submit").MouseOver().Click()
 	})
 }

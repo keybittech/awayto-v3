@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"math/rand/v2"
-	"net/http"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -36,10 +35,9 @@ type PageResponse struct {
 }
 
 type UserWithPass struct {
-	Password            string
-	UserId              string
-	AuthorizationHeader map[string]string
-	Profile             *types.IUserProfile
+	Password string
+	UserId   string
+	Profile  *types.IUserProfile
 }
 
 type Page struct {
@@ -165,9 +163,9 @@ func debugErr(err error) error {
 }
 
 // return a page and if it already existed
-func getBrowserPage(t *testing.T, userId string) (*Page, bool) {
+func getBrowserPage(t *testing.T, userId string) *Page {
 	if p, ok := pages[userId]; ok {
-		return p, true
+		return p
 	}
 
 	defaultOptions := playwright.BrowserNewPageOptions{
@@ -224,7 +222,7 @@ func getBrowserPage(t *testing.T, userId string) (*Page, bool) {
 	doEval(page)
 
 	pages[userId] = page
-	return pages[userId], false
+	return pages[userId]
 }
 
 func doEval(page *Page) {
@@ -357,7 +355,7 @@ func readHandlerResponse[T proto.Message](action func()) (T, error) {
 }
 
 func login(t *testing.T, userId string) *Page {
-	page, existing := getBrowserPage(t, userId)
+	page := getBrowserPage(t, userId)
 
 	if !strings.HasSuffix(strings.Trim(page.URL(), "/"), "app") {
 		page.Goto("/app")
@@ -377,16 +375,7 @@ func login(t *testing.T, userId string) *Page {
 	if onSignInPage {
 		page.ByRole("textbox", "Email").MouseOver().Fill(page.UserWithPass.Profile.Email)
 		page.ByRole("textbox", "Password").MouseOver().Fill(page.UserWithPass.Password)
-		tokenResponse, err := readResponse[*types.OIDCToken](http.MethodPost, "/auth/realms/.*/protocol/openid-connect/token", func() {
-			page.ByRole("button", "Sign In").MouseOver().Click()
-		})
-		if err == nil && tokenResponse != nil && tokenResponse.GetAccessToken() != "" {
-			authHeader := make(map[string]string)
-			authHeader["Authorization"] = "Bearer " + tokenResponse.GetAccessToken()
-			page.UserWithPass.AuthorizationHeader = authHeader
-		} else if existing {
-			t.Fatalf("did not refresh auth token with a setup user, err: %v", err)
-		}
+		page.ByRole("button", "Sign In").MouseOver().Click()
 	}
 
 	return page
