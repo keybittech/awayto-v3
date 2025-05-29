@@ -186,6 +186,26 @@ func (tus *TestUsersStruct) Login() error {
 	return nil
 }
 
+func (tus *TestUsersStruct) Logout() error {
+	req, err := http.NewRequest("GET", util.E_APP_HOST_URL+"/auth/logout", nil)
+	if err != nil {
+		return fmt.Errorf("failed to create request for /auth/logout: %v", err)
+	}
+
+	client := tus.getUserClient()
+	resp, err := doAndRead(client, req)
+	if err != nil {
+		return fmt.Errorf("failed to call /auth/logout: %v", err)
+	}
+
+	lastUpdatedMatch := regexp.MustCompile(`<p>Last updated:`).FindAll(resp, 1)
+	if lastUpdatedMatch == nil {
+		return fmt.Errorf("could not find last updated after logout")
+	}
+
+	return nil
+}
+
 // func getUser(t *testing.T, userId string) (*types.UserSession, net.Conn, string, string, string) {
 // 	userSession, token, ticket, connId := getSocketTicket(userId)
 //

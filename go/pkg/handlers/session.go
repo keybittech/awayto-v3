@@ -5,16 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func (h *Handlers) CheckGroupInfo(ctx context.Context, subGroupPath string) (ccg *types.ConcurrentCachedGroup, ccsg *types.ConcurrentCachedSubGroup, err error) {
+func (h *Handlers) GetCachedGroups(ctx context.Context, subGroupPath string) (ccg *types.ConcurrentCachedGroup, ccsg *types.ConcurrentCachedSubGroup, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = util.ErrCheck(fmt.Errorf("failed to check group info, subGroupPath %s, err: %v", subGroupPath, r))
@@ -96,49 +94,236 @@ func (h *Handlers) CheckGroupInfo(ctx context.Context, subGroupPath string) (ccg
 	return concurrentCachedGroup, concurrentCachedSubGroup, nil
 }
 
-func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession, sessionId ...string) (concurrentSession *types.ConcurrentUserSession, err error) {
+func (h *Handlers) GetSession(req *http.Request, userSub ...string) (concurrentSession *types.ConcurrentUserSession, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("panic during get session, err: %v", r)
+		}
+	}()
+
+	var sessionId string
+	var found bool
+
+	ctx := req.Context()
+
+	// If userSub is passed, current user is refreshing another's token
+	// so check whose session we need to get.
+	if len(userSub) > 0 {
+		sessionId, found = h.Cache.UserSessionIds.Load(userSub[0])
+		if !found {
+			batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
+			sessionIdReq := util.BatchQueryRow[types.ILookup](batch, `
+				SELECT id
+				FROM dbtable_schema.user_sessions
+				WHERE sub = $1
+			`, userSub[0])
+			batch.Send(ctx)
+
+			if sessionIdRes := *sessionIdReq; sessionIdRes != nil {
+				sessionId = sessionIdRes.GetId()
+			}
+		}
+	} else {
+		sessionId = util.GetSessionIdFromCookie(req)
+	}
+	if sessionId == "" {
+		return nil, util.ErrCheck(errors.New("no session id to get user session"))
+	}
+
+	concurrentSession, found = h.Cache.UserSessions.Get(sessionId)
+	if !found {
+		batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
+		sessionReq := util.BatchQueryRow[types.UserSession](batch, `
+			SELECT id
+			FROM dbtable_schema.user_sessions
+			WHERE id = $1
+		`, sessionId)
+		batch.Send(ctx)
+
+		session := *sessionReq
+
+		if session == nil || session.GetId() == "" {
+			err = util.ErrCheck(fmt.Errorf("could not find session in cache or db, sessionId: %s", sessionId))
+			return
+		}
+
+		// Force a refresh if we had to go to the db to get session,
+		// as the db only stores a partial record of the session and
+		// we want to make sure the token claims are attached
+		concurrentSession, err = h.RefreshSession(req, types.NewConcurrentUserSession(session))
+		if err != nil {
+			err = util.ErrCheck(fmt.Errorf("could not refresh session during db reconstruct, err: %v", err))
+			return
+		}
+	}
+
+	return
+}
+
+func (h *Handlers) RefreshOrDelete(req *http.Request, session *types.ConcurrentUserSession) *types.ConcurrentUserSession {
+	refreshedSession, err := h.RefreshSession(req, session)
+	if err != nil {
+		util.ErrorLog.Printf("could not refresh token during access expired, err: %v", err)
+		if err := h.DeleteSession(req.Context(), session.GetId()); err != nil {
+			util.ErrorLog.Printf("could not delete session during token refresh fail, err: %v", err)
+		}
+	}
+	return refreshedSession
+}
+
+func (h *Handlers) CheckSessionExpiry(req *http.Request, session *types.ConcurrentUserSession) *types.ConcurrentUserSession {
+	if time.Now().After(time.Unix(0, session.GetAccessExpiresAt()).Add(-30 * time.Second)) {
+		session = h.RefreshOrDelete(req, session)
+	}
+	if session == nil {
+		return nil
+	}
+
+	if groupId := session.GetGroupId(); groupId != "" {
+		currentGroupVersion, _ := h.Cache.GroupSessionVersions.Load(groupId)
+		if currentGroupVersion > 0 && session.GetGroupSessionVersion() < currentGroupVersion {
+			session = h.RefreshOrDelete(req, session)
+		}
+	}
+
+	return session
+}
+
+func (h *Handlers) ResetGroupSession(req *http.Request, groupId string) {
+	if groupId == "" {
+		return
+	}
+
+	defer func() {
+		if r := recover(); r != nil {
+			err := fmt.Errorf("failed to reset group session, err %v", r)
+			util.ErrorLog.Println(util.ErrCheck(err))
+		}
+	}()
+
+	// Forces downstream updates to include group update
+	newGroupVersion := time.Now().UnixNano()
+	h.Cache.GroupSessionVersions.Store(groupId, newGroupVersion)
+
+	batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
+	sessionSubsReq := util.BatchQuery[types.ILookup](batch, `
+		SELECT sub as id
+		FROM dbtable_schema.user_sessions
+		WHERE group_id = $1
+	`, groupId)
+	batch.Send(req.Context())
+
+	for _, sub := range *sessionSubsReq {
+		userSession, err := h.GetSession(req, sub.GetId())
+		if err != nil {
+			util.ErrorLog.Printf("failed to get session during reset group session, userSub: %s, groupId: %s, err: %v", sub.GetId(), groupId, err)
+		}
+		// Version check here saves us from refreshing again if we already did refresh in GetSession
+		if userSession != nil && userSession.GetGroupSessionVersion() != newGroupVersion {
+			_, err = h.RefreshSession(req, userSession)
+			if err != nil {
+				util.ErrorLog.Printf("failed to refresh session during reset group session, userSub: %s, groupId: %s, err: %v", sub.GetId(), groupId, err)
+			}
+		}
+	}
+
+	err := h.Socket.GroupRoleCall("worker", groupId)
+	if err != nil {
+		util.ErrorLog.Printf("failed to group role call during reset group session, groupId: %s, err: %v", groupId, err)
+	}
+}
+
+// TODO can keycloak batch session info or obviate token completely?
+func (h *Handlers) RefreshSession(req *http.Request, session *types.ConcurrentUserSession) (*types.ConcurrentUserSession, error) {
+	refreshToken := session.GetRefreshToken()
+	if refreshToken == "" {
+		return nil, util.ErrCheck(errors.New("refresh token is empty"))
+	}
+
+	refreshedSession, err := util.GetValidTokenRefresh(req, refreshToken, session.GetUserAgent(), session.GetTimezone(), session.GetAnonIp())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	refreshedSession.Id = session.GetId()
+
+	return h.StoreSession(req.Context(), refreshedSession)
+}
+
+// Existing sessions can provide sessionId to overwrite existing
+func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession) (concurrentSession *types.ConcurrentUserSession, err error) {
 	defer func() {
 		if r := recover(); r != nil {
 			err = util.ErrCheck(fmt.Errorf("failed to store session, err: %v", r))
 		}
 	}()
 
-	var gid string
+	var groupId string
 	if len(session.GetSubGroupPaths()) > 0 {
 		subGroupPath := session.GetSubGroupPaths()[0]
 
-		var concurrentCachedGroup *types.ConcurrentCachedGroup
-		concurrentCachedGroup, _, err = h.CheckGroupInfo(ctx, subGroupPath)
-		if err != nil {
-			err = util.ErrCheck(err)
+		concurrentCachedGroup, concurrentCachedSubGroup, cacheErr := h.GetCachedGroups(ctx, subGroupPath)
+		if cacheErr != nil {
+			err = util.ErrCheck(cacheErr)
 			return
 		}
 
-		gid = concurrentCachedGroup.GetId()
+		groupId = concurrentCachedGroup.GetId()
+
+		sessionGroupVersion := session.GetGroupSessionVersion()
+
+		currentGroupVersion, _ := h.Cache.GroupSessionVersions.Load(groupId)
+
+		if sessionGroupVersion == 0 || sessionGroupVersion < currentGroupVersion {
+			session.GroupSessionVersion = currentGroupVersion
+
+			session.GroupId = groupId
+			session.GroupPath = concurrentCachedGroup.GetPath()
+			session.GroupCode = concurrentCachedGroup.GetCode()
+			session.GroupName = concurrentCachedGroup.GetName()
+			session.GroupExternalId = concurrentCachedGroup.GetExternalId()
+			session.GroupSub = concurrentCachedGroup.GetSub()
+			session.GroupAi = concurrentCachedGroup.GetAi()
+
+			session.SubGroupPath = subGroupPath
+			session.SubGroupName = concurrentCachedSubGroup.GetName()
+			session.SubGroupExternalId = concurrentCachedSubGroup.GetExternalId()
+		}
+	}
+
+	params := []any{
+		nil,                      // 1
+		session.GetIdToken(),     // 2
+		session.GetAccessToken(), // 3
+		time.Unix(0, session.GetAccessExpiresAt()),  // 4
+		session.GetRefreshToken(),                   // 5
+		time.Unix(0, session.GetRefreshExpiresAt()), // 6
+		session.GetAnonIp(),                         // 7
+		session.GetTimezone(),                       // 8
+		session.GetUserAgent(),                      // 9
+		groupId,                                     // 10
 	}
 
 	batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
-	var sid string
-	if len(sessionId) > 0 {
-		sid = sessionId[0]
+	if sid := session.GetId(); sid != "" {
+		params[0] = sid
 		util.BatchExec(batch, `
 			UPDATE dbtable_schema.user_sessions
 			SET id_token = $2, access_token = $3, access_expires_at = $4, refresh_token = $5, refresh_expires_at = $6, ip_address = $7, timezone = $8, user_agent = $9, group_id = $10
 			WHERE id = $1
-		`, sid, session.GetIdToken(), session.GetAccessToken(), time.Unix(0, session.GetAccessExpiresAt()), session.GetRefreshToken(), time.Unix(0, session.GetRefreshExpiresAt()), session.GetAnonIp(), session.GetTimezone(), session.GetUserAgent(), gid)
+		`, params...)
 		batch.Send(ctx)
 	} else {
+		params[0] = session.GetUserSub()
 		dbSessionInsert := util.BatchQueryRow[types.ILookup](batch, `
 			INSERT INTO dbtable_schema.user_sessions (sub, id_token, access_token, access_expires_at, refresh_token, refresh_expires_at, ip_address, timezone, user_agent, group_id)
 			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			RETURNING id
-		`, session.GetUserSub(), session.GetIdToken(), session.GetAccessToken(), time.Unix(0, session.GetAccessExpiresAt()), session.GetRefreshToken(), time.Unix(0, session.GetRefreshExpiresAt()), session.GetAnonIp(), session.GetTimezone(), session.GetUserAgent(), gid)
+		`, params...)
 		batch.Send(ctx)
 		dbSession := *dbSessionInsert
-		sid = dbSession.GetId()
+		session.Id = dbSession.GetId()
 	}
-
-	session.Id = sid
 
 	h.Cache.UserSessionIds.Store(session.GetUserSub(), session.GetId())
 	concurrentSession = types.NewConcurrentUserSession(session)
@@ -168,101 +353,4 @@ func (h *Handlers) DeleteSession(ctx context.Context, sessionId string) (err err
 	h.Cache.UserSessions.Delete(sessionId)
 
 	return nil
-}
-
-func (h *Handlers) ResetGroupSession(req *http.Request, groupId string) {
-	if groupId == "" {
-		return
-	}
-
-	defer func() {
-		if r := recover(); r != nil {
-			util.ErrorLog.Printf("failed to reset group session, err %v", r)
-		}
-	}()
-
-	h.Cache.GroupSessionVersions.Store(groupId, time.Now().UnixNano())
-
-	batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
-	sessionSubsReq := util.BatchQuery[types.ILookup](batch, `
-		SELECT sub as id
-		FROM dbtable_schema.user_sessions
-		WHERE group_id = $1
-	`, groupId)
-	batch.Send(req.Context())
-
-	for _, sub := range *sessionSubsReq {
-		_, err := h.RefreshSession(req, sub.GetId())
-		if err != nil {
-			panic(util.ErrCheck(fmt.Errorf("failed to refresh the session for %s", sub.GetId())))
-		}
-	}
-
-	_ = h.Socket.GroupRoleCall("worker", groupId)
-}
-
-// TODO can keycloak batch session info or obviate token completely?
-
-func (h *Handlers) RefreshSession(req *http.Request, userSub ...string) (*types.ConcurrentUserSession, error) {
-	var sessionId string
-	var exists bool
-	if len(userSub) > 0 {
-		sessionId, exists = h.Cache.UserSessionIds.Load(userSub[0])
-		if !exists {
-			return nil, util.ErrCheck(fmt.Errorf("no user session for %s", userSub[0]))
-		}
-	} else {
-		sessionId = util.GetSessionIdFromCookie(req)
-		if sessionId == "" {
-			return nil, util.ErrCheck(errors.New("no session id to refresh token"))
-		}
-	}
-
-	session, ok := h.Cache.UserSessions.Get(sessionId)
-	if !ok {
-		return nil, util.ErrCheck(errors.New("failed to get user session to refresh token"))
-	}
-
-	data := url.Values{
-		"grant_type":    {"refresh_token"},
-		"client_id":     {util.E_KC_USER_CLIENT},
-		"client_secret": {util.E_KC_USER_CLIENT_SECRET},
-		"refresh_token": {session.GetRefreshToken()},
-	}
-
-	util.SetForwardingHeaders(req)
-
-	resp, err := util.PostFormData(util.E_KC_OPENID_TOKEN_URL, req.Header, data)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	var tokens types.OIDCToken
-	if err := protojson.Unmarshal(resp, &tokens); err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	// If userSub provided, likely admin is refreshing group users, so use existing session info
-	var ua, tz, ip string
-	if len(userSub) > 0 {
-		ua = session.GetUserAgent()
-		tz = session.GetTimezone()
-		ip = session.GetAnonIp()
-	} else {
-		ua = util.GetUA(req.Header.Get("User-Agent"))
-		tz = req.Header.Get("X-Tz")
-		ip = util.AnonIp(req.RemoteAddr)
-	}
-
-	refreshedSession, err := util.ValidateToken(&tokens, ua, tz, ip)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	concurrentSession, err := h.StoreSession(req.Context(), refreshedSession, sessionId)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	return concurrentSession, nil
 }

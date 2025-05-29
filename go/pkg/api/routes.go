@@ -18,7 +18,7 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 	if !ok {
 		util.DebugLog.Println("Service Method Not Implemented:", handlerOpts.ServiceMethodName)
 		return func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession) {
-			w.WriteHeader(501)
+			http.Error(w, http.StatusText(http.StatusNotImplemented), http.StatusNotImplemented)
 			return
 		}
 	}

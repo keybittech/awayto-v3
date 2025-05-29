@@ -12,7 +12,6 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func (a *API) InitAuthProxy() {
@@ -28,14 +27,9 @@ func (a *API) InitAuthProxy() {
 	userRoutes := []string{
 		"login-actions/registration",
 		"login-actions/authenticate",
-		// "login-actions/reset-credentials",
-		// "protocol/openid-connect/3p-cookies/step1.html",
-		// "protocol/openid-connect/3p-cookies/step2.html",
-		// "protocol/openid-connect/login-status-iframe.html",
-		// "protocol/openid-connect/login-status-iframe.html/init",
+		"login-actions/reset-credentials",
 		"protocol/openid-connect/registrations",
 		"protocol/openid-connect/auth",
-		"protocol/openid-connect/token",
 		"protocol/openid-connect/logout",
 	}
 
@@ -58,26 +52,22 @@ func (a *API) InitAuthProxy() {
 		authProxy.ServeHTTP(w, req)
 	})))
 
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/register", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		http.Redirect(w, req, util.E_KC_OPENID_REGISTER_URL, http.StatusFound)
+	}))
+
 	// The browser checks /auth/status, sees the user is not logged in, then forwards to /auth/login
 	a.Server.Handler.(*http.ServeMux).Handle("/auth/status", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		sessionId := util.GetSessionIdFromCookie(req)
-		if sessionId == "" {
-			w.WriteHeader(http.StatusUnauthorized)
+		session, err := a.Handlers.GetSession(req)
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
-		session, ok := a.Cache.UserSessions.Get(sessionId)
-		if !ok {
-			w.WriteHeader(http.StatusUnauthorized)
+		checkedSession := a.Handlers.CheckSessionExpiry(req, session)
+		if checkedSession == nil {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
-		}
-
-		if time.Now().After(time.Unix(0, session.GetAccessExpiresAt()).Add(-30 * time.Second)) {
-			if _, err := a.Handlers.RefreshSession(req); err != nil {
-				util.ErrorLog.Printf("Token refresh failed: %v", err)
-				w.WriteHeader(http.StatusUnauthorized)
-				return
-			}
 		}
 
 		w.Header().Set("Content-Type", "application/json")
@@ -88,6 +78,14 @@ func (a *API) InitAuthProxy() {
 
 	// auth/login prepares the user's challenge codes, and sends the user to login
 	a.Server.Handler.(*http.ServeMux).Handle("/auth/login", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		tz := req.URL.Query().Get("tz")
+		ua := req.Header.Get("User-Agent")
+
+		if tz == "" || ua == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+			return
+		}
+
 		codeVerifier := util.GenerateCodeVerifier()
 		codeChallenge := util.GenerateCodeChallenge(codeVerifier)
 		state := util.GenerateState()
@@ -96,8 +94,8 @@ func (a *API) InitAuthProxy() {
 			CodeVerifier: codeVerifier,
 			State:        state,
 			CreatedAt:    time.Now().UnixNano(),
-			Tz:           req.URL.Query().Get("tz"),
-			Ua:           req.Header.Get("User-Agent"),
+			Tz:           tz,
+			Ua:           ua,
 		})
 
 		a.Cache.TempAuthSessions.Store(state, tempSession)
@@ -128,36 +126,11 @@ func (a *API) InitAuthProxy() {
 
 		tempSession := a.Cache.TempAuthSessions.Load(state)
 		a.Cache.TempAuthSessions.Delete(state)
+		codeVerifier := tempSession.GetCodeVerifier()
 
-		data := url.Values{
-			"grant_type":    {"authorization_code"},
-			"client_id":     {util.E_KC_USER_CLIENT},
-			"client_secret": {util.E_KC_USER_CLIENT_SECRET},
-			"redirect_uri":  {util.E_APP_HOST_URL + "/auth/callback"},
-			"code":          {code},
-			"code_verifier": {tempSession.GetCodeVerifier()},
-		}
-
-		util.SetForwardingHeaders(req)
-
-		resp, err := util.PostFormData(util.E_KC_OPENID_TOKEN_URL, req.Header, data)
+		session, err := util.GetValidTokenChallenge(req, code, codeVerifier, tempSession.GetUa(), tempSession.GetTz(), util.AnonIp(req.RemoteAddr))
 		if err != nil {
-			util.ErrorLog.Printf("Token exchange failed post: %v", err)
-			http.Error(w, "Token exchange failed", http.StatusInternalServerError)
-			return
-		}
-
-		tokens := &types.OIDCToken{}
-		if err := protojson.Unmarshal(resp, tokens); err != nil {
-			util.ErrorLog.Printf("Token exchange failed token decode: %v", err)
-			http.Error(w, "Token exchange failed", http.StatusInternalServerError)
-			return
-		}
-
-		session, err := util.ValidateToken(tokens, util.GetUA(tempSession.GetUa()), tempSession.GetTz(), util.AnonIp(req.RemoteAddr))
-		if err != nil {
-			util.ErrorLog.Printf("Token validation failed: %v", err)
-			http.Error(w, "Invalid token", http.StatusUnauthorized)
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
@@ -165,8 +138,7 @@ func (a *API) InitAuthProxy() {
 
 		signedSessionId, err := util.WriteSigned("session_id", session.Id)
 		if err != nil {
-			util.ErrorLog.Printf("Failed to sign session ID: %v", err)
-			http.Error(w, "Session creation failed", http.StatusInternalServerError)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
 
@@ -174,7 +146,7 @@ func (a *API) InitAuthProxy() {
 			Name:     "session_id",
 			Value:    signedSessionId,
 			Path:     "/",
-			MaxAge:   int(tokens.RefreshExpiresIn),
+			MaxAge:   int(time.Until(time.Unix(0, session.GetRefreshExpiresAt())).Seconds()),
 			HttpOnly: true,
 			Secure:   true,
 			SameSite: http.SameSiteStrictMode,

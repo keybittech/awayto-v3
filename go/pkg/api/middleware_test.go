@@ -9,6 +9,27 @@ import (
 	"golang.org/x/time/rate"
 )
 
+func TestAPI_AccessRequestMiddleware(t *testing.T) {
+	type args struct {
+		next http.Handler
+	}
+	tests := []struct {
+		name string
+		a    *API
+		args args
+		want http.Handler
+	}{
+		// TODO: Add test cases.
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if got := tt.a.AccessRequestMiddleware(tt.args.next); !reflect.DeepEqual(got, tt.want) {
+				t.Errorf("API.AccessRequestMiddleware(%v) = %v, want %v", tt.args.next, got, tt.want)
+			}
+		})
+	}
+}
+
 func TestAPI_LimitMiddleware(t *testing.T) {
 	type args struct {
 		limit rate.Limit
@@ -27,27 +48,6 @@ func TestAPI_LimitMiddleware(t *testing.T) {
 			// if got := tt.a.LimitMiddleware(tt.args.limit, tt.args.burst); !reflect.DeepEqual(got, tt.want) {
 			// 	t.Errorf("API.LimitMiddleware(%v, %v) = %v, want %v", tt.args.limit, tt.args.burst, got, tt.want)
 			// }
-		})
-	}
-}
-
-func TestAPI_GroupInfoMiddleware(t *testing.T) {
-	type args struct {
-		next SessionHandler
-	}
-	tests := []struct {
-		name string
-		a    *API
-		args args
-		want SessionHandler
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.GroupInfoMiddleware(tt.args.next); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.GroupInfoMiddleware(%v) = %v, want %v", tt.args.next, got, tt.want)
-			}
 		})
 	}
 }
@@ -135,27 +135,6 @@ func Test_responseCodeWriter_WriteHeader(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.rw.WriteHeader(tt.args.code)
-		})
-	}
-}
-
-func TestAPI_AccessRequestMiddleware(t *testing.T) {
-	type args struct {
-		next http.Handler
-	}
-	tests := []struct {
-		name string
-		a    *API
-		args args
-		want http.Handler
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			if got := tt.a.AccessRequestMiddleware(tt.args.next); !reflect.DeepEqual(got, tt.want) {
-				t.Errorf("API.AccessRequestMiddleware(%v) = %v, want %v", tt.args.next, got, tt.want)
-			}
 		})
 	}
 }

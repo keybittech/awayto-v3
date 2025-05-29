@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -48,82 +49,37 @@ func (a *API) LimitMiddleware(rl *RateLimiter) func(next http.Handler) http.Hand
 	}
 }
 
-func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.HandlerFunc { // This converts a regular HandlerFunc into a SessionHandler
+// Converts a regular HandlerFunc into a SessionHandler
+func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.HandlerFunc {
 	return func(next SessionHandler) http.HandlerFunc {
 		return func(w http.ResponseWriter, req *http.Request) {
-			session := a.Cache.GetSessionFromCookie(req)
-			if session == nil {
+			session, err := a.Handlers.GetSession(req)
+			if session == nil || err != nil {
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 
-			if time.Now().After(time.Unix(0, session.GetAccessExpiresAt()).Add(-30 * time.Second)) {
-				var err error
-				session, err = a.Handlers.RefreshSession(req)
-				if err != nil {
-					http.Error(w, "Token refresh failed in middleware", http.StatusUnauthorized)
-					return
+			score := util.ScoreValues([][]string{
+				{session.GetUserAgent(), req.Header.Get("User-Agent")},
+				{session.GetTimezone(), req.Header.Get("X-Tz")},
+				{session.GetAnonIp(), util.AnonIp(req.RemoteAddr)},
+			})
+			if score > 1 {
+				if err := a.Handlers.DeleteSession(req.Context(), session.GetId()); err != nil {
+					util.ErrorLog.Println(errors.New("could not delete session during score fail"))
 				}
-			}
-
-			next(w, req, session)
-		}
-	}
-}
-
-func (a *API) GroupInfoMiddleware(next SessionHandler) SessionHandler {
-	return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-		sessionSubGroups := session.GetSubGroupPaths()
-		if len(sessionSubGroups) == 0 {
-			next(w, req, session)
-			return
-		}
-
-		sessionGroupId := session.GetGroupId()
-		refresh := sessionGroupId == ""
-
-		if !refresh {
-			currentGroupVersion, found := a.Cache.GroupSessionVersions.Load(sessionGroupId)
-			if !found || currentGroupVersion > session.GetGroupSessionVersion() {
-				refresh = true
-			}
-		}
-
-		if refresh {
-			ctx := req.Context()
-
-			subGroupPath := sessionSubGroups[0]
-
-			concurrentCachedGroup, concurrentCachedSubGroup, err := a.Handlers.CheckGroupInfo(ctx, subGroupPath)
-			if err != nil {
-				util.ErrorLog.Println(err)
-				w.WriteHeader(http.StatusInternalServerError)
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 
-			groupId := concurrentCachedGroup.GetId()
-
-			session.SetGroupId(groupId)
-			session.SetGroupPath(concurrentCachedGroup.GetPath())
-			session.SetGroupCode(concurrentCachedGroup.GetCode())
-			session.SetGroupName(concurrentCachedGroup.GetName())
-			session.SetGroupExternalId(concurrentCachedGroup.GetExternalId())
-			session.SetGroupSub(concurrentCachedGroup.GetSub())
-			session.SetGroupAi(concurrentCachedGroup.GetAi())
-
-			session.SetSubGroupPath(subGroupPath)
-			session.SetSubGroupName(concurrentCachedSubGroup.GetName())
-			session.SetSubGroupExternalId(concurrentCachedSubGroup.GetExternalId())
-
-			currentGroupVersion, found := a.Cache.GroupSessionVersions.Load(groupId)
-			if !found {
-				session.SetGroupSessionVersion(0)
-			} else {
-				session.SetGroupSessionVersion(currentGroupVersion)
+			checkedSession := a.Handlers.CheckSessionExpiry(req, session)
+			if checkedSession == nil {
+				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+				return
 			}
-		}
 
-		next(w, req, session)
+			next(w, req, checkedSession)
+		}
 	}
 }
 
@@ -139,7 +95,7 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 				if session.GetRoleBits()&siteRole == 0 {
 					util.WriteAuthRequest(req, session.GetUserSub(), opts.SiteRoleName)
-					w.WriteHeader(http.StatusForbidden)
+					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 					return
 				}
 

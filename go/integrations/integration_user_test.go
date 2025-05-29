@@ -40,3 +40,14 @@ func testIntegrationUser(t *testing.T) {
 		t.Logf("created user %s with pass %s", testUser.GetTestEmail(), testUser.GetTestPass())
 	})
 }
+
+func testIntegrationLogout(t *testing.T) {
+	t.Run("users can log out", func(tt *testing.T) {
+		for _, testUser := range testutil.IntegrationTest.GetTestUsers() {
+			if err := testUser.Logout(); err != nil {
+				t.Fatalf("could not log out, err: %v", err)
+			}
+		}
+	})
+
+}

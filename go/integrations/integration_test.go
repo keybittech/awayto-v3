@@ -43,4 +43,5 @@ func TestIntegrations(t *testing.T) {
 	testIntegrationUserSchedule(t)
 	testIntegrationQuotes(t)
 	testIntegrationBookings(t)
+	testIntegrationLogout(t)
 }

@@ -11,26 +11,13 @@ import (
 	"errors"
 	"log"
 	"net/http"
+	"net/url"
 	"time"
 
 	"github.com/golang-jwt/jwt"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"google.golang.org/protobuf/encoding/protojson"
 )
-
-func (c *Cache) GetSessionFromCookie(req *http.Request) *types.ConcurrentUserSession {
-	sessionId := GetSessionIdFromCookie(req)
-	if sessionId == "" {
-		return nil
-	}
-
-	session, ok := c.UserSessions.Get(sessionId)
-	if !ok {
-		return nil
-	}
-
-	return session
-}
 
 func GetSessionIdFromCookie(r *http.Request) string {
 	cookie, err := r.Cookie("session_id")
@@ -103,6 +90,45 @@ func FetchPublicKey() (*rsa.PublicKey, error) {
 	return nil, nil
 }
 
+func GetValidTokenChallenge(req *http.Request, code, codeVerifier, ua, tz, ip string) (*types.UserSession, error) {
+	data := url.Values{
+		"grant_type":    {"authorization_code"},
+		"client_id":     {E_KC_USER_CLIENT},
+		"client_secret": {E_KC_USER_CLIENT_SECRET},
+		"redirect_uri":  {E_APP_HOST_URL + "/auth/callback"},
+		"code":          {code},
+		"code_verifier": {codeVerifier},
+	}
+	return FetchAndValidateToken(req, data, ua, tz, ip)
+}
+
+func GetValidTokenRefresh(req *http.Request, refreshToken, ua, tz, ip string) (*types.UserSession, error) {
+	data := url.Values{
+		"grant_type":    {"refresh_token"},
+		"client_id":     {E_KC_USER_CLIENT},
+		"client_secret": {E_KC_USER_CLIENT_SECRET},
+		"refresh_token": {refreshToken},
+	}
+	return FetchAndValidateToken(req, data, ua, tz, ip)
+}
+
+// Data here should provide a refresh token or code challenge with verifier
+func FetchAndValidateToken(req *http.Request, data url.Values, ua, tz, ip string) (*types.UserSession, error) {
+	SetForwardingHeaders(req)
+
+	resp, err := PostFormData(req.Context(), E_KC_OPENID_TOKEN_URL, req.Header, data)
+	if err != nil {
+		return nil, ErrCheck(err)
+	}
+
+	var tokens types.OIDCToken
+	if err := protojson.Unmarshal(resp, &tokens); err != nil {
+		return nil, ErrCheck(err)
+	}
+
+	return ValidateToken(&tokens, ua, tz, ip)
+}
+
 type KeycloakUserWithClaims struct {
 	types.KeycloakUser
 	jwt.StandardClaims
@@ -141,6 +167,7 @@ func ValidateToken(tokens *types.OIDCToken, userAgent, timezone, anonIp string) 
 		UserEmail:        claims.Email,
 		SubGroupPaths:    claims.Groups,
 		RoleBits:         roleBits,
+		UserAgent:        userAgent,
 		Timezone:         timezone,
 		AnonIp:           anonIp,
 		IdToken:          tokens.GetIdToken(),
@@ -211,9 +238,25 @@ func SetForwardingHeaders(r *http.Request) {
 	r.Header.Add("X-Forwarded-Host", r.Host)
 }
 
-func GetUA(ua string) string {
-	if ua == "" {
-		return "unknown"
+type ScoreValueTypes interface{ string | int32 | int64 }
+
+// Return number of non-matching pairs
+func ScoreValues[T ScoreValueTypes](values [][]T) int8 {
+	var score int8
+	for _, row := range values {
+		var prev T
+		for i, value := range row {
+			if i == 0 {
+				prev = value
+				continue
+			}
+
+			if value != prev {
+				score++
+			}
+
+			prev = value
+		}
 	}
-	return ua
+	return score
 }

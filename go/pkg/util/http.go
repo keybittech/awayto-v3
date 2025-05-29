@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	json "encoding/json"
 	"errors"
 	"fmt"
@@ -137,10 +138,10 @@ func Mutate(method string, url string, headers http.Header, dataBody []byte) ([]
 	return respBody, nil
 }
 
-func PostFormData(url string, headers http.Header, data url.Values) ([]byte, error) {
+func PostFormData(ctx context.Context, url string, headers http.Header, data url.Values) ([]byte, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequest("POST", url, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, ErrCheck(err)
 	}

@@ -4,6 +4,7 @@ package clients
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"fmt"
 	"io"
@@ -50,6 +51,7 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCTok
 	}
 
 	resp, err := util.PostFormData(
+		context.Background(),
 		util.E_KC_URL+"/protocol/openid-connect/token",
 		headers,
 		body,

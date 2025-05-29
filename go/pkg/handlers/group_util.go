@@ -71,7 +71,7 @@ func (h *Handlers) JoinGroup(info ReqInfo, data *types.JoinGroupRequest) (*types
 
 	if !data.GetRegistering() {
 		// Refresh token if user is logged in and joining
-		_, err := h.RefreshSession(info.Req)
+		_, err := h.RefreshSession(info.Req, info.Session)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -107,7 +107,7 @@ func (h *Handlers) LeaveGroup(info ReqInfo, data *types.LeaveGroupRequest) (*typ
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = h.RefreshSession(info.Req)
+	_, err = h.RefreshSession(info.Req, info.Session)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

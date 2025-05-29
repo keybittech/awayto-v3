@@ -51,6 +51,10 @@ type IntegrationTestStruct struct {
 	*types.IntegrationTest
 }
 
+func (its *IntegrationTestStruct) GetTestUsers() map[int32]*TestUsersStruct {
+	return its.TestUsers
+}
+
 func TestPanic(t *testing.T) func() {
 	return func() {
 		if r := recover(); r != nil {

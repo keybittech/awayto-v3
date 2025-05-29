@@ -55,11 +55,7 @@ func (a *API) InitSockServer() {
 		}
 
 		if !strings.Contains(req.Header.Get("Connection"), "Upgrade") || req.Header.Get("Upgrade") != "websocket" {
-			w.WriteHeader(http.StatusBadRequest)
-			_, err := w.Write([]byte("Bad Request: Expected WebSocket"))
-			if err != nil {
-				util.ErrorLog.Println(util.ErrCheck(err))
-			}
+			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
 			return
 		}
 

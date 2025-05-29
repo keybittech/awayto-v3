@@ -417,7 +417,7 @@ func (s *Socket) SendCommand(ctx context.Context, cmdType int32, request *types.
 	res, err := SendCommand(ctx, s, createCmd)
 	err = ChannelError(err, res.Error)
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		return nil, err
 	}
 
 	return res.SocketResponseParams, nil
@@ -531,11 +531,11 @@ func (s *Socket) GroupRoleCall(userSub, groupId string) error {
 		UserSub: userSub,
 		GroupId: groupId,
 	})
-	if err != nil {
+	if err != nil && !errors.Is(err, noSubscriberTargets) {
 		return util.ErrCheck(err)
 	}
 
-	if len(response.Targets) > 0 {
+	if response != nil && len(response.Targets) > 0 {
 		err := s.SendMessage(ctx, userSub, response.Targets, &types.SocketMessage{
 			Action: types.SocketActions_ROLE_CALL,
 		})

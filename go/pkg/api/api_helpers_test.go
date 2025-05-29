@@ -6,7 +6,6 @@ import (
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"strconv"
 	"testing"
 	"time"
@@ -74,53 +73,18 @@ func getTestApi(limit rate.Limit, burst int) *API {
 // 	return testReq
 // }
 
-func getTestReq(token, method, url string, body io.Reader) *http.Request {
+func getTestReq(method, url string, body io.Reader) *http.Request {
 	testReq, err := http.NewRequest(method, url, body)
 	if err != nil {
 		log.Fatal(err)
 	}
 	testReq.RemoteAddr = "127.0.0.1:9999"
-	testReq.Header.Set("Authorization", "Bearer "+token)
 	testReq.Header.Set("Accept", "application/json")
 	testReq.Header.Set("X-Tz", "America/Los_Angeles")
 	if body != nil {
 		testReq.Header.Set("Content-Type", "application/json")
 	}
 	return testReq
-}
-
-func getKeycloakToken(userId string) (string, *types.UserSession, error) {
-
-	data := url.Values{}
-	data.Set("client_id", util.E_KC_USER_CLIENT)
-	data.Set("username", "1@"+userId)
-	data.Set("password", "1")
-	data.Set("grant_type", "password")
-
-	var header http.Header
-	header.Add("Content-Type", "application/x-www-form-urlencoded")
-
-	resp, err := util.PostFormData("http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token", header, data)
-	if err != nil {
-		return "", nil, err
-	}
-
-	var tokens *types.OIDCToken
-	if err := protojson.Unmarshal(resp, tokens); err != nil {
-		return "", nil, err
-	}
-
-	// session, err := util.ValidateToken(publicKey, token, "America/Los_Angeles", "0.0.0.0")
-	// if err != nil {
-	// 	log.Fatalf("error validating auth token: %v", err)
-	// }
-
-	// if integrationTest.Group != nil {
-	// 	groupId := integrationTest.Group.Id
-	// 	session.GroupId = groupId
-	// }
-
-	return tokens.GetAccessToken(), nil, nil
 }
 
 func checkResponseFor(buf []byte, items []byte) bool {
@@ -136,14 +100,13 @@ func checkResponseFor(buf []byte, items []byte) bool {
 }
 
 func setupRouteRequest(userId int32, limit rate.Limit, burst int, method, path, contentType string) (*API, *http.Request, *httptest.ResponseRecorder) {
-	token, _, err := getKeycloakToken(testutil.IntegrationTest.TestUsers[userId].GetTestUserId())
-	if err != nil {
-		panic(util.ErrCheck(err))
+	testUser := testutil.IntegrationTest.TestUsers[userId]
+	req := getTestReq(method, path, nil)
+	for _, c := range testUser.CookieData {
+		req.AddCookie(&c)
 	}
-	req := getTestReq(token, method, path, nil)
 	req.RemoteAddr = "127.0.0.1:9999"
 	req.Header.Set("X-Tz", "America/Los_Angeles")
-	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", contentType)
 	req.Header.Set("Content-Type", contentType)
 

@@ -2,6 +2,7 @@ package util
 
 import (
 	"bytes"
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"net/url"
@@ -220,7 +221,7 @@ func TestPostFormData(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			url := server.URL + tt.url
 
-			got, err := PostFormData(url, tt.headers, tt.data)
+			got, err := PostFormData(context.Background(), url, tt.headers, tt.data)
 			if (err != nil) != tt.wantErr {
 				t.Errorf("PostFormData() error = %v, wantErr %v", err, tt.wantErr)
 				return
@@ -238,7 +239,7 @@ func BenchmarkPostFormData(b *testing.B) {
 
 	reset(b)
 	for b.Loop() {
-		_, _ = PostFormData("/test", http.Header{"Content-Type": {"application/json"}}, url.Values{"key": {"value"}})
+		_, _ = PostFormData(context.Background(), "/test", http.Header{"Content-Type": {"application/json"}}, url.Values{"key": {"value"}})
 	}
 }
 

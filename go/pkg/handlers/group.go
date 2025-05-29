@@ -218,11 +218,6 @@ func (h *Handlers) PatchGroup(info ReqInfo, data *types.PatchGroupRequest) (*typ
 		}
 	}
 
-	_, err = h.RefreshSession(info.Req)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	return &types.PatchGroupResponse{Success: true}, nil
 }
 
