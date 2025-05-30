@@ -66,7 +66,9 @@ func setupStaticBuildOrProxy(a *API) {
 			return
 		}
 
-		http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
-		return
+		if redirect.StatusCode == http.StatusNotFound {
+			http.Error(w, http.StatusText(http.StatusNotFound), http.StatusNotFound)
+			return
+		}
 	})))
 }

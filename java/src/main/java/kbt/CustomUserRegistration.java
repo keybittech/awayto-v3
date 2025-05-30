@@ -139,8 +139,9 @@ public class CustomUserRegistration extends RegistrationUserCreation {
               session.setAttribute("invalidGroupFlag", false);
             } else {
               session.setAttribute("invalidGroupFlag", true);
+              validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
             }
-          } else if (registrationValidationResponse.getString("reason").contains("BAD_GROUP")) {
+          } else { // if (registrationValidationResponse.getString("reason").contains("BAD_GROUP"))
             validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
           }
         }
@@ -157,7 +158,7 @@ public class CustomUserRegistration extends RegistrationUserCreation {
         validationErrors.add(new FormMessage("groupCode", "invalidGroup"));
       }
 
-      if (context.getSession().users().getUserByEmail(context.getRealm(), email) != null) {
+      if (email != null && context.getSession().users().getUserByEmail(context.getRealm(), email) != null) {
         validationErrors.add(new FormMessage("email", "emailInUse"));
       }
 

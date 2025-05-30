@@ -64,7 +64,7 @@ func ParseEnv() {
 	E_KC_URL = E_KC_INTERNAL + "/realms/" + E_KC_REALM
 	E_KC_ADMIN_URL = E_KC_INTERNAL + "/admin/realms/" + E_KC_REALM
 	E_KC_OPENID_AUTH_URL = E_APP_HOST_URL + "/auth/realms/" + E_KC_REALM + "/protocol/openid-connect/auth"
-	E_KC_OPENID_REGISTER_URL = E_APP_HOST_URL + "/auth/realms/" + E_KC_REALM + "protocol/openid-connect/registrations"
+	E_KC_OPENID_REGISTER_URL = E_APP_HOST_URL + "/auth/realms/" + E_KC_REALM + "/protocol/openid-connect/registrations"
 	E_KC_OPENID_LOGOUT_URL = E_APP_HOST_URL + "/auth/realms/" + E_KC_REALM + "/protocol/openid-connect/logout"
 	E_KC_OPENID_TOKEN_URL = E_KC_INTERNAL + "/realms/" + E_KC_REALM + "/protocol/openid-connect/token"
 

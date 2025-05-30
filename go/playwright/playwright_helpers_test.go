@@ -219,8 +219,6 @@ func getBrowserPage(t *testing.T, userId string) *Page {
 
 	page := &Page{p, t, user}
 
-	doEval(page)
-
 	pages[userId] = page
 	return pages[userId]
 }
@@ -367,7 +365,8 @@ func login(t *testing.T, userId string) *Page {
 		t.Fatalf("error cleaning local storage on delete login %v", err)
 	}
 
-	onSignInPage, err := page.GetByText("Sign in to your account").IsVisible()
+	time.Sleep(1 * time.Hour)
+	onSignInPage, err := page.GetByText("Welcome!").IsVisible()
 	if err != nil {
 		t.Fatalf("sign in error %v", err)
 	}

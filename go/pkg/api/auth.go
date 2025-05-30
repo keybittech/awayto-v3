@@ -10,7 +10,6 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
@@ -53,7 +52,20 @@ func (a *API) InitAuthProxy() {
 	})))
 
 	a.Server.Handler.(*http.ServeMux).Handle("/auth/register", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		http.Redirect(w, req, util.E_KC_OPENID_REGISTER_URL, http.StatusFound)
+		redirectParams := a.Handlers.GenerateLoginOrRegisterParams(req)
+		if redirectParams == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		}
+		http.Redirect(w, req, util.E_KC_OPENID_REGISTER_URL+redirectParams, http.StatusFound)
+	}))
+
+	// auth/login prepares the user's challenge codes, and sends the user to login
+	a.Server.Handler.(*http.ServeMux).Handle("/auth/login", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		redirectParams := a.Handlers.GenerateLoginOrRegisterParams(req)
+		if redirectParams == "" {
+			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
+		}
+		http.Redirect(w, req, util.E_KC_OPENID_AUTH_URL+redirectParams, http.StatusFound)
 	}))
 
 	// The browser checks /auth/status, sees the user is not logged in, then forwards to /auth/login
@@ -74,44 +86,6 @@ func (a *API) InitAuthProxy() {
 		json.NewEncoder(w).Encode(map[string]any{
 			"authenticated": true,
 		})
-	}))
-
-	// auth/login prepares the user's challenge codes, and sends the user to login
-	a.Server.Handler.(*http.ServeMux).Handle("/auth/login", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		tz := req.URL.Query().Get("tz")
-		ua := req.Header.Get("User-Agent")
-
-		if tz == "" || ua == "" {
-			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
-			return
-		}
-
-		codeVerifier := util.GenerateCodeVerifier()
-		codeChallenge := util.GenerateCodeChallenge(codeVerifier)
-		state := util.GenerateState()
-
-		tempSession := types.NewConcurrentTempAuthSession(&types.TempAuthSession{
-			CodeVerifier: codeVerifier,
-			State:        state,
-			CreatedAt:    time.Now().UnixNano(),
-			Tz:           tz,
-			Ua:           ua,
-		})
-
-		a.Cache.TempAuthSessions.Store(state, tempSession)
-
-		params := url.Values{
-			"response_type":         {"code"},
-			"client_id":             {util.E_KC_USER_CLIENT},
-			"redirect_uri":          {util.E_APP_HOST_URL + "/auth/callback"},
-			"scope":                 {"openid profile email groups"},
-			"state":                 {state},
-			"code_challenge":        {codeChallenge},
-			"code_challenge_method": {"S256"},
-		}
-
-		redirectURL := util.E_KC_OPENID_AUTH_URL + "?" + params.Encode()
-		http.Redirect(w, req, redirectURL, http.StatusFound)
 	}))
 
 	// After logging in the user's code is verified and token validated
@@ -155,7 +129,6 @@ func (a *API) InitAuthProxy() {
 	}))
 
 	a.Server.Handler.(*http.ServeMux).Handle("/auth/logout", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-
 		http.SetCookie(w, &http.Cookie{
 			Name:     "session_id",
 			Value:    "",
@@ -168,7 +141,7 @@ func (a *API) InitAuthProxy() {
 
 		sessionId := util.GetSessionIdFromCookie(req)
 		if sessionId == "" {
-			util.ErrorLog.Println(errors.New("no sessionid during logout"))
+			util.ErrorLog.Println(errors.New("no sessionId during logout"))
 
 			return
 		}

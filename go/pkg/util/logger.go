@@ -87,21 +87,20 @@ func getIp(req *http.Request, ip ...string) string {
 	}
 }
 
-func getRequestLogString(req *http.Request) *strings.Builder {
-	var sb strings.Builder
+func writeRequestLogString(sb *strings.Builder, req *http.Request) {
 	sb.WriteString(req.Method)
 	sb.WriteString(" ")
 	sb.WriteString(req.URL.Path)
 	sb.WriteString(" ")
 	sb.WriteString(req.Proto)
 	sb.WriteString(" ")
-	return &sb
 }
 
 // f2b regex = ^.* (GET|POST|PUT|DELETE|PATCH) .* (<HOST>)$
 func WriteAuthRequest(req *http.Request, sub, role string, ip ...string) {
 	reqIp := getIp(req, ip...)
-	sb := getRequestLogString(req)
+	var sb strings.Builder
+	writeRequestLogString(&sb, req)
 	sb.WriteString(sub)
 	sb.WriteString(" ")
 	sb.WriteString(role)
@@ -113,11 +112,12 @@ func WriteAuthRequest(req *http.Request, sub, role string, ip ...string) {
 // f2b regex = ^.* (GET|POST|PUT|DELETE|PATCH) .* (401|403|429) (<HOST>)$
 func WriteAccessRequest(req *http.Request, duration int64, statusCode int, ip ...string) {
 	reqIp := getIp(req, ip...)
-	sb := getRequestLogString(req)
-	sb.WriteString(strconv.FormatInt(duration, 10))
-	sb.WriteString("ms ")
+	var sb strings.Builder
 	sb.WriteString(strconv.Itoa(statusCode))
 	sb.WriteString(" ")
+	writeRequestLogString(&sb, req)
+	sb.WriteString(strconv.FormatInt(duration, 10))
+	sb.WriteString("ms ")
 	sb.WriteString(reqIp)
 	AccessLog.Println(sb.String())
 }

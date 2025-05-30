@@ -58,11 +58,13 @@ async function loadExternal() {
       const currentPathname = window.location.pathname;
       const currentSearch = window.location.search;
 
+      const tzParam = `tz=${Intl.DateTimeFormat().resolvedOptions().timeZone}`
+
       if (currentPathname.endsWith('/join') && currentSearch.includes('groupCode')) {
-        window.location.href = `/api/auth/register${currentSearch}`;
+        window.location.href = `/auth/register${currentSearch}&${tzParam}`;
         return;
       } else if (currentPathname.endsWith('/register')) {
-        window.location.href = '/api/auth/register';
+        window.location.href = `/auth/register?${tzParam}`;
         return;
       }
 
@@ -70,7 +72,7 @@ async function loadExternal() {
         credentials: 'include'
       });
 
-      const loginUrl = `/auth/login?tz=${Intl.DateTimeFormat().resolvedOptions().timeZone}`;
+      const loginUrl = `/auth/login?${tzParam}`;
       if (response.ok) {
         const authResponse = (await response.json()) as { authenticated: boolean };
         if (authResponse.authenticated) {

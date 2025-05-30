@@ -5,12 +5,48 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
+
+func (h *Handlers) GenerateLoginOrRegisterParams(req *http.Request) string {
+	tz := req.URL.Query().Get("tz")
+	ua := req.Header.Get("User-Agent")
+
+	if tz == "" || ua == "" {
+		return ""
+	}
+
+	codeVerifier := util.GenerateCodeVerifier()
+	codeChallenge := util.GenerateCodeChallenge(codeVerifier)
+	state := util.GenerateState()
+
+	tempSession := types.NewConcurrentTempAuthSession(&types.TempAuthSession{
+		CodeVerifier: codeVerifier,
+		State:        state,
+		CreatedAt:    time.Now().UnixNano(),
+		Tz:           tz,
+		Ua:           ua,
+	})
+
+	h.Cache.TempAuthSessions.Store(state, tempSession)
+
+	params := url.Values{
+		"response_type":         {"code"},
+		"client_id":             {util.E_KC_USER_CLIENT},
+		"redirect_uri":          {util.E_APP_HOST_URL + "/auth/callback"},
+		"scope":                 {"openid profile email groups"},
+		"state":                 {state},
+		"code_challenge":        {codeChallenge},
+		"code_challenge_method": {"S256"},
+	}
+
+	return "?" + params.Encode()
+}
 
 func (h *Handlers) GetCachedGroups(ctx context.Context, subGroupPath string) (ccg *types.ConcurrentCachedGroup, ccsg *types.ConcurrentCachedSubGroup, err error) {
 	defer func() {
