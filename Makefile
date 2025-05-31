@@ -107,7 +107,7 @@ H_ETC_DIR=/etc/${PROJECT_PREFIX}
 # CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
 
 CURRENT_USER:=$(shell whoami)
-DEPLOYING:=$(if $(filter ${HOST_OPERATOR},${CURRENT_USER}),true,)
+DEPLOYING:=$(if $(filter ${HOST_OPERATOR}login,${CURRENT_USER}),true,)
 
 define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
@@ -509,7 +509,7 @@ host_up:
 
 .PHONY: host_install_service
 host_install_service: host_sync_demos
-	$(SSH) "make host_install_service_op"
+	$(SSH) "cd $(H_ETC_DIR) && make host_install_service_op"
 
 .PHONY: host_install_service_op
 host_install_service_op:
@@ -548,7 +548,7 @@ host_down:
 
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_env
-	$(SSH) "make host_update && SUDO=sudo make docker_up && make host_deploy_op && make host_service_start_op"
+	$(SSH) "cd $(H_ETC_DIR) && make host_update && SUDO=sudo make docker_up && make host_deploy_op && make host_service_start_op"
 
 .PHONY: host_deploy_op
 host_deploy_op: 
@@ -557,7 +557,7 @@ host_deploy_op:
 
 .PHONY: host_update_cert
 host_update_cert:
-	$(SSH) "make host_update_cert_op"
+	$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"
 
 .PHONY: host_ssh
 host_ssh:
@@ -581,7 +581,7 @@ host_redis:
 
 .PHONY: host_service_start
 host_service_start:
-	$(SSH) "make host_service_start_op"
+	$(SSH) "cd $(H_ETC_DIR) && make host_service_start_op"
 
 .PHONY: host_service_start_op
 host_service_start_op:
@@ -591,7 +591,7 @@ host_service_start_op:
 
 .PHONY: host_service_stop
 host_service_stop:
-	$(SSH) "make host_service_stop_op"
+	$(SSH) "cd $(H_ETC_DIR) && make host_service_stop_op"
 
 .PHONY: host_service_stop_op
 host_service_stop_op:
