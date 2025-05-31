@@ -558,7 +558,7 @@ host_update:
 
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_files
-	$(SSH) "cd $(H_ETC_DIR) && make host_update && make host_service_start_op"
+	$(SSH) "cd $(H_ETC_DIR) && make build && make host_update && make host_service_start_op"
 
 .PHONY: host_service_start
 host_service_start:
