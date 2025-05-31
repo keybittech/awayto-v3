@@ -513,17 +513,18 @@ host_install_service: host_sync_files
 
 .PHONY: host_install_service_op
 host_install_service_op:
-	@sudo mkdir -p /etc/logrotate.d/${PROJECT_PREFIX}
-	@sed -e 's&project-dir&$(H_ETC_DIR)&g;' "$(CRON_SCRIPTS)/whitelist-ips" | sudo tee "/etc/cron.daily/whitelist-ips"
-	@sudo chmod 755 "/etc/cron.daily/whitelist-ips"
-	@sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/jail.local" | sudo tee /etc/fail2ban/jail.local
-	@sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/logrotate.conf" | sudo tee /etc/logrotate.d/${PROJECT_PREFIX}/logrotate.conf
+	sudo mkdir -p /etc/logrotate.d/${PROJECT_PREFIX}
+	sed -e 's&project-dir&$(H_ETC_DIR)&g;' "$(CRON_SCRIPTS)/whitelist-ips" | sudo tee "/etc/cron.daily/whitelist-ips" >/dev/null
+	sudo chmod 755 "/etc/cron.daily/whitelist-ips"
+	sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/jail.local" | sudo tee /etc/fail2ban/jail.local >/dev/null
+	sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/logrotate.conf" | sudo tee /etc/logrotate.d/${PROJECT_PREFIX}/logrotate.conf >/dev/null
 	sudo cp "$(DEPLOY_HOST_SCRIPTS)/http-auth.conf" "$(DEPLOY_HOST_SCRIPTS)/http-access.conf" /etc/fail2ban/filter.d/
 	sudo cp "$(DEPLOY_HOST_SCRIPTS)/ufw-subnet.conf" /etc/fail2ban/action.d/
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/start.sh" > start.sh
 	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/host.service" > $(BINARY_SERVICE)
 	sudo install -m 750 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} start.sh /usr/local/bin
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
+	rm start.sh $(BINARY_SERVICE)
 	sudo systemctl restart fail2ban
 	sudo systemctl enable $(BINARY_SERVICE)
 
@@ -550,14 +551,34 @@ host_down:
 #           HOST UTILS          #
 #################################
 
-.PHONY: host_deploy
-host_deploy: go_test_unit host_sync_env
-	$(SSH) "cd $(H_ETC_DIR) && make host_update && SUDO=sudo make docker_up && make host_deploy_op && make host_service_start_op"
+.PHONY: host_update
+host_update:
+	git reset --hard HEAD
+	git pull
+	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
-.PHONY: host_deploy_op
-host_deploy_op: 
-	sudo install -m 400 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} .env $(H_ETC_DIR)
-	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) /usr/local/bin
+.PHONY: host_deploy
+host_deploy: go_test_unit host_sync_files
+	$(SSH) "cd $(H_ETC_DIR) && make host_update && make host_service_start_op"
+
+.PHONY: host_service_start
+host_service_start:
+	$(SSH) "cd $(H_ETC_DIR) && make host_service_start_op"
+
+.PHONY: host_service_start_op
+host_service_start_op:
+	SUDO=sudo make docker_up
+	sudo install -m 700 -o ${HOST_OPERATOR} -g 1000 $(GO_TARGET) /usr/local/bin
+	sudo systemctl restart $(BINARY_SERVICE)
+	sudo systemctl is-active $(BINARY_SERVICE)
+
+.PHONY: host_service_stop
+host_service_stop:
+	$(SSH) "cd $(H_ETC_DIR) && make host_service_stop_op"
+
+.PHONY: host_service_stop_op
+host_service_stop_op:
+	sudo systemctl stop $(BINARY_SERVICE)
 
 .PHONY: host_update_cert
 host_update_cert:
@@ -583,33 +604,9 @@ host_db:
 host_redis:
 	@$(SSH) sudo docker exec -i $(shell $(SSH) sudo docker ps -aqf name="redis") redis-cli --pass ${REDIS_PASS}
 
-.PHONY: host_service_start
-host_service_start:
-	$(SSH) "cd $(H_ETC_DIR) && make host_service_start_op"
-
-.PHONY: host_service_start_op
-host_service_start_op:
-	SUDO=sudo make docker_up
-	sudo systemctl restart $(BINARY_SERVICE)
-	sudo systemctl is-active $(BINARY_SERVICE)
-
-.PHONY: host_service_stop
-host_service_stop:
-	$(SSH) "cd $(H_ETC_DIR) && make host_service_stop_op"
-
-.PHONY: host_service_stop_op
-host_service_stop_op:
-	sudo systemctl stop $(BINARY_SERVICE)
-
 .PHONY: host_metric_cpu
 host_metric_cpu:
 	hcloud server metrics --type cpu $(APP_HOST)
-
-.PHONY: host_update
-host_update:
-	git reset --hard HEAD
-	git pull
-	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: host_update_cert_op
 host_update_cert_op:
