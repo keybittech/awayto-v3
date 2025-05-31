@@ -94,25 +94,73 @@ func main() {
 					continue
 				}
 
-				if funcDecl.Type.Params != nil && len(funcDecl.Type.Params.List) == 2 {
-					protoParam := funcDecl.Type.Params.List[1]
+				// Validate parameters: should have exactly 2 parameters
+				if funcDecl.Type.Params == nil || len(funcDecl.Type.Params.List) != 2 {
+					continue
+				}
 
-					isProtoMessage := false
-
-					if starExpr, ok := protoParam.Type.(*ast.StarExpr); ok {
-						if sel, ok := starExpr.X.(*ast.SelectorExpr); ok {
-							if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "types" {
-								isProtoMessage = true
-							}
-						}
-					}
-
-					if isProtoMessage {
-						data.Handlers = append(data.Handlers, HandlerInfo{
-							Name: funcDecl.Name.Name,
-						})
+				// First return parameter should be from types package
+				infoParam := funcDecl.Type.Params.List[0]
+				isInfoParam := false
+				if infoStruct, ok := infoParam.Type.(*ast.Ident); ok {
+					if infoStruct.Name == "ReqInfo" {
+						isInfoParam = true
 					}
 				}
+
+				if !isInfoParam {
+					continue
+				}
+
+				protoParam := funcDecl.Type.Params.List[1]
+				isProtoMessage := false
+				if starExpr, ok := protoParam.Type.(*ast.StarExpr); ok {
+					if sel, ok := starExpr.X.(*ast.SelectorExpr); ok {
+						if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "types" {
+							isProtoMessage = true
+						}
+					}
+				}
+
+				if !isProtoMessage {
+					continue
+				}
+
+				// Validate return parameters: should have exactly 2 return values
+				if funcDecl.Type.Results == nil || len(funcDecl.Type.Results.List) != 2 {
+					continue
+				}
+
+				// First return parameter should be from types package
+				firstReturn := funcDecl.Type.Results.List[0]
+				isFirstReturnFromTypes := false
+				if starExpr, ok := firstReturn.Type.(*ast.StarExpr); ok {
+					if sel, ok := starExpr.X.(*ast.SelectorExpr); ok {
+						if ident, ok := sel.X.(*ast.Ident); ok && ident.Name == "types" {
+							isFirstReturnFromTypes = true
+						}
+					}
+				}
+
+				if !isFirstReturnFromTypes {
+					continue
+				}
+
+				// Second return parameter should be error
+				secondReturn := funcDecl.Type.Results.List[1]
+				isSecondReturnError := false
+				if ident, ok := secondReturn.Type.(*ast.Ident); ok && ident.Name == "error" {
+					isSecondReturnError = true
+				}
+
+				if !isSecondReturnError {
+					continue
+				}
+
+				// If we get here, the function meets all criteria
+				data.Handlers = append(data.Handlers, HandlerInfo{
+					Name: funcDecl.Name.Name,
+				})
 			}
 		}
 	}
