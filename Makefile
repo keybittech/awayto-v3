@@ -199,6 +199,7 @@ ifeq ($(DEPLOYING),)
 	setfacl -d -m g:1000:rwx $(LOG_DIR)/db
 endif
 
+# TODO get certs off server and store them locally to replace after re-deploy
 $(CERT_LOC) $(CERT_KEY_LOC):
 ifeq ($(DEPLOYING),true)
 	sudo certbot certificates
@@ -208,8 +209,11 @@ ifeq ($(DEPLOYING),true)
 		--standalone --agree-tos --no-eff-email
 	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} /etc/letsencrypt
-	sudo chmod 600 $(CERT_LOC) $(CERT_KEY_LOC)
+	sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
+	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
+	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
+	# tailscale file cp .env "$(APP_HOST):"
+	# $(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
 else
 	mkdir -p $(@D)
 	chmod 750 $(@D)

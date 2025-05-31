@@ -3,6 +3,7 @@ bootcmd:
   - echo 'disable_root: true' >> /etc/cloud/cloud.cfg
 groups:
   - project-prefixg: [dummyuserlogin, dummyuser]
+  - ssl-certs: [dummyuser]
 users:
   - name: root
     lock_passwd: true
