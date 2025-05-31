@@ -82,10 +82,10 @@ TS_CONFIG_API=ts/openapi-config.json
 BACKUP_DIR=backups
 DB_BACKUP_DIR=$(BACKUP_DIR)/db
 DOCKER_REDIS_CID=$(shell ${SUDO} docker ps -aqf "name=redis")
-DOCKER_REDIS_EXEC:=${SUDO} docker exec -i $(DOCKER_REDIS_CID) redis-cli --pass $$(cat $$REDIS_PASS_FILE)
+DOCKER_REDIS_EXEC=${SUDO} docker exec -i $(DOCKER_REDIS_CID) redis-cli --pass $$(cat $$REDIS_PASS_FILE)
 DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
-DOCKER_DB_EXEC:=${SUDO} docker exec --user postgres -it
-DOCKER_DB_CMD:=${SUDO} docker exec --user postgres -i
+DOCKER_DB_EXEC=${SUDO} docker exec --user postgres -it
+DOCKER_DB_CMD=${SUDO} docker exec --user postgres -i
 
 #################################
 #          DEPLOY PROPS         #
@@ -508,14 +508,16 @@ host_up:
 #   }
 
 .PHONY: host_install_service
-host_install_service: host_sync_demos
+host_install_service: host_sync_files
 	$(SSH) "cd $(H_ETC_DIR) && make host_install_service_op"
 
 .PHONY: host_install_service_op
 host_install_service_op:
-	sed -e 's&project-prefix&${PROJECT_PREFIX}&g; s&dummyuser&${HOST_OPERATOR}&g;' "$(CRON_SCRIPTS)/whitelist-ips" > "/etc/cron.daily/whitelist-ips"
-	sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/jail.local" > /etc/fail2ban/jail.local
-	sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/logrotate.conf" > /etc/logrotate.d/${PROJECT_PREFIX}
+	@sudo mkdir -p /etc/logrotate.d/${PROJECT_PREFIX}
+	@sed -e 's&project-dir&$(H_ETC_DIR)&g;' "$(CRON_SCRIPTS)/whitelist-ips" | sudo tee "/etc/cron.daily/whitelist-ips"
+	@sudo chmod 755 "/etc/cron.daily/whitelist-ips"
+	@sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/jail.local" | sudo tee /etc/fail2ban/jail.local
+	@sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/logrotate.conf" | sudo tee /etc/logrotate.d/${PROJECT_PREFIX}/logrotate.conf
 	sudo cp "$(DEPLOY_HOST_SCRIPTS)/http-auth.conf" "$(DEPLOY_HOST_SCRIPTS)/http-access.conf" /etc/fail2ban/filter.d/
 	sudo cp "$(DEPLOY_HOST_SCRIPTS)/ufw-subnet.conf" /etc/fail2ban/action.d/
 	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/start.sh" > start.sh
@@ -525,8 +527,10 @@ host_install_service_op:
 	sudo systemctl restart fail2ban
 	sudo systemctl enable $(BINARY_SERVICE)
 
-.PHONY: host_sync_demos
-host_sync_demos:
+.PHONY: host_sync_files
+host_sync_files:
+	tailscale file cp .env "$(APP_HOST):"
+	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
 	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
 	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/"
 

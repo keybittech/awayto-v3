@@ -38,10 +38,8 @@ runcmd:
   - echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.d/99-tailscale.conf
   - echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.d/99-tailscale.conf
   - sysctl -p /etc/sysctl.d/99-tailscale.conf
-  # init fail2ban
-  - cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-  - systemctl enable fail2ban
   # configure firewall
+  - systemctl enable fail2ban
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw default deny routed

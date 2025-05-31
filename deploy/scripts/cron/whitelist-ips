@@ -1,8 +1,8 @@
 #! /bin/sh
 
-. /home/dummyuser/project-prefix/.env
+. project-dir/.env
 
-IP_FILE=/home/dummyuser/project-prefix/working/whitelisted.txt
+IP_FILE=project-dir/working/whitelisted.txt
 
 curl -s https://www.cloudflare.com/ips-v4 -o $IP_FILE
 
