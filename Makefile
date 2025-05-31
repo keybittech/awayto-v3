@@ -52,7 +52,7 @@ export PLAYWRIGHT_CACHE_DIR=working/playwright
 DEMOS_DIR=demos/final
 
 #################################
-#            TARGETS            #
+#          TARGET VARS          #
 #################################
 
 JAVA_TARGET=$(JAVA_TARGET_DIR)/kc-custom.jar
@@ -102,12 +102,7 @@ DEPLOY_SCRIPT=$(DEPLOY_SCRIPTS)/host/deploy.sh
 AUTH_SCRIPTS=$(DEPLOY_SCRIPTS)/auth
 AUTH_INSTALL_SCRIPT=$(AUTH_SCRIPTS)/install.sh
 
-H_OP=/home/${HOST_OPERATOR}
-H_DOCK=$(H_OP)/bin/docker
-H_REM_DIR=$(H_OP)/${PROJECT_PREFIX}
 H_ETC_DIR=/etc/${PROJECT_PREFIX}
-
-H_SIGN=${HOST_OPERATOR}@$$(cat "$(HOST_LOCAL_DIR)/app_ip")
 
 # CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
 
@@ -168,7 +163,6 @@ endef
 #################################
 
 DOCKER_COMPOSE:=compose -f $(DOCKER_COMPOSE_SCRIPT) --env-file $(ENVFILE)
-RSYNC_FLAGS=-ave 'ssh -p ${SSH_PORT}'
 NO_LIMIT=-rateLimit=10000 -rateLimitBurst=10000
 LOG_DEBUG=-logLevel=debug
 LOG_NONE=-logLevel=
@@ -182,10 +176,12 @@ GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.fuzz=^$$ -test.bench=$${BENCH:-.} -test.
 # $${PROF:-} # -cpuprofile=cpu.prof
 
 GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
-SSH=ssh -p ${SSH_PORT} -T $(H_SIGN)
+
+H_SIGN=${HOST_OPERATOR}login@${APP_HOST}
+SSH=tailscale ssh $(H_SIGN)
 
 #################################
-#           TARGETS             #
+#             BUILDS            #
 #################################
 
 build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
@@ -243,7 +239,7 @@ ${OAI_KEY_FILE}:
 $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
 	mkdir $(@D)
-	cp $(AUTH_SCRIPTS)/junixsocket-selftest-2.10.1-jar-with-dependencies.jar $(JAVA_SRC)/target/
+	cp $(JAVA_SRC)/junixsocket-selftest-2.10.1-jar-with-dependencies.jar $(JAVA_TARGET_DIR)/
 	mvn -f $(JAVA_SRC) install
 
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
@@ -487,8 +483,10 @@ docker_redis:
 host_up: 
 	@mkdir -p $(HOST_LOCAL_DIR)
 	date >> "$(HOST_LOCAL_DIR)/start_time"
-	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&id-rsa-pub&$(shell cat ${RSA_PUB})&g; s&project-prefix&${PROJECT_PREFIX}&g; s&ssh-port&${SSH_PORT}&g; s&project-repo&https://${PROJECT_REPO}.git&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g;' "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
-	sed -e 's&ssh-port&${SSH_PORT}&g;' "$(DEPLOY_HOST_SCRIPTS)/public-firewall.json" > "$(HOST_LOCAL_DIR)/public-firewall.json"
+	@echo "Tailscale auth key:"; \
+	read -s TS_AUTH_KEY; \
+	sed -e "s&dummyuser&${HOST_OPERATOR}&g; s&ts-auth-key&$$TS_AUTH_KEY&g; s&project-prefix&${PROJECT_PREFIX}&g; s&project-repo&https://${PROJECT_REPO}.git&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g; s&project-dir&$(H_ETC_DIR)&g; s&deploy-scripts&$(DEPLOY_HOST_SCRIPTS)&g; s&binary-name&${BINARY_NAME}&g; s&log-dir&/var/log/${PROJECT_PREFIX}&g; s&node-version&$(NODE_VERSION)&g; s&go-version&$(GO_VERSION)&g;" "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+	cp "$(DEPLOY_HOST_SCRIPTS)/public-firewall.json" "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud firewall create --name "${PROJECT_PREFIX}-public-firewall" --rules-file "$(HOST_LOCAL_DIR)/public-firewall.json" >/dev/null
 	hcloud firewall describe "${PROJECT_PREFIX}-public-firewall" -o json > "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud server create \
@@ -498,44 +496,39 @@ host_up:
 	hcloud server describe "${APP_HOST}" -o json > "$(HOST_LOCAL_DIR)/app.json"
 	jq -r '.public_net.ipv6.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip6"
 	jq -r '.public_net.ipv4.ip' $(HOST_LOCAL_DIR)/app.json > "$(HOST_LOCAL_DIR)/app_ip"
-	until ssh-keyscan -p ${SSH_PORT} -H $$(cat "$(HOST_LOCAL_DIR)/app_ip") >> ~/.ssh/known_hosts; do sleep 5; done
-	$(SSH) sudo chown -R ${HOST_OPERATOR}:${HOST_OPERATOR} $(H_REM_DIR)
-	make host_sync_env
-	$(SSH) 'cd "$(H_REM_DIR)" && make host_install'
+	@echo "Server is deploying! This will take a moment..."
+	@echo "Continue with make host_install_service, once ${APP_HOST} appears in Tailscale and some time is allowed for server reboot."
 
-.PHONY: host_install
-host_install:
-	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
-	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port ${GO_HTTPS_PORT}
-	sudo bash -c "iptables-save > /etc/iptables/rules.v4"
-	sudo bash -c "ip6tables-save > /etc/iptables/rules.v6"
-	@echo "installing nvm"
-	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-	. ~/.nvm/nvm.sh && nvm install $(NODE_VERSION) && npm i -g pnpm@latest-10
-	@echo "installing go"
-	sudo rm -rf /usr/local/go
-	sudo curl -L -o goinstall.tar.gz https://go.dev/dl/$(GO_VERSION).tar.gz
-	sudo tar -C /usr/local -xzf goinstall.tar.gz
-	rm goinstall.tar.gz
-	if ! grep -q "go/bin" "$(H_OP)/.bashrc"; then \
-		echo "export PATH=\$$PATH:/usr/local/go/bin" >> $(H_OP)/.bashrc; \
-		echo "clear && cd $(H_REM_DIR)" >> $(H_OP)/.bashrc; \
-	fi
-	go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
-	sudo tailscale up
-	sudo install -d -m 770 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(LOG_DIR)
+# ,
+#   {
+#     "direction": "in",
+#     "protocol": "udp",
+#     "port": "44400-44500",
+#     "source_ips": ["0.0.0.0/0", "::/0"]
+#   }
+
+.PHONY: host_install_service
+host_install_service: host_sync_demos
+	$(SSH) "make host_install_service_op"
+
+.PHONY: host_install_service_op
+host_install_service_op:
+	sed -e 's&project-prefix&${PROJECT_PREFIX}&g; s&dummyuser&${HOST_OPERATOR}&g;' "$(CRON_SCRIPTS)/whitelist-ips" > "/etc/cron.daily/whitelist-ips"
 	sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/jail.local" > /etc/fail2ban/jail.local
 	sed -e 's&project-prefix&${PROJECT_PREFIX}&g;' "$(DEPLOY_HOST_SCRIPTS)/logrotate.conf" > /etc/logrotate.d/${PROJECT_PREFIX}
 	sudo cp "$(DEPLOY_HOST_SCRIPTS)/http-auth.conf" "$(DEPLOY_HOST_SCRIPTS)/http-access.conf" /etc/fail2ban/filter.d/
 	sudo cp "$(DEPLOY_HOST_SCRIPTS)/ufw-subnet.conf" /etc/fail2ban/action.d/
-	sed -e 's&binary-name&${BINARY_NAME}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/start.sh" > start.sh
-	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&work-dir&$(H_REM_DIR)&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/host.service" > $(BINARY_SERVICE)
-	sudo install -m 700 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} start.sh /usr/local/bin
+	sed -e 's&binary-name&${BINARY_NAME}&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/start.sh" > start.sh
+	sed -e 's&host-operator&${HOST_OPERATOR}&g; s&etc-dir&$(H_ETC_DIR)&g' "$(DEPLOY_HOST_SCRIPTS)/host.service" > $(BINARY_SERVICE)
+	sudo install -m 750 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} start.sh /usr/local/bin
 	sudo install -m 644 $(BINARY_SERVICE) /etc/systemd/system
 	sudo systemctl restart fail2ban
 	sudo systemctl enable $(BINARY_SERVICE)
+
+.PHONY: host_sync_demos
+host_sync_demos:
+	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
+	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/"
 
 .PHONY: host_reboot
 host_reboot:
@@ -545,20 +538,9 @@ host_reboot:
 
 .PHONY: host_down
 host_down:
-	ssh-keygen -f ~/.ssh/known_hosts -R "${APP_HOST}:${SSH_PORT}"
 	hcloud server delete "${APP_HOST}"
 	hcloud firewall delete "${PROJECT_PREFIX}-public-firewall"
 	rm -rf $(HOST_LOCAL_DIR)
-
-.PHONY: host_sync_env
-host_sync_env:
-	mkdir -p $(HOST_LOCAL_DIR)/cron/daily
-	@sed -e 's&dummyuser&${HOST_OPERATOR}&g; s&project-prefix&${PROJECT_PREFIX}&g;' "$(CRON_SCRIPTS)/whitelist-ips" > "$(HOST_LOCAL_DIR)/cron/daily/whitelist-ips"
-	rsync ${RSYNC_FLAGS} --chown root:root --chmod 755 --rsync-path="sudo rsync" "$(HOST_LOCAL_DIR)/cron/daily/" "$(H_SIGN):/etc/cron.daily/"
-	rsync ${RSYNC_FLAGS} "$(DEMOS_DIR)/" "$(H_SIGN):$(H_REM_DIR)/$(DEMOS_DIR)/"
-	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 400 .env "$(H_SIGN):$(H_REM_DIR)"
-	rsync ${RSYNC_FLAGS} --chown ${HOST_OPERATOR}:${HOST_OPERATOR} --chmod 644 java/target/junixsocket-selftest*.jar "$(H_SIGN):$(H_REM_DIR)/java/target"
-	$(SSH) 'run-parts /etc/cron.daily'
 
 #################################
 #           HOST UTILS          #
@@ -566,7 +548,7 @@ host_sync_env:
 
 .PHONY: host_deploy
 host_deploy: go_test_unit host_sync_env
-	$(SSH) 'cd $(H_REM_DIR) && make host_update && SUDO=sudo make docker_up && make host_deploy_op && make host_service_start_op'
+	$(SSH) "make host_update && SUDO=sudo make docker_up && make host_deploy_op && make host_service_start_op"
 
 .PHONY: host_deploy_op
 host_deploy_op: 
@@ -575,11 +557,11 @@ host_deploy_op:
 
 .PHONY: host_update_cert
 host_update_cert:
-	$(SSH) 'cd $(H_REM_DIR) && make host_update_cert_op'
+	$(SSH) "make host_update_cert_op"
 
 .PHONY: host_ssh
 host_ssh:
-	@ssh -p ${SSH_PORT} $(H_SIGN)
+	$(SSH)
 
 .PHONY: host_status
 host_status:
@@ -587,7 +569,7 @@ host_status:
 
 .PHONY: host_errors
 host_errors:
-	$(SSH) tail -n 100 -f "$(H_REM_DIR)/errors.log"
+	$(SSH) "tail -n 100 -f $(LOG_DIR)/errors.log"
 
 .PHONY: host_db
 host_db:
@@ -599,16 +581,17 @@ host_redis:
 
 .PHONY: host_service_start
 host_service_start:
-	$(SSH) "cd $(H_REM_DIR) && make host_service_start_op"
+	$(SSH) "make host_service_start_op"
 
 .PHONY: host_service_start_op
 host_service_start_op:
+	SUDO=sudo make docker_up
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo systemctl is-active $(BINARY_SERVICE)
 
 .PHONY: host_service_stop
 host_service_stop:
-	$(SSH) "cd $(H_REM_DIR) && make host_service_stop_op"
+	$(SSH) "make host_service_stop_op"
 
 .PHONY: host_service_stop_op
 host_service_stop_op:
@@ -694,16 +677,17 @@ docker_db_redeploy_views:
 .PHONY: host_db_backup
 host_db_backup:
 	@mkdir -p "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
-	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo make docker_db_backup"
-	rsync ${RSYNC_FLAGS} "$(H_SIGN):$(H_REM_DIR)/$(DB_BACKUP_DIR)/" "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
+	$(SSH) 'cd $(H_ETC_DIR) && SUDO=sudo make docker_db_backup && tailscale file cp "$(H_ETC_DIR)/$(DB_BACKUP_DIR)/"* "$(shell hostname)"'
+	sudo tailscale file get "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
 
 .PHONY: host_db_backup_restore
 host_db_backup_restore:
-	rsync ${RSYNC_FLAGS} "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/" "$(H_SIGN):$(H_REM_DIR)/$(DB_BACKUP_DIR)/"
+	tailscale file cp "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"* "$(APP_HOST):"
+	$(SSH) "sudo tailscale file get $(H_ETC_DIR)/$(DB_BACKUP_DIR)/"
 
 .PHONY: host_db_restore_op
 host_db_restore_op:
-	$(SSH) "cd $(H_REM_DIR) && SUDO=sudo make docker_db_restore"
+	$(SSH) "cd $(H_ETC_DIR) && SUDO=sudo make docker_db_restore"
 
 .PHONY: host_db_restore
 host_db_restore: host_service_stop host_db_restore_op host_service_start

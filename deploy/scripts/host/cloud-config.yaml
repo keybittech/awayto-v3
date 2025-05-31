@@ -1,17 +1,19 @@
 #cloud-config
 bootcmd:
   - echo 'disable_root: true' >> /etc/cloud/cloud.cfg
+groups:
+  - project-prefixg: [dummyuserlogin, dummyuser]
 users:
   - name: root
     lock_passwd: true
-  - name: dummyuser
-    chpasswd: 
-      expire: true
-    groups: [sudo]
-    sudo: ["ALL=(ALL) ALL"]
+  - name: dummyuserlogin
+    groups: users, 1000, admin
+    sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
-    ssh_authorized_keys:
-      - id-rsa-pub 
+  - name: dummyuser
+    groups: users, 1000
+    shell: /bin/bash
+    lock_passwd: true
 packages:
   - fail2ban
   - certbot
@@ -27,52 +29,54 @@ packages:
 package_update: true
 package_upgrade: true
 runcmd:
-  - curl -fsSL https://get.docker.com | sh
-  - curl -fsSL https://tailscale.com/install.sh | sh
-  - sed -i -e '/^\(#\|\)Port/s/^.*$/Port ssh-port/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)PermitRootLogin/s/^.*$/PermitRootLogin no/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)PasswordAuthentication/s/^.*$/PasswordAuthentication no/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)KbdInteractiveAuthentication/s/^.*$/KbdInteractiveAuthentication no/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)ChallengeResponseAuthentication/s/^.*$/ChallengeResponseAuthentication no/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)MaxAuthTries/s/^.*$/MaxAuthTries 2/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)AllowTcpForwarding/s/^.*$/AllowTcpForwarding no/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)X11Forwarding/s/^.*$/X11Forwarding no/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)AllowAgentForwarding/s/^.*$/AllowAgentForwarding no/' /etc/ssh/sshd_config
-  - sed -i -e '/^\(#\|\)AuthorizedKeysFile/s/^.*$/AuthorizedKeysFile .ssh\/authorized_keys/' /etc/ssh/sshd_config
-  - sed -i '$a AllowUsers dummyuser' /etc/ssh/sshd_config
+  # assert group id to match pg docker user
+  - groupmod -g 1000 project-prefixg
+  # disable ssh
+  - systemctl stop sshd
+  - systemctl disable sshd
+  # setup tailscale deps early to avoid timing issue
+  - echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.d/99-tailscale.conf
+  - echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.d/99-tailscale.conf
+  - sysctl -p /etc/sysctl.d/99-tailscale.conf
+  # init fail2ban
   - cp /etc/fail2ban/jail.conf /etc/fail2ban/jail.local
-  - sed -i -e '/^[^#]*\[sshd\]/a enabled = true' /etc/fail2ban/jail.local
-  - sed -i -e '/^\[sshd\]/,/^\[/s/^port\s*=\s*ssh$/port = ssh-port/' /etc/fail2ban/jail.local
   - systemctl enable fail2ban
+  # configure firewall
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw default deny routed
-  - ufw allow ssh-port/tcp
-  - ufw allow 44400:44500/udp
+  - ufw allow 41641/udp
   - ufw enable
-  - groupadd --system project-prefixlog
-  - usermod -a -G project-prefixlog dummyuser
-  - mkdir /etc/project-prefix
-  - mkdir -p /var/log/project-prefix/db
-  - chown root:project-prefixlog /var/log/project-prefix /var/log/project-prefix/db
-  - chmod 770 /var/log/project-prefix /var/log/project-prefix/db
-  - chmod g+s /var/log/project-prefix /var/log/project-prefix/db
-  - setfacl -m g:1000:rwx /var/log/project-prefix/db
-  - setfacl -d -m g:1000:rwx /var/log/project-prefix/db
-  - git clone project-repo /home/dummyuser/project-prefix
-  - mkdir -p /home/dummyuser/project-prefix/backups/db
-  - mkdir -p /home/dummyuser/project-prefix/working
-  - mkdir -p /home/dummyuser/project-prefix/local_tmp
-  - mkdir -p /home/dummyuser/project-prefix/demos/final
+  - ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
+  - ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
+  - iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
+  - iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
+  - bash -c "iptables-save > /etc/iptables/rules.v4"
+  - bash -c "ip6tables-save > /etc/iptables/rules.v6"
+  # create a log directory accessible by group, make sure future files are group visible
+  - install -d -m 750 -o root -g 1000 log-dir log-dir/db
+  - chmod g+s log-dir log-dir/db
+  - setfacl -R -d -m g:1000:rwx log-dir
+  # create a dir for the project owned by login user to do builds, accessible by service runner
+  # setup build dependencies as build user
+  - |
+    su -l dummyuserlogin -c 'bash -s' << 'EOF'
+    sudo git clone project-repo project-dir
+    sudo chown -R dummyuserlogin:1000 project-dir
+    sudo install -d -m 750 -o dummyuserlogin -g 1000 project-dir/backups project-dir/backups/db project-dir/working project-dir/local_tmp project-dir/demos project-dir/demos/final
+    setfacl -R -d -m g:1000:rwx project-dir
+    curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
+    . ~/.nvm/nvm.sh && nvm install node-version && npm i -g pnpm@latest-10
+    rm -rf /usr/local/go
+    curl -L -o /tmp/goinstall.tar.gz https://go.dev/dl/go-version.tar.gz
+    sudo tar -C /usr/local -xzf /tmp/goinstall.tar.gz && rm /tmp/goinstall.tar.gz
+    echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.bashrc
+    go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+    curl -fsSL https://get.docker.com | sh
+    curl -fsSL https://tailscale.com/install.sh | sh
+    echo "clear && cd project-dir" >> ~/.bashrc
+    EOF
+  - tailscale up --operator=dummyuserlogin --authkey=ts-auth-key --ssh
   - reboot
 
-# - ufw allow proto tcp from ::/0 to any port 443
-# - ufw allow proto tcp from ::/0 to any port 80
-
-#
-#
-# - ufw allow proto tcp from ::/0 to any port ssh-port
-# - ufw allow proto tcp from ::/0 to any port go-port
-# - ufw allow proto tcp from ::/0 to any port 3478
-# - ufw allow proto tcp from ::/0 to any port 3478
-# - ufw allow proto tcp from ::/0 to any port 44400-44500
+# - ufw allow 44400:44500/udp

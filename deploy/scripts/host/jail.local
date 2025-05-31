@@ -1,9 +1,6 @@
 [DEFAULT]
 banaction = ufw-subnet
 
-[sshd]
-enabled = true
-
 [http-auth]
 enabled = true
 port = http,https
