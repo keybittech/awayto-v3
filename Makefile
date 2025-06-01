@@ -593,14 +593,14 @@ host_service_stop_op:
 host_update_cert:
 	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
 		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \
-		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive" "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live"; \
-		$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/archive/"* "$(shell hostname):"'; \
-		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/"; \
-		$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/live/"* "$(shell hostname):"'; \
-		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"; \
+		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/${DOMAIN_NAME}"; \
+		$(SSH) "sudo tailscale file cp $(CERT_BACKUP_DIR)/archive/${DOMAIN_NAME}/cert.pem $(shell hostname):"; \
+		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/${DOMAIN_NAME}/"; \
+		$(SSH) "sudo tailscale file cp $(CERT_BACKUP_DIR)/archive/${DOMAIN_NAME}/privkey.pem $(shell hostname):"; \
+		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/${DOMAIN_NAME}/"; \
 	else \
-		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"* "$(APP_HOST):"; \
-		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt/live/"; \
+		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/"* "$(APP_HOST):"; \
+		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt/archive/${DOMAIN_NAME}/"; \
 	fi
 
 .PHONY: host_update_cert_op
@@ -611,9 +611,8 @@ host_update_cert_op:
 	sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
-	mkdir -p $(CERT_BACKUP_DIR)/live $(CERT_BACKUP_DIR)/archive
-	sudo cp -a /etc/letsencrypt/archive $(CERT_BACKUP_DIR)/archive
-	sudo cp -a /etc/letsencrypt/live $(CERT_BACKUP_DIR)/live
+	mkdir -p $(CERT_BACKUP_DIR)/archive
+	sudo cp -a /etc/letsencrypt/archive $(CERT_BACKUP_DIR)
 
 .PHONY: host_ssh
 host_ssh:
