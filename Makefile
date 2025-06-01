@@ -107,7 +107,7 @@ H_ETC_DIR=/etc/${PROJECT_PREFIX}
 # CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
 
 CURRENT_USER:=$(shell whoami)
-DEPLOYING:=$(if $(filter ${HOST_OPERATOR}login,${CURRENT_USER}),true,)
+DEPLOYING:=$(if $(filter $(H_LOGIN),${CURRENT_USER}),true,)
 
 define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
@@ -125,7 +125,7 @@ CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PO
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${PWD}/${CERTS_DIR})
 CURRENT_CERT_LOC=$(CURRENT_CERTS_DIR)/cert.pem
 CURRENT_CERT_KEY_LOC=$(CURRENT_CERTS_DIR)/privkey.pem
-CURRENT_PROJECT_DIR=$(call if_deploying,/home/${HOST_OPERATOR}/${PROJECT_PREFIX},${PWD})
+CURRENT_PROJECT_DIR=$(call if_deploying,/etc/${PROJECT_PREFIX},${PWD})
 CURRENT_LOG_DIR=$(call if_deploying,/var/log/${PROJECT_PREFIX},${PWD}/${LOG_DIR})
 CURRENT_HOST_LOCAL_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${HOST_LOCAL_DIR},${PWD}/${HOST_LOCAL_DIR})
 
@@ -591,22 +591,26 @@ host_service_stop_op:
 
 .PHONY: host_update_cert
 host_update_cert:
-	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
-		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \
-		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/${DOMAIN_NAME}"; \
-		$(SSH) "sudo tailscale file cp $$(find $(CERT_BACKUP_DIR)/archive/${DOMAIN_NAME} -maxdepth 1 -type f) $(shell hostname):"; \
-		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/${DOMAIN_NAME}/"; \
-		$(SSH) "sudo tailscale file cp $$(find $(CERT_BACKUP_DIR)/live/${DOMAIN_NAME} -maxdepth 1 -type f) $(shell hostname):"; \
-		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/${DOMAIN_NAME}/"; \
-	else \
-		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/"* "$(APP_HOST):"; \
+	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \ # initial deploy, no certs stored yet
+		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \ # certs are now in server's etc backup dir
+		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}"; \ # create local backup dir
+		$(SSH) "sudo tailscale file cp \$$(sudo find $(H_ETC_DIR)/$(CERT_BACKUP_DIR) -maxdepth 1 -type f) $(shell hostname):"; \ # server copies certs to local
+		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"; \ # certs stored in local backup dir
+	fi
+	@if $(SSH) "[ ! -d /etc/letsencrypt/archive/${DOMAIN_NAME} ]"; then \ # if the server doesn't have certs add from local
+		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"* "$(APP_HOST):"; \
+		$(SSH) "sudo mkdir -p /etc/letsencrypt/archive/${DOMAIN_NAME}/ /etc/letsencrypt/live/${DOMAIN_NAME}/"; \
 		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt/archive/${DOMAIN_NAME}/"; \
-		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"* "$(APP_HOST):"; \
-		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt/live/${DOMAIN_NAME}/"; \
+		$(SSH) "sudo find /etc/letsencrypt/archive/${DOMAIN_NAME} -maxdepth 1 -type f | while read file; do sudo ln -s \"\$$file\" /etc/letsencrypt/live/${DOMAIN_NAME}/\$$(basename \"\$$file\"); done"; \
+	else \
+		echo "using existing certs"; \
 	fi
 
 .PHONY: host_update_cert_op
 host_update_cert_op:
+	@if [ -n "$$RENEW_CERT" ]; then \
+		$(SSH) "sudo rm -rf /etc/letsencrypt/archive/${DOMAIN_NAME}"
+	fi
 	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true
 	sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
@@ -614,7 +618,7 @@ host_update_cert_op:
 	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
 	mkdir -p "$(CERT_BACKUP_DIR)"
-	sudo cp -a /etc/letsencrypt/archive /etc/letsencrypt/live "$(CERT_BACKUP_DIR)"
+	sudo cp -a /etc/letsencrypt/archive/* "$(CERT_BACKUP_DIR)"
 
 .PHONY: host_ssh
 host_ssh:
