@@ -540,9 +540,11 @@ host_sync_files:
 	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
 	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
 	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/"
-	mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}"
-	$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/letsencrypt" "$(shell hostname):"'
-	tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/letsencrypt"
+	mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive" "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live"
+	$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/archive/"* "$(shell hostname):"'
+	tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/"
+	$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/live/"* "$(shell hostname):"'
+	tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"
 
 
 .PHONY: host_reboot
@@ -595,8 +597,8 @@ host_update_cert:
 	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
 		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \
 	else \
-		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/letsencrypt" "$(APP_HOST):"; \
-		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt"; \
+		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"* "$(APP_HOST):"; \
+		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt/live/"; \
 	fi
 
 .PHONY: host_update_cert_op
@@ -607,8 +609,9 @@ host_update_cert_op:
 	sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
-	mkdir -p $(CERT_BACKUP_DIR)
-	sudo cp -a /etc/letsencrypt $(CERT_BACKUP_DIR)/
+	mkdir -p $(CERT_BACKUP_DIR)/live $(CERT_BACKUP_DIR)/archive
+	sudo cp -a /etc/letsencrypt/archive/* $(CERT_BACKUP_DIR)/archive/
+	sudo cp -a /etc/letsencrypt/live/* $(CERT_BACKUP_DIR)/live/
 
 .PHONY: host_ssh
 host_ssh:
