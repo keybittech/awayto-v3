@@ -516,7 +516,7 @@ host_up:
 #   }
 
 .PHONY: host_install_service
-host_install_service: host_update_cert host_sync_files
+host_install_service: host_sync_files host_update_cert
 	$(SSH) "cd $(H_ETC_DIR) && make host_install_service_op"
 
 .PHONY: host_install_service_op
@@ -542,12 +542,6 @@ host_sync_files:
 	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/ && sudo chown $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/.env"
 	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
 	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/"
-	mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive" "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live"
-	$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/archive/"* "$(shell hostname):"'
-	tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/"
-	$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/live/"* "$(shell hostname):"'
-	tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"
-
 
 .PHONY: host_reboot
 host_reboot:
@@ -598,6 +592,11 @@ host_service_stop_op:
 host_update_cert:
 	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
 		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \
+		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive" "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live"; \
+		$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/archive/"* "$(shell hostname):"'; \
+		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive/"; \
+		$(SSH) 'sudo tailscale file cp "$(CERT_BACKUP_DIR)/live/"* "$(shell hostname):"'; \
+		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"; \
 	else \
 		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live/"* "$(APP_HOST):"; \
 		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt/live/"; \
