@@ -45,6 +45,8 @@ runcmd:
   - ufw default allow outgoing
   - ufw default deny routed
   - ufw allow 41641/udp
+  - ufw allow 443/tcp
+  - ufw allow 80/tcp
   - ufw enable
   - ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
   - ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
@@ -62,7 +64,7 @@ runcmd:
     su -l dummyuserlogin -c 'bash -s' << 'EOF'
     sudo git clone project-repo project-dir
     sudo chown -R dummyuserlogin:1000 project-dir
-    sudo install -d -m 750 -o dummyuserlogin -g 1000 project-dir/backups project-dir/backups/db project-dir/working project-dir/local_tmp project-dir/demos project-dir/demos/final
+    sudo install -d -m 750 -o dummyuserlogin -g 1000 project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/local_tmp project-dir/demos project-dir/demos/final
     setfacl -R -d -m g:1000:rwx project-dir
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
     . ~/.nvm/nvm.sh && nvm install node-version && npm i -g pnpm@latest-10

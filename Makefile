@@ -81,7 +81,7 @@ TS_CONFIG_API=ts/openapi-config.json
 
 BACKUP_DIR=backups
 DB_BACKUP_DIR=$(BACKUP_DIR)/db
-CERT_BACKUP_DIR=$(BACKUP_DIR)/cert
+CERT_BACKUP_DIR=$(BACKUP_DIR)/certs
 DOCKER_REDIS_CID=$(shell ${SUDO} docker ps -aqf "name=redis")
 DOCKER_REDIS_EXEC=${SUDO} docker exec -i $(DOCKER_REDIS_CID) redis-cli --pass $$(cat $$REDIS_PASS_FILE)
 DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
@@ -200,23 +200,8 @@ ifeq ($(DEPLOYING),)
 	setfacl -d -m g:1000:rwx $(LOG_DIR)/db
 endif
 
-# TODO get certs off server and store them locally to replace after re-deploy
 $(CERT_LOC) $(CERT_KEY_LOC):
-ifeq ($(DEPLOYING),true)
-
-	sudo certbot certificates
-	sudo ip6tables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo certbot certonly -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} \
-		--standalone --agree-tos --no-eff-email
-	sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
-	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
-	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
-	# tailscale file cp .env "$(APP_HOST):"
-	# $(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
-else
+ifeq ($(DEPLOYING),)
 	mkdir -p $(@D)
 	chmod 750 $(@D)
 	openssl req -nodes -new -x509 -keyout $(CERT_KEY_LOC) -out $(CERT_LOC) -days 365 -subj "/CN=${APP_HOST_NAME}"
@@ -225,6 +210,22 @@ else
 	sudo cp $(CERT_LOC) /usr/local/share/ca-certificates
 	sudo update-ca-certificates
 endif
+
+# ifeq ($(DEPLOYING),true)
+#
+# 	# sudo certbot certificates
+# 	# sudo ip6tables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
+# 	# sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
+# 	# sudo certbot certonly -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} \
+# 	# 	--standalone --agree-tos --no-eff-email
+# 	# sudo ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
+# 	# sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
+# 	# sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
+# 	# sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
+# 	# sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
+# 	# # tailscale file cp .env "$(APP_HOST):"
+# 	# # $(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
+
 
 ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
 	@mkdir -p $(@D)
@@ -513,7 +514,7 @@ host_up:
 #   }
 
 .PHONY: host_install_service
-host_install_service: host_sync_files host_update_cert
+host_install_service: host_update_cert host_sync_files
 	$(SSH) "cd $(H_ETC_DIR) && make host_install_service_op"
 
 .PHONY: host_install_service_op
@@ -591,7 +592,7 @@ host_service_stop_op:
 
 .PHONY: host_update_cert
 host_update_cert:
-	@if [ ! -d $(CERT_BACKUP_DIR)/${PROJECT_PREFIX} ] || [ -n "$$RENEW_CERT" ]; then \
+	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
 		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \
 	else \
 		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/letsencrypt" "$(APP_HOST):"; \
