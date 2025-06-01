@@ -251,9 +251,11 @@ $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	cp $(JAVA_SRC)/junixsocket-selftest-2.10.1-jar-with-dependencies.jar $(JAVA_TARGET_DIR)/
 	mvn -f $(JAVA_SRC) install
 
+$(LANDING_SRC)/config.yaml:
+	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
+
 # using npm here as pnpm symlinks just hugo and doesn't build correctly 
 $(LANDING_TARGET): $(LANDING_SRC)/config.yaml $(LANDING_SRC)/config.yaml.template $(shell find $(LANDING_SRC)/{assets,content,layouts,static,package-lock.json} -type f)
-	sed -e 's&project-title&${PROJECT_TITLE}&g; s&last-updated&$(shell date +%Y-%m-%d)&g; s&app-host-url&${APP_HOST_URL}&g;' "$(LANDING_SRC)/config.yaml.template" > "$(LANDING_SRC)/config.yaml"
 	npm --prefix ${LANDING_SRC} i
 	npm run --prefix ${LANDING_SRC} build
 
@@ -624,7 +626,7 @@ host_reboot:
 	@echo "rebooted"
 
 .PHONY: host_update
-host_update:
+host_update: $(LANDING_SRC)/config.yaml
 	git reset --hard HEAD
 	git pull
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
