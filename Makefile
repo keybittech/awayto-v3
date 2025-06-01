@@ -177,7 +177,9 @@ GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.fuzz=^$$ -test.bench=$${BENCH:-.} -test.
 
 GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 
-H_SIGN=${HOST_OPERATOR}login@${APP_HOST}
+H_LOGIN=${HOST_OPERATOR}login
+H_GROUP=${PROJECT_PREFIX}g
+H_SIGN=$(H_LOGIN)@${APP_HOST}
 SSH=tailscale ssh $(H_SIGN)
 
 #################################
@@ -491,7 +493,7 @@ host_up:
 	date >> "$(HOST_LOCAL_DIR)/start_time"
 	@echo "Tailscale auth key:"; \
 	read -s TS_AUTH_KEY; \
-	sed -e "s&dummyuser&${HOST_OPERATOR}&g; s&ts-auth-key&$$TS_AUTH_KEY&g; s&project-prefix&${PROJECT_PREFIX}&g; s&project-repo&https://${PROJECT_REPO}.git&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g; s&project-dir&$(H_ETC_DIR)&g; s&deploy-scripts&$(DEPLOY_HOST_SCRIPTS)&g; s&binary-name&${BINARY_NAME}&g; s&log-dir&/var/log/${PROJECT_PREFIX}&g; s&node-version&$(NODE_VERSION)&g; s&go-version&$(GO_VERSION)&g;" "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+	sed -e "s&dummyuser&${HOST_OPERATOR}&g; s&ts-auth-key&$$TS_AUTH_KEY&g; s&host-group&$(H_GROUP)&g; s&project-prefix&${PROJECT_PREFIX}&g; s&project-repo&https://${PROJECT_REPO}.git&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g; s&project-dir&$(H_ETC_DIR)&g; s&deploy-scripts&$(DEPLOY_HOST_SCRIPTS)&g; s&binary-name&${BINARY_NAME}&g; s&log-dir&/var/log/${PROJECT_PREFIX}&g; s&node-version&$(NODE_VERSION)&g; s&go-version&$(GO_VERSION)&g;" "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
 	cp "$(DEPLOY_HOST_SCRIPTS)/public-firewall.json" "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud firewall create --name "${PROJECT_PREFIX}-public-firewall" --rules-file "$(HOST_LOCAL_DIR)/public-firewall.json" >/dev/null
 	hcloud firewall describe "${PROJECT_PREFIX}-public-firewall" -o json > "$(HOST_LOCAL_DIR)/public-firewall.json"
@@ -537,7 +539,7 @@ host_install_service_op:
 .PHONY: host_sync_files
 host_sync_files:
 	tailscale file cp .env "$(APP_HOST):"
-	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
+	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/ && sudo chown $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/.env"
 	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
 	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/"
 	mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/archive" "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/live"

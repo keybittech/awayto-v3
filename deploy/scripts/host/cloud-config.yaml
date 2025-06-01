@@ -2,7 +2,7 @@
 bootcmd:
   - echo 'disable_root: true' >> /etc/cloud/cloud.cfg
 groups:
-  - project-prefixg: [dummyuserlogin, dummyuser]
+  - host-group: [dummyuserlogin, dummyuser]
   - ssl-certs: [dummyuser]
 users:
   - name: root
@@ -31,7 +31,7 @@ package_update: true
 package_upgrade: true
 runcmd:
   # assert group id to match pg docker user
-  - groupmod -g 1000 project-prefixg
+  - groupmod -g 1000 host-group
   # disable ssh
   - systemctl stop sshd
   - systemctl disable sshd
