@@ -612,8 +612,8 @@ host_update_cert_op:
 	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
 	mkdir -p $(CERT_BACKUP_DIR)/live $(CERT_BACKUP_DIR)/archive
-	sudo cp -a /etc/letsencrypt/archive/* $(CERT_BACKUP_DIR)/archive/
-	sudo cp -a /etc/letsencrypt/live/* $(CERT_BACKUP_DIR)/live/
+	sudo cp -a /etc/letsencrypt/archive $(CERT_BACKUP_DIR)/archive
+	sudo cp -a /etc/letsencrypt/live $(CERT_BACKUP_DIR)/live
 
 .PHONY: host_ssh
 host_ssh:
