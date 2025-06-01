@@ -12,7 +12,7 @@ users:
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
   - name: dummyuser
-    groups: users, 1000
+    groups: users, ssl-certs, 1000
     shell: /bin/bash
     lock_passwd: true
 packages:
@@ -44,9 +44,9 @@ runcmd:
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw default deny routed
-  - ufw allow 41641/udp
-  - ufw allow 443/tcp
   - ufw allow 80/tcp
+  - ufw allow 443/tcp
+  - ufw allow 41641/udp
   - ufw enable
   - ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
   - ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
