@@ -104,6 +104,11 @@ AUTH_INSTALL_SCRIPT=$(AUTH_SCRIPTS)/install.sh
 
 H_ETC_DIR=/etc/${PROJECT_PREFIX}
 
+H_LOGIN=${HOST_OPERATOR}login
+H_GROUP=${PROJECT_PREFIX}g
+H_SIGN=$(H_LOGIN)@${APP_HOST}
+SSH=tailscale ssh $(H_SIGN)
+
 # CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
 
 CURRENT_USER:=$(shell whoami)
@@ -177,11 +182,6 @@ GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.fuzz=^$$ -test.bench=$${BENCH:-.} -test.
 
 GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 
-H_LOGIN=${HOST_OPERATOR}login
-H_GROUP=${PROJECT_PREFIX}g
-H_SIGN=$(H_LOGIN)@${APP_HOST}
-SSH=tailscale ssh $(H_SIGN)
-
 #################################
 #             BUILDS            #
 #################################
@@ -204,6 +204,7 @@ endif
 
 $(CERT_LOC) $(CERT_KEY_LOC):
 ifeq ($(DEPLOYING),)
+	echo $(H_LOGIN) $(DEPLOYING) $(shell whoami) $(CERT_KEY_LOC) $(CERT_LOC)
 	mkdir -p $(@D)
 	chmod 750 $(@D)
 	openssl req -nodes -new -x509 -keyout $(CERT_KEY_LOC) -out $(CERT_LOC) -days 365 -subj "/CN=${APP_HOST_NAME}"
@@ -563,15 +564,9 @@ host_install_cert:
 			sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true; \
 			sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email; \
 			sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}; \
-			sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive; \
-			sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive; \
-			sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive; \
-			mkdir -p \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)\"; \
-			sudo cp -a /etc/letsencrypt/archive/${DOMAIN_NAME}/* \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)\"; \
-			sudo tailscale file cp \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)/\"* $(shell hostname):; \
 		"; \
-		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}"; \
-		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"; \
+		$(MAKE) host_group_cert; \
+		$(MAKE) host_backup_cert; \
 		echo "installed certs, renew=$$RENEW_CERT"; \
 	else \
 		echo "skipping install"; \
@@ -588,10 +583,29 @@ host_replace_cert:
 			do sudo ln -s \"\$$file\" /etc/letsencrypt/live/${DOMAIN_NAME}/\$$(basename \"\$$file\"); \
 			done \
 		"; \
+		$(MAKE) host_group_cert; \
 		echo "replaced certs into new directories"; \
 	else \
 		echo "using existing certs"; \
 	fi
+
+.PHONY: host_group_cert
+host_group_cert:
+	$(SSH) " \
+		sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive; \
+		sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive; \
+		sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive; \
+	"
+
+.PHONY: host_backup_cert
+host_backup_cert:
+	$(SSH) " \
+		mkdir -p \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)\"; \
+		sudo cp -a /etc/letsencrypt/archive/${DOMAIN_NAME}/* \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)\"; \
+		sudo tailscale file cp \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)/\"* $(shell hostname):; \
+	"
+	mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}"
+	tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"
 
 #################################
 #           HOST UTILS          #
