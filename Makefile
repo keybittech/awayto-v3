@@ -539,16 +539,63 @@ host_install_service_op:
 .PHONY: host_sync_files
 host_sync_files:
 	tailscale file cp .env "$(APP_HOST):"
-	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
-	$(SSH) "sudo chown $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/.env"
+	$(SSH) " \
+		sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/; \
+		sudo chown $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/.env; \
+	"
 	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
-	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/"
+	$(SSH) " \
+		sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/; \
+		sudo chown -R $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/$(DEMOS_DIR)/; \
+	"
 
-.PHONY: host_reboot
-host_reboot:
-	hcloud server reboot "${APP_HOST}"
-	until ping -c1 "${APP_HOST}" ; do sleep 5; done
-	@echo "rebooted"
+# if we don't have certs locally or we're renewing, do the normal cert request and store the certs locally
+# if the server still doesn't have certs then we aren't renewing and already have certs locally, likely new deployment
+.PHONY: host_update_cert
+host_update_cert: host_install_cert host_replace_cert
+	@echo "certs handled"
+
+.PHONY: host_install_cert
+host_install_cert:
+	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
+		$(SSH) " \
+			sudo rm -rf /etc/letsencrypt/archive /etc/letsencrypt/live; \
+			sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true; \
+			sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email; \
+			sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}; \
+			sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive; \
+			sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive; \
+			sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive; \
+			mkdir -p \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)\"; \
+			sudo cp -a /etc/letsencrypt/archive/${DOMAIN_NAME}/* \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)\"; \
+			sudo tailscale file cp \"$(H_ETC_DIR)/$(CERT_BACKUP_DIR)/\"* $(shell hostname):; \
+		"; \
+		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}"; \
+		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"; \
+		echo "installed certs, renew=$$RENEW_CERT"; \
+	else \
+		echo "skipping install"; \
+	fi
+
+.PHONY: host_replace_cert
+host_replace_cert:
+	@if $(SSH) "[ ! -d /etc/letsencrypt/archive/${DOMAIN_NAME} ]"; then \
+		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"* "$(APP_HOST):"; \
+		$(SSH) " \
+			sudo mkdir -p /etc/letsencrypt/archive/${DOMAIN_NAME}/ /etc/letsencrypt/live/${DOMAIN_NAME}/; \
+			sudo tailscale file get --conflict=overwrite /etc/letsencrypt/archive/${DOMAIN_NAME}/; \
+			sudo find /etc/letsencrypt/archive/${DOMAIN_NAME} -maxdepth 1 -type f | while read file; \
+			do sudo ln -s \"\$$file\" /etc/letsencrypt/live/${DOMAIN_NAME}/\$$(basename \"\$$file\"); \
+			done \
+		"; \
+		echo "replaced certs into new directories"; \
+	else \
+		echo "using existing certs"; \
+	fi
+
+#################################
+#           HOST UTILS          #
+#################################
 
 .PHONY: host_down
 host_down:
@@ -556,9 +603,11 @@ host_down:
 	hcloud firewall delete "${PROJECT_PREFIX}-public-firewall"
 	rm -rf $(HOST_LOCAL_DIR)
 
-#################################
-#           HOST UTILS          #
-#################################
+.PHONY: host_reboot
+host_reboot:
+	hcloud server reboot "${APP_HOST}"
+	until ping -c1 "${APP_HOST}" ; do sleep 5; done
+	@echo "rebooted"
 
 .PHONY: host_update
 host_update:
@@ -588,37 +637,6 @@ host_service_stop:
 .PHONY: host_service_stop_op
 host_service_stop_op:
 	sudo systemctl stop $(BINARY_SERVICE)
-
-# if we don't have certs locally or we're renewing, do the normal cert request and store the certs locally
-# if the server still doesn't have certs then we aren't renewing and already have certs locally, likely new deployment
-.PHONY: host_update_cert
-host_update_cert:
-	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
-		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \
-		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}"; \
-		$(SSH) "sudo tailscale file cp \$$(sudo find $(H_ETC_DIR)/$(CERT_BACKUP_DIR) -maxdepth 1 -type f) $(shell hostname):"; \
-		tailscale file get --conflict=overwrite "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"; \
-	fi
-	@if $(SSH) "[ ! -d /etc/letsencrypt/archive/${DOMAIN_NAME} ]"; then \
-		tailscale file cp "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}/"* "$(APP_HOST):"; \
-		$(SSH) "sudo mkdir -p /etc/letsencrypt/archive/${DOMAIN_NAME}/ /etc/letsencrypt/live/${DOMAIN_NAME}/"; \
-		$(SSH) "sudo tailscale file get --conflict=overwrite /etc/letsencrypt/archive/${DOMAIN_NAME}/"; \
-		$(SSH) "sudo find /etc/letsencrypt/archive/${DOMAIN_NAME} -maxdepth 1 -type f | while read file; do sudo ln -s \"\$$file\" /etc/letsencrypt/live/${DOMAIN_NAME}/\$$(basename \"\$$file\"); done"; \
-	else \
-		echo "using existing certs"; \
-	fi
-
-.PHONY: host_update_cert_op
-host_update_cert_op:
-	sudo rm -rf /etc/letsencrypt/archive /etc/letsencrypt/live
-	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true
-	sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email
-	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
-	sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
-	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
-	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
-	mkdir -p "$(H_ETC_DIR)/$(CERT_BACKUP_DIR)"
-	sudo cp -a /etc/letsencrypt/archive/* "$(H_ETC_DIR)/$(CERT_BACKUP_DIR)"
 
 .PHONY: host_ssh
 host_ssh:

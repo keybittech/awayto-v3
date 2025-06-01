@@ -2,17 +2,17 @@
 bootcmd:
   - echo 'disable_root: true' >> /etc/cloud/cloud.cfg
 groups:
+  - admin: [dummyuserlogin]
+  - users: [dummyuserlogin, dummyuser]
   - host-group: [dummyuserlogin, dummyuser]
-  - ssl-certs: [dummyuser]
+  - ssl-certs: [dummyuserlogin, dummyuser]
 users:
   - name: root
     lock_passwd: true
   - name: dummyuserlogin
-    groups: users, 1000, admin
     sudo: ALL=(ALL) NOPASSWD:ALL
     shell: /bin/bash
   - name: dummyuser
-    groups: users, ssl-certs, 1000
     shell: /bin/bash
     lock_passwd: true
 packages:
