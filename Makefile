@@ -589,13 +589,11 @@ host_service_stop:
 host_service_stop_op:
 	sudo systemctl stop $(BINARY_SERVICE)
 
-# if renewing, clear the server's certs
 # if we don't have certs locally or we're renewing, do the normal cert request and store the certs locally
-# if the server still doesn't have certs then we aren't renewing and already have certs locally, so push them to server
+# if the server still doesn't have certs then we aren't renewing and already have certs locally, likely new deployment
 .PHONY: host_update_cert
 host_update_cert:
 	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
-		$(SSH) "sudo rm -rf /etc/letsencrypt/archive/${DOMAIN_NAME}"; \
 		$(SSH) "cd $(H_ETC_DIR) && make host_update_cert_op"; \
 		mkdir -p "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}"; \
 		$(SSH) "sudo tailscale file cp \$$(sudo find $(H_ETC_DIR)/$(CERT_BACKUP_DIR) -maxdepth 1 -type f) $(shell hostname):"; \
@@ -610,21 +608,17 @@ host_update_cert:
 		echo "using existing certs"; \
 	fi
 
-# @if [ -n "$$RENEW_CERT" ]; then \
-# 	$(SSH) "sudo rm -rf /etc/letsencrypt/archive/${DOMAIN_NAME}"; \
-# fi
-
-
 .PHONY: host_update_cert_op
 host_update_cert_op:
+	sudo rm -rf /etc/letsencrypt/archive /etc/letsencrypt/live
 	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true
 	sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive
 	sudo chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive
-	mkdir -p "$(CERT_BACKUP_DIR)"
-	sudo cp -a /etc/letsencrypt/archive/* "$(CERT_BACKUP_DIR)"
+	mkdir -p "$(H_ETC_DIR)/$(CERT_BACKUP_DIR)"
+	sudo cp -a /etc/letsencrypt/archive/* "$(H_ETC_DIR)/$(CERT_BACKUP_DIR)"
 
 .PHONY: host_ssh
 host_ssh:
