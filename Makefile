@@ -539,7 +539,8 @@ host_install_service_op:
 .PHONY: host_sync_files
 host_sync_files:
 	tailscale file cp .env "$(APP_HOST):"
-	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/ && sudo chown $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/.env"
+	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/"
+	$(SSH) "sudo chown $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/.env"
 	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
 	$(SSH) "sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/"
 
@@ -604,7 +605,7 @@ host_update_cert:
 
 .PHONY: host_update_cert_op
 host_update_cert_op:
-	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
+	sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true
 	sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email
 	sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}
 	sudo chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive
