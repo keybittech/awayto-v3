@@ -56,9 +56,9 @@ runcmd:
   - bash -c "iptables-save > /etc/iptables/rules.v4"
   - bash -c "ip6tables-save > /etc/iptables/rules.v6"
   # create a log directory accessible by group, make sure future files are group visible
-  - install -d -m 750 -o root -g host-group log-dir log-dir/db
-  - chmod g+s log-dir log-dir/db
-  - setfacl -R -d -m g:host-group:rwx log-dir
+  - mkdir -p log-dir/db
+  - chown -R root:host-group log-dir
+  - chmod -R 2770 log-dir
   # create a dir for the project owned by login user to do builds, accessible by service runner
   # setup build dependencies as build user
   - |
