@@ -109,21 +109,26 @@ H_GROUP=${PROJECT_PREFIX}g
 H_SIGN=$(H_LOGIN)@${APP_HOST}
 SSH=tailscale ssh $(H_SIGN)
 
-# CLOUD_CONFIG_OUTPUT=$(HOST_LOCAL_DIR)/cloud-config.yaml
-
 CURRENT_USER:=$(shell whoami)
-DEPLOYING:=$(if $(filter $(H_LOGIN),${CURRENT_USER}),true,)
+DEPLOYING:=$(if $(filter ${HOST_OPERATOR}login,$(CURRENT_USER)),true,)
 
 define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
 endef
+
 ifeq ($(ORIGINAL_SOCK_DIR),)
 ORIGINAL_SOCK_DIR:=${UNIX_SOCK_DIR}
 endif
+
 define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR=$(shell pwd)/$(ORIGINAL_SOCK_DIR))
-	setfacl -m g:1000:rwx $(UNIX_SOCK_DIR)
-	setfacl -d -m g:1000:rwx $(UNIX_SOCK_DIR)
+ifeq ($(DEPLOYING),true)
+	$(eval TARGET_GROUP=$(H_GROUP))
+else
+	$(eval TARGET_GROUP=1000)
+endif
+	setfacl -m g:$(TARGET_GROUP):rwx $(UNIX_SOCK_DIR)
+	setfacl -d -m g:$(TARGET_GROUP):rwx $(UNIX_SOCK_DIR)
 endef
 
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
@@ -232,9 +237,14 @@ endif
 
 ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
 	@mkdir -p $(@D)
-	@chmod 750 $(@D)
 	install -m 640 /dev/null $@
 	openssl rand -hex 64 > $@ | tr -d '\n'
+ifeq ($(DEPLOYING),true)
+	@chown -R $(H_LOGIN):$(H_GROUP) $(@D)
+else
+	@chown -R $(shell whoami):1000 $(@D)
+endif
+	@chmod -R 750 $(@D)
 
 ${OAI_KEY_FILE}:
 	install -m 640 /dev/null $@
@@ -287,7 +297,6 @@ $(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
 
 $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 	protoc --proto_path=proto \
-		--experimental_allow_proto3_optional \
 		--plugin=protoc-gen-mutex=$(PROTO_GEN_MUTEX) \
 		--mutex_out=$(GO_GEN_DIR) \
 		--mutex_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \

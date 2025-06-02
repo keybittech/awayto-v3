@@ -77,6 +77,8 @@ type Keycloak struct {
 
 func InitKeycloak() *Keycloak {
 
+	util.FetchPublicKey()
+
 	kc := &KeycloakClient{}
 
 	InitGlobalWorkerPool(4, 8)
