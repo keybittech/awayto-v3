@@ -2,8 +2,6 @@
 bootcmd:
   - echo 'disable_root: true' >> /etc/cloud/cloud.cfg
 groups:
-  - admin: []
-  - users: []
   - host-group: []
   - ssl-certs: []
 users:
@@ -11,10 +9,10 @@ users:
     lock_passwd: true
   - name: dummyuserlogin
     sudo: ALL=(ALL) NOPASSWD:ALL
-    groups: [admin, users, host-group, ssl-certs]
+    groups: [host-group, ssl-certs]
     shell: /bin/bash
   - name: dummyuser
-    groups: [users, host-group, ssl-certs]
+    groups: [host-group, ssl-certs]
     shell: /bin/bash
     lock_passwd: true
 packages:
@@ -58,17 +56,17 @@ runcmd:
   - bash -c "iptables-save > /etc/iptables/rules.v4"
   - bash -c "ip6tables-save > /etc/iptables/rules.v6"
   # create a log directory accessible by group, make sure future files are group visible
-  - install -d -m 750 -o root -g 1000 log-dir log-dir/db
+  - install -d -m 750 -o root -g host-group log-dir log-dir/db
   - chmod g+s log-dir log-dir/db
-  - setfacl -R -d -m g:1000:rwx log-dir
+  - setfacl -R -d -m g:host-group:rwx log-dir
   # create a dir for the project owned by login user to do builds, accessible by service runner
   # setup build dependencies as build user
   - |
     su -l dummyuserlogin -c 'bash -s' << 'EOF'
     sudo git clone project-repo project-dir
-    sudo chown -R dummyuserlogin:1000 project-dir
-    sudo install -d -m 750 -o dummyuserlogin -g 1000 project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/local_tmp project-dir/demos project-dir/demos/final
-    setfacl -R -d -m g:1000:rwx project-dir
+    sudo chown -R dummyuserlogin:host-group project-dir
+    sudo install -d -m 750 -o dummyuserlogin -g host-group project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/local_tmp project-dir/demos project-dir/demos/final
+    setfacl -R -d -m g:host-group:rwx project-dir
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
     . ~/.nvm/nvm.sh && nvm install node-version && npm i -g pnpm@latest-10
     rm -rf /usr/local/go

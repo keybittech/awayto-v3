@@ -59,7 +59,8 @@ func makeLogger(prop string) *CustomLogger {
 		log.Fatalf("invalid file path: path is outside of log directory, %s", logFilePath)
 	}
 
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0600)
+	println("Creating a log file at ", logFilePath)
+	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0640)
 	if err != nil {
 		log.Fatalf("Failed to open %s log %v", prop, err)
 	}
