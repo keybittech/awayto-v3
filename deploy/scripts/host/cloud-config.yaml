@@ -73,7 +73,7 @@ runcmd:
     sudo tar -C /usr/local -xzf /tmp/goinstall.tar.gz && rm /tmp/goinstall.tar.gz
     echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.bashrc
     source ~/.bashrc
-    go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+    /usr/local/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
     curl -fsSL https://get.docker.com | sh
     curl -fsSL https://tailscale.com/install.sh | sh
     echo "clear && cd project-dir" >> ~/.bashrc
