@@ -121,14 +121,14 @@ ORIGINAL_SOCK_DIR:=${UNIX_SOCK_DIR}
 endif
 
 define set_local_unix_sock_dir
-	$(eval UNIX_SOCK_DIR=$(shell pwd)/$(ORIGINAL_SOCK_DIR))
+	$(eval UNIX_SOCK_DIR:=$(shell pwd)/$(ORIGINAL_SOCK_DIR))
 ifeq ($(DEPLOYING),true)
-	$(eval TARGET_GROUP=$(H_GROUP))
+	$(eval TARGET_GROUP:=$(H_GROUP))
 else
-	$(eval TARGET_GROUP=1000)
+	$(eval TARGET_GROUP:=1000)
 endif
-	setfacl -m g:$(TARGET_GROUP):rwx $(UNIX_SOCK_DIR)
-	setfacl -d -m g:$(TARGET_GROUP):rwx $(UNIX_SOCK_DIR)
+	setfacl -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
+	setfacl -d -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
 endef
 
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
