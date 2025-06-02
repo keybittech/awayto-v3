@@ -287,6 +287,7 @@ $(PROTO_GEN_MUTEX): $(GO_PROTO_MUTEX_CMD_DIR)/main.go
 
 $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 	protoc --proto_path=proto \
+		--experimental_allow_proto3_optional \
 		--plugin=protoc-gen-mutex=$(PROTO_GEN_MUTEX) \
 		--mutex_out=$(GO_GEN_DIR) \
 		--mutex_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
