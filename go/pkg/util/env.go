@@ -68,12 +68,6 @@ func ParseEnv() {
 	E_KC_OPENID_LOGOUT_URL = E_APP_HOST_URL + "/auth/realms/" + E_KC_REALM + "/protocol/openid-connect/logout"
 	E_KC_OPENID_TOKEN_URL = E_KC_INTERNAL + "/realms/" + E_KC_REALM + "/protocol/openid-connect/token"
 
-	publicKey, err := FetchPublicKey()
-	if err != nil {
-		log.Fatalf("could not get kc public key, err: %v", err)
-	}
-	E_KC_PUBLIC_KEY = publicKey
-
 	userClientSecret, err := GetEnvFilePath("KC_USER_CLIENT_SECRET_FILE", 128)
 	if err != nil {
 		log.Fatalf("could not get user client secret, err: %v", err)

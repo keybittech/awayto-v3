@@ -62,6 +62,10 @@ func GenerateSessionId() string {
 }
 
 func FetchPublicKey() (*rsa.PublicKey, error) {
+	if E_KC_PUBLIC_KEY != nil {
+		return E_KC_PUBLIC_KEY, nil
+	}
+
 	resp, err := Get(E_KC_URL, nil)
 	if err != nil {
 		log.Fatal(ErrCheck(err))
@@ -83,6 +87,7 @@ func FetchPublicKey() (*rsa.PublicKey, error) {
 	}
 
 	if parsed, ok := pubKey.(*rsa.PublicKey); ok {
+		E_KC_PUBLIC_KEY = parsed
 		return parsed, nil
 	}
 
