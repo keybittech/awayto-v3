@@ -23,6 +23,9 @@ limitations under the License.
 
 ## MIT Licensed Dependencies
 
+### hugo-paper
+Copyright (c) 2018 南小北
+
 ### hugo-bin
 Copyright (c) 2016 FennecLab
 

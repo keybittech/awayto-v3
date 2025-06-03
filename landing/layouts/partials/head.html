@@ -23,17 +23,6 @@
   {{ $css := slice $app_css $custom_css | resources.Concat "app.css" | minify }}
   <link rel="preload stylesheet" as="style" href="{{ $css.Permalink }}" />
 
-  {{ if and .IsPage (not site.Params.disableHLJS) }}
-  <script
-    defer
-    src="{{ `highlight.min.js` | absURL }}"
-    onload="hljs.initHighlightingOnLoad();"
-  ></script>
-  {{ end }}
-
-  <!-- Preload -->
-  <link rel="preload" as="image" href="{{ `theme.png` | absURL }}" />
-
   {{ range $.Scratch.Get "social-list" }}
   <link rel="preload" as="image" href="{{ printf `%s.svg` . | absURL }}" />
   {{ end }}
