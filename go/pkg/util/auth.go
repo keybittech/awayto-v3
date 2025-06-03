@@ -12,6 +12,7 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/golang-jwt/jwt"
@@ -121,7 +122,9 @@ func GetValidTokenRefresh(req *http.Request, refreshToken, ua, tz, ip string) (*
 func FetchAndValidateToken(req *http.Request, data url.Values, ua, tz, ip string) (*types.UserSession, error) {
 	SetForwardingHeaders(req)
 
-	resp, err := PostFormData(req.Context(), E_KC_OPENID_TOKEN_URL, req.Header, data)
+	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+	resp, err := PostFormData(req.Context(), E_KC_OPENID_TOKEN_URL, req.Header, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, ErrCheck(err)
 	}

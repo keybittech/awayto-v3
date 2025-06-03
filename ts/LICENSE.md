@@ -4,9 +4,6 @@ This project incorporates material from the projects listed below. Each project 
 
 ## Apache-2.0 Licensed Dependencies
 
-### keycloak-js
-Copyright 2016 Red Hat, Inc.
-
 ### pdfjs-dist
 Copyright 2014 Mozilla Corporation
 

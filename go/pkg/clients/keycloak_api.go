@@ -37,7 +37,7 @@ func (keycloakClient KeycloakClient) BasicHeaders() http.Header {
 
 func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCToken, error) {
 
-	headers := http.Header{}
+	header := http.Header{}
 
 	apiClientSecret, err := util.GetEnvFilePath("KC_API_CLIENT_SECRET_FILE", 128)
 	if err != nil {
@@ -50,11 +50,13 @@ func (keycloakClient KeycloakClient) DirectGrantAuthentication() (*types.OIDCTok
 		"client_secret": {apiClientSecret},
 	}
 
+	header.Set("Content-Type", "application/x-www-form-urlencoded")
+
 	resp, err := util.PostFormData(
 		context.Background(),
 		util.E_KC_URL+"/protocol/openid-connect/token",
-		headers,
-		body,
+		header,
+		strings.NewReader(body.Encode()),
 	)
 	if err != nil {
 		return nil, util.ErrCheck(err)

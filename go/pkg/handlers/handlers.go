@@ -26,7 +26,7 @@ type ProtoHandler func(info ReqInfo, message proto.Message) (proto.Message, erro
 type Handlers struct {
 	Functions map[string]ProtoHandler
 	Options   map[string]*util.HandlerOptions
-	Ai        *clients.Ai
+	LLM       *clients.LLM
 	Database  *clients.Database
 	Redis     *clients.Redis
 	Keycloak  *clients.Keycloak
@@ -37,7 +37,7 @@ type Handlers struct {
 func NewHandlers() *Handlers {
 	h := &Handlers{
 		Functions: make(map[string]ProtoHandler),
-		Ai:        clients.InitAi(),
+		LLM:       clients.InitLLM(),
 		Database:  clients.InitDatabase(),
 		Redis:     clients.InitRedis(),
 		Keycloak:  clients.InitKeycloak(),

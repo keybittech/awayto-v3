@@ -60,6 +60,7 @@ service GroupRoleService {
     option (resets_group) = true;
     option (invalidates) = "GetUserProfileDetails";
     option (invalidates) = "GetGroupAssignments";
+    option (invalidates) = "GetGroupRoles";
   }
 }
 

@@ -11,9 +11,9 @@ import Button from '@mui/material/Button';
 import Alert from '@mui/material/Alert';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
+import Typography from '@mui/material/Typography';
 
 import { siteApi, useUtil, useSuggestions, IPrompts, IGroup, IGroupRole, targets, IValidationAreas, useValid } from 'awayto/hooks';
-import { Input } from '@mui/material';
 
 interface ManageGroupRolesModalProps extends IComponent {
   editGroup?: IGroup;
@@ -82,7 +82,7 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
 
   useEffect(() => {
     if (editGroup?.name && editGroup?.purpose) {
-      void suggestRoles({ id: IPrompts.SUGGEST_ROLE, prompt: `${editGroup.name}!$${editGroup.purpose}` });
+      suggestRoles({ id: IPrompts.SUGGEST_ROLE, prompt: `${editGroup.name}!$${editGroup.purpose}` });
     }
   }, [editGroup]);
 
@@ -101,10 +101,8 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
                 <RoleSuggestions
                   staticSuggestions='Ex: Consultant, Project Manager, Advisor, Business Analyst'
                   handleSuggestion={suggestedRole => {
-                    // The currently suggested role in the group roles request
-                    const existingId = groupRolesRequest?.groupRoles.find(r => r.name === suggestedRole)?.id;
+                    const existingId = groupRolesRequest?.groupRoles?.find(r => r.name === suggestedRole)?.id;
 
-                    // If the role is not in the group roles request list, post it
                     if (!existingId) {
                       handleSubmitRole(suggestedRole);
                     }
@@ -125,10 +123,11 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
                 }
               }}
             />
-            <Grid container>
-              {groupRolesRequest?.groupRoles && groupRolesRequest?.groupRoles.map((gr, i) =>
-                <Box key={`group-role-selection-${i}`} mt={2} mr={2}>
+            {groupRolesRequest?.groupRoles?.length && <Box ml={2} mt={2}>
+              <Grid container spacing={2} size="grow">
+                {groupRolesRequest?.groupRoles.map((gr, i) =>
                   <Chip
+                    key={`group-role-selection-${i}`}
                     {...targets(`group roles delete ${i}`, gr.name, `remove ${gr.name} from the list of group roles`)}
                     color="secondary"
                     onClick={() => {
@@ -136,15 +135,11 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
                         deleteGroupRole({ ids: gr.id });
                       }
                     }}
-                    onDelete={() => {
-                      if (gr.id?.length) {
-                        deleteGroupRole({ ids: gr.id });
-                      }
-                    }}
                   />
-                </Box>
-              )}
-            </Grid>
+                )}
+              </Grid>
+              <Typography variant="caption">Click to remove</Typography>
+            </Box>}
           </Grid>
           {groupRolesRequest?.groupRoles && groupRolesRequest?.groupRoles.length && <Grid size={12}>
             <TextField

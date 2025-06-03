@@ -16,9 +16,6 @@ Copyright 2014 The github.com/go-jose/go-jose Authors
 ### github.com/google/cel-go
 Copyright 2018 The Go Authors
 
-### github.com/sashabaranov/go-openai
-Copyright 2020 Alex Baranov
-
 ### google.golang.org/genproto/googleapis/api, google.golang.org/genproto/googleapis/rpc
 Copyright 2016 Google Inc.
 

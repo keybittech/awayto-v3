@@ -29,7 +29,6 @@ require (
 	github.com/jackc/puddle/v2 v2.2.2 // indirect
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.8.0
-	github.com/sashabaranov/go-openai v1.40.0
 	github.com/stoewer/go-strcase v1.3.0 // indirect
 	golang.org/x/crypto v0.38.0 // indirect
 	golang.org/x/sync v0.14.0 // indirect

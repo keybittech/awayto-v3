@@ -87,8 +87,8 @@ func TestNewHandlers(t *testing.T) {
 			if got.Functions == nil {
 				t.Error("Functions map was not initialized")
 			}
-			if got.Ai == nil {
-				t.Error("Ai client was not initialized")
+			if got.LLM == nil {
+				t.Error("LLM client was not initialized")
 			}
 			if got.Database == nil {
 				t.Error("Database client was not initialized")

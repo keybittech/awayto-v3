@@ -9,7 +9,6 @@ import (
 	"io"
 	"net/http"
 	"net/url"
-	"strings"
 )
 
 type ErrRes struct {
@@ -138,10 +137,10 @@ func Mutate(method string, url string, headers http.Header, dataBody []byte) ([]
 	return respBody, nil
 }
 
-func PostFormData(ctx context.Context, url string, headers http.Header, data url.Values) ([]byte, error) {
+func PostFormData(ctx context.Context, url string, headers http.Header, data io.Reader) ([]byte, error) {
 	client := &http.Client{}
 
-	req, err := http.NewRequestWithContext(ctx, "POST", url, strings.NewReader(data.Encode()))
+	req, err := http.NewRequestWithContext(ctx, "POST", url, data)
 	if err != nil {
 		return nil, ErrCheck(err)
 	}
@@ -151,8 +150,6 @@ func PostFormData(ctx context.Context, url string, headers http.Header, data url
 			req.Header.Add(key, value)
 		}
 	}
-
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 
 	resp, err := client.Do(req)
 	if err != nil {

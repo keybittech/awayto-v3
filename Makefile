@@ -149,7 +149,7 @@ $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 $(eval LOG_DIR=$(CURRENT_LOG_DIR))
 $(eval HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR))
 
-AI_ENABLED=$(shell [ $$(wc -c < ${OAI_KEY_FILE}) -gt 1 ] && echo 1 || echo 0)
+AI_ENABLED=$(shell [ $$(wc -c < ${AI_KEY_FILE}) -gt 5 ] && echo 1 || echo 0)
 
 define clean_logs
   $(shell if [ $$(ls -1 $(LOG_DIR)/db/*.log 2>/dev/null | wc -l) -gt 1 ]; then \
@@ -187,7 +187,7 @@ GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 #             BUILDS            #
 #################################
 
-build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${OAI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
+build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${AI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
 
 # certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -242,14 +242,10 @@ else
 endif
 	@chmod -R 750 $(@D)
 
-${OAI_KEY_FILE}:
+${AI_KEY_FILE}:
 	install -m 640 /dev/null $@
-	if [[ ! -v OPENAI_API_KEY ]]; then \
-		echo "Provide an OPENAI_API_KEY if desired, or just press Enter"; \
-		read -s OAI_KEY; echo "$$OAI_KEY" > $@ ;\
-	else \
-		echo "$$OPENAI_API_KEY" > $@; \
-	fi
+	echo "Provide an AiStudio API key if desired, or just press Enter"
+	read -s AI_KEY; echo "$$AI_KEY" > $@
 
 $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
