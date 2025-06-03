@@ -26,8 +26,4 @@ menu:
       name: Pricing
       pageref: /pricing
       weight: 30
-    - identifier: use_of_ai
-      name: Use of AI
-      pageref: /use_of_ai
-      weight: 50
 

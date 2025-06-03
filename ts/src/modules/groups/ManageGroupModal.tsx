@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 
+import Dialog from '@mui/material/Dialog';
+import Link from '@mui/material/Link';
 import Box from '@mui/material/Box';
 import Grid from '@mui/material/Grid';
 import Typography from '@mui/material/Typography';
@@ -16,6 +18,8 @@ import FormControlLabel from '@mui/material/FormControlLabel';
 import CircularProgress from '@mui/material/CircularProgress';
 
 import { useDebounce, useUtil, siteApi, IGroup, targets, IValidationAreas, useValid } from 'awayto/hooks';
+
+import UseOfLLMModal from '../common/UseOfLLM';
 
 const {
   VITE_REACT_APP_AI_ENABLED
@@ -53,6 +57,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
   const [allowedDomains, setAllowedDomains] = useState([] as string[]);
   const [allowedDomain, setAllowedDomain] = useState('');
   const purposeEdited = useRef(false);
+  const [dialog, setDialog] = useState('');
 
   const [postGroup] = siteApi.useGroupServicePostGroupMutation();
   const [patchGroup] = siteApi.useGroupServicePatchGroupMutation();
@@ -234,7 +239,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
           {'1' == VITE_REACT_APP_AI_ENABLED && <Grid size={12}>
             <FormGroup>
               <FormControlLabel
-                {...targets(`manage group modal ai`, `Use AI Suggestions`, `toggle ai suggestions being shown across the site when filling certain inputs`)}
+                {...targets(`manage group modal ai`, `Use LLM Suggestions`, `toggle ai suggestions being shown across the site when filling certain inputs`)}
                 control={
                   <Checkbox
                     checked={group.ai}
@@ -242,7 +247,18 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
                   />
                 }
               />
-              <Typography variant="caption">AI suggestions will be seen by all group members. This functionality can be toggled on/off in group settings. Group name and description are used to generate suggestions.</Typography>
+              <Typography variant="caption">
+                LLM suggestions will be seen by all group members. This functionality can be toggled on/off in group settings. Group name and description are used to generate suggestions.&nbsp;
+                <Link
+                  {...targets(`manage group modal learn more llm`, `learn more about llm usage`)}
+                  sx={{ cursor: 'pointer' }}
+                  onClick={() => {
+                    setDialog('learn_more_llm');
+                  }}
+                >
+                  Learn more
+                </Link>
+              </Typography>
             </FormGroup>
           </Grid>}
         </Grid>
@@ -265,6 +281,9 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
         </Grid>
       </CardActions>}
     </Card>
+    <Dialog open={dialog === 'learn_more_llm'} onClose={setDialog} fullWidth maxWidth="md">
+      <UseOfLLMModal closeModal={setDialog} />
+    </Dialog>
   </>
 }
 
