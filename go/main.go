@@ -1,7 +1,6 @@
 package main
 
 import (
-	"log"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
@@ -63,11 +62,7 @@ func main() {
 	// }()
 
 	defer func() {
-		close(stopChan)
-		err := server.Server.Close()
-		if err != nil {
-			log.Fatal(err)
-		}
+		server.Close()
 	}()
 
 	util.DebugLog.Printf("Listening on %d ", util.E_GO_HTTPS_PORT)

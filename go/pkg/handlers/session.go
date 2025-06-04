@@ -16,7 +16,6 @@ import (
 func (h *Handlers) GenerateLoginOrRegisterParams(req *http.Request) string {
 	tz := req.URL.Query().Get("tz")
 	ua := req.Header.Get("User-Agent")
-
 	if tz == "" || ua == "" {
 		return ""
 	}
@@ -350,6 +349,7 @@ func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession)
 		`, params...)
 		batch.Send(ctx)
 	} else {
+
 		params[0] = session.GetUserSub()
 		dbSessionInsert := util.BatchQueryRow[types.ILookup](batch, `
 			INSERT INTO dbtable_schema.user_sessions (sub, id_token, access_token, access_expires_at, refresh_token, refresh_expires_at, ip_address, timezone, user_agent, group_id)

@@ -23,7 +23,7 @@ func testIntegrationUser(t *testing.T) {
 			t.Fatalf("could not register as admin, %v", err)
 		}
 
-		err = testUser.Login()
+		_, err = testUser.Login()
 		if err != nil {
 			t.Fatalf("could not login as admin, %v", err)
 		}

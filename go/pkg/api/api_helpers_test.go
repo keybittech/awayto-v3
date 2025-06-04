@@ -2,11 +2,11 @@ package api
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"net/http/httptest"
-	"strconv"
 	"testing"
 	"time"
 
@@ -23,68 +23,35 @@ func reset(b *testing.B) {
 	b.ResetTimer()
 }
 
-var testApi *API
-
 func getTestApi(limit rate.Limit, burst int) *API {
-	var api *API
-	if testApi != nil {
-		api = testApi
-	} else {
-		api = NewAPI(util.E_GO_HTTPS_PORT)
-		go api.RedirectHTTP(util.E_GO_HTTP_PORT)
-		go api.InitUnixServer(util.E_UNIX_PATH)
-	}
-
-	api.Server.Handler = http.NewServeMux()
+	api := NewAPI(util.E_GO_HTTPS_PORT)
+	go api.RedirectHTTP(util.E_GO_HTTP_PORT)
+	go api.InitUnixServer(util.E_UNIX_PATH)
 	api.InitProtoHandlers()
 	api.InitAuthProxy()
 	api.InitSockServer()
 	api.InitStatic()
+
 	rateLimiter := NewRateLimit("api", limit, burst, time.Duration(5*time.Minute))
 	limitMiddleware := api.LimitMiddleware(rateLimiter)(api.Server.Handler)
-	api.Server.Handler = api.AccessRequestMiddleware(limitMiddleware)
+	wrappedHandler := api.AccessRequestMiddleware(limitMiddleware)
 
-	testApi = api
+	finalHandler := http.NewServeMux()
+	finalHandler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		wrappedHandler.ServeHTTP(w, req)
+	}))
+
+	api.Server.Handler = finalHandler
 
 	return api
 }
 
-// func getProtoTestReq(token, method, url string, bodyMessage proto.Message) *http.Request {
-// 	var bodyReader io.Reader
-// 	if bodyMessage != nil {
-// 		marshaledBody, err := proto.Marshal(bodyMessage)
-// 		if err != nil {
-// 			log.Fatalf("Failed to marshal proto message: %v", err)
-// 		}
-// 		bodyReader = bytes.NewReader(marshaledBody)
-// 	}
-//
-// 	testReq, err := http.NewRequest(method, url, bodyReader)
-// 	if err != nil {
-// 		log.Fatal(err)
-// 	}
-// 	testReq.RemoteAddr = "127.0.0.1:9999"
-// 	testReq.Header.Set("Authorization", "Bearer "+token)
-// 	testReq.Header.Set("Accept", "application/x-protobuf")
-// 	testReq.Header.Set("X-Tz", "America/Los_Angeles")
-// 	if bodyMessage != nil {
-// 		testReq.Header.Set("Content-Type", "application/x-protobuf")
-// 	}
-// 	return testReq
-// }
-
-func getTestReq(method, url string, body io.Reader) *http.Request {
-	testReq, err := http.NewRequest(method, url, body)
-	if err != nil {
-		log.Fatal(err)
+func getTestUser(userId int32) *testutil.TestUsersStruct {
+	testUser, ok := testutil.IntegrationTest.GetTestUsers()[userId]
+	if !ok {
+		log.Fatalf("could not find an integration user for id %d", userId)
 	}
-	testReq.RemoteAddr = "127.0.0.1:9999"
-	testReq.Header.Set("Accept", "application/json")
-	testReq.Header.Set("X-Tz", "America/Los_Angeles")
-	if body != nil {
-		testReq.Header.Set("Content-Type", "application/json")
-	}
-	return testReq
+	return testUser
 }
 
 func checkResponseFor(buf []byte, items []byte) bool {
@@ -99,18 +66,14 @@ func checkResponseFor(buf []byte, items []byte) bool {
 	return true
 }
 
-func setupRouteRequest(userId int32, limit rate.Limit, burst int, method, path, contentType string) (*API, *http.Request, *httptest.ResponseRecorder) {
-	testUser := testutil.IntegrationTest.TestUsers[userId]
-	req := getTestReq(method, path, nil)
-	for _, c := range testUser.CookieData {
-		req.AddCookie(&c)
+func setupRouteRequest(cookies []*http.Cookie, method, path, contentType string) (*http.Request, *httptest.ResponseRecorder) {
+	req := testutil.GetTestReq(method, path, nil)
+	for _, c := range cookies {
+		req.AddCookie(c)
 	}
-	req.RemoteAddr = "127.0.0.1:9999"
-	req.Header.Set("X-Tz", "America/Los_Angeles")
 	req.Header.Set("Accept", contentType)
 	req.Header.Set("Content-Type", contentType)
-
-	return getTestApi(limit, burst), req, httptest.NewRecorder()
+	return req, httptest.NewRecorder()
 }
 
 func setRouteRequestBody(req *http.Request, body proto.Message, contentType string) {
@@ -132,16 +95,14 @@ func setRouteRequestBody(req *http.Request, body proto.Message, contentType stri
 func checkRouteRequest(recorder *httptest.ResponseRecorder, byteSet []byte) {
 	good := checkResponseFor(recorder.Body.Bytes(), byteSet)
 	if !good {
-		panic("Response body (status %d) did not start with '{'. Got: %s" + strconv.Itoa(recorder.Code) + string(recorder.Body.Bytes()))
+		panic(fmt.Sprintf("Response body (status %d) did not start with '{'. Got: %s", recorder.Code, recorder.Body.String()))
 	}
 }
 
 func doApiBenchmark(b *testing.B, api *API, req *http.Request, recorder *httptest.ResponseRecorder, checkBytes []byte) {
 	reset(b)
 	for b.Loop() {
-		b.StopTimer()
 		recorder.Body.Reset()
-		b.StartTimer()
 		api.Server.Handler.ServeHTTP(recorder, req)
 	}
 

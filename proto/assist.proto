@@ -9,14 +9,6 @@ import "google/api/field_behavior.proto";
 option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 
 service AssistService {
-  rpc PostPrompt(PostPromptRequest) returns (PostPromptResponse) {
-    option (google.api.http) = {
-      post: "/v1/assist/prompt"
-      body: "*"
-    };
-    option (cache) = STORE; 
-  }
-
   rpc GetSuggestion(GetSuggestionRequest) returns (GetSuggestionResponse) {
     option (google.api.http) = {
       get: "/v1/assist/suggest/{id}/{prompt}"
@@ -44,15 +36,6 @@ enum IPrompts {
 message IPrompt {
   string id = 1;
   string prompt = 2;
-}
-
-message PostPromptRequest {
-  string id = 1 [(google.api.field_behavior) = REQUIRED];
-  string prompt = 2 [(google.api.field_behavior) = REQUIRED];
-}
-
-message PostPromptResponse {
-  repeated string promptResult = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetSuggestionRequest {

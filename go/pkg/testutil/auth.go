@@ -8,6 +8,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/cookiejar"
+	"net/http/httptest"
 	"net/url"
 	"regexp"
 	"strings"
@@ -95,10 +96,39 @@ func (tus *TestUsersStruct) RegisterKeycloakUserViaForm(code ...string) error {
 	return nil
 }
 
-func (tus *TestUsersStruct) Login() error {
+func handlerFollowRedirects(handler *http.ServeMux, w *httptest.ResponseRecorder, req *http.Request, cookies []*http.Cookie) (*httptest.ResponseRecorder, []*http.Cookie, error) {
+	currentW := w
+	currentReq := req
+	for currentW.Code >= 300 && currentW.Code < 400 {
+		location := currentW.Header().Get("Location")
+		if location == "" {
+			break
+		}
+
+		// Parse the redirect URL relative to the current request URL
+		redirectURL, err := currentReq.URL.Parse(location)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to parse redirect URL: %v", err)
+		}
+
+		// Create new request with the resolved URL
+		currentReq = GetTestReq("GET", redirectURL.String(), nil)
+		for _, cookie := range cookies {
+			currentReq.AddCookie(cookie)
+		}
+		currentW = httptest.NewRecorder()
+		handler.ServeHTTP(currentW, currentReq)
+		if cookies != nil {
+			cookies = append(cookies, currentW.Result().Cookies()...)
+		}
+	}
+	return currentW, cookies, nil
+}
+
+func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, error) {
 	jar, err := cookiejar.New(nil)
 	if err != nil {
-		return fmt.Errorf("failed to create cookie jar: %v", err)
+		return nil, fmt.Errorf("failed to create cookie jar: %v", err)
 	}
 
 	client := &http.Client{
@@ -109,35 +139,44 @@ func (tus *TestUsersStruct) Login() error {
 		},
 		Jar: jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
-			// if len(via) > 0 {
-			// 	// Stop if redirecting from /auth/callback to /app/
-			// 	// This allows us to capture the state after /auth/callback has run (e.g., cookie set)
-			// 	// and verify that /auth/callback intends to redirect to /app/.
-			// 	// via[len(via)-1] is the request that received the redirect response.
-			// 	if strings.Contains(via[len(via)-1].URL.Path, "/auth/callback") && strings.Contains(req.URL.Path, "/app/") {
-			// 		return http.ErrUseLastResponse
-			// 	}
-			// }
-
 			return nil
 		},
 	}
 
-	req, err := http.NewRequest("GET", util.E_APP_HOST_URL+"/auth/login?tz=America/Los_Angeles", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request for /auth/login: %v", err)
-	}
+	sessionCookies := make([]*http.Cookie, 0)
+	var resp []byte
+	if handler != nil {
+		h := handler[0]
+		w := httptest.NewRecorder()
+		req := GetTestReq("GET", util.E_APP_HOST_URL+"/auth/login?tz=America/Los_Angeles", nil)
+		h.ServeHTTP(w, req)
 
-	resp, err := doAndRead(client, req)
-	if err != nil {
-		return fmt.Errorf("failed to call /auth/login: %v", err)
+		w, sessionCookies, err = handlerFollowRedirects(h, w, req, sessionCookies)
+		if err != nil {
+			return nil, fmt.Errorf("error following redirects, err: %v", err)
+		}
+
+		if w.Code != 200 {
+			return nil, fmt.Errorf("GET /auth/login returned status %d", w.Code)
+		}
+
+		resp = w.Body.Bytes()
+
+	} else {
+
+		req := GetTestReq("GET", util.E_APP_HOST_URL+"/auth/login?tz=America/Los_Angeles", nil)
+		resp, err = doAndRead(client, req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to call /auth/login: %v", err)
+		}
 	}
 
 	actionRegex := regexp.MustCompile(`<form[^>]*action="([^"]*)"`)
 	actionMatches := actionRegex.FindStringSubmatch(string(resp))
 	if len(actionMatches) < 2 {
-		return fmt.Errorf("could not find form action in Keycloak login page")
+		return nil, fmt.Errorf("could not find form action in Keycloak login page")
 	}
+
 	formActionURL := actionMatches[1]
 	formActionURL = html.UnescapeString(formActionURL)
 
@@ -154,23 +193,42 @@ func (tus *TestUsersStruct) Login() error {
 	formData.Set("password", tus.GetTestPass())
 	formData.Set("credentialId", "")
 
-	req, err = http.NewRequest("POST", formActionURL, strings.NewReader(formData.Encode()))
-	if err != nil {
-		return fmt.Errorf("failed to create login request: %v", err)
+	if handler != nil {
+		h := handler[0]
+		w := httptest.NewRecorder()
+		req := GetTestReq("POST", formActionURL, strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		for _, c := range sessionCookies {
+			req.AddCookie(c)
+		}
+		h.ServeHTTP(w, req)
+
+		w, sessionCookies, err = handlerFollowRedirects(h, w, req, sessionCookies)
+		if err != nil {
+			return nil, fmt.Errorf("error following redirects, err: %v", err)
+		}
+
+		if w.Code != 200 {
+			return nil, fmt.Errorf("POST form action login returned status %d, path: %s", w.Code, req.URL.String())
+		}
+	} else {
+		req := GetTestReq("POST", formActionURL, strings.NewReader(formData.Encode()))
+		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+
+		for _, c := range sessionCookies {
+			req.AddCookie(c)
+		}
+		_, err = doAndRead(client, req)
+		if err != nil {
+			return nil, fmt.Errorf("failed to post login form %s: %v", formActionURL, err)
+		}
+		appURL, _ := url.Parse(util.E_APP_HOST_URL)
+		sessionCookies = append(sessionCookies, jar.Cookies(appURL)...)
 	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-
-	_, err = doAndRead(client, req)
-	if err != nil {
-		return fmt.Errorf("failed to post login form %s: %v", formActionURL, err)
-	}
-
-	appURL, _ := url.Parse(util.E_APP_HOST_URL)
-
-	cookies := jar.Cookies(appURL)
 
 	var sessionId string
-	for _, cookie := range cookies {
+	for _, cookie := range sessionCookies {
 		if cookie.Name == "session_id" {
 			sessionId = cookie.Value
 			break
@@ -178,24 +236,40 @@ func (tus *TestUsersStruct) Login() error {
 	}
 
 	if sessionId == "" {
-		return fmt.Errorf("session_id cookie not found after login")
+		return nil, fmt.Errorf("session_id cookie not found after login")
 	}
 
-	tus.SetCookieData(cookies)
+	tus.SetCookieData(sessionCookies)
 
-	return nil
+	return sessionCookies, nil
 }
 
-func (tus *TestUsersStruct) Logout() error {
-	req, err := http.NewRequest("GET", util.E_APP_HOST_URL+"/auth/logout", nil)
-	if err != nil {
-		return fmt.Errorf("failed to create request for /auth/logout: %v", err)
+func (tus *TestUsersStruct) Logout(handler ...*http.ServeMux) error {
+	req := GetTestReq("GET", util.E_APP_HOST_URL+"/auth/logout", nil)
+	for _, c := range tus.CookieData {
+		req.AddCookie(&c)
 	}
 
-	client := tus.getUserClient()
-	resp, err := doAndRead(client, req)
-	if err != nil {
-		return fmt.Errorf("failed to call /auth/logout: %v", err)
+	var resp []byte
+	var err error
+	if handler != nil {
+		h := handler[0]
+		w := httptest.NewRecorder()
+		h.ServeHTTP(w, req)
+
+		handlerFollowRedirects(h, w, req, nil)
+
+		if w.Code != 200 {
+			return fmt.Errorf("GET /auth/logout returned status %d", w.Code)
+		}
+
+		resp = w.Body.Bytes()
+	} else {
+		client := tus.getUserClient()
+		resp, err = doAndRead(client, req)
+		if err != nil {
+			return fmt.Errorf("failed to call /auth/logout: %v", err)
+		}
 	}
 
 	lastUpdatedMatch := regexp.MustCompile(`<p>Last updated:`).FindAll(resp, 1)
@@ -203,145 +277,7 @@ func (tus *TestUsersStruct) Logout() error {
 		return fmt.Errorf("could not find last updated after logout")
 	}
 
+	tus.CookieData = nil
+
 	return nil
 }
-
-// func getUser(t *testing.T, userId string) (*types.UserSession, net.Conn, string, string, string) {
-// 	userSession, token, ticket, connId := getSocketTicket(userId)
-//
-// 	connection, err := getClientSocketConnection(ticket)
-// 	if err != nil {
-// 		t.Fatalf("count not establish socket connection for user %s, ticket %s, connId %s", userId, ticket, connId)
-// 	}
-// 	connection.SetDeadline(time.Now().Add(10 * time.Second))
-//
-// 	return userSession, connection, token, ticket, connId
-// }
-
-// func getKeycloakToken(userId string) (string, *types.UserSession, error) {
-//
-// 	data := url.Values{}
-// 	data.Set("client_id", util.E_KC_USER_CLIENT)
-// 	data.Set("username", "1@"+userId)
-// 	data.Set("password", "1")
-// 	data.Set("grant_type", "password")
-//
-// 	var header http.Header
-// 	header.Add("Content-Type", "application/x-www-form-urlencoded")
-//
-// 	resp, err := util.PostFormData("http://localhost:8080/auth/realms/"+util.E_KC_REALM+"/protocol/openid-connect/token", header, data)
-// 	if err != nil {
-// 		return "", nil, err
-// 	}
-//
-// 	var tokens *types.OIDCToken
-// 	if err := protojson.Unmarshal(resp, tokens); err != nil {
-// 		return "", nil, err
-// 	}
-//
-// 	return tokens.GetAccessToken(), nil, nil
-// }
-
-// func getUserSocketSession(userId int) (*types.SocketResponseParams, *types.UserSession, string, string) {
-// 	userSession, _, ticket, connId := getSocketTicket(userId)
-//
-// 	subscriberSocketResponse, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-// 		UserSub: userSession.UserSub,
-// 		Ticket:  ticket,
-// 	})
-//
-// 	if err = clients.ChannelError(err, subscriberSocketResponse.Error); err != nil {
-// 		log.Fatal("failed to get subscriber socket command in setup", err.Error())
-// 	}
-//
-// 	return subscriberSocketResponse.SocketResponseParams, userSession, ticket, connId
-// }
-
-// func getSubscribers(numUsers int) (map[int]*types.Subscriber, map[string]net.Conn) {
-// 	subscribers := make(map[int]*types.Subscriber, numUsers)
-// 	connections := make(map[string]net.Conn, numUsers)
-//
-// 	for c := 0; c < numUsers; c++ {
-// 		registerKeycloakUserViaForm(c)
-//
-// 		userSession, _, ticket, connId := getSocketTicket(c)
-//
-// 		connection := getClientSocketConnection(ticket)
-// 		if connection == nil {
-// 			println("count not establish socket connection for user ", strconv.Itoa(c), ticket, connId)
-// 			return nil, nil
-// 		}
-// 		connection.SetReadDeadline(time.Now().Add(120 * time.Second))
-// 		connections[userSession.UserSub] = connection
-//
-// 		subscriberRequest, err := mainApi.Handlers.Socket.SendCommand(clients.CreateSocketConnectionSocketCommand, &types.SocketRequestParams{
-// 			UserSub: userSession.UserSub,
-// 			Ticket:  ticket,
-// 		}, connection)
-// 		if err != nil {
-// 			log.Fatalf("failed subscriber request %v", err)
-// 		}
-//
-// 		subscribers[c] = &types.Subscriber{
-// 			UserSub:      subscriberRequest.UserSub,
-// 			GroupId:      subscriberRequest.GroupId,
-// 			Roles:        subscriberRequest.Roles,
-// 			ConnectionId: connId,
-// 		}
-//
-// 		println("got subscribers ", len(subscribers), "connections", len(connections))
-// 	}
-//
-// 	return subscribers, connections
-// }
-//
-// func getUserProfileDetails(token string) (*types.IUserProfile, error) {
-// 	getUserProfileDetailsResponse := &types.GetUserProfileDetailsResponse{}
-// 	err := apiRequest(token, http.MethodPatch, "/api/v1/profile/details", nil, nil, getUserProfileDetailsResponse)
-// 	if err != nil {
-// 		return nil, errors.New(fmt.Sprintf("error get user profile details error: %v", err))
-// 	}
-// 	if getUserProfileDetailsResponse.UserProfile.Id == "" {
-// 		return nil, errors.New("get user profile details response has no id")
-// 	}
-//
-// 	return getUserProfileDetailsResponse.UserProfile, nil
-// }
-
-// func apiBenchRequest(token, method, path string, body []byte, queryParams map[string]string) (*http.Client, *http.Request, error) {
-// 	reqURL := "https://localhost:7443" + path
-// 	if queryParams != nil && len(queryParams) > 0 {
-// 		values := url.Values{}
-// 		for k, v := range queryParams {
-// 			values.Add(k, v)
-// 		}
-// 		reqURL = reqURL + "?" + values.Encode()
-// 	}
-//
-// 	var reqBody io.Reader
-// 	if body != nil {
-// 		reqBody = bytes.NewBuffer(body)
-// 	}
-// 	req, err := http.NewRequest(method, reqURL, reqBody)
-// 	if err != nil {
-// 		return nil, nil, fmt.Errorf("error creating request: %w", err)
-// 	}
-//
-// 	if body != nil && len(body) > 0 {
-// 		req.Header.Set("Content-Type", "application/json")
-// 	}
-// 	req.Header.Set("Accept", "application/json")
-// 	req.Header.Add("X-Tz", "America/Los_Angeles")
-//
-// 	req.Header.Add("Authorization", "Bearer "+token)
-//
-// 	client := &http.Client{
-// 		Transport: &http.Transport{
-// 			TLSClientConfig: &tls.Config{
-// 				InsecureSkipVerify: true,
-// 			},
-// 		},
-// 	}
-//
-// 	return client, req, nil
-// }

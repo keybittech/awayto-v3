@@ -2,6 +2,7 @@ package api
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"time"
 
@@ -16,9 +17,12 @@ const (
 )
 
 type API struct {
-	Server   *http.Server
-	Cache    *util.Cache
-	Handlers *handlers.Handlers
+	Server    *http.Server
+	Redirect  *http.Server
+	Cache     *util.Cache
+	Handlers  *handlers.Handlers
+	Unix      net.Listener
+	CloseChan chan struct{}
 }
 
 func NewAPI(httpsPort int) *API {
@@ -42,7 +46,30 @@ func NewAPI(httpsPort int) *API {
 			IdleTimeout:  API_IDLE_TIMEOUT,
 			Handler:      http.NewServeMux(),
 		},
-		Handlers: h,
-		Cache:    h.Cache,
+		Handlers:  h,
+		Cache:     h.Cache,
+		CloseChan: make(chan struct{}),
+	}
+}
+
+func (a *API) Close() {
+	close(a.CloseChan)
+	a.Handlers.Database.DatabaseClient.Close()
+	a.Handlers.Socket.Close()
+	a.Handlers.Keycloak.Close()
+	if err := a.Handlers.Redis.RedisClient.Close(); err != nil {
+		util.ErrorLog.Printf("could not close redis client, err: %v", err)
+	}
+
+	if err := a.Unix.Close(); err != nil {
+		util.ErrorLog.Printf("could not close unix listener, err: %v", err)
+	}
+
+	if err := a.Redirect.Close(); err != nil {
+		util.ErrorLog.Printf("could not close redirect server, err: %v", err)
+	}
+
+	if err := a.Server.Close(); err != nil {
+		util.ErrorLog.Printf("could not close primary server client, err: %v", err)
 	}
 }

@@ -159,6 +159,7 @@ define clean_logs
 endef
 
 define clean_test
+	@echo "======== cleaning tests ========"
 	$(DOCKER_REDIS_EXEC) FLUSHALL
 	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
@@ -378,21 +379,41 @@ go_coverage:
 test_gen:
 	npx playwright codegen --ignore-https-errors https://localhost:${GO_HTTPS_PORT}
 
-.PHONY: go_test_unit_build
-go_test_unit_build:
-	$(GO) test -C $(GO_API_DIR) -c -o api.$(BINARY_TEST)
-	$(GO) test -C $(GO_CLIENTS_DIR) -c -o clients.$(BINARY_TEST)
-	$(GO) test -C $(GO_HANDLERS_DIR) -c -o handlers.$(BINARY_TEST)
-	$(GO) test -C $(GO_UTIL_DIR) -c -o util.$(BINARY_TEST)
-
-.PHONY: go_test_unit
-go_test_unit: $(GO_TARGET) go_test_unit_build
+.PHONY: go_test_unit_api
+go_test_unit_api:
 	@$(call clean_test)
+	$(GO) test -C $(GO_API_DIR) -c -o api.$(BINARY_TEST)
 	-$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
+	@echo "api unit tests complete"
+
+.PHONY: go_test_unit_clients
+go_test_unit_clients:
+	@$(call clean_test)
+	$(GO) test -C $(GO_CLIENTS_DIR) -c -o clients.$(BINARY_TEST)
 	-$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
+	@echo "clients unit tests complete"
+
+.PHONY: go_test_unit_handlers
+go_test_unit_handlers:
+	@$(call clean_test)
+	$(GO) test -C $(GO_HANDLERS_DIR) -c -o handlers.$(BINARY_TEST)
 	-$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	@cat $(LOG_DIR)/errors.log
+	@echo "handlers unit tests complete"
+
+.PHONY: go_test_unit_util
+go_test_unit_util:
+	@$(call clean_test)
+	$(GO) test -C $(GO_UTIL_DIR) -c -o util.$(BINARY_TEST)
 	-$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
+	@echo "util unit tests complete"
+
+.PHONY: go_test_unit
+go_test_unit: $(GO_TARGET) go_test_unit_api go_test_unit_clients go_test_unit_handlers go_test_unit_util
+	@echo "unit tests complete"
 
 .PHONY: go_test_fuzz
 go_test_fuzz: $(GO_TARGET)

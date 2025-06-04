@@ -95,7 +95,7 @@ func TestParseHandlerOptions(t *testing.T) {
 	}{
 		{
 			name: "cache=STORE",
-			md:   getMethodDescriptor(t, "PostPrompt"),
+			md:   getMethodDescriptor(t, "GetSuggestion"),
 			validate: func(got *HandlerOptions) bool {
 				return got.Unpack().CacheType == types.CacheType_STORE
 			},
@@ -161,7 +161,7 @@ func TestParseHandlerOptions(t *testing.T) {
 }
 
 func BenchmarkParseHandlerOptions(b *testing.B) {
-	md := getMethodDescriptor(b, "PostPrompt")
+	md := getMethodDescriptor(b, "GetSuggestion")
 	reset(b)
 
 	for b.Loop() {

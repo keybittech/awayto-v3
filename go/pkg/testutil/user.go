@@ -6,6 +6,7 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
@@ -86,6 +87,7 @@ func (tus *TestUsersStruct) GetUserSession(pool *pgxpool.Pool) (*types.Concurren
 }
 
 func (tus *TestUsersStruct) SetCookieData(cookies []*http.Cookie) {
+	tus.CookieData = make([]http.Cookie, 0)
 	for _, c := range cookies {
 		tus.CookieData = append(tus.CookieData, *c)
 	}
@@ -95,10 +97,14 @@ func (tus *TestUsersStruct) getUserClient() *http.Client {
 	if tus.Client != nil {
 		return tus.Client
 	}
+	if tus.CookieData == nil {
+		log.Fatal("no cookie data to getUserClient with, did the user login?")
+	}
 
 	jar, _ := cookiejar.New(nil)
 	appURL, _ := url.Parse(util.E_APP_HOST_URL)
 
+	// convert regular struct data to pointer
 	cookies := make([]*http.Cookie, 0, len(tus.CookieData))
 	for _, c := range tus.CookieData {
 		cookies = append(cookies, &c)

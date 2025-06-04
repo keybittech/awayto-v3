@@ -42,7 +42,7 @@ func testIntegrationJoinGroup(t *testing.T) {
 				}
 			}
 
-			err := testUser.Login()
+			_, err := testUser.Login()
 			if err != nil {
 				t.Fatalf("could not login as test user, %v", err)
 			}

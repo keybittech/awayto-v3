@@ -34,7 +34,7 @@ func (a *API) InitAuthProxy() {
 
 	for _, ur := range userRoutes {
 		authRoute := fmt.Sprintf("/auth/realms/%s/%s", kcRealm, ur)
-		authMux.Handle(authRoute, http.StripPrefix("/auth",
+		a.Server.Handler.(*http.ServeMux).Handle(authRoute, http.StripPrefix("/auth",
 			http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 				util.SetForwardingHeaders(req)
 				authProxy.ServeHTTP(w, req)

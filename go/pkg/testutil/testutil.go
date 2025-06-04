@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"encoding/json"
 	"io"
 	"log"
 	"os"
@@ -11,7 +12,6 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"golang.org/x/exp/mmap"
-	"google.golang.org/protobuf/encoding/protojson"
 )
 
 var (
@@ -33,7 +33,7 @@ func ResetB(b *testing.B) {
 func LoadIntegrations() {
 	jsonBytes, err := os.ReadFile(filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json"))
 	if err == nil {
-		err = protojson.Unmarshal(jsonBytes, IntegrationTest)
+		err = json.Unmarshal(jsonBytes, IntegrationTest)
 		if err != nil {
 			log.Fatal(err)
 		}
@@ -41,13 +41,13 @@ func LoadIntegrations() {
 }
 
 func SaveIntegrations() {
-	jsonBytes, _ := protojson.Marshal(IntegrationTest)
+	jsonBytes, _ := json.Marshal(IntegrationTest)
 	integrationTestPath := filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json")
 	os.WriteFile(integrationTestPath, jsonBytes, 0600)
 }
 
 type IntegrationTestStruct struct {
-	TestUsers map[int32]*TestUsersStruct
+	TestUsers map[int32]*TestUsersStruct `json:"testUsers"`
 	*types.IntegrationTest
 }
 

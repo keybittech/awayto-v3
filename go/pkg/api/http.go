@@ -10,7 +10,7 @@ import (
 )
 
 func (a *API) RedirectHTTP(httpPort int) {
-	httpRedirector := &http.Server{
+	a.Redirect = &http.Server{
 		Addr:         fmt.Sprintf(":%d", httpPort),
 		ReadTimeout:  5 * time.Second,
 		WriteTimeout: 5 * time.Second,
@@ -22,11 +22,11 @@ func (a *API) RedirectHTTP(httpPort int) {
 		http.Redirect(w, r, fmt.Sprintf("%s%s", util.E_APP_HOST_URL, r.URL.Path), http.StatusMovedPermanently)
 	})
 
-	httpRedirector.Handler = httpRedirectorMux
+	a.Redirect.Handler = httpRedirectorMux
 
 	util.DebugLog.Println("listening on ", strconv.Itoa(httpPort))
 
-	err := httpRedirector.ListenAndServe()
+	err := a.Redirect.ListenAndServe()
 	if err != nil {
 		util.ErrorLog.Println(util.ErrCheck(err))
 		return

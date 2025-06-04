@@ -51,7 +51,6 @@ func (w *UnixResponseWriter) WriteHeader(statusCode int) {
 }
 
 func (a *API) InitUnixServer(unixPath string) {
-
 	DEFAULT_UNIX_IGNORED_PROTO_FIELDS = append(DEFAULT_UNIX_IGNORED_PROTO_FIELDS, util.DEFAULT_IGNORED_PROTO_FIELDS...)
 
 	_, err := os.Stat(unixPath)
@@ -62,17 +61,15 @@ func (a *API) InitUnixServer(unixPath string) {
 		}
 	}
 
-	unixListener, err := net.Listen("unix", unixPath)
+	a.Unix, err = net.Listen("unix", unixPath)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	defer unixListener.Close()
-
 	util.DebugLog.Println("Listening on", unixPath)
 
 	for {
-		conn, err := unixListener.Accept()
+		conn, err := a.Unix.Accept()
 		if err != nil {
 			util.ErrorLog.Println("Error accepting unix connection:", err)
 			continue

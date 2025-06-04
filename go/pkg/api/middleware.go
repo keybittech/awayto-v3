@@ -2,7 +2,6 @@ package api
 
 import (
 	"bytes"
-	"errors"
 	"log"
 	"net"
 	"net/http"
@@ -55,18 +54,22 @@ func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.Handler
 		return func(w http.ResponseWriter, req *http.Request) {
 			session, err := a.Handlers.GetSession(req)
 			if session == nil || err != nil {
+				util.ErrorLog.Printf("validate middleware get session fail, err: %v", err)
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
 
-			score := util.ScoreValues([][]string{
+			scorings := [][]string{
 				{session.GetUserAgent(), req.Header.Get("User-Agent")},
 				{session.GetTimezone(), req.Header.Get("X-Tz")},
 				{session.GetAnonIp(), util.AnonIp(req.RemoteAddr)},
-			})
+			}
+
+			score := util.ScoreValues(scorings)
 			if score > 1 {
+				util.DebugLog.Printf("failed score, err: %v", scorings)
 				if err := a.Handlers.DeleteSession(req.Context(), session.GetId()); err != nil {
-					util.ErrorLog.Println(errors.New("could not delete session during score fail"))
+					util.DebugLog.Printf("failed score, err: %v", scorings)
 				}
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
@@ -74,6 +77,7 @@ func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.Handler
 
 			checkedSession := a.Handlers.CheckSessionExpiry(req, session)
 			if checkedSession == nil {
+				util.DebugLog.Printf("failed score, err: %v", scorings)
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}

@@ -5,7 +5,10 @@ import (
 	"crypto/tls"
 	"fmt"
 	"io"
+	"log"
 	"net/http"
+	"net/http/httptest"
+	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -36,6 +39,30 @@ func doAndRead(client *http.Client, req *http.Request) ([]byte, error) {
 	}
 
 	return body, nil
+}
+
+func GetTestReq(method, target string, body io.Reader) *http.Request {
+	var testReq *http.Request
+	var err error
+
+	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
+		testReq, err = http.NewRequest(method, target, body)
+	} else {
+		testReq = httptest.NewRequest(method, target, body)
+	}
+
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	testReq.RemoteAddr = "127.0.0.1:9999"
+	testReq.Header.Set("Accept", "application/json")
+	testReq.Header.Set("X-Tz", "America/Los_Angeles")
+	testReq.Header.Set("User-Agent", "api unit test")
+	if body != nil {
+		testReq.Header.Set("Content-Type", "application/json")
+	}
+	return testReq
 }
 
 func CheckServer() error {
