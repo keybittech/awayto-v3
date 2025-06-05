@@ -16,7 +16,7 @@ siteApi.enhanceEndpoints({
     },
     bookingServicePatchBookingRating: {
       invalidatesTags: []
-    }
+    },
   }
 });
 

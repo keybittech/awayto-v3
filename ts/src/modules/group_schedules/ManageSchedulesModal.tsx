@@ -227,7 +227,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                 {...targets(`manage schedule modal schedule name`, `Schedule Name`, `change the name of the schedule`)}
                 fullWidth
                 disabled={!!schedule.id}
-                helperText="Ex: Spring 2022 Campaign, Q1 Offering"
+                helperText="Ex: Spring Term 2022, Weekly Office Hours, Ongoing Support"
                 value={schedule.name || ''}
                 required
                 onChange={e => setGroupSchedule({ schedule: { ...schedule, name: e.target.value } })}
@@ -418,7 +418,6 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
         <Grid size={12} sx={{}}>
           <Box component="fieldset" p={2} sx={classes.legendBox}>
             <legend>Step 3. Review</legend>
-            <Typography pb={2} variant="body1">Preview what your users will see when filling out their own schedules.</Typography>
             <ScheduleDisplay schedule={schedule} />
           </Box>
         </Grid>

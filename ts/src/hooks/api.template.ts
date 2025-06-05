@@ -1,7 +1,6 @@
 import { MutationDefinition, QueryDefinition } from '@reduxjs/toolkit/query';
 import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, TypedUseQueryHookResult, retry, reactHooksModule, buildCreateApi, coreModule } from '@reduxjs/toolkit/query/react'
 
-import { RootState } from './store';
 import { utilSlice } from './util';
 
 const {
@@ -10,20 +9,12 @@ const {
 
 const setSnack = utilSlice.actions.setSnack;
 
-const modifiedResources: Record<string, string> = {};
-
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = async (args, api) => {
-
   const baseQuery = fetchBaseQuery({
+    cache: 'no-cache',
+    mode: 'same-origin',
     credentials: 'include',
     baseUrl: VITE_REACT_APP_APP_HOST_URL + "/api",
-    prepareHeaders(headers) {
-      const lastModified = modifiedResources[args.url];
-      if (lastModified) {
-        headers.set('If-Modified-Since', lastModified);
-      }
-      return headers
-    },
   });
 
   let result = await baseQuery(args, api, {});
@@ -38,23 +29,6 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = as
     default:
   }
 
-  const lastModified = result.meta?.response?.headers.get('last-modified');
-  if (lastModified) {
-    if (lastModified != modifiedResources[args.url]) {
-      return result;
-    } else {
-      modifiedResources[args.url] = lastModified;
-    }
-  }
-
-  if (result.meta?.response?.status === 304 && api.queryCacheKey) {
-    const state = api.getState() as RootState;
-    const cachedData = state.api.queries[api.queryCacheKey]?.data;
-
-    if (cachedData) {
-      return { data: cachedData };
-    }
-  }
   return result;
 }
 

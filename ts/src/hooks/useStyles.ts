@@ -143,6 +143,15 @@ export const theme = createTheme(paletteTheme, {
         })
       }
     },
+    MuiChip: {
+      styleOverrides: {
+        root: {
+          '&:hover': {
+            backgroundColor: 'lightcoral'
+          }
+        }
+      }
+    },
     MuiDialog: {
       styleOverrides: {
         container: {

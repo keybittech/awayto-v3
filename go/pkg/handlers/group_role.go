@@ -325,16 +325,22 @@ func (h *Handlers) GetGroupRoles(info ReqInfo, data *types.GetGroupRolesRequest)
 		return nil, nil
 	}
 
-	roles := util.BatchQuery[types.IGroupRole](info.Batch, `
+	rolesReq := util.BatchQuery[types.IGroupRole](info.Batch, `
 		SELECT egr.id, er.name, egr."roleId", egr."createdOn"
 		FROM dbview_schema.enabled_group_roles egr
 		JOIN dbview_schema.enabled_roles er ON er.id = egr."roleId"
 		WHERE egr."groupId" = $1 AND er.name != 'Admin'
 	`, groupId)
 
+	defaultRoleIdReq := util.BatchQueryRow[types.ILookup](info.Batch, `
+		SELECT "defaultRoleId" as id
+		FROM dbview_schema.enabled_groups
+		WHERE id = $1
+	`, groupId)
+
 	info.Batch.Send(info.Ctx)
 
-	return &types.GetGroupRolesResponse{GroupRoles: *roles}, nil
+	return &types.GetGroupRolesResponse{GroupRoles: *rolesReq, DefaultRoleId: (*defaultRoleIdReq).GetId()}, nil
 }
 
 func (h *Handlers) DeleteGroupRole(info ReqInfo, data *types.DeleteGroupRoleRequest) (*types.DeleteGroupRoleResponse, error) {

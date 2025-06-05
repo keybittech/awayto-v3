@@ -33,7 +33,7 @@ export function useSuggestions(refName: string): {
   const allowSuggestions = userGroup.ai;
 
   const suggest: SuggestFn = useCallback(({ id, prompt }) => {
-    setHelpText(`Suggestion Parameters: ${prompt.replace('!$', ' ')}`);
+    setHelpText(`These suggestions were generated using the parameters: ${prompt.replace('!$', ' ')}`);
     try {
       if (!allowSuggestions) {
         return

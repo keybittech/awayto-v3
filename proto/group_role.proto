@@ -106,6 +106,7 @@ message GetGroupRolesRequest {}
 
 message GetGroupRolesResponse {
   repeated IGroupRole groupRoles = 1 [(google.api.field_behavior) = REQUIRED];
+  string defaultRoleId = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 message DeleteGroupRoleRequest {

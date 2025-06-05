@@ -8,7 +8,6 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -146,8 +145,14 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			ctx := req.Context()
 			userSub := session.GetUserSub()
 
+			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
+			w.Header().Set("Vary", "Cookie")
+
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
+				w.Header().Set("Pragma", "no-cache")
+				w.Header().Set("Expires", "0")
+
 				next(w, req, session)
 
 				iLen := len(opts.Invalidations)
@@ -159,83 +164,39 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				return
 			}
 
+			// Serve from cache if possible
 			cacheKey := userSub + req.URL.String()
-			cacheKeyModTime := cacheKey + clients.CacheKeySuffixModTime
-
-			// Check redis cache for request
-			cachedResponse := a.Handlers.Redis.RedisClient.MGet(ctx, cacheKey, cacheKeyModTime).Val()
-
-			cachedData, dataOk := cachedResponse[0].(string)
-			modTime, modOk := cachedResponse[1].(string)
-
-			// cachedData will be {} if empty
-			if dataOk && modOk && len(cachedData) > 2 && modTime != "" {
-				lastMod, err := time.Parse(time.RFC3339Nano, modTime)
-				if err == nil {
-
-					w.Header().Set("Last-Modified", lastMod.Format(http.TimeFormat))
-
-					// Check if client sent If-Modified-Since header
-					if ifModifiedSince := req.Header.Get("If-Modified-Since"); ifModifiedSince != "" {
-						if t, err := time.Parse(http.TimeFormat, ifModifiedSince); err == nil {
-							if !lastMod.Truncate(time.Second).After(t.Truncate(time.Second)) {
-								w.Header().Set("X-Cache-Status", "UNMODIFIED")
-								w.WriteHeader(http.StatusNotModified)
-								return
-							}
-						}
-					}
-
-					// Serve cached data if no header interaction
-					w.Header().Set("X-Cache-Status", "HIT")
-					w.Header().Set("Content-Length", strconv.Itoa(len(cachedData)))
-					_, err := w.Write([]byte(cachedData))
-					if err != nil {
-						util.ErrorLog.Println(util.ErrCheck(err))
-					}
-					return
+			cachedBytes, err := a.Handlers.Redis.RedisClient.Get(ctx, cacheKey).Bytes()
+			if err == nil {
+				w.Header().Set("Content-Length", strconv.Itoa(len(cachedBytes)))
+				_, err := w.Write(cachedBytes)
+				if err != nil {
+					util.ErrorLog.Println(util.ErrCheck(err))
 				}
+
+				w.WriteHeader(http.StatusNotModified)
+				return
 			}
 
-			// No cached data, create it on this request
-			timeNow := time.Now()
-
-			w.Header().Set("X-Cache-Status", "MISS")
-			w.Header().Set("Last-Modified", timeNow.Format(http.TimeFormat))
-
+			// Add to cache
 			var buf bytes.Buffer
-
-			// Perform the handler request
 			cacheWriter := &CacheWriter{
 				ResponseWriter: w,
 				Buffer:         &buf,
 			}
 
-			// Response is written out to client
 			next(cacheWriter, req, session)
 
-			// Cache any response
 			if buf.Len() > 0 {
 				duration := duration180
 
 				if hasDuration {
 					duration = parsedDuration
 				} else if shouldStore {
-					duration = 0
+					duration = 86400
 				}
 
-				pipe := a.Handlers.Redis.RedisClient.Pipeline()
-				modTimeStr := timeNow.Format(time.RFC3339Nano)
-
-				if duration > 0 {
-					pipe.SetEx(ctx, cacheKey, buf.Bytes(), duration)
-					pipe.SetEx(ctx, cacheKeyModTime, modTimeStr, duration)
-				} else {
-					pipe.Set(ctx, cacheKey, buf.Bytes(), 0)
-					pipe.Set(ctx, cacheKeyModTime, modTimeStr, 0)
-				}
-
-				_, err := pipe.Exec(ctx)
+				_, err := a.Handlers.Redis.RedisClient.SetEx(ctx, cacheKey, buf.Bytes(), duration).Result()
 				if err != nil {
 					util.ErrorLog.Println("failed to perform cache insert pipeline", err.Error(), cacheKey)
 				}

@@ -132,6 +132,10 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
                     color="secondary"
                     onClick={() => {
                       if (gr.id?.length) {
+                        if (gr.roleId == groupRolesRequest.defaultRoleId) {
+                          setSnack({ snackType: 'warning', snackOn: 'Change the default role before deleting this one.' });
+                          return;
+                        }
                         deleteGroupRole({ ids: gr.id });
                       }
                     }}
@@ -158,7 +162,9 @@ export function ManageGroupRolesModal({ children, editGroup, validArea, saveTogg
                     color="secondary"
                     sx={{ pr: 4 }}
                     onClick={_ => {
-                      patchGroupRoles({ patchGroupRolesRequest: { defaultRoleId } });
+                      if (defaultRoleId != groupRolesRequest.defaultRoleId) {
+                        patchGroupRoles({ patchGroupRolesRequest: { defaultRoleId } });
+                      }
                     }}
                   >Update</Button>
                 }

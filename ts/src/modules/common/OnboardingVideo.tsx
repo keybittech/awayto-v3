@@ -47,13 +47,13 @@ function OnboardingVideo(_: IComponent): React.JSX.Element {
           </IconButton>
         </Box>
       </div>
-      {showSubtitles && <Grid sx={{ position: 'absolute', left: '4px', right: '64px', bottom: '48px', backgroundColor: '#000' }}>
+      {showSubtitles && <Grid sx={{ position: 'absolute', left: '4px', right: '64px', bottom: '48px', backgroundColor: 'rgba(0,0,0,.1)' }}>
         <Grid container sx={{
-          backgroundColor: '#000',
+          backgroundColor: 'rgba(0,0,0,.5)',
           overflow: 'hidden',
-          height: '64px',
+          height: '256px',
           position: 'relative',
-          maskImage: 'linear-gradient(to bottom, transparent 5%, #000 45%, #000 65%, transparent 95%)'
+          maskImage: 'linear-gradient(to bottom, transparent 5%, #000 25%, #000 85%, transparent 95%)'
         }}>
           <Grid
             size="grow"
@@ -68,7 +68,8 @@ function OnboardingVideo(_: IComponent): React.JSX.Element {
             }}
             ref={textRef}
           >
-
+            <p>&nbsp;</p>
+            <p>&nbsp;</p>
             <p>Start by providing a unique name for your group. Group name can be changed later.</p>
             <p>If AI Suggestions are enabled, the group name and description will be used to generate custom suggestions for naming roles, services, and other elements on the site.</p>
             <p>Restrict who can join your group by adding an email to the list of allowed domains. For example, site.com is the domain for the email user@site.com. To ensure only these email accounts can join the group, enter site.com into the Allowed Email Domains and press Add. Multiple domains can be added. Leave empty to allow users with any email address.</p>
