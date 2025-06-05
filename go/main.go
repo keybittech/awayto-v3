@@ -1,6 +1,7 @@
 package main
 
 import (
+	"crypto/tls"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
@@ -21,6 +22,17 @@ func main() {
 	)
 
 	server := api.NewAPI(util.E_GO_HTTPS_PORT)
+	server.Server.TLSConfig = &tls.Config{
+		MinVersion:               tls.VersionTLS13,
+		PreferServerCipherSuites: true,
+		CipherSuites: []uint16{
+			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+		},
+		CurvePreferences: []tls.CurveID{
+			tls.X25519,
+			tls.CurveP256,
+		},
+	}
 
 	go server.RedirectHTTP(util.E_GO_HTTP_PORT)
 
@@ -32,8 +44,12 @@ func main() {
 	server.InitStatic()
 
 	rateLimiter := api.NewRateLimit("api", rate.Limit(util.E_RATE_LIMIT), util.E_RATE_LIMIT_BURST, time.Duration(5*time.Minute))
-	limitMiddleware := server.LimitMiddleware(rateLimiter)(server.Server.Handler)
-	server.Server.Handler = server.AccessRequestMiddleware(limitMiddleware)
+
+	handler := server.Server.Handler
+	handler = server.SecurityHeadersMiddleware(handler)
+	handler = server.LimitMiddleware(rateLimiter)(handler)
+	handler = server.AccessRequestMiddleware(handler)
+	server.Server.Handler = handler
 
 	stopChan := make(chan struct{}, 1)
 	go setupGc(server, stopChan)

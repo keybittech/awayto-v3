@@ -2,10 +2,12 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"log"
 	"net"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -13,6 +15,51 @@ import (
 )
 
 type SessionHandler func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession)
+
+func (a *API) SecurityHeadersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		nonce := util.GenerateState()
+
+		ctx := context.WithValue(req.Context(), "CSP-Nonce", []byte(nonce))
+		req = req.WithContext(ctx)
+
+		var csp strings.Builder
+
+		csp.WriteString("default-src 'self'; ")
+		csp.WriteString("script-src 'nonce-" + nonce + "' 'strict-dynamic'; ")
+		csp.WriteString("style-src 'self' 'unsafe-inline'; ")
+		csp.WriteString("img-src 'self' data: https:; ")
+		csp.WriteString("font-src 'self' data:; ")
+		csp.WriteString("connect-src 'self' wss: https: stun: turn:; ")
+		csp.WriteString("media-src 'self' blob:; ")
+		csp.WriteString("object-src 'none'; ")
+		csp.WriteString("child-src 'self' blob:; ")
+		csp.WriteString("worker-src 'self' blob:; ")
+		csp.WriteString("frame-ancestors 'none'; ")
+		csp.WriteString("form-action 'self'; ")
+		csp.WriteString("base-uri 'self'; ")
+		csp.WriteString("upgrade-insecure-requests;")
+
+		cs := csp.String()
+
+		w.Header().Set("Content-Security-Policy", cs)
+		w.Header().Set("X-Content-Security-Policy", cs)
+
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("X-Frame-Options", "DENY")
+		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
+		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(self), camera=(self)")
+
+		if req.TLS != nil {
+			w.Header().Set("Strict-Transport-Security", "max-age=31536000; includeSubDomains; preload")
+		}
+
+		w.Header().Set("Server", "")
+
+		next.ServeHTTP(w, req)
+	})
+}
 
 func (a *API) AccessRequestMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
@@ -54,6 +101,18 @@ func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.Handler
 			session, err := a.Handlers.GetSession(req)
 			if session == nil || err != nil {
 				util.ErrorLog.Printf("validate middleware get session fail, err: %v", err)
+
+				// Clear invalid session cookie
+				http.SetCookie(w, &http.Cookie{
+					Name:     "session_id",
+					Value:    "",
+					Path:     "/",
+					MaxAge:   -1,
+					HttpOnly: true,
+					Secure:   true,
+					SameSite: http.SameSiteStrictMode,
+				})
+
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
@@ -94,16 +153,16 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 				next(w, req, session)
 			}
-		} else {
-			return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-				if session.GetRoleBits()&siteRole == 0 {
-					util.WriteAuthRequest(req, session.GetUserSub(), opts.SiteRoleName)
-					http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
-					return
-				}
+		}
 
-				next(w, req, session)
+		return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
+			if session.GetRoleBits()&siteRole == 0 {
+				util.WriteAuthRequest(req, session.GetUserSub(), opts.SiteRoleName)
+				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
+				return
 			}
+
+			next(w, req, session)
 		}
 	}
 }
@@ -146,13 +205,12 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			userSub := session.GetUserSub()
 
 			w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, private")
-			w.Header().Set("Vary", "Cookie")
+			w.Header().Set("Vary", "Cookie, User-Agent, X-Tz")
+			w.Header().Set("Pragma", "no-cache")
+			w.Header().Set("Expires", "0")
 
 			// Any non-GET processed normally, and deletes cache key unless being stored
 			if !shouldStore && req.Method != http.MethodGet {
-				w.Header().Set("Pragma", "no-cache")
-				w.Header().Set("Expires", "0")
-
 				next(w, req, session)
 
 				iLen := len(opts.Invalidations)

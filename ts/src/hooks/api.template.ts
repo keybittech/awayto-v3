@@ -11,10 +11,16 @@ const setSnack = utilSlice.actions.setSnack;
 
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError> = async (args, api) => {
   const baseQuery = fetchBaseQuery({
+    timeout: 30000,
     cache: 'no-cache',
     mode: 'same-origin',
     credentials: 'include',
     baseUrl: VITE_REACT_APP_APP_HOST_URL + "/api",
+    prepareHeaders(headers) {
+      headers.set('X-Tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
+      headers.set('Content-Type', 'application/json');
+      return headers;
+    },
   });
 
   let result = await baseQuery(args, api, {});

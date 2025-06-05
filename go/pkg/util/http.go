@@ -8,7 +8,9 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/http/httptest"
 	"net/url"
+	"regexp"
 )
 
 type ErrRes struct {
@@ -171,4 +173,28 @@ func PostFormData(ctx context.Context, url string, headers http.Header, data io.
 	}
 
 	return respBody, nil
+}
+
+func WriteNonceIntoBody(handler http.Handler, w http.ResponseWriter, req *http.Request) {
+	recorder := httptest.NewRecorder()
+
+	handler.ServeHTTP(recorder, req)
+
+	originalBody, err := io.ReadAll(recorder.Body)
+	if err != nil {
+		http.Error(w, "Error reading file", http.StatusInternalServerError)
+		return
+	}
+
+	nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
+	if !ok {
+		http.Error(w, "No csp nonce for index build", http.StatusInternalServerError)
+		return
+	}
+	modifiedBody := regexp.MustCompile(`VITE_NONCE`).ReplaceAll(originalBody, nonce)
+
+	_, err = w.Write(modifiedBody)
+	if err != nil {
+		ErrorLog.Println(ErrCheck(err))
+	}
 }

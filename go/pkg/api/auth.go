@@ -1,13 +1,18 @@
 package api
 
 import (
+	"bytes"
 	json "encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"log"
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"regexp"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -22,6 +27,27 @@ func (a *API) InitAuthProxy() {
 
 	authMux := http.NewServeMux()
 	authProxy := httputil.NewSingleHostReverseProxy(kcInternal)
+
+	authProxy.ModifyResponse = func(resp *http.Response) error {
+		if shouldAddNonce(resp.Request.URL.Path) &&
+			strings.Contains(resp.Header.Get("Content-Type"), "text/html") {
+
+			body, err := io.ReadAll(resp.Body)
+			if err != nil {
+				return err
+			}
+			resp.Body.Close()
+
+			if nonce, ok := resp.Request.Context().Value("CSP-Nonce").([]byte); ok {
+				body = addNonceToHTML(body, nonce)
+			}
+
+			resp.Body = io.NopCloser(bytes.NewReader(body))
+			resp.ContentLength = int64(len(body))
+			resp.Header.Set("Content-Length", strconv.Itoa(len(body)))
+		}
+		return nil
+	}
 
 	userRoutes := []string{
 		"login-actions/registration",
@@ -168,4 +194,30 @@ func (a *API) InitAuthProxy() {
 
 		http.Redirect(w, req, redirectURL, http.StatusFound)
 	}))
+}
+
+func shouldAddNonce(path string) bool {
+	noncePages := []string{
+		"login-actions/authenticate",
+		"login-actions/registration",
+		"login-actions/reset-credentials",
+		"protocol/openid-connect/auth",
+		"protocol/openid-connect/registrations",
+	}
+
+	for _, page := range noncePages {
+		if strings.Contains(path, page) {
+			return true
+		}
+	}
+	return false
+}
+
+func addNonceToHTML(body []byte, nonce []byte) []byte {
+	modifiedBody := regexp.MustCompile(`(?i)<script\b`).ReplaceAll(body, []byte(`<script nonce="`+string(nonce)+`"`))
+	modifiedBody = regexp.MustCompile(`\s*onsubmit="[^"]*"`).ReplaceAll(modifiedBody, []byte(""))
+	scriptPattern := regexp.MustCompile(`(localStorage\.clear\(\);)(\s*loginForm\.submit\(\);)`)
+	modifiedBody = scriptPattern.ReplaceAll(modifiedBody, []byte(`${1}
+			document.getElementById('kc-login').disabled = true;${2}`))
+	return modifiedBody
 }

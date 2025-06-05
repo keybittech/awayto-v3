@@ -8,7 +8,7 @@
 
     <main>{{ block "main" . }}{{ end }}</main>
 
-    <script>
+    <script nonce="VITE_NONCE">
       document.addEventListener("DOMContentLoaded", function() {
         document.querySelector('#current-year').innerHTML = (new Date()).getFullYear();
   

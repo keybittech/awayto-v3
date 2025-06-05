@@ -11,10 +11,11 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
+// 30 days
 const maxAge = 60 * 60 * 24 * 30
 
 var (
-	maxAgeStr = strconv.Itoa(maxAge)
+	maxAgeStr = "public, max-age=" + strconv.Itoa(maxAge)
 	maxAgeDur = time.Duration(maxAge) * time.Second
 )
 
@@ -53,11 +54,17 @@ func (sr *StaticRedirect) WriteHeader(code int) {
 func (a *API) InitStatic() {
 	// Attach landing/ to domain url root /
 	landingFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/landing/public/", util.E_PROJECT_DIR)))
-	a.Server.Handler.(*http.ServeMux).Handle("/", http.StripPrefix("/", http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
-		w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
-		landingFiles.ServeHTTP(w, r)
-	})))
+	a.Server.Handler.(*http.ServeMux).Handle("/", http.StripPrefix("/",
+		http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+			w.Header().Set("Cache-Control", maxAgeStr)
+			w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
+			if req.URL.Path == "" {
+				util.WriteNonceIntoBody(landingFiles, w, req)
+			} else {
+				landingFiles.ServeHTTP(w, req)
+			}
+		}),
+	))
 
 	// Attach demos
 	demoFiles := http.FileServer(http.Dir(fmt.Sprintf("%s/demos/final/", util.E_PROJECT_DIR)))
@@ -66,7 +73,7 @@ func (a *API) InitStatic() {
 		a.LimitMiddleware(demoRl)(
 			a.ValidateSessionMiddleware()(
 				SessionHandler(func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-					w.Header().Set("Cache-Control", "public, max-age="+maxAgeStr)
+					w.Header().Set("Cache-Control", maxAgeStr)
 					w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
 					demoFiles.ServeHTTP(w, req)
 				}),
