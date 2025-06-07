@@ -246,12 +246,12 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			next(cacheWriter, req, session)
 
 			if buf.Len() > 0 {
-				duration := duration180
+				duration := duration180s
 
 				if hasDuration {
 					duration = parsedDuration
 				} else if shouldStore {
-					duration = 86400
+					duration = duration86400s
 				}
 
 				_, err := a.Handlers.Redis.RedisClient.SetEx(ctx, cacheKey, buf.Bytes(), duration).Result()
