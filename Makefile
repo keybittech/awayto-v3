@@ -98,6 +98,7 @@ DEV_SCRIPTS=$(DEPLOY_SCRIPTS)/dev
 DOCKER_SCRIPTS=$(DEPLOY_SCRIPTS)/docker
 DEPLOY_HOST_SCRIPTS=$(DEPLOY_SCRIPTS)/host
 CRON_SCRIPTS=$(DEPLOY_SCRIPTS)/cron
+LLM_SCRIPTS=$(DEPLOY_SCRIPTS)/llm
 DOCKER_COMPOSE_SCRIPT=$(DEPLOY_SCRIPTS)/docker/docker-compose.yml
 AUTH_SCRIPTS=$(DEPLOY_SCRIPTS)/auth
 AUTH_INSTALL_SCRIPT=$(AUTH_SCRIPTS)/install.sh
@@ -160,10 +161,11 @@ endef
 
 define clean_test
 	@echo "======== cleaning tests ========"
-	$(DOCKER_REDIS_EXEC) FLUSHALL
 	$(call clean_logs)
 	$(call set_local_unix_sock_dir)
 endef
+
+	# $(DOCKER_REDIS_EXEC) FLUSHALL
 
 #################################
 #             FLAGS             #
@@ -183,6 +185,15 @@ GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.fuzz=^$$ -test.bench=$${BENCH:-.} -test.
 # $${PROF:-} # -cpuprofile=cpu.prof
 
 GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
+
+ASK_BASE_VOLUMES=$(PROJECT_DIR)/.env.template:/workspace/.env.template:rw,$(PROJECT_DIR)/.env:/workspace/.env:ro,$(PROJECT_DIR)/.gitignore:/workspace/.gitignore:ro,$(PROJECT_DIR)/Makefile:/workspace/Makefile:ro,$(PROJECT_DIR)/README.md:/workspace/README.md:ro,$(PROJECT_DIR)/secrets:/workspace/secrets:ro,$(PROJECT_DIR)/deploy:/workspace/deploy:rw,$(PROJECT_DIR)/certs:/workspace/certs:ro,$(PROJECT_DIR)/log:/workspace/log:rw,$(PROJECT_DIR)/demos:/workspace/demos:ro,$(PROJECT_DIR)/local_tmp:/workspace/local_tmp:rw,$(PROJECT_DIR)/go:/workspace/go:rw,$(PROJECT_DIR)/java:/workspace/java:rw,$(PROJECT_DIR)/landing:/workspace/landing:rw,$(PROJECT_DIR)/proto:/workspace/proto:rw,$(PROJECT_DIR)/ts:/workspace/ts:rw
+
+# ASK_FOLDER_VOLUMES=$$(if [ "$${ASK_GO}" ]; then echo "$(PROJECT_DIR)/go:/workspace/go:rw"; elif [ "$${ASK_TS}" ]; then echo "$(PROJECT_DIR)/ts:/workspace/ts:rw"; elif [ "$${ASK_JAVA}" ]; then echo "$(PROJECT_DIR)/java:/workspace/java:rw"; elif [ "$${ASK_LANDING}" ]; then echo "$(PROJECT_DIR)/landing:/workspace/landing:rw"; else echo "$(PROJECT_DIR)/deploy:/workspace/deploy:rw,$(PROJECT_DIR)/go:/workspace/go:rw,$(PROJECT_DIR)/java:/workspace/java:rw,$(PROJECT_DIR)/landing:/workspace/landing:rw,$(PROJECT_DIR)/proto:/workspace/proto:rw,$(PROJECT_DIR)/ts:/workspace/ts:rw"; fi)
+
+# use ASK_GO, ASK_TS, ASK_LANDING, ASK_JAVA to specify location
+# ASK_FOLDER_VOLUMES=$(if $${ASK_GO},$(PROJECT_DIR)/go:/workspace/go:rw,$(if $${ASK_TS},$(PROJECT_DIR)/ts:/workspace/ts:rw,$(if $${ASK_JAVA},$(PROJECT_DIR)/java:/workspace/java:rw,$(if $${ASK_LANDING},$(PROJECT_DIR)/landing:/workspace/landing:rw,$(PROJECT_DIR)/go:/workspace/go:rw,$(PROJECT_DIR)/java:/workspace/java:rw,$(PROJECT_DIR)/landing:/workspace/landing:rw,$(PROJECT_DIR)/proto:/workspace/proto:rw,$(PROJECT_DIR)/ts:/workspace/ts:rw))))
+
+ASK_VOLUMES=-e SANDBOX_VOLUMES=$(ASK_BASE_VOLUMES)
 
 #################################
 #             BUILDS            #
@@ -800,9 +811,10 @@ auto_clean:
 .PHONY: auto_ask
 auto_ask: auto_clean
 	@docker run -t --rm --pull=always \
+	$(ASK_VOLUMES) \
+	--network host \
 	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik \
 	-e SANDBOX_USER_ID=$(shell id -u) \
-	-e SANDBOX_VOLUMES=$(PROJECT_DIR):/workspace:rw \
 	-e LLM_API_KEY=$(GEMINI_2_5_KEY) \
 	-e LLM_MODEL="gemini/gemini-2.0-flash" \
 	-e LOG_ALL_EVENTS=true \
@@ -811,5 +823,5 @@ auto_ask: auto_clean
 	--add-host host.docker.internal:host-gateway \
 	--name openhands-app \
 	docker.all-hands.dev/all-hands-ai/openhands:0.39 \
-	python -m openhands.core.main -t "$(shell cat working/test_thing) $(shell cat)"
+	python -m openhands.core.main -t "$(shell cat $(LLM_SCRIPTS)/INSTRUCTIONS.md) $(shell cat)"
 
