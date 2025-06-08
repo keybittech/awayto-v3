@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/http/httputil"
 	"net/url"
+	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -28,7 +29,11 @@ func setupStaticBuildOrProxy(a *API) {
 
 	a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app/",
 		http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-			proxy.ServeHTTP(w, req)
+			if strings.Contains(req.Header.Get("Accept"), "text/html") {
+				util.WriteNonceIntoBody(proxy, w, req)
+			} else {
+				proxy.ServeHTTP(w, req)
+			}
 		}),
 	))
 }
