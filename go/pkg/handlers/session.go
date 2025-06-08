@@ -169,7 +169,7 @@ func (h *Handlers) GetSession(req *http.Request, userSub ...string) (concurrentS
 	if !found {
 		batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
 		sessionReq := util.BatchQueryRow[types.UserSession](batch, `
-			SELECT id
+			SELECT id, refresh_token, ip_address as "anonIp", user_agent
 			FROM dbtable_schema.user_sessions
 			WHERE id = $1
 		`, sessionId)

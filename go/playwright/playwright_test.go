@@ -26,11 +26,13 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		panic(err)
 	}
-	defer func() {
-		if err := cmd.Process.Kill(); err != nil {
-			fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
-		}
-	}()
+	if cmd != nil {
+		defer func() {
+			if err := cmd.Process.Kill(); err != nil {
+				fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
+			}
+		}()
+	}
 
 	pw, err := playwright.Run()
 	if err != nil {

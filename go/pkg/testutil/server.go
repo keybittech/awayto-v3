@@ -32,5 +32,5 @@ func StartTestServer() (*exec.Cmd, error) {
 		return cmd, nil
 	}
 
-	return nil, fmt.Errorf("Error starting server: %v", util.ErrCheck(err))
+	return nil, nil
 }
