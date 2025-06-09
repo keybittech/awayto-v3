@@ -1,48 +1,16 @@
-LLM_BASE_VOLUMES=$(PROJECT_DIR)/.env.template:/workspace/.env.template:rw,$(PROJECT_DIR)/.env:/workspace/.env:ro,$(PROJECT_DIR)/.gitignore:/workspace/.gitignore:ro,$(PROJECT_DIR)/Makefile:/workspace/Makefile:ro,$(PROJECT_DIR)/README.md:/workspace/README.md:ro,$(PROJECT_DIR)/secrets:/workspace/secrets:ro,$(PROJECT_DIR)/deploy:/workspace/deploy:rw,$(PROJECT_DIR)/certs:/workspace/certs:ro,$(PROJECT_DIR)/log:/workspace/log:rw,$(PROJECT_DIR)/demos:/workspace/demos:ro,$(PROJECT_DIR)/local_tmp:/workspace/local_tmp:rw,$(PROJECT_DIR)/go:/workspace/go:rw,$(PROJECT_DIR)/java:/workspace/java:rw,$(PROJECT_DIR)/landing:/workspace/landing:rw,$(PROJECT_DIR)/proto:/workspace/proto:rw,$(PROJECT_DIR)/ts:/workspace/ts:rw
+LLM_RO_PATHS := .env.template .env .git .gitignore README.md log go/pkg/types deploy/scripts/make/vars.mk deploy/scripts/make/functions.mk deploy/scripts/make/test.mk deploy/scripts/make/deps.mk deploy/scripts/db
+LLM_RW_PATHS := go java landing proto ts
+LLM_NO_PATHS := ts/node_modules landing/node_modules proto/validate proto/google go/buf.build
 
-LLM_VOLUMES=-e SANDBOX_VOLUMES=$(LLM_BASE_VOLUMES)
+LLM_BASE_VOLUMES_RW = $(foreach path,$(LLM_RW_PATHS),$(PROJECT_DIR)/$(path):/workspace/$(path):rw,)
+LLM_BASE_VOLUMES_RO = $(foreach path,$(LLM_RO_PATHS),$(PROJECT_DIR)/$(path):/workspace/$(path):ro,)
+LLM_NO_VOLUMES = $(foreach path,$(LLM_NO_PATHS),--tmpfs /workspace/$(path) )
+
+LLM_VOLUMES=-e SANDBOX_VOLUMES=$(LLM_BASE_VOLUMES_RW),$(LLM_BASE_VOLUMES_RO) $(LLM_NO_VOLUMES)
 
 #################################
 #              LLM              #
 #################################
-
-.PHONY: llm_install_deps
-llm_install_deps:
-	cd /workspace && \
-	echo "Updating package lists..." && \
-	sudo apt-get update && \
-	echo "Upgrading existing packages..." && \
-	sudo apt-get upgrade -y && \
-	sudo apt-get install -y \
-		uidmap \
-		build-essential \
-		jq \
-		default-jre \
-		maven \
-		hugo \
-		protobuf-compiler \
-		protoc-gen-go \
-		git \
-		curl \
-		acl && \
-	echo "Installing Node.js via NVM..." && \
-	curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
-	export NVM_DIR="$$HOME/.nvm" && \
-	[ -s "$$NVM_DIR/nvm.sh" ] && . "$$NVM_DIR/nvm.sh" && \
-	[ -s "$$NVM_DIR/bash_completion" ] && . "$$NVM_DIR/bash_completion" && \
-	nvm install $(NODE_VERSION) && \
-	npm i -g pnpm@latest-10 && \
-	echo "Installing Go..." && \
-	sudo rm -rf /usr/local/go && \
-	curl -L -o /tmp/goinstall.tar.gz https://go.dev/dl/$(GO_VERSION).tar.gz && \
-	sudo tar -C /usr/local -xzf /tmp/goinstall.tar.gz && \
-	rm /tmp/goinstall.tar.gz && \
-	echo "Installing Go tools..." && \
-	/usr/local/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest && \
-	echo "Installing Docker..." && \
-	curl -fsSL https://get.docker.com | sh && \
-	echo "Setting up rootless Docker..." && \
-	dockerd-rootless-setuptool.sh install || true
 
 .PHONY: llm_review
 llm_review:
@@ -64,8 +32,7 @@ llm_ask: llm_clean
 	@docker run -t --rm --pull=always \
 	$(LLM_VOLUMES) \
 	--network host \
-	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik \
-	-e SANDBOX_USER_ID=$(shell id -u) \
+	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.41-nikolaik \
 	-e LLM_API_KEY=$(GEMINI_2_5_KEY) \
 	-e LLM_MODEL="gemini/gemini-2.0-flash" \
 	-e LOG_ALL_EVENTS=true \
@@ -75,3 +42,21 @@ llm_ask: llm_clean
 	--name openhands-app \
 	docker.all-hands.dev/all-hands-ai/openhands:0.39 \
 	python -m openhands.core.main -t "$(shell cat) $(shell cat $(LLM_SCRIPTS)/INSTRUCTIONS.md)"
+
+# -e SANDBOX_USER_ID=$(shell id -u) \
+
+.PHONY: llm_ui
+llm_ui: llm_clean
+	@docker run -it --rm --pull=always \
+	$(LLM_VOLUMES) \
+	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.41-nikolaik \
+	-e LOG_ALL_EVENTS=true \
+	-v /var/run/docker.sock:/var/run/docker.sock \
+	-v ~/.openhands-state:/.openhands-state \
+	-p 3000:3000 \
+	--network host \
+	--name openhands-app \
+	docker.all-hands.dev/all-hands-ai/openhands:0.41
+
+# --add-host host.docker.internal:host-gateway \
+

@@ -54,11 +54,11 @@ go_test_unit_util:
 	@echo "util unit tests complete"
 
 .PHONY: go_test_unit
-go_test_unit: $(GO_TARGET) go_test_unit_api go_test_unit_clients go_test_unit_handlers go_test_unit_util
+go_test_unit: go_test_unit_api go_test_unit_clients go_test_unit_handlers go_test_unit_util
 	@echo "unit tests complete"
 
 .PHONY: go_test_fuzz
-go_test_fuzz: $(GO_TARGET)
+go_test_fuzz:
 	@mkdir -p $(GO_FUZZ_CACHEDIR)
 	@$(call clean_test)
 	$(GO) test -C $(GO_HANDLERS_DIR) -c -o handlers.fuzz.$(BINARY_TEST)
@@ -66,7 +66,7 @@ go_test_fuzz: $(GO_TARGET)
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_ui
-go_test_ui: $(GO_TARGET) docker_db_restore_op
+go_test_ui: docker_db_restore_op
 	rm -f demos/*.webm
 	$(call clean_test)
 	$(GO) test -C $(GO_PLAYWRIGHT_DIR) -c -o playwright.$(BINARY_TEST)
@@ -74,14 +74,14 @@ go_test_ui: $(GO_TARGET) docker_db_restore_op
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_integration
-go_test_integration: $(GO_TARGET)
+go_test_integration:
 	$(call clean_test)
 	$(GO) test -C $(GO_INTEGRATIONS_DIR) -short -c -o integration.$(BINARY_TEST)
 	-$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 
 .PHONY: go_test_integration_long
-go_test_integration_long: $(GO_TARGET)
+go_test_integration_long:
 	$(call clean_test)
 	$(GO) test -C $(GO_INTEGRATIONS_DIR) -c -o integration.long.$(BINARY_TEST)
 	-$(GO_ENVFILE_FLAG) exec $(GO_INTEGRATIONS_DIR)/integration.long.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
@@ -99,7 +99,7 @@ go_test_bench_build:
 	$(GO) test -C $(GO_UTIL_DIR) -c -o util.bench.$(BINARY_TEST) ./...
 
 .PHONY: go_test_bench
-go_test_bench: $(GO_TARGET) go_test_bench_build
+go_test_bench: go_test_bench_build
 	$(call clean_test)
 	-$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
 	-$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.bench.$(BINARY_TEST) $(GO_BENCH_EXEC_FLAGS)
