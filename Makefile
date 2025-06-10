@@ -5,4 +5,5 @@ include ./deploy/scripts/make/develop.mk
 include ./deploy/scripts/make/test.mk
 include ./deploy/scripts/make/docker.mk
 include ./deploy/scripts/make/host.mk
+include ./deploy/scripts/make/deps.mk
 include ./deploy/scripts/make/llm.mk
