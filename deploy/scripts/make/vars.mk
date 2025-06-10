@@ -11,6 +11,10 @@ NODE_VERSION=v22.13.1
 
 export PATH := ${PATH}:/home/$(shell whoami)/.nvm/versions/node/$(NODE_VERSION)/bin:/home/$(shell whoami)/go/bin:/usr/local/go/bin
 
+comma := ,
+empty :=
+space := $(empty) $(empty)
+
 #################################
 #          SOURCE DIRS          #
 #################################
