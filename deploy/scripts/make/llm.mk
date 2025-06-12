@@ -1,6 +1,6 @@
-LLM_RO_PATHS:=.env.template .env .gitignore README.md Makefile log go/pkg/types deploy
+LLM_RO_PATHS:=.env.template .env .gitignore README.md Makefile go/pkg/types deploy
 #$(foreach a,llm db $(foreach b,vars functions test deps,make/$(b).mk),deploy/scripts/$(a))
-LLM_RW_PATHS:=go java landing proto ts .git
+LLM_RW_PATHS:=go java landing proto ts .git log
 LLM_NO_PATHS:=ts/node_modules landing/node_modules proto/validate proto/google go/buf.build
 
 LLM_BASE_VOLUMES_RW = $(subst $(space),$(empty),$(strip $(patsubst %,%,$(foreach path,$(LLM_RW_PATHS),$(PROJECT_DIR)/$(path):/workspace/$(path):rw,))))

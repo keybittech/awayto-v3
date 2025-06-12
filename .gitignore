@@ -33,4 +33,7 @@ java/.factorypath
 working/
 local_tmp/
 *.test
+
+# openhands related
 .vscode
+.openhands
