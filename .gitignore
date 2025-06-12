@@ -36,4 +36,4 @@ local_tmp/
 
 # openhands related
 .vscode
-.openhands
+./.openhands
