@@ -8,6 +8,20 @@ The server is already running in watch mode for folders go/ and ts/. Complete th
 - make go_test_unit
 - make go_test_ui
 
+# Working Procedure - Old
+The Go server acts as a central proxy for each aspect of the site (landing hugo static site, typescript react project, keycloak docker, redis docker, postgres docker, gutenberg docker) therefore we do all our testing from the perspective of Go. Agentic editing is done with network host enabled so that it may start up the supporting docker containers. Integration tests can be run to generate an integration_results.json file which is used by the other test suites, so integration tests should always be passing and the first to be run. A dev server for the Go application runs on 7443 when started. Before developing, install pre-requisites with `make install_deps`. Generally the only make commands needed to be run during regular development are:
+- make build
+- make docker_up
+- make docker_start
+- make docker_stop
+- make docker_down
+- make go_dev
+- make go_test_gen
+- make go_test_integration
+- make go_test_unit
+- make go_test_ui
+- make go_test_bench
+
 ### Encountering Read-Only
 Some files are marked as read only. You may change them, but only when the following conditions are met:
 - Identify the read only file you are requesting to change

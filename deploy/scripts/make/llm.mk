@@ -1,5 +1,6 @@
-LLM_RO_PATHS:=.env.template .env .git .gitignore README.md log go/pkg/types $(foreach a,llm db $(foreach b,vars functions test deps,make/$(b).mk),deploy/scripts/$(a))
-LLM_RW_PATHS:=go java landing proto ts
+LLM_RO_PATHS:=.env.template .env .gitignore README.md Makefile log go/pkg/types deploy
+#$(foreach a,llm db $(foreach b,vars functions test deps,make/$(b).mk),deploy/scripts/$(a))
+LLM_RW_PATHS:=go java landing proto ts .git
 LLM_NO_PATHS:=ts/node_modules landing/node_modules proto/validate proto/google go/buf.build
 
 LLM_BASE_VOLUMES_RW = $(subst $(space),$(empty),$(strip $(patsubst %,%,$(foreach path,$(LLM_RW_PATHS),$(PROJECT_DIR)/$(path):/workspace/$(path):rw,))))
@@ -10,7 +11,7 @@ LLM_BASE_VOLUMES_RO := $(patsubst %$(comma),%,$(LLM_BASE_VOLUMES_RO))
 
 LLM_NO_VOLUMES=$(foreach path,$(LLM_NO_PATHS),--tmpfs /workspace/$(path))
 
-LLM_VOLUMES=-e SANDBOX_VOLUMES=$(PROJECT_DIR)/deploy/scripts/llm/Makefile:/workspace/Makefile,$(LLM_BASE_VOLUMES_RW),$(LLM_BASE_VOLUMES_RO) $(LLM_NO_VOLUMES)
+LLM_VOLUMES=-e SANDBOX_VOLUMES=$(PROJECT_DIR)/deploy/scripts/llm/.openhands:/workspace/.openhands:ro,$(LLM_BASE_VOLUMES_RW),$(LLM_BASE_VOLUMES_RO) $(LLM_NO_VOLUMES)
 
 #################################
 #              LLM              #
@@ -53,13 +54,16 @@ llm_ask: llm_clean
 .PHONY: llm_ui
 llm_ui:
 	@docker run -it --rm --pull=always \
+	$(LLM_VOLUMES) \
 	-e SANDBOX_USE_HOST_NETWORK=true \
 	-e SANDBOX_USER_ID=$$(id -u) \
-	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.41-nikolaik \
+	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.42-nikolaik \
 	-e LOG_ALL_EVENTS=true \
 	-v /var/run/docker.sock:/var/run/docker.sock \
 	-v ~/.openhands-state:/.openhands-state \
 	-p 3000:3000 \
 	--add-host host.docker.internal:host-gateway \
 	--name openhands-app \
-	docker.all-hands.dev/all-hands-ai/openhands:0.41
+	docker.all-hands.dev/all-hands-ai/openhands:0.42
+
+
