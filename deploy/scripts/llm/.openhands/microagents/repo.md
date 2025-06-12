@@ -1,18 +1,24 @@
 # Repository Purpose
 Awayto is for groups or organizations which require scheduling, communications, reporting, and related functionality. Collaborative multi-modal features (voice/video/chat/docs) are positioned within a robust collection of operations-driven functionality (users/groups/roles/services/scheduling/surveying/reporting). Many founding principles of the platform were derived from previous experience developing and extending an online writing center. However, Awayto is built to be generic-purpose and enable the development of any kind of online platform with multi-modal needs.
 
-### Working Procedure
+# Working Procedure
 The server is already running in watch mode for folders go/ and ts/. Complete the task then run one of these make commands to verify things are working:
 - make go_test_integration - This runs a custom integration test suite which creates base records to use in other test suites
 - make go_test_unit - This builds each main `pkg` module and runs only their testing functions
 - make go_test_bench - This builds each main `pkg` module and runs only their benchmarking functions
 - make go_test_ui - This runs the playwright suite
 
-### Encountering Read-Only
+# Encountering Read-Only
 Some files are marked as read only. You may change them, but only when the following conditions are met:
 - Identify the read only file you are requesting to change
 - Determine what content needs to be changed in natural language in conversation to us
 - Consider your task complete in full, and end all future operatives; when we review your request, that work will be performed in the future
+
+# Code Versions
+Go: 1.24.3
+Node.js: v22.13.1
+TypeScript: 5.8.3
+pnpm: latest-10
 
 # Repository Structure
 - `/deploy/scripts/make` - Makefiles
