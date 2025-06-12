@@ -1,4 +1,4 @@
-LLM_RO_PATHS:=.env.template .env .gitignore README.md Makefile go/pkg/types deploy
+LLM_RO_PATHS:=.env.template .env .gitignore README.md Makefile go/pkg/types deploy secrets local_tmp
 #$(foreach a,llm db $(foreach b,vars functions test deps,make/$(b).mk),deploy/scripts/$(a))
 LLM_RW_PATHS:=go java landing proto ts .git log
 LLM_NO_PATHS:=ts/node_modules landing/node_modules proto/validate proto/google go/buf.build

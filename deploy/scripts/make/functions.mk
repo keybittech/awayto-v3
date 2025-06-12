@@ -14,7 +14,9 @@ endef
 
 define set_local_unix_sock_dir
 	$(eval UNIX_SOCK_DIR := $(shell pwd)/$(ORIGINAL_SOCK_DIR))
-	$(eval TARGET_GROUP := $(if $(filter true,$(DEPLOYING)),$(H_GROUP),1000))
-	setfacl -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
-	setfacl -d -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
+	$(eval PROJECT_DIR := $(shell pwd))
 endef
+
+# $(eval TARGET_GROUP := $(if $(filter true,$(DEPLOYING)),$(H_GROUP),1000))
+# setfacl -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
+# setfacl -d -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
