@@ -1,7 +1,12 @@
-LLM_RO_PATHS:=.env.template .env .gitignore README.md Makefile go/pkg/types deploy secrets local_tmp
-#$(foreach a,llm db $(foreach b,vars functions test deps,make/$(b).mk),deploy/scripts/$(a))
+#################################
+#              LLM              #
+#################################
+
+SANDBOX_IMAGE_NAME=awayto-sandbox
+SANDBOX_DOCKERFILE=$(LLM_SCRIPTS)/sandbox_Dockerfile
+
+LLM_RO_PATHS:=.env.template .gitignore README.md Makefile deploy secrets
 LLM_RW_PATHS:=go java landing proto ts .git log
-LLM_NO_PATHS:=ts/node_modules landing/node_modules proto/validate proto/google go/buf.build
 
 LLM_BASE_VOLUMES_RW = $(subst $(space),$(empty),$(strip $(patsubst %,%,$(foreach path,$(LLM_RW_PATHS),$(PROJECT_DIR)/$(path):/workspace/$(path):rw,))))
 LLM_BASE_VOLUMES_RO = $(subst $(space),$(empty),$(strip $(patsubst %,%,$(foreach path,$(LLM_RO_PATHS),$(PROJECT_DIR)/$(path):/workspace/$(path):ro,))))
@@ -9,56 +14,27 @@ LLM_BASE_VOLUMES_RO = $(subst $(space),$(empty),$(strip $(patsubst %,%,$(foreach
 LLM_BASE_VOLUMES_RW := $(patsubst %$(comma),%,$(LLM_BASE_VOLUMES_RW))
 LLM_BASE_VOLUMES_RO := $(patsubst %$(comma),%,$(LLM_BASE_VOLUMES_RO))
 
-LLM_NO_VOLUMES=$(foreach path,$(LLM_NO_PATHS),--tmpfs /workspace/$(path))
+DOCKER_SOCK=/var/run/docker.sock:/var/run/docker.sock:rw
+OPENHANDS_CONFIG=$(PROJECT_DIR)/deploy/scripts/llm/.openhands:/workspace/.openhands:ro
+LLM_VOLUMES=-e SANDBOX_VOLUMES=$(OPENHANDS_CONFIG),$(DOCKER_SOCK),$(LLM_BASE_VOLUMES_RW),$(LLM_BASE_VOLUMES_RO)
 
-LLM_VOLUMES=-e SANDBOX_VOLUMES=$(PROJECT_DIR)/deploy/scripts/llm/.openhands:/workspace/.openhands:ro,$(LLM_BASE_VOLUMES_RW),$(LLM_BASE_VOLUMES_RO) $(LLM_NO_VOLUMES)
-
-#################################
-#              LLM              #
-#################################
-
-.PHONY: llm_review
-llm_review:
-	cat working/test_thing > working/llm_text
-	@while IFS= read -r line || [ -n "$$line" ]; do \
-		echo -e "$$line" >> working/llm_text; \
-	done
-
-.PHONY: llm_fix
-llm_fix:
-	echo "$(shell cat working/llm_text)" | $(MAKE) llm_ask
+.PHONY: llm_build_sandbox
+llm_build_sandbox:
+	@echo "Building custom sandbox image..."
+	docker build --build-arg GO_VERSION=$(GO_VERSION) -f $(SANDBOX_DOCKERFILE) -t $(SANDBOX_IMAGE_NAME) .
+	@echo "Custom sandbox image built: $(SANDBOX_IMAGE_NAME)"
 
 .PHONY: llm_clean
 llm_clean:
 	docker stop $(shell docker ps -aqf "name=openhands") && docker rm $(shell docker ps -aqf "name=openhands") || true
 
-.PHONY: llm_ask
-llm_ask: llm_clean
-	@docker run -t --rm --pull=always \
-	$(LLM_VOLUMES) \
-	--network host \
-	-e SANDBOX_USER_ID=$$(id -u) \
-	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.41-nikolaik \
-	-e LLM_API_KEY=$(GEMINI_2_5_KEY) \
-	-e LLM_MODEL="gemini/gemini-2.0-flash" \
-	-e LOG_ALL_EVENTS=true \
-	-v /var/run/docker.sock:/var/run/docker.sock \
-	-v ~/.openhands-state:/.openhands-state \
-	--add-host host.docker.internal:host-gateway \
-	--name openhands-app \
-	docker.all-hands.dev/all-hands-ai/openhands:0.41 \
-	python -m openhands.core.main -t "$(shell cat) $(shell cat $(LLM_SCRIPTS)/INSTRUCTIONS.md)"
-
-# -e SANDBOX_USER_ID=$(shell id -u) \
-
 .PHONY: llm_ui
-llm_ui:
+llm_ui: llm_build_sandbox
 	@docker run -it --rm --pull=always \
 	$(LLM_VOLUMES) \
-	-e SANDBOX_USE_HOST_NETWORK=true \
-	-e SANDBOX_USER_ID=$$(id -u) \
-	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.42-nikolaik \
+	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=$(SANDBOX_IMAGE_NAME) \
 	-e LOG_ALL_EVENTS=true \
+	-e LOG_LEVEL=DEBUG \
 	-v /var/run/docker.sock:/var/run/docker.sock \
 	-v ~/.openhands-state:/.openhands-state \
 	-p 3000:3000 \
@@ -66,4 +42,12 @@ llm_ui:
 	--name openhands-app \
 	docker.all-hands.dev/all-hands-ai/openhands:0.42
 
+.PHONY: llm_rebuild
+llm_rebuild: llm_clean
+	docker rmi $(SANDBOX_IMAGE_NAME) || true
+	$(MAKE) llm_ui
 
+
+
+# -e SANDBOX_RUNTIME_BINDING_ADDRESS=127.0.0.1 \
+# -e SANDBOX_USER_ID=$$(id -u) \

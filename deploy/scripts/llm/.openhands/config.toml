@@ -1,0 +1,4 @@
+[core]
+platform = "linux/amd64"
+[sandbox]
+base_container_image="awayto-sandbox"

@@ -1,0 +1,114 @@
+# adapted from https://github.com/All-Hands-AI/OpenHands/issues/7906#issuecomment-2888402431
+FROM docker.all-hands.dev/all-hands-ai/runtime:0.42-nikolaik AS oh_base
+
+FROM ubuntu:24.04 AS dev 
+# Front-load micromamba + browser installs
+RUN apt-get update && apt-get install -y curl
+
+# 3. Ensure runtime‑writable directories exist with sane perms
+RUN set -eux; \
+    mkdir -p /openhands/code /openhands/logs /openhands/poetry /openhands/workspace && \
+    chmod -R g+rws /openhands/workspace
+
+RUN usermod --uid 1001 ubuntu && \
+    groupmod --gid 1001 ubuntu && \
+    find /home /opt /usr/local /openhands -uid 1000 -exec chown 1001 {} + && \
+    find /home /opt /usr/local /openhands -gid 1000 -exec chgrp 1001 {} + && \
+    groupadd --gid 1000 openhands && \
+    useradd --uid 1000 --gid openhands --shell /bin/bash --create-home openhands
+
+# Core runtime directory (micromamba env + poetry env + all helpers)
+COPY --chown=openhands:openhands \
+    --from=oh_base /openhands \
+    /openhands
+
+# 0. Global env vars the runtime relies on
+ENV \
+    MAMBA_ROOT_PREFIX=/openhands/micromamba \
+    POETRY_VIRTUALENVS_PATH=/openhands/poetry
+ENV PATH=/openhands/micromamba/bin:$PATH
+
+# 1. Install micromamba exactly where OpenHands expects it
+RUN set -eux; \
+    mkdir -p ${MAMBA_ROOT_PREFIX}/bin && \
+    bash -c "PREFIX_LOCATION=${MAMBA_ROOT_PREFIX} \
+    BIN_FOLDER=${MAMBA_ROOT_PREFIX}/bin \
+    INIT_YES=no CONDA_FORGE_YES=yes \
+    $(curl -L https://micro.mamba.pm/install.sh)" && \
+    micromamba config remove channels defaults
+
+# 2. Create the runtime environment & install Python + Poetry
+RUN set -eux; \
+    micromamba create -n openhands -y && \
+    micromamba install -n openhands -c conda-forge python=3.12 poetry -y && \
+    micromamba run -n openhands poetry config virtualenvs.path ${POETRY_VIRTUALENVS_PATH}
+
+# Install openhands
+RUN curl -L -o /tmp/openhands.tar.gz \
+    https://github.com/All-Hands-AI/OpenHands/archive/refs/tags/0.42.0.tar.gz && \
+    micromamba run -n openhands pip install /tmp/openhands.tar.gz && \
+    rm /tmp/openhands.tar.gz
+
+# Playwright + headless Chromium for Browse actions
+COPY --chown=openhands:openhands \
+    --from=oh_base /usr/bin/playwright* \
+    /usr/bin/
+COPY --chown=openhands:openhands \
+    --from=oh_base /usr/lib/chromium* \
+    /usr/lib/
+
+# Install Playwright browsers (chromium, firefox, webkit)
+RUN micromamba run -n openhands bash -c "\
+    pip install playwright && \
+    playwright install --with-deps"
+
+# Install base dependencies, Python, Docker CLI, and other tools
+RUN apt-get update && \
+    apt-get install -y \
+    build-essential cmake gcc g++ make \
+    git nano vim sudo \
+    htop tree jq \
+    software-properties-common \
+    docker.io \
+    postgresql-client \
+    keychain \
+    gettext \
+    tmux \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# OpenVSCode‑server bundle (for the IDE tab)
+COPY --chown=openhands:openhands \
+    --from=oh_base /openhands/.openvscode-server \
+    /openhands/.openvscode-server
+
+# Symlink VSCode CLI into PATH (optional convenience)
+RUN ln -s /openhands/.openvscode-server/bin/remote-cli/openvscode-server /usr/local/bin/openvscode-server \
+    && ln -s /openhands/.openvscode-server/bin/remote-cli/code              /usr/local/bin/code
+
+# Pre‑add `openhands` to sudoers with NOPASSWD
+RUN echo "openhands ALL=(ALL) NOPASSWD:ALL" >> /etc/sudoers \
+    && chmod 0440 /etc/sudoers
+
+# Switch to user `openhands`
+USER openhands
+
+# Install nvm, the latest Node.js version, and the LTS version
+RUN curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash && \
+    export NVM_DIR="$HOME/.nvm" && \
+    [ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh" && \
+    nvm install node && \
+    nvm install --lts && \
+    nvm alias default node && \
+    npm install -g pnpm@latest-10
+
+ARG GO_VERSION
+RUN curl -L -o /tmp/goinstall.tar.gz https://go.dev/dl/$GO_VERSION.tar.gz && \
+    tar -C /home/openhands -xzf /tmp/goinstall.tar.gz && \
+    rm /tmp/goinstall.tar.g
+
+ENV \
+    GOROOT="/home/openhands/go" \
+    GOPATH="/home/openhands/go-workspace" \
+    GOBIN="/home/openhands/go-workspace/bin"
+
+ENV PATH=$GOROOT/bin:$GOBIN:$PATH

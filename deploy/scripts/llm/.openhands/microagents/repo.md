@@ -1,18 +1,5 @@
-# Repository Purpose
-Awayto is for groups or organizations which require scheduling, communications, reporting, and related functionality. Collaborative multi-modal features (voice/video/chat/docs) are positioned within a robust collection of operations-driven functionality (users/groups/roles/services/scheduling/surveying/reporting). Many founding principles of the platform were derived from previous experience developing and extending an online writing center. However, Awayto is built to be generic-purpose and enable the development of any kind of online platform with multi-modal needs.
-
-# Working Procedure
-The server is already running in watch mode for folders go/ and ts/. Before making changes or running tests, use `make install_deps`. Then complete the user's request and run one of these make commands to verify things are working:
-- make go_test_integration - This runs a custom integration test suite which creates base records to use in other test suites
-- make go_test_unit - This builds each main `pkg` module and runs only their testing functions
-- make go_test_bench - This builds each main `pkg` module and runs only their benchmarking functions
-- make go_test_ui - This runs the playwright suite
-
-# Encountering Read-Only
-Some files are marked as read only. You may change them, but only when the following conditions are met:
-- Identify the read only file you are requesting to change
-- Determine what content needs to be changed in natural language in conversation to us
-- Consider your task complete in full, and end all future operatives; when we review your request, that work will be performed in the future
+# Primary Operation
+We work as a team on this project, directly with eachother every single time, all the time. You would be lost if you didn't ask me pertinent questions before undergoing any task I give you. Therefore, in all cases, we should work step-by-step in a team oriented way; specifically, you should communicate your intentions in writing before undertaking each decision wherein files of any kind may be modified, including commands on the cli which themselves are intended to modify a file on the system in some way. Even more to the point, you tell me you're going to do something, do it, then I need time to review afterward, for all actions. After I have reviewed, we will continue. Exceptions to this are in intermediate steps such as syntax errors, or needing to try different privileges, and other actions which are not directly modifiying files.
 
 # Code Versions
 Go: 1.24.3
@@ -20,43 +7,79 @@ Node.js: v22.13.1
 TypeScript: 5.8.3
 pnpm: latest-10
 
-# Repository Structure
-- `/deploy/scripts/make` - Makefiles
-- `/go` - Go primary server application
-- `/deploy/scripts/db` - Postgres scripts run on init
-- `/landing` - The landing or marketing pages for logged-out pages, uses Hugo static site generator
-- `/ts` - React application with Typescript, RTK-Query
-- `/ts/src/hooks` - The source for "awayto-hooks" Typescript module
-- `/java` - Custom Keycloak classes to extend Registration and customize styles
-- `/go/pkg/clients/redis.go` - Redis client
-- `/go/pkg/clients/sock.go` - Websocket client 
+# Repository Purpose
+Awayto is for groups or organizations which require scheduling, communications, reporting, and related functionality. Collaborative multi-modal features (voice/video/chat/docs) are positioned within a robust collection of operations-driven functionality (users/groups/roles/services/scheduling/surveying/reporting). Many founding principles of the platform were derived from previous experience developing and extending an online writing center. However, Awayto is built to be generic-purpose and enable the development of any kind of online platform with multi-modal needs.
 
-# TSX Code Style
-- Utilize 'awayto-hooks' imports, which provide all the functionality in ts/src/hooks
-- All data must be fetched using the variable siteApi which comes from awayto-hooks import
-- siteApi is populated by converting the service definitions in top-level protos folder into ts/openapi.yaml, which we then use rtk-query tools to convert the openapi.yaml to ts/hooks/api.ts -- this is an automated process therefore we should only seek to utilize siteApi and its methods, and never attempt to change it
-- Only directly import material-ui components at their third level (see example), never use deconstruction/braces to import MUI components or images
-- example: import Typography from '@mui/material/Typography';
+# Available Tools
+Make sure to use the binaries we provide:
+- `/usr/local/bin/docker`
+- `/usr/local/bin/go`
+- `/usr/local/bin/pnpm`
+- `/usr/local/bin/npm`
+During normal development, use these:
+- `make build` - Builds the Go binary
+- `make go_test_integration` - Runs a custom integration test suite which creates base records to use in other test suites
+- `make go_test_unit` - Builds and runs Go pkg folder modules as tests
+- `make go_test_bench` - Builds Go pkg folder modules as benchmarks
+- `make go_test_ui` - Runs the playwright suite
+
+# Encountering Errors
+When encountering any errors with the above tools:
+- Consider your task complete in full, and end all future operations; we'll review the error and define next steps; you can give a suggestion of what to do next as well.
+
+# Encountering Read-Only
+Some files are marked as read only. You may change them, but only when the following conditions are met:
+- Identify the read only file you are requesting to change.
+- Determine what content needs to be changed in natural language in conversation to us.
+- Consider your task complete in full, and end all future operations; when we review your request, that work will be performed in the future.
+
+# Repository Structure
+When you see any path in these instructions, make sure you're in `/workspace` before accessing them.
+- `deploy/scripts/make` - Makefiles
+- `deploy/scripts/db` - Manages the Postgres docker installation artifacts, including SQL which is deployed on first-run of the db docker container
+- `go` - Go primary server application
+- `go/pkg/clients/redis.go` - Redis client used for caching http responses
+- `go/pkg/clients/sock.go` - Websocket client supporting collaborative functions like whiteboard, text chat
+- `landing` - The landing or marketing pages for logged-out pages, uses Hugo static site generator
+- `ts` - React application with Typescript, RTK-Query
+- `ts/src/hooks` - The source for `awayto-hooks` Typescript module
+- `java` - Custom Keycloak classes to extend Registration and customize styles
+- `proto` - Protobufs which define the core messages/types/structs, services, and rpcs of the application
+
+# General Style or Knowledge
+Some things are unique to this system which are very important to consider at an architectual level.
+- Protobufs in `proto` top level folder are used as the most core foundation of the application, defining not only all HTTP services, but also all types and structs to be used in Go and Typescript.
+
+# TS Code Style
+- Utilize `awayto-hooks` as an import, which provides all the functionality in `ts/src/hooks`.
+- All data must be fetched using the variable siteApi which comes from awayto-hooks import.
+- As part of `make build`, to generate an OpenAPI doc which is then used to generate an RTK-Query compliant API Typescript types and functions, we run `protoc --proto_path=proto --experimental_allow_proto3_optional --openapi_out=$(TS_SRC) $(PROTO_FILES)` and then `npx -y @rtk-query/codegen-openapi $(TS_CONFIG_API)`, which gives us a pre-built api called `siteApi`.
+- `siteApi` can be imported from the `awayto-hooks` package in TSX components (`ts/src/modules`).
+- `siteApi` is generated by converting the service definitions in top-level `proto` folder into ts/openapi.yaml, which we then use RTK-Query generators to convert the `ts/openapi.yaml` to `ts/hooks/api.ts` - both `openapi.yaml` and `api.ts` are very large and you should not parse them except a few lines at a time where applicable. Instead rely on the `proto` top level folder to source all information about APIs; this is important!
+- Again, the `proto` top level folder has all information about types and apis used in the application.
+- Assume that for i.e. the file `proto/profile.proto` with service `UserProfile` which contains RPC `GetUserProfileDetails`, this RPC uses a GET method, so in TSX files we can assume to be able to use `siteApi.useUserProfileServiceGetUserProfileDetailsQuery()`, which has all the available functions and features of the standard RTK-Query api hooks. Likewise there are `Lazy` and `Mutation` suffixes; all that you would expect from RTK-Query with the corresponding HTTP method.
+- Only directly import material-ui components at their third level (see example), never use deconstruction/braces to import MUI components or icons; example: import Typography from '@mui/material/Typography'.
 
 # Go Code Style
-- Go is the primary API, serving typical cookie-based session JSON api, as well as Websockets, file storage, and internally manages user sessions by communicating with keycloak internally on keycloak's admin api running on localhost:8080 -- not publically accessible.
-- Modules are utilized to split the code up into the api itself, clients -- like postgres, websocket, redis and keycloak --, the api handlers themselves for each endpoint as defined in protobuf files, 
+- The Go folder contains an API module serving a typical cookie-based session JSON api, as well as Websockets, file storage, and internally manages user sessions by communicating with keycloak internally on Keycloak's admin api running in Docker on localhost:8080 -- not publically accessible, but Go will reverse proxy login/registration requests.
+- The primary Go package (`go/pkg folder`) modules are: `api`, `clients`, `handlers`, `testutil` and `util`. Also `types` module is auto-generated but should not be edited.
+- The `api` module contains all code related to the running of the API itself.
+- The `clients` module is where we wrap Postgres, Redis, WebSocket and Keycloak to produce the functions we need for our application.
+- The `handlers` module stores each of the rpc handlers defined in the `proto` top level folder.
+- The `testutil` and `util` should be generic functions, or extensions of the `types` package.
+- When Go builds, we run `protoc --proto_path=proto --experimental_allow_proto3_optional --go_out=$(GO_GEN_DIR) --go_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) $(PROTO_FILES)`, which gives us all the pre-built protobuf Go structs that you would normally get by compiling proto file messages to Go. These generated files are in go/pkg/types and referred to as the `types` package.
+- Also when Go builds, we run our own protoc plugin which wraps our protoc-go-generated structs with mutex functionality (`go/cmd/generate/proto_mutex/main.go`), so they can be used in the api concurrently. Only proto messages which have the `mutex` option will have these structs generated.
+- Also when Go builds, we run a simple code generator (`go/cmd/generate/handlers_register/main.go`) which goes through all the handlers in `go/pkg/handlers`, makes sure they are of the right signature, and auto-generates a mapping file used at runtime to simplify handler configuration which is done dynamically using the `protoregistry` Go package.
+- Tests can be generated with `make go_test_gen` when adding new Go functions or files. We use gotests and follow all standard conventions of Go testing, benchmarking, and fuzzing.
 
 # Java Code Style
-- Keycloak is used as our IDP and Keycloak uses Java
-- We extend keycloak only for the single explicit purpose of hooking into the registration flow
-- The registration flow is extended with a group code which adds the user to the group, when provided
-- Keycloak and Go server interact through BackchannelAuth methods, which is a unix socket on the system in local_tmp folder
+- Keycloak is used as our IDP and Keycloak uses Java.
+- We extend Keycloak only for the single explicit purpose of hooking into the registration flow.
+- The registration flow is extended with a group code which adds the user to the group, when provided.
+- Keycloak and Go server interact through BackchannelAuth methods, which is a unix socket on the system in local_tmp folder.
 
 # Landing Code Style
-- The landing is what users see when they visit the index of the website
-- Hugo is used to do static-site generation based on markdown files
-- Only focus on the content as if we were editing a marketing page
-- Do not add any extra Javascript in the landing folder as it should be used extremely sparingly
-
-# Quirks
-Some things are unique to this system which are very important to consider at an architectual level.
-- Protobufs are used as the most core foundation of the application, defining not only all HTTP services, but also all types and structs to be used in Go and Typescript
-- Protobufs are used to generate an OpenAPI spec document, which in turn is used to auto-generate RTK-Query hooks for React
-- For Typescript, we run 'protoc --proto_path=proto --experimental_allow_proto3_optional --openapi_out=$(TS_SRC) $(PROTO_FILES)' and then 'npx -y @rtk-query/codegen-openapi $(TS_CONFIG_API)', which gives us a pre-built api called siteApi which can be imported from the awayto-hooks package in components
-- For Go, we run 'protoc --proto_path=proto --experimental_allow_proto3_optional --go_out=$(GO_GEN_DIR) --go_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) $(PROTO_FILES)', which gives us all the pre-built protobuf Go structs that you would normally get by compiling proto file messages to Go. These generated files are in go/pkg/types and referred to as the types package.
+- The landing is what users see when they visit the index of the website.
+- Hugo is used to do static-site generation based on markdown files.
+- Only focus on the content as if we were editing a marketing page.
+- Do not add any more Javascript in the landing folder.

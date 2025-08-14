@@ -6,10 +6,11 @@ $(shell if [ ! -f $(ENVFILE) ]; then install -m 600 .env.template $(ENVFILE); fi
 include $(ENVFILE)
 export $(shell sed 's/=.*//' $(ENVFILE))
 
-GO_VERSION=go1.24.3.linux-amd64
-NODE_VERSION=v22.13.1
+export GO_VERSION=go1.24.3.linux-amd64
+export NODE_VERSION=v22.13.1
 
-export PATH := ${PATH}:/home/$(shell whoami)/.nvm/versions/node/$(NODE_VERSION)/bin:/home/$(shell whoami)/go/bin:/usr/local/go/bin
+export PATH := ${PATH}:/home/$(shell whoami)/.nvm/versions/node/$(NODE_VERSION)/bin:/home/$(shell whoami)/go/bin:/usr/local/go/bin:/usr/local/bin
+export GOROOT 
 
 comma := ,
 empty :=

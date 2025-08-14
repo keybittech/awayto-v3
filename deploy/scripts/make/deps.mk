@@ -7,6 +7,8 @@ install_deps:
 	sudo apt-get install -y \
 		build-essential \
 		jq \
+		protobuf-compiler \
+		protoc-gen-go \
 		acl && \
 	echo "Installing Go..." && \
 	sudo rm -rf /usr/local/go && \

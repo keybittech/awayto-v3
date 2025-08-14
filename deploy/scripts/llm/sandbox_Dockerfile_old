@@ -1,0 +1,48 @@
+FROM nikolaik/python-nodejs:python3.12-nodejs22
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends \
+    build-essential \
+    jq \
+    default-jre \
+    maven \
+    hugo \
+    protobuf-compiler \
+    && apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
+ARG GO_VERSION
+
+RUN npm install -g pnpm@latest-10
+
+RUN rm -rf /usr/local/go && \
+    curl -L -o /tmp/goinstall.tar.gz https://go.dev/dl/${GO_VERSION}.tar.gz && \
+    tar -C /usr/local -xzf /tmp/goinstall.tar.gz && \
+    rm /tmp/goinstall.tar.gz
+
+ENV GOROOT="/usr/local/go"
+ENV GOBIN="/go/bin"
+
+ENV PATH="${GOROOT}/bin:${GOBIN}:${PATH}"
+
+RUN mkdir -p ${GOBIN}
+
+RUN go install google.golang.org/protobuf/cmd/protoc-gen-go@latest && \
+    go install google.golang.org/grpc/cmd/protoc-gen-go-grpc@latest && \
+    go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
+
+WORKDIR /workspace
+
+
+
+
+
+
+
+
+
+
+
+
