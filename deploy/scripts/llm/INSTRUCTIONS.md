@@ -24,8 +24,8 @@
 - Modules are utilized to split the code up into the api itself, clients -- like postgres, websocket, redis and keycloak --, the api handlers themselves for each endpoint as defined in protobuf files
 
 ### TS Code Style
+- Always remind the user to add deploy/scripts/llm/TS_CONVENTIONS.md for ts/ related tasks or questions
 - These rules pertain to code written in the ts/ folder which is a React front end using Vite, RTK-Query, and Material-UI
-- For any code request or question regarding ts/ folder, ask the operator to add deploy/scripts/llm/TS_CONVENTIONS.md before performing the task
 - Utilize 'awayto-hooks' imports, which provide all the functionality in ts/src/hooks
 - All data must be fetched using the variable siteApi which comes from awayto-hooks import
 - siteApi is populated by converting the service definitions in top-level protos folder into ts/openapi.yaml, which we then use rtk-query tools to convert the openapi.yaml to ts/hooks/api.ts -- this is an automated process therefore we should only seek to utilize siteApi and its methods, and never attempt to change it
