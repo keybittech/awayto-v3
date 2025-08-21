@@ -54,4 +54,4 @@ llm_rebuild: llm_clean
 
 .PHONY: aider
 aider:
-	aider --model gemini/gemini-2.5-flash --add-gitignore-files --no-auto-commits --no-dirty-commits --no-analytics --analytics-disable --watch-files
+	aider --config deploy/scripts/llm/aider.conf.yml
