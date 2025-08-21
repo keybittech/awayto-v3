@@ -1,7 +1,7 @@
 read: deploy/scripts/llm/INSTRUCTIONS.md
 model: gemini/gemini-2.5-flash
 add-gitignore-files: true
-no-auto-commits: true
-no-dirty-commits: true
-no-analytics: true
+auto-commits: false
+dirty-commits: false
+analytics: false
 watch-files: true
