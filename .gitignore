@@ -35,5 +35,4 @@ local_tmp/
 *.test
 
 # openhands related
-.vscode
-./.openhands
+.aider*
