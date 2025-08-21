@@ -29,15 +29,15 @@ Some files are marked as read only. You may change them, but only when the follo
 - Consider your task complete in full, and end all future operatives; when we review your request, that work will be performed in the future
 
 ### Software Locations:
-- Make /workspace/deploy/scripts/make
-- Postgres /workspace/deploy/scripts/db
-- React /workspace/ts
-- ReduxJS /workspace/ts/src/hooks
-- PNPM /workspace/ts/package.json
-- Keycloak /workspace/java
-- Redis /workspace/go/pkg/clients/redis.go
-- Hugo /workspace/landing
-- WebSockets /workspace/go/pkg/clients/sock.go
+- Make deploy/scripts/make/
+- Postgres deploy/scripts/db/
+- React ts/
+- ReduxJS ts/src/hooks/
+- PNPM ts/package.json
+- Keycloak java/
+- Redis go/pkg/clients/redis.go
+- Hugo landing/
+- WebSockets go/pkg/clients/sock.go
 
 ### TSX Code Style
 - Utilize 'awayto-hooks' imports, which provide all the functionality in ts/src/hooks

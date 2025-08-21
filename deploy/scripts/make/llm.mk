@@ -51,3 +51,7 @@ llm_rebuild: llm_clean
 
 # -e SANDBOX_RUNTIME_BINDING_ADDRESS=127.0.0.1 \
 # -e SANDBOX_USER_ID=$$(id -u) \
+
+.PHONY: aider
+aider:
+	aider --model gemini/gemini-2.5-flash --add-gitignore-files --no-auto-commits --no-dirty-commits --no-analytics --analytics-disable --watch-files
