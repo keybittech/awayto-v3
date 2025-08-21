@@ -5,5 +5,5 @@ auto-commits: false
 dirty-commits: false
 analytics: false
 watch-files: true
-test-cmd: "goimports -w go/ && make go_test_unit"
+test-cmd: "goimports -w go/ && make build && make go_test_integration && make go_test_unit"
 auto-test: true
