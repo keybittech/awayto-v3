@@ -25,7 +25,7 @@ test_gen:
 go_test_unit_api:
 	@$(call clean_test)
 	$(GO) test -C $(GO_API_DIR) -c -o api.$(BINARY_TEST)
-	-$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO_ENVFILE_FLAG) exec $(GO_API_DIR)/api.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 	@echo "api unit tests complete"
 
@@ -33,7 +33,7 @@ go_test_unit_api:
 go_test_unit_clients:
 	@$(call clean_test)
 	$(GO) test -C $(GO_CLIENTS_DIR) -c -o clients.$(BINARY_TEST)
-	-$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO_ENVFILE_FLAG) exec $(GO_CLIENTS_DIR)/clients.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 	@echo "clients unit tests complete"
 
@@ -41,7 +41,7 @@ go_test_unit_clients:
 go_test_unit_handlers:
 	@$(call clean_test)
 	$(GO) test -C $(GO_HANDLERS_DIR) -c -o handlers.$(BINARY_TEST)
-	-$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO_ENVFILE_FLAG) exec $(GO_HANDLERS_DIR)/handlers.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 	@echo "handlers unit tests complete"
 
@@ -49,7 +49,7 @@ go_test_unit_handlers:
 go_test_unit_util:
 	@$(call clean_test)
 	$(GO) test -C $(GO_UTIL_DIR) -c -o util.$(BINARY_TEST)
-	-$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
+	$(GO_ENVFILE_FLAG) exec $(GO_UTIL_DIR)/util.$(BINARY_TEST) $(GO_TEST_EXEC_FLAGS)
 	@cat $(LOG_DIR)/errors.log
 	@echo "util unit tests complete"
 
