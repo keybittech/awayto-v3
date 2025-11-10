@@ -4,7 +4,7 @@ services:
     image: ${DB_IMAGE} 
     networks:
       - host
-    user: postgres:1000 # secrets are mounted in g 1000
+    # user: postgres:1000 # secrets are mounted in g 1000
     build:
       context: ../../../
       dockerfile: ./deploy/scripts/docker/db_Dockerfile
@@ -22,7 +22,7 @@ services:
     volumes: 
       - ${UNIX_SOCK_DIR}:/var/run/postgresql
       - pg_data:/var/lib/postgresql/data
-      - ${LOG_DIR}/db:/pglog
+      # - ${LOG_DIR}/db:/pglog
 
   redis: # 6379
     image: ${REDIS_IMAGE}

@@ -4,7 +4,6 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import viteCompression from 'vite-plugin-compression';
 import circleDeps from 'vite-plugin-circular-dependency';
-import { viteStaticCopy } from 'vite-plugin-static-copy'
 import dotenv from 'dotenv';
 
 dotenv.config({ path: './.env.local' });
@@ -14,25 +13,12 @@ const { VITE_AWAYTO_WEBAPP } = process.env;
 const appDirectory = fs.realpathSync(process.cwd());
 const resolveApp = (relativePath: string) => path.resolve(appDirectory, relativePath);
 
-// const chunks = [
-//   ['data-grid', 'dg'],
-//   ['date-pickers', 'dp'],
-//   ['icons-material', 'im'],
-//   ['material', 'm'],
-// ];
-//
 const manualChunks = (_: string) => {
   return 'pkg';
-  // for (let i = 0; i < chunks.length; i++) {
-  //   if (a.includes(chunks[i][0])) {
-  //     return chunks[i][1];
-  //   }
-  // }
-  // const mr = Math.ceil(Math.random() * 8);
-  // return 'x' + mr;
 }
 
-export default defineConfig(_ => {
+export default defineConfig(async _ => {
+  const { viteStaticCopy } = await import('vite-plugin-static-copy');
   return {
     base: '/app',
     server: {

@@ -200,8 +200,8 @@ clean:
 $(LOG_DIR):
 ifeq ($(DEPLOYING),)
 	mkdir -p $(LOG_DIR)/db
-	setfacl -m g:1000:rwx $(LOG_DIR)/db
-	setfacl -d -m g:1000:rwx $(LOG_DIR)/db
+	# setfacl -m g:1000:rwx $(LOG_DIR)/db
+	# setfacl -d -m g:1000:rwx $(LOG_DIR)/db
 endif
 
 $(CERT_LOC) $(CERT_KEY_LOC):
