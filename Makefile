@@ -82,11 +82,11 @@ TS_CONFIG_API=ts/openapi-config.json
 BACKUP_DIR=backups
 DB_BACKUP_DIR=$(BACKUP_DIR)/db
 CERT_BACKUP_DIR=$(BACKUP_DIR)/certs
-DOCKER_REDIS_CID=$(shell ${SUDO} docker ps -aqf "name=redis")
-DOCKER_REDIS_EXEC=${SUDO} docker exec -i $(DOCKER_REDIS_CID) redis-cli --pass $$(cat $$REDIS_PASS_FILE)
-DOCKER_DB_CID=$(shell ${SUDO} docker ps -aqf "name=db")
-DOCKER_DB_EXEC=${SUDO} docker exec --user postgres -it
-DOCKER_DB_CMD=${SUDO} docker exec --user postgres -i
+DOCKER_REDIS_CID=$(shell docker ps -aqf "name=redis")
+DOCKER_REDIS_EXEC=docker exec -i $(DOCKER_REDIS_CID) redis-cli --pass $$(cat $$REDIS_PASS_FILE)
+DOCKER_DB_CID=$(shell docker ps -aqf "name=db")
+DOCKER_DB_EXEC=docker exec --user postgres -it
+DOCKER_DB_CMD=docker exec --user postgres -i
 
 #################################
 #          DEPLOY PROPS         #
@@ -471,17 +471,17 @@ go_test_bench: $(GO_TARGET) go_test_bench_build
 .PHONY: docker_up
 docker_up: build
 	$(call set_local_unix_sock_dir)
-	${SUDO} docker volume create $(PG_DATA) || true
-	${SUDO} docker volume create $(REDIS_DATA) || true
-	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build
+	docker volume create $(PG_DATA) || true
+	docker volume create $(REDIS_DATA) || true
+	COMPOSE_BAKE=true docker $(DOCKER_COMPOSE) up -d --build
 	chmod +x $(AUTH_INSTALL_SCRIPT) && exec $(AUTH_INSTALL_SCRIPT)
 	
 .PHONY: docker_down
 docker_down:
 	$(call set_local_unix_sock_dir)
-	${SUDO} docker $(DOCKER_COMPOSE) down -v
-	${SUDO} docker volume remove $(PG_DATA) || true
-	${SUDO} docker volume remove $(REDIS_DATA) || true
+	docker $(DOCKER_COMPOSE) down -v
+	docker volume remove $(PG_DATA) || true
+	docker volume remove $(REDIS_DATA) || true
 
 .PHONY: docker_cycle
 docker_cycle: docker_down docker_up docker_db_backup
@@ -489,17 +489,17 @@ docker_cycle: docker_down docker_up docker_db_backup
 .PHONY: docker_build
 docker_build:
 	$(call set_local_unix_sock_dir)
-	${SUDO} docker $(DOCKER_COMPOSE) build
+	docker $(DOCKER_COMPOSE) build
 
 .PHONY: docker_start
 docker_start: docker_build
 	$(call set_local_unix_sock_dir)
-	${SUDO} docker $(DOCKER_COMPOSE) up -d
+	docker $(DOCKER_COMPOSE) up -d
 
 .PHONY: docker_stop
 docker_stop:
 	$(call set_local_unix_sock_dir)
-	${SUDO} docker $(DOCKER_COMPOSE) stop 
+	docker $(DOCKER_COMPOSE) stop 
 
 .PHONY: docker_db
 docker_db:
@@ -507,7 +507,7 @@ docker_db:
 
 .PHONY: docker_redis
 docker_redis:
-	${SUDO} docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass $$(cat $$REDIS_PASS_FILE)
+	docker exec -it $(shell docker ps -aqf "name=redis") redis-cli --pass $$(cat $$REDIS_PASS_FILE)
 
 #################################
 #            HOST INIT          #
@@ -681,8 +681,7 @@ host_service_start:
 	$(SSH) "cd $(H_ETC_DIR) && make host_service_start_op"
 
 .PHONY: host_service_start_op
-host_service_start_op:
-	SUDO=sudo make docker_up
+host_service_start_op: docker_up
 	sudo install -m 700 -o ${HOST_OPERATOR} -g 1000 $(GO_TARGET) /usr/local/bin
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo systemctl is-active $(BINARY_SERVICE)
@@ -729,10 +728,10 @@ host_run_cron:
 
 .PHONY: docker_db_redeploy
 docker_db_redeploy: docker_stop
-	${SUDO} docker rm $(DOCKER_DB_CID) || true
-	${SUDO} docker volume remove $(PG_DATA) || true
-	${SUDO} docker volume create $(PG_DATA)
-	COMPOSE_BAKE=true ${SUDO} docker $(DOCKER_COMPOSE) up -d --build db
+	docker rm $(DOCKER_DB_CID) || true
+	docker volume remove $(PG_DATA) || true
+	docker volume create $(PG_DATA)
+	COMPOSE_BAKE=true docker $(DOCKER_COMPOSE) up -d --build db
 	sleep 5
 
 .PHONY: docker_db_backup
@@ -747,7 +746,7 @@ docker_db_backup:
 docker_db_restore_op:
 	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) pg_restore -c -d keycloak \
 		< $(DB_BACKUP_DIR)/$(shell ls -Art --ignore "${PG_DB}_app*" $(DB_BACKUP_DIR) | tail -n 1) || true
-	${SUDO} docker exec -i $(shell ${SUDO} docker ps -aqf "name=db") psql -U postgres -d ${PG_DB} -c " \
+	docker exec -i $(shell docker ps -aqf "name=db") psql -U postgres -d ${PG_DB} -c " \
 		TRUNCATE TABLE dbtable_schema.users CASCADE; \
 		TRUNCATE TABLE dbtable_schema.roles CASCADE; \
 		TRUNCATE TABLE dbtable_schema.file_types CASCADE; \
@@ -777,7 +776,7 @@ docker_db_redeploy_views:
 .PHONY: host_db_backup
 host_db_backup:
 	@mkdir -p "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
-	$(SSH) 'cd $(H_ETC_DIR) && SUDO=sudo make docker_db_backup && tailscale file cp "$(H_ETC_DIR)/$(DB_BACKUP_DIR)/"* "$(shell hostname)"'
+	$(SSH) 'cd $(H_ETC_DIR) && make docker_db_backup && tailscale file cp "$(H_ETC_DIR)/$(DB_BACKUP_DIR)/"* "$(shell hostname)"'
 	sudo tailscale file get "$(HOST_LOCAL_DIR)/$(DB_BACKUP_DIR)/"
 
 .PHONY: host_db_backup_restore
@@ -787,7 +786,7 @@ host_db_backup_restore:
 
 .PHONY: host_db_restore_op
 host_db_restore_op:
-	$(SSH) "cd $(H_ETC_DIR) && SUDO=sudo make docker_db_restore"
+	$(SSH) "cd $(H_ETC_DIR) && make docker_db_restore"
 
 .PHONY: host_db_restore
 host_db_restore: host_service_stop host_db_restore_op host_service_start
