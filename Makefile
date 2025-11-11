@@ -222,16 +222,19 @@ endif
 
 ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
 	@mkdir -p $(@D)
-	install -m 750 /dev/null $@
+	install -m 640 /dev/null $@
 	openssl rand -hex 64 > $@ | tr -d '\n'
-#ifeq ($(DEPLOYING),true)
-#	@chgrp -R $(H_GROUP) $(@D)
-#endif
+ifeq ($(DEPLOYING),true)
+	@chgrp -R $(H_GROUP) $(@D)
+endif
 
 ${AI_KEY_FILE}:
 	install -m 640 /dev/null $@
 	echo "Provide an AiStudio API key if desired, or just press Enter"
 	read -s AI_KEY; echo "$$AI_KEY" > $@
+ifeq ($(DEPLOYING),true)
+	@chgrp -R $(H_GROUP) $(@D)
+endif
 
 $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
