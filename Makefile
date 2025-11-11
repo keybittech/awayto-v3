@@ -188,8 +188,8 @@ clean:
 $(LOG_DIR):
 ifeq ($(DEPLOYING),)
 	mkdir -p $(LOG_DIR)/db
-	# setfacl -m g:1000:rwx $(LOG_DIR)/db
-	# setfacl -d -m g:1000:rwx $(LOG_DIR)/db
+	setfacl -m g:$(H_GROUP):rwx $(LOG_DIR)/db
+	setfacl -d -m g:$(H_GROUP):rwx $(LOG_DIR)/db
 endif
 
 $(CERT_LOC) $(CERT_KEY_LOC):
@@ -224,12 +224,9 @@ ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLI
 	@mkdir -p $(@D)
 	install -m 750 /dev/null $@
 	openssl rand -hex 64 > $@ | tr -d '\n'
-# ifeq ($(DEPLOYING),true)
-# 	@chown -R $(H_LOGIN):$(H_GROUP) $(@D)
-# else
-# 	@chown -R $(shell whoami):1000 $(@D)
-# endif
-# 	@chmod -R 750 $(@D)
+ifeq ($(DEPLOYING),true)
+	@chgrp -R $(H_GROUP) $(@D)
+endif
 
 ${AI_KEY_FILE}:
 	install -m 640 /dev/null $@
