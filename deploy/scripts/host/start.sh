@@ -1,7 +1,7 @@
 #!/bin/bash
 
-set -a
-. etc-dir/.env 
-set +a
+# set -a
+# . etc-dir/.env 
+# set +a
 
-exec /usr/local/bin/binary-name
+GO_ENVFILE_LOC=etc-dir/.env exec /usr/local/bin/binary-name
