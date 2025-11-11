@@ -20,7 +20,7 @@ services:
       - pg_pass
       - pg_worker_pass
     volumes: 
-      - ${UNIX_SOCK_DIR}:/var/run/postgresql
+      - ../../../${UNIX_SOCK_DIR}/db:/var/run/postgresql
       - pg_data:/var/lib/postgresql/data
       # - ${LOG_DIR}/db:/pglog
 
@@ -55,21 +55,21 @@ services:
       dockerfile: ./deploy/scripts/docker/auth_Dockerfile
     environment:
       - KC_UNIX_SOCK_DIR=/unix_sock
-      - KC_UNIX_SOCK_LOC=${UNIX_SOCK_FILE}
+      - KC_UNIX_SOCK_LOC=${UNIX_AUTH_SOCK_FILE}
       - KC_PROXY_HEADERS=xforwarded
       - KC_HTTP_ENABLED=true
       - KC_HOSTNAME_STRICT=false
       - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN}
       - KC_BOOTSTRAP_ADMIN_PASSWORD_FILE=/run/secrets/kc_pass
-      - KC_DB_URL=jdbc:postgresql:///keycloak?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$$FactoryArg&socketFactoryArg=/unix_sock/.s.PGSQL.5432
+      - KC_DB_URL=jdbc:postgresql:///keycloak?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$$FactoryArg&socketFactoryArg=/unix_sock/db/.s.PGSQL.5432
       - KC_DB_USERNAME=${PG_WORKER}
       - KC_DB_PASSWORD_FILE=/run/secrets/pg_worker_pass
     secrets:
       - kc_pass
       - pg_worker_pass
     volumes:
-      - ${UNIX_SOCK_DIR}:/unix_sock
+      - ../../../${UNIX_SOCK_DIR}:/unix_sock
 
   turn:
     image: ${TURN_IMAGE}

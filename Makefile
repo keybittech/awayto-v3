@@ -116,17 +116,6 @@ define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
 endef
 
-ifeq ($(ORIGINAL_SOCK_DIR),)
-ORIGINAL_SOCK_DIR:=${UNIX_SOCK_DIR}
-endif
-
-define set_local_unix_sock_dir
-	$(eval UNIX_SOCK_DIR := $(shell pwd)/$(ORIGINAL_SOCK_DIR))
-	$(eval TARGET_GROUP := $(if $(filter true,$(DEPLOYING)),$(H_GROUP),1000))
-	setfacl -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
-	setfacl -d -m g:$(TARGET_GROUP):rwx "$(UNIX_SOCK_DIR)"
-endef
-
 CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${PWD}/${CERTS_DIR})
 CURRENT_CERT_LOC=$(CURRENT_CERTS_DIR)/cert.pem
@@ -162,7 +151,6 @@ define clean_test
 	@echo "======== cleaning tests ========"
 	$(DOCKER_REDIS_EXEC) FLUSHALL
 	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
 endef
 
 #################################
@@ -299,7 +287,6 @@ $(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go $(PROTO_FILES)
 	$(GO) run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
 
 $(GO_TARGET): $(GO_FILES)
-	$(call set_local_unix_sock_dir)
 	$(GO) build -C $(GO_SRC) -o $(GO_TARGET) .
 
 #################################
@@ -309,13 +296,11 @@ $(GO_TARGET): $(GO_FILES)
 .PHONY: go_dev
 go_dev: 
 	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) . $(NO_LIMIT) $(LOG_DEBUG)
 
 .PHONY: go_dev_ts
 go_dev_ts: 
 	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod run -C $(GO_SRC) -tags=dev . $(NO_LIMIT) $(LOG_DEBUG)
 
 .PHONY: go_tidy
@@ -333,19 +318,16 @@ go_sec_all:
 .PHONY: go_watch
 go_watch:
 	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) gow -e=go,mod build -C $(GO_SRC) -o $(GO_TARGET) .
 
 .PHONY: go_debug
 go_debug:
 	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
 	cd go && $(GO_DEV_FLAGS) dlv debug --wd ${PWD}
 
 .PHONY: go_debug_exec
 go_debug_exec:
 	$(call clean_logs)
-	$(call set_local_unix_sock_dir)
 	$(GO_DEV_FLAGS) dlv exec --wd ${PWD} $(GO_TARGET)
 
 .PHONY: ts_dev
@@ -470,7 +452,7 @@ go_test_bench: $(GO_TARGET) go_test_bench_build
 
 .PHONY: docker_up
 docker_up: build
-	$(call set_local_unix_sock_dir)
+	mkdir -p ${UNIX_SOCK_DIR}/db ${UNIX_SOCK_DIR}/auth
 	docker volume create $(PG_DATA) || true
 	docker volume create $(REDIS_DATA) || true
 	COMPOSE_BAKE=true docker $(DOCKER_COMPOSE) up -d --build
@@ -478,7 +460,6 @@ docker_up: build
 	
 .PHONY: docker_down
 docker_down:
-	$(call set_local_unix_sock_dir)
 	docker $(DOCKER_COMPOSE) down -v
 	docker volume remove $(PG_DATA) || true
 	docker volume remove $(REDIS_DATA) || true
@@ -488,17 +469,14 @@ docker_cycle: docker_down docker_up docker_db_backup
 
 .PHONY: docker_build
 docker_build:
-	$(call set_local_unix_sock_dir)
 	docker $(DOCKER_COMPOSE) build
 
 .PHONY: docker_start
 docker_start: docker_build
-	$(call set_local_unix_sock_dir)
 	docker $(DOCKER_COMPOSE) up -d
 
 .PHONY: docker_stop
 docker_stop:
-	$(call set_local_unix_sock_dir)
 	docker $(DOCKER_COMPOSE) stop 
 
 .PHONY: docker_db

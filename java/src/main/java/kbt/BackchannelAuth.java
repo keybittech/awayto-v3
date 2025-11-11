@@ -18,7 +18,7 @@ public final class BackchannelAuth {
   }
 
   private static final File SOCKET_FILE = new File(
-      System.getenv("KC_UNIX_SOCK_DIR") + "/" + System.getenv("KC_UNIX_SOCK_LOC"));
+      System.getenv("KC_UNIX_SOCK_DIR") + "/auth/" + System.getenv("KC_UNIX_SOCK_LOC"));
 
   public static JSONObject sendUnixMessage(String eventType, JSONObject eventPayload) {
     JSONObject response = new JSONObject();

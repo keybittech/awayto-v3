@@ -26,7 +26,7 @@ func reset(b *testing.B) {
 func getTestApi(limit rate.Limit, burst int) *API {
 	api := NewAPI(util.E_GO_HTTPS_PORT)
 	go api.RedirectHTTP(util.E_GO_HTTP_PORT)
-	go api.InitUnixServer(util.E_UNIX_PATH)
+	go api.InitUnixServer(util.E_UNIX_AUTH_PATH)
 	api.InitProtoHandlers()
 	api.InitAuthProxy()
 	api.InitSockServer()

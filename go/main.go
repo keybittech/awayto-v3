@@ -16,7 +16,7 @@ func main() {
 		"started with flags -httpPort=%d -httpsPort=%d -unixPath=%s -rateLimit=%d -rateLimitBurst=%d",
 		util.E_GO_HTTP_PORT,
 		util.E_GO_HTTPS_PORT,
-		util.E_UNIX_PATH,
+		util.E_UNIX_AUTH_PATH,
 		util.E_RATE_LIMIT,
 		util.E_RATE_LIMIT_BURST,
 	)
@@ -36,7 +36,7 @@ func main() {
 
 	go server.RedirectHTTP(util.E_GO_HTTP_PORT)
 
-	go server.InitUnixServer(util.E_UNIX_PATH)
+	go server.InitUnixServer(util.E_UNIX_AUTH_PATH)
 
 	server.InitProtoHandlers()
 	server.InitAuthProxy()

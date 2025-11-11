@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"path/filepath"
 	"reflect"
 	"strconv"
 	"strings"
@@ -49,7 +50,9 @@ func InitDatabase() *Database {
 		log.Fatal(util.ErrCheck(err))
 	}
 
-	connString := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", util.E_DB_DRIVER, util.E_PG_WORKER, pgPass, util.E_PG_DB, util.E_UNIX_SOCK_DIR)
+	sockDir := filepath.Join(util.E_PROJECT_DIR, util.E_UNIX_SOCK_DIR, "db")
+
+	connString := fmt.Sprintf("%s://%s:%s@/%s?host=%s&sslmode=disable", util.E_DB_DRIVER, util.E_PG_WORKER, pgPass, util.E_PG_DB, sockDir)
 	config, err := pgxpool.ParseConfig(connString)
 	if err != nil {
 		log.Fatalf("Unable to parse db config: %v\n", err)
