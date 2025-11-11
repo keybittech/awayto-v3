@@ -224,9 +224,9 @@ ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLI
 	@mkdir -p $(@D)
 	install -m 750 /dev/null $@
 	openssl rand -hex 64 > $@ | tr -d '\n'
-ifeq ($(DEPLOYING),true)
-	@chgrp -R $(H_GROUP) $(@D)
-endif
+#ifeq ($(DEPLOYING),true)
+#	@chgrp -R $(H_GROUP) $(@D)
+#endif
 
 ${AI_KEY_FILE}:
 	install -m 640 /dev/null $@
