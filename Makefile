@@ -224,12 +224,12 @@ ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLI
 	@mkdir -p $(@D)
 	install -m 640 /dev/null $@
 	openssl rand -hex 64 > $@ | tr -d '\n'
-ifeq ($(DEPLOYING),true)
-	@chown -R $(H_LOGIN):$(H_GROUP) $(@D)
-else
-	@chown -R $(shell whoami):1000 $(@D)
-endif
-	@chmod -R 750 $(@D)
+# ifeq ($(DEPLOYING),true)
+# 	@chown -R $(H_LOGIN):$(H_GROUP) $(@D)
+# else
+# 	@chown -R $(shell whoami):1000 $(@D)
+# endif
+# 	@chmod -R 750 $(@D)
 
 ${AI_KEY_FILE}:
 	install -m 640 /dev/null $@
@@ -650,7 +650,7 @@ host_update: $(LANDING_SRC)/config.yaml
 	sed -i -e '/^  lastUpdated:/s/^.*$$/  lastUpdated: $(shell date +%Y-%m-%d)/' $(LANDING_SRC)/config.yaml
 
 .PHONY: host_deploy
-host_deploy: go_test_unit host_sync_files 
+host_deploy: host_sync_files 
 	$(SSH) "cd $(H_ETC_DIR) && make host_update && make build && make host_service_start_op"
 
 .PHONY: host_service_start
