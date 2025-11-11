@@ -105,7 +105,7 @@ AUTH_INSTALL_SCRIPT=$(AUTH_SCRIPTS)/install.sh
 H_ETC_DIR=/etc/${PROJECT_PREFIX}
 
 H_LOGIN=${HOST_OPERATOR}login
-H_GROUP=${PROJECT_PREFIX}g
+H_GROUP=${PROJECT_PREFIX}group
 H_SIGN=$(H_LOGIN)@${APP_HOST}
 SSH=tailscale ssh $(H_SIGN)
 
@@ -513,13 +513,26 @@ docker_redis:
 #            HOST INIT          #
 #################################
 
-.PHONY: host_up
-host_up: 
+.PHONY: cloud_config_gen
+cloud_config_gen:
 	@mkdir -p $(HOST_LOCAL_DIR)
 	date >> "$(HOST_LOCAL_DIR)/start_time"
 	@echo "Tailscale auth key:"; \
 	read -s TS_AUTH_KEY; \
 	sed -e "s&dummyuser&${HOST_OPERATOR}&g; s&ts-auth-key&$$TS_AUTH_KEY&g; s&host-group&$(H_GROUP)&g; s&project-prefix&${PROJECT_PREFIX}&g; s&project-repo&https://${PROJECT_REPO}.git&g; s&https-port&${GO_HTTPS_PORT}&g; s&http-port&${GO_HTTP_PORT}&g; s&project-dir&$(H_ETC_DIR)&g; s&deploy-scripts&$(DEPLOY_HOST_SCRIPTS)&g; s&binary-name&${BINARY_NAME}&g; s&log-dir&/var/log/${PROJECT_PREFIX}&g; s&node-version&$(NODE_VERSION)&g; s&go-version&$(GO_VERSION)&g;" "$(DEPLOY_HOST_SCRIPTS)/cloud-config.yaml" > "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+
+.PHONY: host_local_up
+host_local_up: cloud_config_gen
+	multipass launch --name "${APP_HOST}" --timeout 1800 --memory 4G --cpus 2 --disk 20G --cloud-init "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+	> "$(HOST_LOCAL_DIR)"/.local
+
+.PHONY: host_local_down
+host_local_down:
+	multipass delete --purge "${APP_HOST}"
+	rm -rf "$(HOST_LOCAL_DIR)"
+
+.PHONY: host_up
+host_up: cloud_config_gen
 	cp "$(DEPLOY_HOST_SCRIPTS)/public-firewall.json" "$(HOST_LOCAL_DIR)/public-firewall.json"
 	hcloud firewall create --name "${PROJECT_PREFIX}-public-firewall" --rules-file "$(HOST_LOCAL_DIR)/public-firewall.json" >/dev/null
 	hcloud firewall describe "${PROJECT_PREFIX}-public-firewall" -o json > "$(HOST_LOCAL_DIR)/public-firewall.json"
@@ -542,7 +555,10 @@ host_up:
 #   }
 
 .PHONY: host_install_service
-host_install_service: host_sync_files host_update_cert
+host_install_service: host_sync_files
+	if [ ! -f "$(HOST_LOCAL_DIR)/.local" ]; then \
+		$(MAKE) host_update_cert; \
+	fi
 	$(SSH) "cd $(H_ETC_DIR) && make host_install_service_op"
 
 .PHONY: host_install_service_op
@@ -569,11 +585,13 @@ host_sync_files:
 		sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/; \
 		sudo chown $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/.env; \
 	"
-	tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"
-	$(SSH) " \
-		sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/; \
-		sudo chown -R $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/$(DEMOS_DIR)/; \
-	"
+	if [ -f "$(DEMOS_DIR)" ]; then \
+		tailscale file cp "$(DEMOS_DIR)/"* "$(APP_HOST):"; \
+		$(SSH) " \
+			sudo tailscale file get --conflict=overwrite $(H_ETC_DIR)/$(DEMOS_DIR)/; \
+			sudo chown -R $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/$(DEMOS_DIR)/; \
+		"; \
+	fi
 
 # if we don't have certs locally or we're renewing, do the normal cert request and store the certs locally
 # if the server still doesn't have certs then we aren't renewing and already have certs locally, likely new deployment

@@ -1,9 +1,7 @@
 #cloud-config
-bootcmd:
-  - echo 'disable_root: true' >> /etc/cloud/cloud.cfg
 groups:
-  - host-group: []
-  - ssl-certs: []
+  - host-group
+  - ssl-certs
 users:
   - name: root
     lock_passwd: true
@@ -20,7 +18,6 @@ packages:
   - fail2ban
   - certbot
   - build-essential 
-  - iptables-persistent
   - ufw
   - jq
   - openjdk-21-jre
@@ -48,11 +45,19 @@ runcmd:
   - ufw allow 80/tcp
   - ufw allow 443/tcp
   - ufw allow 41641/udp
-  - ufw enable
-  - ip6tables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
-  - ip6tables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
-  - iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port http-port
-  - iptables -A PREROUTING -t nat -p tcp --dport 443 -j REDIRECT --to-port https-port
+  - |
+    sed -i '/*nat/a \
+    :PREROUTING ACCEPT [0:0]\n\
+    -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 7080\n\
+    -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 7443\n\
+    COMMIT' /etc/ufw/before.rules
+  - |
+    sed -i '/*nat/a \
+    :PREROUTING ACCEPT [0:0]\n\
+    -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 7080\n\
+    -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 7443\n\
+    COMMIT' /etc/ufw/before6.rules
+  - ufw --force enable
   - bash -c "iptables-save > /etc/iptables/rules.v4"
   - bash -c "ip6tables-save > /etc/iptables/rules.v6"
   # create a log directory accessible by group, make sure future files are group visible
