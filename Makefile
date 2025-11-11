@@ -239,7 +239,6 @@ ${AI_KEY_FILE}:
 $(JAVA_TARGET): $(shell find $(JAVA_SRC)/{src,themes,pom.xml} -type f)
 	rm -rf $(JAVA_SRC)/target
 	mkdir $(@D)
-	cp $(JAVA_SRC)/junixsocket-selftest-2.10.1-jar-with-dependencies.jar $(JAVA_TARGET_DIR)/
 	mvn -f $(JAVA_SRC) install
 
 $(LANDING_SRC)/config.yaml:
