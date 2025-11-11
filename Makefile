@@ -222,7 +222,7 @@ endif
 
 ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
 	@mkdir -p $(@D)
-	install -m 640 /dev/null $@
+	install -m 750 /dev/null $@
 	openssl rand -hex 64 > $@ | tr -d '\n'
 # ifeq ($(DEPLOYING),true)
 # 	@chown -R $(H_LOGIN):$(H_GROUP) $(@D)
