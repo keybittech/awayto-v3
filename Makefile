@@ -108,6 +108,7 @@ H_LOGIN=${HOST_OPERATOR}login
 H_GROUP=${PROJECT_PREFIX}group
 H_SIGN=$(H_LOGIN)@${APP_HOST}
 SSH=tailscale ssh $(H_SIGN)
+TSIPV4=$(shell tailscale ip -4 ${APP_HOST})
 
 CURRENT_USER:=$(shell whoami)
 DEPLOYING:=$(if $(filter ${HOST_OPERATOR}login,$(CURRENT_USER)),true,)
@@ -116,7 +117,13 @@ define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
 endef
 
-CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
+DEPLOYING_LOCALLY:=$(shell test -f "$(HOST_LOCAL_DIR)/.local" && echo true)
+
+define if_deploying_locally
+$(if $(DEPLOYING_LOCALLY),$(1),$(2))
+endef
+
+CURRENT_APP_HOST_NAME=$(call if_deploying,$(call if_deploying_locally,$(TSIPV4),${DOMAIN_NAME}),localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${PWD}/${CERTS_DIR})
 CURRENT_CERT_LOC=$(CURRENT_CERTS_DIR)/cert.pem
 CURRENT_CERT_KEY_LOC=$(CURRENT_CERTS_DIR)/privkey.pem
@@ -575,11 +582,11 @@ host_sync_files:
 .PHONY: host_local_update_cert
 host_local_update_cert:
 	$(SSH) " \
-		sudo mkdir -p /etc/letsencrypt/live/${DOMAIN_NAME}; \
+		sudo mkdir -p /etc/letsencrypt/live/$(TSIPV4); \
 		sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-			-keyout /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem \
-			-out /etc/letsencrypt/live/${DOMAIN_NAME}/cert.pem \
-			-subj \"/C=US/ST=State/L=City/O=Organization/CN=${DOMAIN_NAME}\"; \
+			-keyout /etc/letsencrypt/live/$(TSIPV4)/privkey.pem \
+			-out /etc/letsencrypt/live/$(TSIPV4)/cert.pem \
+			-subj \"/C=US/ST=State/L=City/O=Organization/CN=$(TSIPV4)\"; \
 	"
 	$(SSH) " \
 		sudo chgrp -R ssl-certs /etc/letsencrypt/live; \
