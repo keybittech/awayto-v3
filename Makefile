@@ -535,6 +535,8 @@ host_up: cloud_config_gen
 host_install_service: host_sync_files
 	if [ ! -f "$(HOST_LOCAL_DIR)/.local" ]; then \
 		$(MAKE) host_update_cert; \
+	else \
+		$(MAKE) host_local_update_cert; \
 	fi
 	$(SSH) "cd $(H_ETC_DIR) && make host_install_service_op"
 
@@ -569,6 +571,21 @@ host_sync_files:
 			sudo chown -R $(H_LOGIN):$(H_GROUP) $(H_ETC_DIR)/$(DEMOS_DIR)/; \
 		"; \
 	fi
+
+.PHONY: host_local_update_cert
+host_local_update_cert:
+	$(SSH) " \
+		sudo mkdir -p /etc/letsencrypt/live/${DOMAIN_NAME}; \
+		sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+			-keyout /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem \
+			-out /etc/letsencrypt/live/${DOMAIN_NAME}/cert.pem \
+			-subj \"/C=US/ST=State/L=City/O=Organization/CN=${DOMAIN_NAME}\"; \
+	"
+	$(SSH) " \
+		sudo chgrp -R ssl-certs /etc/letsencrypt/live; \
+		sudo chmod -R g+r /etc/letsencrypt/live; \
+		sudo chmod g+x /etc/letsencrypt/live; \
+	"
 
 # if we don't have certs locally or we're renewing, do the normal cert request and store the certs locally
 # if the server still doesn't have certs then we aren't renewing and already have certs locally, likely new deployment
