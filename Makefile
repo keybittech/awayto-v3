@@ -111,39 +111,39 @@ SSH=tailscale ssh $(H_SIGN)
 TSIPV4=$(shell tailscale ip -4 ${APP_HOST})
 
 CURRENT_USER:=$(shell whoami)
-DEPLOYING:=$(if $(filter ${HOST_OPERATOR}login,$(CURRENT_USER)),true,)
+DEPLOYING=$(if $(filter ${HOST_OPERATOR}login,$(CURRENT_USER)),true,)
 
 define if_deploying
 $(if $(DEPLOYING),$(1),$(2))
 endef
 
-DEPLOYING_LOCALLY:=$(shell test -f "$(HOST_LOCAL_DIR)/.local" && echo true)
+DEPLOYING_LOCALLY=$(shell test -f "$(HOST_LOCAL_DIR)/.local" && echo true)
 
 define if_deploying_locally
 $(if $(DEPLOYING_LOCALLY),$(1),$(2))
 endef
 
-CURRENT_APP_HOST_NAME=$(call if_deploying,$(call if_deploying_locally,$(TSIPV4),${DOMAIN_NAME}),localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${PWD}/${CERTS_DIR})
 CURRENT_CERT_LOC=$(CURRENT_CERTS_DIR)/cert.pem
 CURRENT_CERT_KEY_LOC=$(CURRENT_CERTS_DIR)/privkey.pem
 CURRENT_PROJECT_DIR=$(call if_deploying,/etc/${PROJECT_PREFIX},${PWD})
 CURRENT_LOG_DIR=$(call if_deploying,/var/log/${PROJECT_PREFIX},${PWD}/${LOG_DIR})
 CURRENT_HOST_LOCAL_DIR=$(call if_deploying,$(CURRENT_PROJECT_DIR)/${HOST_LOCAL_DIR},${PWD}/${HOST_LOCAL_DIR})
+CURRENT_APP_HOST_NAME=$(call if_deploying,$(call if_deploying_locally,${APP_HOST},${DOMAIN_NAME}),localhost:${GO_HTTPS_PORT})
 
-$(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERT_LOC=/s&^.*$$&CERT_LOC=$(CURRENT_CERT_LOC)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)CERT_KEY_LOC=/s&^.*$$&CERT_KEY_LOC=$(CURRENT_CERT_KEY_LOC)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)PROJECT_DIR=/s&^.*$$&PROJECT_DIR=$(CURRENT_PROJECT_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)LOG_DIR=/s&^.*$$&LOG_DIR=$(CURRENT_LOG_DIR)&;" $(ENVFILE))
 $(shell sed -i -e "/^\(#\|\)HOST_LOCAL_DIR=/s&^.*$$&HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR)&;" $(ENVFILE))
+$(shell sed -i -e "/^\(#\|\)APP_HOST_NAME=/s&^.*$$&APP_HOST_NAME=$(CURRENT_APP_HOST_NAME)&;" $(ENVFILE))
 
-$(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 $(eval CERT_LOC=$(CURRENT_CERT_LOC))
 $(eval CERT_KEY_LOC=$(CURRENT_CERT_KEY_LOC))
 $(eval PROJECT_DIR=$(CURRENT_PROJECT_DIR))
 $(eval LOG_DIR=$(CURRENT_LOG_DIR))
 $(eval HOST_LOCAL_DIR=$(CURRENT_HOST_LOCAL_DIR))
+$(eval APP_HOST_NAME=$(CURRENT_APP_HOST_NAME))
 
 AI_ENABLED=$(shell [ $$(wc -c < ${AI_KEY_FILE}) -gt 5 ] && echo 1 || echo 0)
 
