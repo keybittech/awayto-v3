@@ -49,6 +49,7 @@ services:
     ports:
       - 8080:8080
       - 8443:8443
+    user: :nobody # for reading mounted secrets
     build:
       context: ../../../
       dockerfile: ./deploy/scripts/docker/auth_Dockerfile
@@ -60,14 +61,13 @@ services:
       - KC_HOSTNAME_STRICT=false
       - KC_HOSTNAME_BACKCHANNEL_DYNAMIC=false
       - KC_BOOTSTRAP_ADMIN_USERNAME=${KC_ADMIN}
-      - KC_BOOTSTRAP_ADMIN_PASSWORD_FILE=/run/secrets/kc_pass
+      - KC_BOOTSTRAP_ADMIN_PASSWORD_FILE=/tmp/kc_pass
       - KC_DB_URL=jdbc:postgresql:///keycloak?socketFactory=org.newsclub.net.unix.AFUNIXSocketFactory$$FactoryArg&socketFactoryArg=/unix_sock/db/.s.PGSQL.5432
       - KC_DB_USERNAME=${PG_WORKER}
-      - KC_DB_PASSWORD_FILE=/run/secrets/pg_worker_pass
-    secrets:
-      - kc_pass
-      - pg_worker_pass
+      - KC_DB_PASSWORD_FILE=/tmp/pg_worker_pass
     volumes:
+      - ../../../secrets/kc_pass:/tmp/kc_pass
+      - ../../../secrets/pg_worker_pass:/tmp/pg_worker_pass
       - ../../../${UNIX_SOCK_DIR}:/unix_sock
 
   turn:
