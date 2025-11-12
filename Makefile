@@ -195,8 +195,13 @@ clean:
 $(LOG_DIR):
 ifeq ($(DEPLOYING),)
 	mkdir -p $(LOG_DIR)/db
-	setfacl -m g:$(H_GROUP):rwx $(LOG_DIR)/db
-	setfacl -d -m g:$(H_GROUP):rwx $(LOG_DIR)/db
+	setfacl -m g:$(H_GROUP):rwx $(LOG_DIR)
+	setfacl -d -m g:$(H_GROUP):rwx $(LOG_DIR)
+else
+	sudo mkdir -p $(LOG_DIR)
+	sudo setfacl -m g:$(H_GROUP):rwx $(LOG_DIR)
+	sudo setfacl -d -m g:$(H_GROUP):rwx $(LOG_DIR)
+	sudo mkdir -p $(LOG_DIR)/db
 endif
 
 $(CERT_LOC) $(CERT_KEY_LOC):
