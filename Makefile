@@ -185,10 +185,10 @@ GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 
 build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${AI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
 
-# certs, secrets, demo and backup dirs are not cleaned
+# logs, certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
 clean:
-	rm -rf $(LOG_DIR) $(TS_BUILD_DIR) $(GO_GEN_DIR) \
+	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) \
 		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
 	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_HANDLERS_REGISTER) # $(MOCK_TARGET)
 
@@ -795,39 +795,4 @@ host_db_restore: host_service_stop host_db_restore_op host_service_start
 .PHONY: check_logs
 check_logs:
 	exec $(CRON_SCRIPTS)/check-logs
-
-#################################
-#              AUTO             #
-#################################
-
-.PHONY: auto_review
-auto_review:
-	cat working/test_thing > working/auto_text
-	@while IFS= read -r line || [ -n "$$line" ]; do \
-		echo -e "$$line" >> working/auto_text; \
-	done
-
-.PHONY: auto_fix
-auto_fix:
-	echo "$(shell cat working/auto_text)" | $(MAKE) auto_ask
-
-.PHONY: auto_clean
-auto_clean:
-	docker stop $(shell docker ps -aqf "name=openhands") && docker rm $(shell docker ps -aqf "name=openhands") || true
-
-.PHONY: auto_ask
-auto_ask: auto_clean
-	@docker run -t --rm --pull=always \
-	-e SANDBOX_RUNTIME_CONTAINER_IMAGE=docker.all-hands.dev/all-hands-ai/runtime:0.39-nikolaik \
-	-e SANDBOX_USER_ID=$(shell id -u) \
-	-e SANDBOX_VOLUMES=$(PROJECT_DIR):/workspace:rw \
-	-e LLM_API_KEY=$(GEMINI_2_5_KEY) \
-	-e LLM_MODEL="gemini/gemini-2.0-flash" \
-	-e LOG_ALL_EVENTS=true \
-	-v /var/run/docker.sock:/var/run/docker.sock \
-	-v ~/.openhands-state:/.openhands-state \
-	--add-host host.docker.internal:host-gateway \
-	--name openhands-app \
-	docker.all-hands.dev/all-hands-ai/openhands:0.39 \
-	python -m openhands.core.main -t "$(shell cat working/test_thing) $(shell cat)"
 
