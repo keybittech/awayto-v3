@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go
 
-go 1.24.3
+go 1.25.1
 
 require (
 	github.com/playwright-community/playwright-go v0.5101.0

@@ -10,6 +10,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"strings"
 	"time"
 
@@ -63,6 +64,11 @@ func (a *API) InitUnixServer(unixPath string) {
 
 	a.Unix, err = net.Listen("unix", unixPath)
 	if err != nil {
+		log.Fatal(err)
+	}
+
+	cmd := exec.Command("setfacl", "-m", "u:1000:rw", unixPath)
+	if err := cmd.Run(); err != nil {
 		log.Fatal(err)
 	}
 

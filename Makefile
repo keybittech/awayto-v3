@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-GO_VERSION=go1.24.3.linux-amd64
+GO_VERSION=go1.25.1.linux-amd64
 NODE_VERSION=v22.13.1
 
 # manually manage path for makefile use
@@ -123,7 +123,7 @@ define if_deploying_locally
 $(if $(DEPLOYING_LOCALLY),$(1),$(2))
 endef
 
-CURRENT_APP_HOST_NAME=$(call if_deploying,$(call if_deploying_locally,${APP_HOST},${DOMAIN_NAME}),localhost:${GO_HTTPS_PORT})
+CURRENT_APP_HOST_NAME=$(call if_deploying,${DOMAIN_NAME},localhost:${GO_HTTPS_PORT})
 CURRENT_CERTS_DIR=$(call if_deploying,/etc/letsencrypt/live/${DOMAIN_NAME},${PWD}/${CERTS_DIR})
 CURRENT_CERT_LOC=$(CURRENT_CERTS_DIR)/cert.pem
 CURRENT_CERT_KEY_LOC=$(CURRENT_CERTS_DIR)/privkey.pem
@@ -236,9 +236,10 @@ ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLI
 	@mkdir -p $(@D)
 	install -m 640 /dev/null $@
 	openssl rand -hex 64 > $@ | tr -d '\n'
-ifeq ($(DEPLOYING),true)
-	@chgrp -R $(H_GROUP) $(@D)
-endif
+	setfacl -m u:1000:rw $@
+# ifeq ($(DEPLOYING),true)
+# 	@chgrp -R $(H_GROUP) $(@D)
+# endif
 
 ${AI_KEY_FILE}:
 	install -m 640 /dev/null $@
@@ -513,7 +514,7 @@ cloud_config_gen:
 .PHONY: host_local_up
 host_local_up: cloud_config_gen
 	> "$(HOST_LOCAL_DIR)"/.local
-	multipass launch --name "${APP_HOST}" --timeout 1800 --memory 4G --cpus 2 --disk 20G --cloud-init "$(HOST_LOCAL_DIR)/cloud-config.yaml"
+	multipass launch --name "${APP_HOST}" --timeout 900 --memory 4G --cpus 2 --disk 20G --cloud-init "$(HOST_LOCAL_DIR)/cloud-config.yaml"
 
 .PHONY: host_local_down
 host_local_down:
@@ -587,11 +588,11 @@ host_sync_files:
 .PHONY: host_local_update_cert
 host_local_update_cert:
 	$(SSH) " \
-		sudo mkdir -p /etc/letsencrypt/live/$(TSIPV4); \
+		sudo mkdir -p /etc/letsencrypt/live/${DOMAIN_NAME}; \
 		sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
-			-keyout /etc/letsencrypt/live/$(TSIPV4)/privkey.pem \
-			-out /etc/letsencrypt/live/$(TSIPV4)/cert.pem \
-			-subj \"/C=US/ST=State/L=City/O=Organization/CN=$(TSIPV4)\"; \
+			-keyout /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem \
+			-out /etc/letsencrypt/live/${DOMAIN_NAME}/cert.pem \
+			-subj \"/C=US/ST=State/L=City/O=Organization/CN=${DOMAIN_NAME}\"; \
 	"
 	$(SSH) " \
 		sudo chgrp -R ssl-certs /etc/letsencrypt/live; \
