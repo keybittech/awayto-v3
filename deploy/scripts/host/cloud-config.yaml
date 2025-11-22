@@ -1,18 +1,28 @@
 #cloud-config
+chpasswd:
+  expire: false
 groups:
   - host-group
   - ssl-certs
 users:
-  - name: root
-    lock_passwd: true
   - name: dummyuserlogin
     sudo: ALL=(ALL) NOPASSWD:ALL
     groups: [host-group, ssl-certs]
     shell: /bin/bash
   - name: dummyuser
     groups: [host-group, ssl-certs]
-    shell: /bin/bash
+    shell: /usr/sbin/nologin
     lock_passwd: true
+# install apt-cacher-ng
+# get proxy ip from ip addr show
+#apt:
+#  proxy: "http://10.x.x.1:3142"
+#  sources:
+#    docker.list:
+#      source: "deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable"
+#      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+package_update: true
+package_upgrade: true
 packages:
   - acl
   - uidmap
@@ -25,48 +35,40 @@ packages:
   - maven
   - hugo
   - protobuf-compiler
-  - protoc-gen-go
-package_update: true
-package_upgrade: true
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-compose-plugin
+  - docker-ce-rootless-extras
+  - docker-buildx-plugin
+write_files:
+  - path: /etc/ufw/sysctl.conf
+    append: true
+    content: |
+      net/ipv4/ip_forward=1
+  - path: /etc/ufw/before.rules
+    append: true
+    content: |
+      *nat
+      :PREROUTING ACCEPT [0:0]
+      -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port http-port
+      -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port https-port
+      COMMIT
 runcmd:
-  # assert group id to match pg docker user
   - groupmod -g 1000 host-group
-  # disable ssh
   - systemctl stop sshd
   - systemctl disable sshd
-  # setup tailscale deps early to avoid timing issue
-  - echo 'net.ipv4.ip_forward = 1' >> /etc/sysctl.d/99-tailscale.conf
-  - echo 'net.ipv6.conf.all.forwarding = 1' >> /etc/sysctl.d/99-tailscale.conf
-  - sysctl -p /etc/sysctl.d/99-tailscale.conf
-  # configure firewall
   - systemctl enable fail2ban
   - ufw default deny incoming
   - ufw default allow outgoing
   - ufw default deny routed
   - ufw allow 80/tcp
   - ufw allow 443/tcp
+  - ufw allow http-port/tcp
+  - ufw allow https-port/tcp
   - ufw allow 41641/udp
-  - |
-    sed -i '/*nat/a \
-    :PREROUTING ACCEPT [0:0]\n\
-    -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 7080\n\
-    -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 7443\n\
-    COMMIT' /etc/ufw/before.rules
-  - |
-    sed -i '/*nat/a \
-    :PREROUTING ACCEPT [0:0]\n\
-    -A PREROUTING -p tcp --dport 80 -j REDIRECT --to-port 7080\n\
-    -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port 7443\n\
-    COMMIT' /etc/ufw/before6.rules
-  - ufw --force enable
-  - bash -c "iptables-save > /etc/iptables/rules.v4"
-  - bash -c "ip6tables-save > /etc/iptables/rules.v6"
-  # create a log directory accessible by group, make sure future files are group visible
-  - mkdir -p log-dir/db
-  - chown -R root:host-group log-dir
-  - chmod -R 2770 log-dir
-  # create a dir for the project owned by login user to do builds, accessible by service runner
-  # setup build dependencies as build user
+  # - ufw allow 44400:44500/udp
+  - ufw enable
   - |
     su -l dummyuserlogin -c 'bash -s' << 'EOF'
     sudo git clone project-repo project-dir
@@ -74,21 +76,22 @@ runcmd:
     sudo install -d -m 750 -o dummyuserlogin -g host-group project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/local_tmp project-dir/demos project-dir/demos/final
     setfacl -R -d -m g:host-group:rwx project-dir
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
-    . ~/.nvm/nvm.sh && nvm install node-version && npm i -g pnpm@latest-10
+    . /home/dummyuserlogin/.nvm/nvm.sh && nvm install node-version && npm i -g pnpm@latest-10
     rm -rf /usr/local/go
     curl -L -o /tmp/goinstall.tar.gz https://go.dev/dl/go-version.tar.gz
     sudo tar -C /usr/local -xzf /tmp/goinstall.tar.gz && rm /tmp/goinstall.tar.gz
-    echo "export PATH=\$PATH:/usr/local/go/bin" >> ~/.bashrc
-    source ~/.bashrc
+    echo "export PATH=/usr/local/go/bin:\$PATH" >> /home/dummyuserlogin/.bashrc
+    source /home/dummyuserlogin/.bashrc
+    /usr/local/go/bin/go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
     /usr/local/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
-    curl -fsSL https://get.docker.com | sh
-    dockerd-rootless-setuptool.sh install
+    mkdir -p ~/.config/docker
+    echo '{ "storage-driver": "overlay2" }' >> /home/dummyuserlogin/.config/docker/daemon.json
+    /usr/bin/dockerd-rootless-setuptool.sh install
     systemctl --user enable docker
-    sudo loginctl enable-linger dummyuserlogin
-    curl -fsSL https://tailscale.com/install.sh | sh
-    echo "clear && cd project-dir" >> ~/.bashrc
+    echo "clear && cd project-dir" >> /home/dummyuserlogin/.bashrc
     EOF
+  - loginctl enable-linger dummyuserlogin
+  - curl -fsSL https://tailscale.com/install.sh | sh
   - tailscale up --operator=dummyuserlogin --authkey=ts-auth-key --ssh
-  - reboot
+  - usermod -s /usr/sbin/nologin root
 
-# - ufw allow 44400:44500/udp
