@@ -13,14 +13,11 @@ users:
     groups: [host-group, ssl-certs]
     shell: /usr/sbin/nologin
     lock_passwd: true
-# install apt-cacher-ng
-# get proxy ip from ip addr show
-#apt:
-#  proxy: "http://10.x.x.1:3142"
-#  sources:
-#    docker.list:
-#      source: "deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable"
-#      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
+apt:
+  sources:
+    docker.list:
+      source: "deb [arch=amd64] https://download.docker.com/linux/ubuntu $RELEASE stable"
+      keyid: 9DC858229FC7DD38854AE2D88D81803C0EBFCD88
 package_update: true
 package_upgrade: true
 packages:
@@ -42,6 +39,19 @@ packages:
   - docker-ce-rootless-extras
   - docker-buildx-plugin
 write_files:
+  - path: /usr/local/bin/detect-apt-proxy.sh
+    permissions: '0755'
+    content: |
+      #!/bin/sh
+      GATEWAY=$(ip route show | grep default | awk '{print $3}')
+      if [ -n "$GATEWAY" ]; then
+          echo "http://$GATEWAY:3142"
+      else
+          echo "DIRECT"
+      fi
+  - path: /etc/apt/apt.conf.d/00proxy-detect
+    content: |
+      Acquire::http::Proxy-Auto-Detect "/usr/local/bin/detect-apt-proxy.sh";
   - path: /etc/ufw/sysctl.conf
     append: true
     content: |
