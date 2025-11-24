@@ -68,7 +68,8 @@ TS_TARGET=$(TS_BUILD_DIR)/index.html
 GO_FILE_DIRS=$(GO_SRC) $(GO_HANDLERS_REGISTER_CMD_DIR) $(GO_GEN_DIR) $(GO_API_DIR) $(GO_CLIENTS_DIR) $(GO_CRYPTO_DIR) $(GO_HANDLERS_DIR) $(GO_UTIL_DIR)
 GO_FILES=$(foreach dir,$(GO_FILE_DIRS),$(wildcard $(dir)/*.go))
 GO_TARGET=${PWD}/$(GO_SRC)/$(BINARY_NAME)
-export TS_VAULT_WASM=$(TS_PUBLIC_DIR)/lib.wasm
+TS_VAULT_WASM=$(TS_PUBLIC_DIR)/lib.wasm
+TS_VAULT_WASM_JS=$(TS_PUBLIC_DIR)/wasm_exec.js
 export GO_HANDLERS_REGISTER=$(GO_HANDLERS_DIR)/register.go
 # GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
 # GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
@@ -184,7 +185,7 @@ GO_TEST_EXEC_FLAGS=-test.run=$${TEST:-.} -test.fuzz=^$$ -test.bench=^$$ -test.co
 GO_BENCH_EXEC_FLAGS=-test.run=^$$ -test.fuzz=^$$ -test.bench=$${BENCH:-.} -test.count=$${COUNT:-1} -test.v=$${V:-false} $(LOG_NONE) $(GO_FUZZ_FLAGS)
 # $${PROF:-} # -cpuprofile=cpu.prof
 
-GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
+GO=$(GO_ENVFILE_FLAG) /usr/local/go/bin/go#GOEXPERIMENT=jsonv2 gotip# go
 
 #################################
 #             BUILDS            #
@@ -195,9 +196,8 @@ build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_
 # logs, certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
 clean:
-	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) \
-		$(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
-	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_HANDLERS_REGISTER) # $(MOCK_TARGET)
+	rm -rf $(TS_BUILD_DIR) $(GO_GEN_DIR) $(LANDING_BUILD_DIR) $(JAVA_TARGET_DIR) $(PLAYWRIGHT_CACHE_DIR)
+	rm -f $(GO_TARGET) $(BINARY_TEST) $(TS_API_YAML) $(TS_API_BUILD) $(GO_HANDLERS_REGISTER) $(TS_VAULT_WASM) $(TS_VAULT_WASM_JS)
 
 $(LOG_DIR):
 ifeq ($(DEPLOYING),)
@@ -307,7 +307,7 @@ $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 		$(PROTO_FILES)
 
 $(TS_VAULT_WASM):
-	cp $$(go env GOROOT)/lib/wasm/wasm_exec.js $(TS_PUBLIC_DIR)/wasm_exec.js
+	cp $$($(GO) env GOROOT)/lib/wasm/wasm_exec.js $(TS_VAULT_WASM_JS)
 	GOOS=js GOARCH=wasm $(GO) build -C $(GO_VAULT_WASM_DIR) -ldflags="-s -w" -o $(abspath $(TS_VAULT_WASM)) ./...
 
 $(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go $(PROTO_FILES)
