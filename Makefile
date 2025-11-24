@@ -4,7 +4,7 @@ GO_VERSION=go1.25.1.linux-amd64
 NODE_VERSION=v22.13.1
 
 # manually manage path for makefile use
-export PATH := /home/$(shell whoami)/.nvm/versions/node/$(NODE_VERSION)/bin:/home/$(shell whoami)/go/bin:/usr/local/go/bin:${PATH}
+export PATH := /home/$(shell whoami)/.nvm/versions/node/$(NODE_VERSION)/bin:/usr/local/go/bin:/home/$(shell whoami)/go/bin:${PATH}
 
 ENVFILE?=./.env
 
