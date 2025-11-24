@@ -48,7 +48,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
 
   const debouncedName = useDebounce(group.displayName || '', 500);
 
-  const [checkName, checkState] = siteApi.useLazyGroupUtilServiceCheckGroupNameQuery();
+  const [checkName, checkState] = siteApi.useGroupUtilServiceCheckGroupNameMutation();
 
   const [groupValid, setGroupValid] = useState(false);
   const debouncedValidity = useDebounce(groupValid, 150);
@@ -101,7 +101,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
     closeModal && closeModal(group);
   }, [group, editGroup]);
 
-  const badName = !checkState.isUninitialized && (!group.name || checkState.isFetching || checkState.isError);
+  const badName = !checkState.isUninitialized && (!group.name || checkState.isLoading || checkState.isError);
 
   useEffect(() => {
     async function go() {
@@ -113,7 +113,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
         update.isValid = true
       } else { // else check as normal and update name if valid
         const name = formatName(debouncedName);
-        const { isValid } = await checkName({ name }).unwrap();
+        const { isValid } = await checkName({ checkGroupNameRequest: { name } }).unwrap();
         update.isValid = isValid;
         update.name = isValid ? name : '';
       }
@@ -132,7 +132,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
 
   useEffect(() => {
     setGroupValid(Boolean(
-      !(checkState.isFetching || checkState.isLoading) && group.displayName == debouncedName && group.name && group.purpose && group.isValid
+      !(checkState.isLoading) && group.displayName == debouncedName && group.name && group.purpose && group.isValid
     ));
   }, [group, debouncedName, checkState]);
 
@@ -164,7 +164,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
               slotProps={{
                 input: {
                   endAdornment: <>
-                    {group.displayName && (debouncedName.length && !group.isValid) && !checkState.isUninitialized && !checkState.isFetching ? <Box
+                    {group.displayName && (debouncedName.length && !group.isValid) && !checkState.isUninitialized && !checkState.isLoading ? <Box
                       sx={{
                         color: '#000',
                         fontSize: '1.2rem',
@@ -174,7 +174,7 @@ export function ManageGroupModal({ children, editGroup, validArea, showCancel = 
                       }}
                     >
                       Unavailable
-                    </Box> : checkState.isFetching ? <CircularProgress color="info" size={16} /> : <></>
+                    </Box> : checkState.isLoading ? <CircularProgress color="info" size={16} /> : <></>
                     }
                   </>
                 }

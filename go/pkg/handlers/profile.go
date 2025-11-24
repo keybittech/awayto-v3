@@ -3,6 +3,7 @@ package handlers
 import (
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -100,6 +101,8 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 
 	up.RoleBits = info.Session.GetRoleBits()
 	up.RoleName = info.Session.GetSubGroupName()
+
+	up.VaultKey = crypto.EncodedVaultKey
 
 	// Try to send a request if the user has an active socket connection
 	// but no need to catch errors as they may not yet have a connection

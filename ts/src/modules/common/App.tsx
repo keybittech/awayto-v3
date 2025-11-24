@@ -6,7 +6,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
-import { siteApi, theme, useAppSelector } from 'awayto/hooks';
+import { siteApi, theme, useAppSelector, useAuth } from 'awayto/hooks';
 
 import Layout from './Layout';
 
@@ -16,19 +16,25 @@ import SnackAlert from './SnackAlert';
 
 export default function App(props: IComponent): React.JSX.Element {
 
+  const { setVaultKey } = useAuth();
   const { authenticated } = useAppSelector(state => state.auth);
 
   const { data: profileRequest, isLoading, isSuccess, isError } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(undefined, {
-    skip: !authenticated, // Skip query if not authenticated
+    skip: !authenticated,
   });
 
-  useEffect(() => {
-    if (isSuccess || isError || (!isLoading && !authenticated)) {
-      window.INT_SITE_LOAD = true;
-    }
-  }, [isSuccess, isError, isLoading, authenticated]);
+  const isAppLoading = authenticated && isLoading;
 
-  if (isLoading && authenticated) {
+  useEffect(() => {
+    if (isSuccess || isError || !isAppLoading) {
+      window.INT_SITE_LOAD = true;
+      if (profileRequest?.userProfile.vaultKey) {
+        setVaultKey({ vaultKey: profileRequest?.userProfile.vaultKey });
+      }
+    }
+  }, [isSuccess, isError, isAppLoading, profileRequest]);
+
+  if (isAppLoading) {
     return <></>;
   }
 

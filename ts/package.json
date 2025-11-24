@@ -34,15 +34,16 @@
     "@vitejs/plugin-react": "^4.4.1",
     "dotenv": "^16.5.0",
     "typescript": "^5.8.3",
-    "vite": "^6.3.5",
+    "vite": "^6.4.1",
     "vite-plugin-circular-dependency": "^0.5.0",
     "vite-plugin-compression": "^0.5.1",
-    "vite-plugin-static-copy": "^2.3.1"
+    "vite-plugin-static-copy": "^2.3.2"
   },
   "pnpm": {
     "overrides": {
       "@babel/runtime": ">=7.26.10",
       "@babel/helpers": ">=7.26.10",
+      "brace-expansion": ">=1.1.12",
       "braces": ">=3.0.3",
       "cookie": ">=0.7.0",
       "esbuild": ">=0.25.0",

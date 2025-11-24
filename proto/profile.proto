@@ -70,12 +70,13 @@ message IUserProfile {
   string createdOn = 11;
   string updatedOn = 12;
   string roleName = 13;
-  int32 roleBits = 14;
-  bool locked = 15;
-  bool active = 16;
-  bool enabled = 17;
-  bool seenQuotes = 18;
-  bool seenBookings = 19;
+  string vaultKey = 14;
+  int32 roleBits = 15;
+  bool locked = 16;
+  bool active = 17;
+  bool enabled = 18;
+  bool seenQuotes = 19;
+  bool seenBookings = 20;
 }
 
 message PostUserProfileRequest {

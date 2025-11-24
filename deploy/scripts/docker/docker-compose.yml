@@ -10,18 +10,16 @@ services:
     ports:
       - ${PG_PORT}:${PG_PORT}
     environment:
-      - POSTGRES_PASSWORD_FILE=/run/secrets/pg_pass
+      - POSTGRES_PASSWORD_FILE=/etc/secrets/pg_pass
       - PG_DB=${PG_DB}
       - PG_WORKER=${PG_WORKER}
-      - PG_WORKER_PASS_FILE=/run/secrets/pg_worker_pass
+      - PG_WORKER_PASS_FILE=/etc/secrets/pg_worker_pass
       - POSTGRES_INITDB_ARGS="--data-checksums"
-    secrets:
-      - pg_pass
-      - pg_worker_pass
     volumes: 
       - ../../../${UNIX_SOCK_DIR}/db:/var/run/postgresql
+      - ../../../secrets/pg_pass:/etc/secrets/pg_pass
+      - ../../../secrets/pg_worker_pass:/etc/secrets/pg_worker_pass
       - pg_data:/var/lib/postgresql/data
-      # - ${LOG_DIR}/db:/pglog
 
   redis: # 6379
     image: ${REDIS_IMAGE}

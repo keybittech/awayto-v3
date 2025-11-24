@@ -13,7 +13,8 @@ option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
 service GroupUtilService {
   rpc CheckGroupName(CheckGroupNameRequest) returns (CheckGroupNameResponse) {
     option (google.api.http) = {
-      get: "/v1/group/valid/{name}"
+      post: "/v1/group/valid"
+      body: "*"
     };
     option (cache) = SKIP; 
     option (use_tx) = true;

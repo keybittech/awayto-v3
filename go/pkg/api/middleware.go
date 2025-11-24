@@ -26,7 +26,7 @@ func (a *API) SecurityHeadersMiddleware(next http.Handler) http.Handler {
 		var csp strings.Builder
 
 		csp.WriteString("default-src 'self'; ")
-		csp.WriteString("script-src 'nonce-" + nonce + "' 'strict-dynamic'; ")
+		csp.WriteString("script-src 'nonce-" + nonce + "' 'strict-dynamic' 'wasm-unsafe-eval'; ")
 		csp.WriteString("style-src 'self' 'unsafe-inline'; ")
 		csp.WriteString("img-src 'self' data: https:; ")
 		csp.WriteString("font-src 'self' data:; ")

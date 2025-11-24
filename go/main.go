@@ -5,12 +5,15 @@ import (
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/api"
+	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"golang.org/x/time/rate"
 )
 
 func main() {
 	util.ParseEnv()
+
+	crypto.InitVault()
 
 	util.DebugLog.Printf(
 		"started with flags -httpPort=%d -httpsPort=%d -unixPath=%s -rateLimit=%d -rateLimitBurst=%d",

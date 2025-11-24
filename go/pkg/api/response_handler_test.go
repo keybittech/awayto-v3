@@ -10,6 +10,7 @@ import (
 func TestProtoResponseHandler(t *testing.T) {
 	type args struct {
 		w       http.ResponseWriter
+		req     *http.Request
 		results proto.Message
 	}
 	tests := []struct {
@@ -22,9 +23,9 @@ func TestProtoResponseHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := ProtoResponseHandler(tt.args.w, tt.args.results)
+			got := ProtoResponseHandler(tt.args.w, tt.args.req, tt.args.results)
 			if got != tt.want {
-				t.Errorf("ProtoResponseHandler(%v, %v) = %v, want %v", tt.args.w, tt.args.results, got, tt.want)
+				t.Errorf("ProtoResponseHandler(%v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.results, got, tt.want)
 			}
 		})
 	}
@@ -33,6 +34,7 @@ func TestProtoResponseHandler(t *testing.T) {
 func TestMultipartResponseHandler(t *testing.T) {
 	type args struct {
 		w       http.ResponseWriter
+		req     *http.Request
 		results proto.Message
 	}
 	tests := []struct {
@@ -45,9 +47,9 @@ func TestMultipartResponseHandler(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			got := MultipartResponseHandler(tt.args.w, tt.args.results)
+			got := MultipartResponseHandler(tt.args.w, tt.args.req, tt.args.results)
 			if got != tt.want {
-				t.Errorf("MultipartResponseHandler(%v, %v) = %v, want %v", tt.args.w, tt.args.results, got, tt.want)
+				t.Errorf("MultipartResponseHandler(%v, %v, %v) = %v, want %v", tt.args.w, tt.args.req, tt.args.results, got, tt.want)
 			}
 		})
 	}

@@ -18,6 +18,8 @@ awaytobin
 dist/
 node_modules/
 build/
+ts/public/wasm_exec.js
+ts/public/lib.wasm
 ts/src/hooks/api.ts
 ts/openapi.yaml
 go/integrations/integration_results.json

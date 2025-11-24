@@ -78,12 +78,13 @@ runcmd:
   - ufw allow https-port/tcp
   - ufw allow 41641/udp
   # - ufw allow 44400:44500/udp
-  - ufw enable
+  - ufw enable --force
+  - loginctl enable-linger dummyuserlogin
   - |
     su -l dummyuserlogin -c 'bash -s' << 'EOF'
     sudo git clone project-repo project-dir
     sudo chown -R dummyuserlogin:host-group project-dir
-    sudo install -d -m 750 -o dummyuserlogin -g host-group project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/local_tmp project-dir/demos project-dir/demos/final
+    sudo install -d -m 750 -o dummyuserlogin -g host-group project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/demos project-dir/demos/final
     setfacl -R -d -m g:host-group:rwx project-dir
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
     . /home/dummyuserlogin/.nvm/nvm.sh && nvm install node-version && npm i -g pnpm@latest-10
@@ -100,7 +101,6 @@ runcmd:
     systemctl --user enable docker
     echo "clear && cd project-dir" >> /home/dummyuserlogin/.bashrc
     EOF
-  - loginctl enable-linger dummyuserlogin
   - curl -fsSL https://tailscale.com/install.sh | sh
   - tailscale up --operator=dummyuserlogin --authkey=ts-auth-key --ssh
   - usermod -s /usr/sbin/nologin root

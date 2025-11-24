@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"strconv"
 
+	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -12,9 +13,9 @@ import (
 	"google.golang.org/protobuf/proto"
 )
 
-type ResponseHandler func(w http.ResponseWriter, results proto.Message) int
+type ResponseHandler func(w http.ResponseWriter, req *http.Request, results proto.Message) int
 
-func ProtoResponseHandler(w http.ResponseWriter, results proto.Message) int {
+func ProtoResponseHandler(w http.ResponseWriter, req *http.Request, results proto.Message) int {
 	if results == nil {
 		return 0
 	}
@@ -22,6 +23,18 @@ func ProtoResponseHandler(w http.ResponseWriter, results proto.Message) int {
 	pbJsonBytes, err := protojson.Marshal(results)
 	if err != nil {
 		panic(util.ErrCheck(err))
+	}
+
+	if sharedSecret, ok := req.Context().Value(CtxVaultKey).([]byte); ok {
+		encryptedBytes, err := crypto.EncryptForClient(sharedSecret, pbJsonBytes)
+		if err != nil {
+			panic(util.ErrCheck(err))
+		}
+
+		w.Header().Set("Content-Type", "application/x-awayto-vault")
+		w.Header().Set("Content-Length", strconv.Itoa(len(encryptedBytes)))
+		n, _ := w.Write(encryptedBytes)
+		return n
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -35,7 +48,7 @@ func ProtoResponseHandler(w http.ResponseWriter, results proto.Message) int {
 	return n
 }
 
-func MultipartResponseHandler(w http.ResponseWriter, results proto.Message) int {
+func MultipartResponseHandler(w http.ResponseWriter, req *http.Request, results proto.Message) int {
 	if results == nil {
 		return 0
 	}

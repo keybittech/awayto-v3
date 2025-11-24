@@ -13,6 +13,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 export type IAuth = {
   authenticated?: boolean;
+  vaultKey?: string | null;
 }
 
 export async function logout() {
@@ -27,11 +28,15 @@ export async function logout() {
 export const authConfig = {
   name: 'auth',
   initialState: {
-    authenticated: undefined
+    authenticated: undefined,
+    vaultKey: null
   } as IAuth,
   reducers: {
     setAuthenticated: (state: IAuth, action: { payload: IAuth }) => {
       state.authenticated = action.payload.authenticated;
+    },
+    setVaultKey: (state: IAuth, action: { payload: IAuth }) => {
+      state.vaultKey = action.payload.vaultKey;
     },
   },
 };

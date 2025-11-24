@@ -108,6 +108,6 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 
 		resetGroup(req, session.GetGroupId())
 
-		responseHandler(w, results)
+		responseHandler(w, req, results)
 	}
 }

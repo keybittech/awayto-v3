@@ -2,6 +2,13 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <script src="wasm_exec.js"></script>
+    <script>
+      const go = new Go();
+      WebAssembly.instantiateStreaming(fetch("lib.wasm"), go.importObject).then((result) => {
+        go.run(result.instance);
+      });
+    </script>
     <link rel="icon" href="/src/img/kbt-icon_32w.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />

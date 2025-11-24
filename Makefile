@@ -13,6 +13,9 @@ $(shell if [ ! -f $(ENVFILE) ]; then install -m 600 .env.template $(ENVFILE); fi
 include $(ENVFILE)
 export $(shell sed 's/=.*//' $(ENVFILE))
 
+export UID := $(shell id -u)
+export GID := $(shell id -g)
+
 # go build output
 
 BINARY_TEST=$(BINARY_NAME).test
@@ -35,14 +38,17 @@ JAVA_TARGET_DIR=java/target
 JAVA_THEMES_DIR=java/themes
 LANDING_BUILD_DIR=landing/public
 TS_BUILD_DIR=ts/build
+TS_PUBLIC_DIR=ts/public
 LOG_DIR=log
 HOST_LOCAL_DIR=sites/${PROJECT_PREFIX}
 GO_GEN_DIR=$(GO_SRC)/pkg/types
-GO_CMD_DIR=$(GO_SRC)/cmd/generate
-GO_PROTO_MUTEX_CMD_DIR=$(GO_CMD_DIR)/proto_mutex
-GO_HANDLERS_REGISTER_CMD_DIR=$(GO_CMD_DIR)/handlers_register
+GO_CMD_DIR=$(GO_SRC)/cmd
+GO_VAULT_WASM_DIR=$(GO_CMD_DIR)/crypto/vault
+GO_PROTO_MUTEX_CMD_DIR=$(GO_CMD_DIR)/generate/proto_mutex
+GO_HANDLERS_REGISTER_CMD_DIR=$(GO_CMD_DIR)/generate/handlers_register
 GO_API_DIR=$(GO_SRC)/pkg/api
 GO_CLIENTS_DIR=$(GO_SRC)/pkg/clients
+GO_CRYPTO_DIR=$(GO_SRC)/pkg/crypto
 export GO_HANDLERS_DIR=$(GO_SRC)/pkg/handlers
 GO_UTIL_DIR=$(GO_SRC)/pkg/util
 GO_INTEGRATIONS_DIR=$(GO_SRC)/integrations
@@ -59,9 +65,10 @@ JAVA_TARGET=$(JAVA_TARGET_DIR)/kc-custom.jar
 LANDING_TARGET=$(LANDING_BUILD_DIR)/index.html
 TS_TARGET=$(TS_BUILD_DIR)/index.html
 
-GO_FILE_DIRS=$(GO_SRC) $(GO_HANDLERS_REGISTER_CMD_DIR) $(GO_GEN_DIR) $(GO_API_DIR) $(GO_CLIENTS_DIR) $(GO_HANDLERS_DIR) $(GO_UTIL_DIR)
+GO_FILE_DIRS=$(GO_SRC) $(GO_HANDLERS_REGISTER_CMD_DIR) $(GO_GEN_DIR) $(GO_API_DIR) $(GO_CLIENTS_DIR) $(GO_CRYPTO_DIR) $(GO_HANDLERS_DIR) $(GO_UTIL_DIR)
 GO_FILES=$(foreach dir,$(GO_FILE_DIRS),$(wildcard $(dir)/*.go))
 GO_TARGET=${PWD}/$(GO_SRC)/$(BINARY_NAME)
+export TS_VAULT_WASM=$(TS_PUBLIC_DIR)/lib.wasm
 export GO_HANDLERS_REGISTER=$(GO_HANDLERS_DIR)/register.go
 # GO_INTERFACES_FILE=$(GO_INTERFACES_DIR)/interfaces.go
 # GO_MOCK_TARGET=$(GO_INTERFACES_DIR)/mocks.go
@@ -183,7 +190,7 @@ GO=$(GO_ENVFILE_FLAG) go#GOEXPERIMENT=jsonv2 gotip# go
 #             BUILDS            #
 #################################
 
-build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${AI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
+build: $(LOG_DIR) ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE} ${AI_KEY_FILE} $(CERT_LOC) $(CERT_KEY_LOC) $(JAVA_TARGET) $(LANDING_TARGET) $(TS_TARGET) $(TS_VAULT_WASM) $(PROTO_GEN_FILES) $(PROTO_GEN_MUTEX) $(PROTO_GEN_MUTEX_FILES) $(GO_HANDLERS_REGISTER) $(GO_TARGET)
 
 # logs, certs, secrets, demo and backup dirs are not cleaned
 .PHONY: clean
@@ -233,10 +240,14 @@ endif
 
 
 ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
-	@mkdir -p $(@D)
-	install -m 640 /dev/null $@
-	openssl rand -hex 64 > $@ | tr -d '\n'
-	setfacl -m u:1000:rw $@
+	@mkdir -p -m 700 $(@D)
+	openssl rand -hex 64 | tr -d '\n' > $@
+	# chmod 600 $@
+	# @mkdir -p $(@D)
+	# install -m 640 /dev/null $@
+	# openssl rand -hex 64 > $@ | tr -d '\n'
+	# chmod 600 $@
+	# setfacl -m u:${GID}:rw $@
 # ifeq ($(DEPLOYING),true)
 # 	@chgrp -R $(H_GROUP) $(@D)
 # endif
@@ -272,7 +283,7 @@ $(TS_API_BUILD): $(shell find proto/ -type f)
 $(TS_SRC)/.env.local: $(TS_SRC)/.env.template
 	sed -e 's&project-title&${PROJECT_TITLE}&g; s&app-host-url&${APP_HOST_URL}&g; s&app-host-name&${APP_HOST_NAME}&g; s&turn-name&${TURN_NAME}&g; s&turn-pass&${TURN_PASS}&g; s&allowed-file-ext&${ALLOWED_FILE_EXT}&g; s&ai-enabled&$(AI_ENABLED)&g;' "$(TS_SRC)/.env.template" > "$(TS_SRC)/.env.local"
 
-$(TS_TARGET): $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,package.json,index.html,vite.config.ts} -type f) $(shell find proto/ -type f)
+$(TS_TARGET): $(TS_VAULT_WASM) $(TS_SRC)/.env.local $(TS_API_BUILD) $(shell find $(TS_SRC)/{src,public,package.json,index.html,vite.config.ts} -type f) $(shell find proto/ -type f)
 	pnpm --dir $(TS_SRC) i
 	pnpm run --dir $(TS_SRC) build
 
@@ -294,6 +305,10 @@ $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 		--mutex_out=$(GO_GEN_DIR) \
 		--mutex_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
+
+$(TS_VAULT_WASM):
+	cp $$(go env GOROOT)/lib/wasm/wasm_exec.js $(TS_PUBLIC_DIR)/wasm_exec.js
+	GOOS=js GOARCH=wasm $(GO) build -C $(GO_VAULT_WASM_DIR) -ldflags="-s -w" -o $(abspath $(TS_VAULT_WASM)) ./...
 
 $(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go $(PROTO_FILES)
 	$(GO) run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
@@ -464,7 +479,10 @@ go_test_bench: $(GO_TARGET) go_test_bench_build
 
 .PHONY: docker_up
 docker_up: build
-	mkdir -p ${UNIX_SOCK_DIR}/db ${UNIX_SOCK_DIR}/auth
+	mkdir -p -m 700 ${UNIX_SOCK_DIR}
+	install -d -m 700 -o ${UID} -g ${GID} $(UNIX_SOCK_DIR)/db $(UNIX_SOCK_DIR)/auth
+	# setfacl -m u:${UID}:rwx $(UNIX_SOCK_DIR)/db
+	# setfacl -d -m u:${UID}:rwx $(UNIX_SOCK_DIR)/db
 	docker volume create $(PG_DATA) || true
 	docker volume create $(REDIS_DATA) || true
 	COMPOSE_BAKE=true docker $(DOCKER_COMPOSE) up -d --build

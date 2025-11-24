@@ -27,6 +27,4 @@ psql -v ON_ERROR_STOP=1 \
   -f $SCRIPT_DIR/app_alterations.sql \
   -f $SCRIPT_DIR/triggers.sql
 
-rm -rf $SCRIPT_DIR
-
 exit 0
