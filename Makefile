@@ -479,7 +479,7 @@ go_test_bench: $(GO_TARGET) go_test_bench_build
 
 .PHONY: docker_up
 docker_up: build
-	mkdir -p -m 750 ${UNIX_SOCK_DIR}
+	mkdir -p -m 755 ${UNIX_SOCK_DIR}
 	install -d -m 777 $(UNIX_SOCK_DIR)/db $(UNIX_SOCK_DIR)/auth
 	# setfacl -m u:${UID}:rwx $(UNIX_SOCK_DIR)/db
 	# setfacl -d -m u:${UID}:rwx $(UNIX_SOCK_DIR)/db
