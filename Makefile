@@ -707,7 +707,7 @@ host_service_start:
 
 .PHONY: host_service_start_op
 host_service_start_op: docker_up
-	sudo install -m 700 -o ${HOST_OPERATOR} -g 1000 $(GO_TARGET) /usr/local/bin
+	sudo install -m 750 -o ${HOST_OPERATOR} -g ${HOST_OPERATOR} $(GO_TARGET) /usr/local/bin
 	sudo systemctl restart $(BINARY_SERVICE)
 	sudo systemctl is-active $(BINARY_SERVICE)
 
