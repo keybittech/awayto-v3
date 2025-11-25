@@ -242,7 +242,7 @@ endif
 ${SIGNING_TOKEN_FILE} ${KC_PASS_FILE} ${KC_USER_CLIENT_SECRET_FILE} ${KC_API_CLIENT_SECRET_FILE} ${PG_PASS_FILE} ${PG_WORKER_PASS_FILE} ${REDIS_PASS_FILE}:
 	@mkdir -p $(@D)
 	openssl rand -hex 64 | tr -d '\n' > $@
-	chmod 640 $@
+	chmod 644 $@
 	# @mkdir -p $(@D)
 	# install -m 640 /dev/null $@
 	# openssl rand -hex 64 > $@ | tr -d '\n'
@@ -479,8 +479,8 @@ go_test_bench: $(GO_TARGET) go_test_bench_build
 
 .PHONY: docker_up
 docker_up: build
-	mkdir -p -m 770 ${UNIX_SOCK_DIR}
-	install -d -m 770 $(UNIX_SOCK_DIR)/db $(UNIX_SOCK_DIR)/auth
+	mkdir -p -m 750 ${UNIX_SOCK_DIR}
+	install -d -m 777 $(UNIX_SOCK_DIR)/db $(UNIX_SOCK_DIR)/auth
 	# setfacl -m u:${UID}:rwx $(UNIX_SOCK_DIR)/db
 	# setfacl -d -m u:${UID}:rwx $(UNIX_SOCK_DIR)/db
 	docker volume create $(PG_DATA) || true

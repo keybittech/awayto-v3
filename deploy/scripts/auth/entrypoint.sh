@@ -9,7 +9,7 @@
 # e.g. KC_DB_PASSWORD_FILE -> KC_DB_PASSWORD
 
 # give some time for the db entrypoint to finish
-sleep 60
+sleep 10
 
 # Find suitable variables
 lines=$(printenv | grep -o KC_.*_FILE)
