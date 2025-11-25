@@ -33,6 +33,9 @@ func setupStaticBuildOrProxy(a *API) {
 				fileServer.ServeHTTP(gzr, req)
 			} else if strings.HasSuffix(req.URL.Path, ".png") {
 				fileServer.ServeHTTP(redirect, req)
+			} else if strings.HasSuffix(req.URL.Path, ".wasm") {
+				w.Header().Set("Content-Type", "application/wasm")
+				fileServer.ServeHTTP(redirect, req)
 			} else {
 				req.URL.Path = "/"
 				util.WriteNonceIntoBody(fileServer, w, req)

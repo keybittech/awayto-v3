@@ -65,7 +65,11 @@ write_files:
       -A PREROUTING -p tcp --dport 443 -j REDIRECT --to-port https-port
       COMMIT
 runcmd:
+  - sed -i 's/UMASK\s*022/UMASK 007/g' /etc/login.defs
   - groupmod -g 1000 host-group
+  - mkdir -p project-dir
+  - chmod 2770 project-dir
+  - chown dummyuserlogin:host-group project-dir
   - systemctl stop sshd
   - systemctl disable sshd
   - systemctl enable fail2ban
@@ -78,30 +82,28 @@ runcmd:
   - ufw allow https-port/tcp
   - ufw allow 41641/udp
   # - ufw allow 44400:44500/udp
-  - ufw enable --force
+  - ufw --force enable
   - loginctl enable-linger dummyuserlogin
+  - rm -rf /usr/local/go
+  - curl -L -o /tmp/goinstall.tar.gz https://go.dev/dl/go-version.tar.gz
+  - tar -C /usr/local -xzf /tmp/goinstall.tar.gz
+  - rm /tmp/goinstall.tar.gz
+  - echo 'export PATH=/usr/local/go/bin:$PATH' > /etc/profile.d/go.sh
   - |
     su -l dummyuserlogin -c 'bash -s' << 'EOF'
-    sudo git clone project-repo project-dir
-    sudo chown -R dummyuserlogin:host-group project-dir
-    sudo install -d -m 750 -o dummyuserlogin -g host-group project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/demos project-dir/demos/final
-    setfacl -R -d -m g:host-group:rwx project-dir
+    umask 007
+    git clone project-repo project-dir
+    git -C project-dir config core.sharedRepository group
+    mkdir -p project-dir/backups project-dir/backups/db project-dir/backups/certs project-dir/working project-dir/demos project-dir/demos/final
     curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.40.1/install.sh | bash
     . /home/dummyuserlogin/.nvm/nvm.sh && nvm install node-version && npm i -g pnpm@latest-10
-    rm -rf /usr/local/go
-    curl -L -o /tmp/goinstall.tar.gz https://go.dev/dl/go-version.tar.gz
-    sudo tar -C /usr/local -xzf /tmp/goinstall.tar.gz && rm /tmp/goinstall.tar.gz
-    echo "export PATH=/usr/local/go/bin:\$PATH" >> /home/dummyuserlogin/.bashrc
-    source /home/dummyuserlogin/.bashrc
     /usr/local/go/bin/go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
     /usr/local/go/bin/go install github.com/google/gnostic/cmd/protoc-gen-openapi@latest
     mkdir -p ~/.config/docker
     echo '{ "storage-driver": "overlay2" }' >> /home/dummyuserlogin/.config/docker/daemon.json
     /usr/bin/dockerd-rootless-setuptool.sh install
     systemctl --user enable docker
-    echo "clear && cd project-dir" >> /home/dummyuserlogin/.bashrc
     EOF
   - curl -fsSL https://tailscale.com/install.sh | sh
   - tailscale up --operator=dummyuserlogin --authkey=ts-auth-key --ssh
   - usermod -s /usr/sbin/nologin root
-
