@@ -1,0 +1,24 @@
+syntax = "proto3";
+package types;
+
+import "util.proto";
+
+import "google/api/annotations.proto";
+import "google/api/field_behavior.proto";
+
+option go_package = "github.com/keybittech/awayto-v3/go/pkg/types";
+
+service VaultService {
+  rpc GetVaultKey(GetVaultKeyRequest) returns (GetVaultKeyResponse) {
+    option (google.api.http) = {
+      get: "/v1/vault/key"
+    };
+    option (cache) = SKIP;
+  }
+}
+
+message GetVaultKeyRequest {}
+
+message GetVaultKeyResponse {
+  string key = 1 [(google.api.field_behavior) = REQUIRED];
+}

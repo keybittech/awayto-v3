@@ -3,6 +3,8 @@ package api
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
+	"io"
 	"log"
 	"net"
 	"net/http"
@@ -10,6 +12,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
@@ -92,6 +95,117 @@ func (a *API) LimitMiddleware(rl *RateLimiter) func(next http.Handler) http.Hand
 			next.ServeHTTP(w, req)
 		})
 	}
+}
+
+type ctxKey string
+
+const CtxVaultKey ctxKey = "vaultKeyProp"
+
+type VaultResponseWriter struct {
+	http.ResponseWriter
+	buf         *bytes.Buffer
+	statusCode  int
+	paramHeader string
+}
+
+func (vrw *VaultResponseWriter) WriteHeader(code int) {
+	vrw.statusCode = code
+}
+
+func (vrw *VaultResponseWriter) Write(b []byte) (int, error) {
+	return vrw.buf.Write(b)
+}
+
+func (a *API) VaultMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if !strings.HasPrefix(req.URL.Path, "/api") || strings.Contains(req.URL.Path, "/vault/key") {
+			next.ServeHTTP(w, req)
+			return
+		}
+
+		var sharedSecret []byte
+		var err error
+
+		ct := req.Header.Get("Content-Type")
+
+		// CASE A: BODY PAYLOAD
+		if ct == "application/x-awayto-vault" {
+			reqBytes, readErr := io.ReadAll(req.Body)
+			req.Body.Close()
+			if readErr == nil && len(reqBytes) > 0 {
+				var plaintext []byte
+				// Assign to outer variables
+				plaintext, sharedSecret, err = crypto.DecryptFromClient(crypto.VaultKey, reqBytes)
+
+				if err == nil {
+					// Restore Plaintext Body
+					req.Body = io.NopCloser(bytes.NewBuffer(plaintext))
+					// Restore standard CT for routers
+					req.Header.Set("Content-Type", "application/json")
+					if oct := req.Header.Get("X-Original-Content-Type"); oct != "" {
+						req.Header.Set("Content-Type", oct)
+					}
+				}
+			}
+		}
+
+		// CASE B: HEADER HANDSHAKE (Only if body check didn't produce a secret)
+		if len(sharedSecret) == 0 {
+			if vaultHeader := req.Header.Get("X-Awayto-Vault"); vaultHeader != "" {
+				// Must interpret vaultHeader as StdEncoding B64
+				blob, b64Err := base64.StdEncoding.DecodeString(vaultHeader)
+				if b64Err == nil {
+					// Use specific temp vars to avoid accidental shadowing or unused errors
+					_, ss, dErr := crypto.DecryptFromClient(crypto.VaultKey, blob)
+					if dErr == nil {
+						sharedSecret = ss // Explicit assignment to outer var
+					} else {
+						err = dErr
+					}
+				}
+			}
+		}
+
+		if err != nil {
+			util.ErrorLog.Printf("VaultMiddleware Error: %v", err)
+			http.Error(w, "Secure Handshake Failed", http.StatusBadRequest)
+			return
+		}
+
+		if len(sharedSecret) == 0 {
+			http.Error(w, "Encryption Required", http.StatusForbidden)
+			return
+		}
+
+		ctx := context.WithValue(req.Context(), CtxVaultKey, sharedSecret)
+		req = req.WithContext(ctx)
+
+		vrw := &VaultResponseWriter{
+			ResponseWriter: w,
+			buf:            &bytes.Buffer{},
+			statusCode:     http.StatusOK,
+		}
+
+		next.ServeHTTP(vrw, req)
+
+		respPlaintext := vrw.buf.Bytes()
+
+		encryptedResp, encryptErr := crypto.EncryptForClient(sharedSecret, respPlaintext)
+		if encryptErr != nil {
+			http.Error(w, "Response Encryption Required", http.StatusForbidden)
+		}
+
+		b64Resp := make([]byte, base64.StdEncoding.EncodedLen(len(encryptedResp)))
+		base64.StdEncoding.Encode(b64Resp, encryptedResp)
+
+		finalLen := len(b64Resp)
+
+		w.Header().Set("Content-Type", "application/x-awayto-vault")
+		w.Header().Set("Content-Length", strconv.Itoa(finalLen))
+
+		w.WriteHeader(vrw.statusCode)
+		w.Write(b64Resp)
+	})
 }
 
 // Converts a regular HandlerFunc into a SessionHandler

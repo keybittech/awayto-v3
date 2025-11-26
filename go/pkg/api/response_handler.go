@@ -5,7 +5,6 @@ import (
 	"net/http"
 	"strconv"
 
-	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -23,18 +22,6 @@ func ProtoResponseHandler(w http.ResponseWriter, req *http.Request, results prot
 	pbJsonBytes, err := protojson.Marshal(results)
 	if err != nil {
 		panic(util.ErrCheck(err))
-	}
-
-	if sharedSecret, ok := req.Context().Value(CtxVaultKey).([]byte); ok {
-		encryptedBytes, err := crypto.EncryptForClient(sharedSecret, pbJsonBytes)
-		if err != nil {
-			panic(util.ErrCheck(err))
-		}
-
-		w.Header().Set("Content-Type", "application/x-awayto-vault")
-		w.Header().Set("Content-Length", strconv.Itoa(len(encryptedBytes)))
-		n, _ := w.Write(encryptedBytes)
-		return n
 	}
 
 	w.Header().Set("Content-Type", "application/json")

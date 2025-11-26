@@ -51,6 +51,7 @@ func main() {
 	handler := server.Server.Handler
 	handler = server.SecurityHeadersMiddleware(handler)
 	handler = server.LimitMiddleware(rateLimiter)(handler)
+	handler = server.VaultMiddleware(handler)
 	handler = server.AccessRequestMiddleware(handler)
 	server.Server.Handler = handler
 

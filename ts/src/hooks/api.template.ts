@@ -16,6 +16,13 @@ const baseQuery = fetchBaseQuery({
   mode: 'same-origin',
   credentials: 'include',
   baseUrl: VITE_REACT_APP_APP_HOST_URL + "/api",
+  responseHandler: (response) => {
+    const contentType = response.headers.get('Content-Type');
+    if (contentType === 'application/x-awayto-vault') {
+      return response.text();
+    }
+    return response.json();
+  },
 });
 
 type CustomExtraOptions = {
@@ -28,28 +35,19 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
   }
 
   (args.headers as Headers).set('X-Tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
-  (args.headers as Headers).set('Content-Type', 'application/json');
 
   const state = api.getState() as RootState;
   const vaultKey = state.auth.vaultKey;
 
-
-  // TODO This doesn't go off when getting the very first profile details
-  // need to move the key fetch into its own seperate call and call that BEFORE profile details
-  // otherwise the profile details itself would not be encrypted.
   if (vaultKey && "function" == typeof window.pqcEncrypt) {
 
-    const jsonBody = JSON.stringify(args.body) || "{}";
-    const encryptedBody = window.pqcEncrypt(vaultKey, jsonBody);
+    const isMutation = ['POST', 'PUT', 'PATCH'].includes(args.method || '');
 
+    if (isMutation) {
 
-    println({ jsonBody });
+      const encryptedBody = window.pqcEncrypt(vaultKey, JSON.stringify(args.body));
 
-    if (encryptedBody && encryptedBody.blob) {
-      const isMutation = ['POST', 'PUT', 'PATCH'].includes(args.method || '');
-
-      if (isMutation) {
-        // === CASE 1: Mutation (Send in Body) ===
+      if (encryptedBody && encryptedBody.blob) {
         const bstring = atob(encryptedBody.blob);
         const len = bstring.length;
         const bbytes = new Uint8Array(len);
@@ -59,25 +57,38 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
 
         args.body = bbytes;
         (args.headers as Headers).set('Content-Type', 'application/x-awayto-vault');
-      } else {
-        // === CASE 2: Query (Send in Header) ===
-        // We cannot set args.body for GET.
-        // We pass the Base64 blob directly in a custom header.
-        (args.headers as Headers).set('X-Awayto-Vault', encryptedBody.blob);
-        println("hello");
-      }
+        (args.headers as Headers).set('X-Original-Content-Type', 'application/json');
 
-      extraOptions.vaultSecret = encryptedBody.secret;
+        extraOptions.vaultSecret = encryptedBody.secret;
+      }
+    } else {
+      const encryptedBody = window.pqcEncrypt(vaultKey, " ");
+      if (encryptedBody && encryptedBody.blob) {
+        (args.headers as Headers).set('X-Awayto-Vault', encryptedBody.blob);
+        extraOptions.vaultSecret = encryptedBody.secret;
+      }
     }
+  } else {
+    (args.headers as Headers).set('Content-Type', 'application/json');
   }
 
   let result = await baseQuery(args, api, extraOptions);
 
   if (extraOptions.vaultSecret && result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault') {
-    println("Printed", result)
-    const encryptedBlob = result.data as string;
-    const decryptedJson = window.pqcDecrypt(encryptedBlob, extraOptions.vaultSecret);
-    result.data = JSON.parse(decryptedJson);
+    if (typeof result.data === 'string') {
+      const decryptedJson = window.pqcDecrypt(result.data.trim(), extraOptions.vaultSecret);
+      if (!decryptedJson) {
+        console.error("WASM pqcDecrypt returned null. Check WASM console logs.");
+        api.dispatch(setSnack({ snackOn: "Vault Decryption Failed" }));
+      }
+
+      try {
+        result.data = JSON.parse(decryptedJson);
+      } catch (e) {
+        console.error("JSON Parse error after decryption", decryptedJson);
+        api.dispatch(setSnack({ snackOn: "Invalid JSON after decrypt" }));
+      }
+    }
   }
 
   switch (result.error?.status) {

@@ -1,15 +1,12 @@
 package api
 
 import (
-	"context"
-	"encoding/base64"
 	"errors"
 	"io"
 	"net/http"
 	"strings"
 
 	"github.com/bufbuild/protovalidate-go"
-	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -18,25 +15,10 @@ import (
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
-type ctxKey string
-
-const CtxVaultKey ctxKey = "vaultSessionKey"
-
 type BodyParser func(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message
 
 func ProtoBodyParser(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message {
 	pb := msgType.New().Interface().(proto.Message)
-
-	if vaultHeader := req.Header.Get("X-Awayto-Vault"); vaultHeader != "" {
-		blob, err := base64.StdEncoding.DecodeString(vaultHeader)
-		if err == nil {
-			_, sharedSecret, err := crypto.DecryptFromClient(crypto.VaultKey, blob)
-			if err == nil {
-				ctx := context.WithValue(req.Context(), CtxVaultKey, sharedSecret)
-				*req = *req.WithContext(ctx)
-			}
-		}
-	}
 
 	if req.Body != nil && req.Body != http.NoBody {
 		req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1MB limit
@@ -48,36 +30,11 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, msgType protorefl
 		}
 
 		if len(buf) > 0 {
-			contentType := req.Header.Get("Content-Type")
-			switch contentType {
-			case "application/x-awayto-vault":
-				plaintext, sharedSecret, err := crypto.DecryptFromClient(crypto.VaultKey, buf)
-				if err != nil {
-					panic(util.ErrCheck(util.UserError("PQC Decryption Failed")))
-				}
-
-				ctx := context.WithValue(req.Context(), CtxVaultKey, sharedSecret)
-				*req = *req.WithContext(ctx)
-
-				buf = plaintext
-
-				err = protojson.Unmarshal(buf, pb)
-				if err != nil {
-					panic(util.ErrCheck(err))
-				}
-			case "application/x-protobuf":
-				err = proto.Unmarshal(buf, pb)
-			case "application/json":
-				err = protojson.Unmarshal(buf, pb)
-			default:
-				err = protojson.Unmarshal(buf, pb)
-			}
-			if err != nil {
+			if err := protojson.Unmarshal(buf, pb); err != nil {
 				panic(util.ErrCheck(err))
 			}
 
-			err = protovalidate.Validate(pb)
-			if err != nil {
+			if err := protovalidate.Validate(pb); err != nil {
 				panic(util.ErrCheck(util.UserError(err.Error())))
 			}
 		}

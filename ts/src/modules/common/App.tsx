@@ -1,4 +1,5 @@
 import React, { useEffect } from 'react';
+import { skipToken } from '@reduxjs/toolkit/query/react';
 
 import { AdapterDayjs } from '@mui/x-date-pickers/AdapterDayjs';
 
@@ -17,20 +18,23 @@ import SnackAlert from './SnackAlert';
 export default function App(props: IComponent): React.JSX.Element {
 
   const { setVaultKey } = useAuth();
-  const { authenticated } = useAppSelector(state => state.auth);
+  const { authenticated, vaultKey } = useAppSelector(state => state.auth);
 
-  const { data: profileRequest, isLoading, isSuccess, isError } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(undefined, {
-    skip: !authenticated,
-  });
+  const { data: keyRequest, isSuccess: keyIsSuccess } = siteApi.useVaultServiceGetVaultKeyQuery(authenticated ? undefined : skipToken);
 
-  const isAppLoading = authenticated && isLoading;
+  const { data: profileRequest, isLoading, isSuccess, isError } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery(vaultKey ? undefined : skipToken);
+
+  const isAppLoading = (authenticated && isLoading) || !vaultKey;
+
+  useEffect(() => {
+    if (keyIsSuccess) {
+      setVaultKey({ vaultKey: keyRequest?.key });
+    }
+  }, [keyIsSuccess, keyRequest]);
 
   useEffect(() => {
     if (isSuccess || isError || !isAppLoading) {
       window.INT_SITE_LOAD = true;
-      if (profileRequest?.userProfile.vaultKey) {
-        setVaultKey({ vaultKey: profileRequest?.userProfile.vaultKey });
-      }
     }
   }, [isSuccess, isError, isAppLoading, profileRequest]);
 
