@@ -72,6 +72,7 @@ export function Home(props: IComponent): React.JSX.Element {
       <Grid container size={{ sm: 12, md: 9 }} direction="column" spacing={2}>
         <Grid size="grow">
           {secure([SiteRoles.APP_GROUP_BOOKINGS]) && <RequestQuote {...props} />}
+          <Grid mb={1} />
           {secure([SiteRoles.APP_GROUP_SCHEDULES]) && <BookingHome {...props} />}
         </Grid>
       </Grid>

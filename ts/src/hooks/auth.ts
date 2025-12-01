@@ -12,12 +12,14 @@ import LockIcon from '@mui/icons-material/Lock';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 export type IAuth = {
+  userId?: string;
   authenticated?: boolean;
-  vaultKey?: string | null;
+  vaultKey?: string;
 }
 
 export async function logout() {
   try {
+    sessionStorage.clear();
     localStorage.clear();
     window.location.href = '/auth/logout';
   } catch (error) {
@@ -28,10 +30,14 @@ export async function logout() {
 export const authConfig = {
   name: 'auth',
   initialState: {
+    userId: '',
     authenticated: undefined,
-    vaultKey: null
+    vaultKey: ''
   } as IAuth,
   reducers: {
+    setUserId: (state: IAuth, action: { payload: IAuth }) => {
+      state.userId = action.payload.userId;
+    },
     setAuthenticated: (state: IAuth, action: { payload: IAuth }) => {
       state.authenticated = action.payload.authenticated;
     },

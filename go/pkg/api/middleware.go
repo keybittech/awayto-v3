@@ -3,7 +3,9 @@ package api
 import (
 	"bytes"
 	"context"
+	"crypto/md5"
 	"encoding/base64"
+	"encoding/hex"
 	"io"
 	"log"
 	"net"
@@ -281,15 +283,23 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 	}
 }
 
-type CacheWriter struct {
-	http.ResponseWriter
-	Buffer *bytes.Buffer
+func genETag(data []byte) string {
+	hash := md5.Sum(data)
+	return hex.EncodeToString(hash[:])
 }
 
-// This lets us pull data out of the writer and into the cache, after whatever handler has written to it
-func (cw *CacheWriter) Write(data []byte) (int, error) {
-	defer cw.Buffer.Write(data)
-	return cw.ResponseWriter.Write(data)
+type BufResponseWriter struct {
+	http.ResponseWriter
+	Buf        *bytes.Buffer
+	StatusCode int
+}
+
+func (bw *BufResponseWriter) Write(data []byte) (int, error) {
+	return bw.Buf.Write(data)
+}
+
+func (bw *BufResponseWriter) WriteHeader(code int) {
+	bw.StatusCode = code
 }
 
 func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) SessionHandler {
@@ -340,25 +350,53 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 			cacheKey := userSub + req.URL.String()
 			cachedBytes, err := a.Handlers.Redis.RedisClient.Get(ctx, cacheKey).Bytes()
 			if err == nil {
-				w.Header().Set("Content-Length", strconv.Itoa(len(cachedBytes)))
-				_, err := w.Write(cachedBytes)
-				if err != nil {
-					util.ErrorLog.Println(util.ErrCheck(err))
+				etag := genETag(cachedBytes)
+
+				if req.Header.Get("If-None-Match") == etag {
+					w.WriteHeader(http.StatusNotModified)
+					return
 				}
 
-				w.WriteHeader(http.StatusNotModified)
+				w.Header().Set("ETag", etag)
+				w.Header().Set("Content-Length", strconv.Itoa(len(cachedBytes)))
+
+				w.WriteHeader(http.StatusOK)
+				w.Write(cachedBytes)
 				return
 			}
 
-			// Add to cache
+			// Run the handler
 			var buf bytes.Buffer
-			cacheWriter := &CacheWriter{
+			bufWriter := &BufResponseWriter{
 				ResponseWriter: w,
-				Buffer:         &buf,
+				Buf:            &buf,
+				StatusCode:     http.StatusOK,
 			}
 
-			next(cacheWriter, req, session)
+			next(bufWriter, req, session)
 
+			// Handle empty responses or errors
+			if buf.Len() == 0 {
+				if bufWriter.StatusCode != 200 {
+					w.WriteHeader(bufWriter.StatusCode)
+				}
+				return
+			}
+
+			// Check if matching client
+			responseBytes := buf.Bytes()
+			newETag := genETag(responseBytes)
+			w.Header().Set("ETag", newETag)
+
+			if req.Header.Get("If-None-Match") == newETag {
+				w.WriteHeader(http.StatusNotModified)
+				return
+			} else {
+				w.WriteHeader(bufWriter.StatusCode)
+				w.Write(responseBytes)
+			}
+
+			// Store in cache
 			if buf.Len() > 0 {
 				duration := duration180s
 
@@ -368,7 +406,7 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 					duration = duration86400s
 				}
 
-				_, err := a.Handlers.Redis.RedisClient.SetEx(ctx, cacheKey, buf.Bytes(), duration).Result()
+				_, err := a.Handlers.Redis.RedisClient.SetEx(ctx, cacheKey, responseBytes, duration).Result()
 				if err != nil {
 					util.ErrorLog.Println("failed to perform cache insert pipeline", err.Error(), cacheKey)
 				}

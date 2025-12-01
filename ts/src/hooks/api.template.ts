@@ -3,6 +3,7 @@ import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, TypedUseQu
 
 import { utilSlice } from './util';
 import { RootState } from './store';
+import { decryptCacheData, encryptCacheData } from './session_crypto';
 
 const {
   VITE_REACT_APP_APP_HOST_URL,
@@ -16,7 +17,10 @@ const baseQuery = fetchBaseQuery({
   mode: 'same-origin',
   credentials: 'include',
   baseUrl: VITE_REACT_APP_APP_HOST_URL + "/api",
-  responseHandler: (response) => {
+  responseHandler: async (response) => {
+    if (304 == response.status) {
+      return null;
+    }
     const contentType = response.headers.get('Content-Type');
     if (contentType === 'application/x-awayto-vault') {
       return response.text();
@@ -29,6 +33,10 @@ type CustomExtraOptions = {
   vaultSecret?: string;
 }
 
+const getCacheKey = (url: string) => {
+  return `RTK_CACHE_${url}`;
+}
+
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, CustomExtraOptions> = async (args, api, extraOptions = {}) => {
   if (!args.headers) {
     args.headers = new Headers();
@@ -39,11 +47,11 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
   (args.headers as Headers).set('X-Tz', tz);
 
   const state = api.getState() as RootState;
-  const vaultKey = state.auth.vaultKey;
+  const { userId, vaultKey } = state.auth;
+
+  const isMutation = ['POST', 'PUT', 'PATCH'].includes(args.method || '');
 
   if (vaultKey && "function" == typeof window.pqcEncrypt) {
-
-    const isMutation = ['POST', 'PUT', 'PATCH'].includes(args.method || '');
 
     if (isMutation) {
 
@@ -78,9 +86,39 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     (args.headers as Headers).set('Content-Type', 'application/json');
   }
 
+  const cacheKey = getCacheKey(args.url);
+  let cachedData: { etag: string, data: any, timestamp: number } | null = null;
+
+  if (!isMutation && vaultKey && userId) {
+    try {
+      const cached = sessionStorage.getItem(cacheKey);
+      if (cached) {
+        cachedData = await decryptCacheData(cached, vaultKey, userId);
+        if (cachedData?.etag) {
+          (args.headers as Headers).set('If-None-Match', cachedData.etag);
+        }
+      }
+    } catch (e) {
+      console.warn("failed storage check, err: ", e);
+    }
+  }
+
   let result = await baseQuery(args, api, extraOptions);
 
+  if (304 == result.meta?.response?.status) {
+    if (cachedData && cachedData.data) {
+      // Cached on server and locally
+      result.data = cachedData.data;
+      delete result.error;
+    } else {
+      // Cached on server but not locally
+      (args.headers as Headers).delete('If-None-Match');
+      result = await baseQuery(args, api, extraOptions);
+    }
+  }
+
   if (401 == result.error?.status) {
+    sessionStorage.clear();
     window.location.href = `/auth/login?tz=${tz}`
   }
 
@@ -97,6 +135,25 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
       } catch (e) {
         console.error("JSON Parse error after decryption", decryptedJson);
         api.dispatch(setSnack({ snackOn: "Invalid JSON after decrypt" }));
+      }
+    }
+  }
+
+  if (!isMutation && result.data && 200 == result.meta?.response?.status) {
+    const etag = result.meta.response.headers.get('ETag');
+    if (etag && vaultKey && userId) {
+      try {
+        const cacheResult = {
+          etag,
+          data: result.data,
+          timestamp: Date.now(),
+        };
+        const encryptedEntry = await encryptCacheData(cacheResult, vaultKey, userId);
+        if (encryptedEntry) {
+          sessionStorage.setItem(cacheKey, encryptedEntry);
+        }
+      } catch (e) {
+        console.warn("failed to store etagged response, check limits, err: ", e);
       }
     }
   }

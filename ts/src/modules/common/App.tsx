@@ -17,7 +17,7 @@ import SnackAlert from './SnackAlert';
 
 export default function App(props: IComponent): React.JSX.Element {
 
-  const { setVaultKey } = useAuth();
+  const { setVaultKey, setUserId } = useAuth();
   const { authenticated, vaultKey } = useAppSelector(state => state.auth);
 
   const { data: keyRequest, isSuccess: keyIsSuccess } = siteApi.useVaultServiceGetVaultKeyQuery(authenticated ? undefined : skipToken);
@@ -33,6 +33,9 @@ export default function App(props: IComponent): React.JSX.Element {
   }, [keyIsSuccess, keyRequest]);
 
   useEffect(() => {
+    if (profileRequest?.userProfile.email) {
+      setUserId({ userId: profileRequest.userProfile.email });
+    }
     if (isSuccess || isError || !isAppLoading) {
       window.INT_SITE_LOAD = true;
     }

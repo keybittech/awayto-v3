@@ -80,9 +80,11 @@ async function loadExternal() {
         if (authResponse.authenticated) {
           await loadInternal();
         } else {
+          sessionStorage.clear();
           window.location.href = loginUrl;
         }
       } else {
+        sessionStorage.clear();
         window.location.href = loginUrl;
       }
     }
