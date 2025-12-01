@@ -165,7 +165,7 @@ export function Profile(props: IComponent): React.JSX.Element {
             <Typography variant="h6">Group</Typography>
           </Grid>
           <Grid>
-            <ManageGroups {...props} />
+            <ManageGroups  {...props} />
           </Grid>
         </Grid>
       </Grid>

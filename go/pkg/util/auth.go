@@ -9,6 +9,7 @@ import (
 	"encoding/base64"
 	"encoding/pem"
 	"errors"
+	"fmt"
 	"log"
 	"net/http"
 	"net/url"
@@ -20,18 +21,29 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 )
 
-func GetSessionIdFromCookie(r *http.Request) string {
+func SetSessionCookie(w http.ResponseWriter, duration int64, value string) {
+	http.SetCookie(w, &http.Cookie{
+		Name:     "session_id",
+		Value:    value,
+		Path:     "/",
+		MaxAge:   int(duration),
+		HttpOnly: true,
+		Secure:   true,
+		SameSite: http.SameSiteStrictMode,
+	})
+}
+
+func GetSessionIdFromCookie(r *http.Request) (string, error) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
-		return ""
+		return "", errors.New(fmt.Sprintf("could not get session_id cookie, %v", err))
 	}
 
 	sessionId, err := VerifySigned("session_id", cookie.Value)
 	if err != nil {
-		ErrorLog.Printf("could not verify session id signature: %v", err)
-		return ""
+		return "", errors.New(fmt.Sprintf("could not verify session id signature: %v", err))
 	}
-	return sessionId
+	return sessionId, nil
 }
 
 // GenerateCodeVerifier creates a cryptographically random code verifier

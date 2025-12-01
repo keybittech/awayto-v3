@@ -217,15 +217,7 @@ func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.Handler
 				util.ErrorLog.Printf("validate middleware get session fail, err: %v", err)
 
 				// Clear invalid session cookie
-				http.SetCookie(w, &http.Cookie{
-					Name:     "session_id",
-					Value:    "",
-					Path:     "/",
-					MaxAge:   -1,
-					HttpOnly: true,
-					Secure:   true,
-					SameSite: http.SameSiteStrictMode,
-				})
+				util.SetSessionCookie(w, -1, "")
 
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
@@ -239,9 +231,9 @@ func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.Handler
 
 			score := util.ScoreValues(scorings)
 			if score > 1 {
-				util.DebugLog.Printf("failed score, err: %v", scorings)
+				util.DebugLog.Printf("scored too high, err: %v", scorings)
 				if err := a.Handlers.DeleteSession(req.Context(), session.GetId()); err != nil {
-					util.DebugLog.Printf("failed score, err: %v", scorings)
+					util.DebugLog.Printf("could not delete high score session, err: %v", scorings)
 				}
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
@@ -253,6 +245,14 @@ func (a *API) ValidateSessionMiddleware() func(next SessionHandler) http.Handler
 				http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 				return
 			}
+
+			signedSessionId, err := util.WriteSigned("session_id", checkedSession.GetId())
+			if err != nil {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+				return
+			}
+
+			util.SetSessionCookie(w, int64(time.Until(time.Unix(0, checkedSession.GetRefreshExpiresAt())).Seconds()), signedSessionId)
 
 			next(w, req, checkedSession)
 		}

@@ -26,6 +26,7 @@ export * from './useGrid';
 export * from './useUtil';
 export * from './useTimeName';
 export * from './useAccordion';
+export * from './usePulse';
 export * from './useWebSocketSubscribe';
 export * from './util';
 export * from './web_socket';

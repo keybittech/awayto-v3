@@ -33,7 +33,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
   const whiteboardRef = useRef<HTMLCanvasElement>(null);
   const fileDisplayRef = useRef<HTMLCanvasElement>(null);
   const fileScroller = useRef<HTMLDivElement>(null);
-  const scrollTimeout = useRef<NodeJS.Timeout | null>(null);
+  const scrollTimeout = useRef<number | null>(null);
   const boxDidUpdate = useRef<boolean>(false);
   const isDrawing = useRef<boolean>(false);
   const lastTouchPoint = useRef<{ x: number, y: number } | null>(null);

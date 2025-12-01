@@ -52,7 +52,8 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
 
   const location = useLocation();
 
-  const { mode, setMode } = useColorScheme();
+  const { mode, systemMode, setMode } = useColorScheme();
+  const currentMode = "system" === mode ? systemMode : mode;
 
   const { data: profileRequest } = siteApi.useUserProfileServiceGetUserProfileDetailsQuery();
 
@@ -178,12 +179,12 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
           {...targets(`main menu toggle color mode`, `toggle to switch between dark and light mode`)}
           onClick={e => {
             e.preventDefault();
-            setMode('light' == mode ? 'dark' : 'light');
+            setMode('light' == currentMode ? 'dark' : 'light');
           }}
         >
           Dark
           <Switch
-            checked={mode == 'light'}
+            checked={currentMode == 'light'}
           />
           Light
         </MenuItem>

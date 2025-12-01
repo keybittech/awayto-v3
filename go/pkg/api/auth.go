@@ -108,6 +108,14 @@ func (a *API) InitAuthProxy() {
 			return
 		}
 
+		signedSessionId, err := util.WriteSigned("session_id", checkedSession.GetId())
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
+
+		util.SetSessionCookie(w, int64(time.Until(time.Unix(0, checkedSession.GetRefreshExpiresAt())).Seconds()), signedSessionId)
+
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]any{
 			"authenticated": true,
@@ -142,33 +150,18 @@ func (a *API) InitAuthProxy() {
 			return
 		}
 
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    signedSessionId,
-			Path:     "/",
-			MaxAge:   int(time.Until(time.Unix(0, session.GetRefreshExpiresAt())).Seconds()),
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-		})
+		util.SetSessionCookie(w, session.GetRefreshExpiresAt(), signedSessionId)
+
 		http.Redirect(w, req, "/app/", http.StatusFound)
 	}))
 
 	a.Server.Handler.(*http.ServeMux).Handle("/auth/logout", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		http.SetCookie(w, &http.Cookie{
-			Name:     "session_id",
-			Value:    "",
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: true,
-			Secure:   true,
-			SameSite: http.SameSiteStrictMode,
-		})
+		util.SetSessionCookie(w, -1, "")
 
-		sessionId := util.GetSessionIdFromCookie(req)
-		if sessionId == "" {
-			util.ErrorLog.Println(errors.New("no sessionId during logout"))
-
+		sessionId, err := util.GetSessionIdFromCookie(req)
+		if err != nil {
+			util.ErrorLog.Println(errors.Join(errors.New("no sessionId during logout"), err))
+			http.Redirect(w, req, "/", http.StatusOK)
 			return
 		}
 

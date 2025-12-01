@@ -191,7 +191,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
                       </Grid>
                       <Grid size={4}>
                         <Typography variant="caption">Default Role</Typography>
-                        <Typography variant="h5">{groupRoleValues.find(r => r.id === group.defaultRoleId)?.name || ''}</Typography>
+                        <Typography variant="h5">{groupRoleValues.find(r => r.roleId === group.defaultRoleId)?.name || ''}</Typography>
                       </Grid>
                       <Grid size={4}>
                         <Typography variant="caption">Roles</Typography>

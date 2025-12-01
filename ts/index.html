@@ -2,13 +2,6 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <script src="wasm_exec.js"></script>
-    <script>
-      const go = new Go();
-      WebAssembly.instantiateStreaming(fetch("lib.wasm"), go.importObject).then((result) => {
-        go.run(result.instance);
-      });
-    </script>
     <link rel="icon" href="/src/img/kbt-icon_32w.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta name="theme-color" content="#000000" />
@@ -75,6 +68,23 @@
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
     <script type="application/javascript">
+      const basePath = "/app/";
+
+      const script = document.createElement('script');
+      script.src = basePath + "wasm_exec.js";
+      script.async = false;
+      
+      script.onload = function() {
+        const go = new Go();
+        WebAssembly.instantiateStreaming(fetch(basePath + "lib.wasm"), go.importObject).then((result) => {
+          go.run(result.instance);
+        }).catch(err => {
+          console.error("Wasm failed to load:", err);
+        });
+      };
+      
+      document.body.appendChild(script);
+
       window.INT_SITE_LOAD = false;
 
       const checkLoadingInterval = setInterval(() => {
@@ -82,7 +92,7 @@
           document.getElementById("loading_site_root").remove();
           clearInterval(checkLoadingInterval);
         }
-      }, 100); // Interval in milliseconds
+      }, 100);
     </script>
   </body>
 </html>

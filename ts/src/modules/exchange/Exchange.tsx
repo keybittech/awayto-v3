@@ -11,7 +11,7 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import CallIcon from '@mui/icons-material/Call';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 
-import { ExchangeActions, IFile, OrderedFiles, targets } from 'awayto/hooks';
+import { ExchangeActions, IFile, OrderedFiles, targets, usePulse } from 'awayto/hooks';
 
 import ExchangeContext, { ExchangeContextType } from './ExchangeContext';
 import WSTextContext, { WSTextContextType } from '../web_socket/WSTextContext';
@@ -20,6 +20,8 @@ import FileSelectionModal from '../files/FileSelectionModal';
 import Whiteboard from './Whiteboard';
 
 export function Exchange(_: IComponent): React.JSX.Element {
+
+  usePulse();
 
   const [dialog, setDialog] = useState('');
   const [chatOpen, setChatOpen] = useState(true);

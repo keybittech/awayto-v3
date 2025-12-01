@@ -1,5 +1,5 @@
 import React, { useState, useMemo, Suspense } from 'react';
-import { useNavigate } from 'react-router';
+// import { useNavigate } from 'react-router';
 
 import Typography from '@mui/material/Typography';
 import Box from '@mui/material/Box';
@@ -7,14 +7,14 @@ import Dialog from '@mui/material/Dialog';
 import Button from '@mui/material/Button';
 import Tooltip from '@mui/material/Tooltip';
 
-import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
+// import ManageAccountsIcon from '@mui/icons-material/ManageAccounts';
 import DomainAddIcon from '@mui/icons-material/DomainAdd';
 import DeleteIcon from '@mui/icons-material/Delete';
 import Logout from '@mui/icons-material/Logout';
 
 import { DataGrid } from '@mui/x-data-grid';
 
-import { useSecure, useGrid, useUtil, useStyles, siteApi, dayjs, IGroup, SiteRoles, targets } from 'awayto/hooks';
+import { useGrid, useUtil, useStyles, siteApi, dayjs, IGroup, targets } from 'awayto/hooks';
 
 import ManageGroupModal from './ManageGroupModal';
 import JoinGroupModal from './JoinGroupModal';
@@ -24,8 +24,8 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
 
   const { openConfirm } = useUtil();
 
-  const secure = useSecure();
-  const navigate = useNavigate();
+  // const secure = useSecure();
+  // const navigate = useNavigate();
 
   const [group, setGroup] = useState<IGroup>({});
   const [dialog, setDialog] = useState('');
@@ -88,31 +88,32 @@ export function ManageGroups(props: IComponent): React.JSX.Element {
   }, [selected, groups]);
 
   const groupsGridProps = useGrid({
+    rowId: 'code',
     rows: Object.values(groups || {}) as Required<IGroup>[],
     columns: [
       { flex: 1, headerName: 'Name', field: 'name' },
       { flex: 1, headerName: 'Code', field: 'code' },
       { flex: 1, headerName: 'Users', field: 'usersCount', renderCell: ({ row }) => row.usersCount || 0 },
       { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.createdOn)) },
-      ...(secure([SiteRoles.APP_GROUP_ADMIN]) ? [
-        {
-          flex: 1,
-          headerName: '',
-          field: 'id',
-          renderCell: () => <Tooltip key={'view_group_details'} title="Details">
-            <Button
-              {...targets(`manage groups details`, `navigate to the group management area`)}
-              color="secondary"
-              onClick={() => {
-                navigate(`/group/manage/users`);
-              }}
-            >
-              <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Details</Typography>
-              <ManageAccountsIcon sx={classes.variableButtonIcon} />
-            </Button>
-          </Tooltip>
-        }
-      ] : [])
+      // ...(secure([SiteRoles.APP_GROUP_ADMIN]) ? [
+      //   {
+      //     flex: 1,
+      //     headerName: '',
+      //     field: 'id',
+      //     renderCell: () => <Tooltip key={'view_group_details'} title="Details">
+      //       <Button
+      //         {...targets(`manage groups details`, `navigate to the group management area`)}
+      //         color="secondary"
+      //         onClick={() => {
+      //           navigate(`/group/manage/users`);
+      //         }}
+      //       >
+      //         <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Details</Typography>
+      //         <ManageAccountsIcon sx={classes.variableButtonIcon} />
+      //       </Button>
+      //     </Tooltip>
+      //   }
+      // ] : [])
     ],
     selected,
     onSelected: p => setSelected(p as string[]),

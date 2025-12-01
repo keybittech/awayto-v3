@@ -49,7 +49,7 @@ export function Kiosk(): React.JSX.Element {
 
   useEffect(() => {
     getData();
-    const interval: NodeJS.Timeout = setInterval(getData, 60 * 1000);
+    const interval: number = setInterval(getData, 60 * 1000);
     return () => {
       clearInterval(interval);
     }

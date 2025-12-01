@@ -34,7 +34,9 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     args.headers = new Headers();
   }
 
-  (args.headers as Headers).set('X-Tz', Intl.DateTimeFormat().resolvedOptions().timeZone);
+  const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
+
+  (args.headers as Headers).set('X-Tz', tz);
 
   const state = api.getState() as RootState;
   const vaultKey = state.auth.vaultKey;
@@ -44,6 +46,10 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     const isMutation = ['POST', 'PUT', 'PATCH'].includes(args.method || '');
 
     if (isMutation) {
+
+      if (!args.body) {
+        args.body = {};
+      }
 
       const encryptedBody = window.pqcEncrypt(vaultKey, JSON.stringify(args.body));
 
@@ -73,6 +79,10 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
   }
 
   let result = await baseQuery(args, api, extraOptions);
+
+  if (401 == result.error?.status) {
+    window.location.href = `/auth/login?tz=${tz}`
+  }
 
   if (extraOptions.vaultSecret && result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault') {
     if (typeof result.data === 'string') {
