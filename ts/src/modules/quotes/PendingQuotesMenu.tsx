@@ -99,7 +99,7 @@ export function PendingQuotesMenu({ handleMenuClose, pendingQuotesAnchorEl, pend
         </ListItemIcon>
         <ListItemText
           primary={`${bookingFormat(pq.slotDate, pq.startTime)}`}
-          secondary={`${pq.scheduleName} ${pq.serviceName} ${pq.serviceTierName}`}
+          secondary={`${pq.serviceName} ${pq.serviceTierName}`}
         />
       </MenuItem>
     })}

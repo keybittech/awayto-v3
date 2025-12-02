@@ -73,9 +73,12 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 		`, groupId)
 
 		quotesReq = util.BatchQueryMap[types.IQuote](info.Batch, "id", `
-			SELECT id, "slotDate", "startTime", "scheduleBracketSlotId", "serviceTierName", "serviceName", "createdOn"
-			FROM dbview_schema.enabled_quotes
+			SELECT eq.id, eq."slotDate", eq."startTime", eq."scheduleBracketSlotId", eq."serviceTierName", eq."serviceName", eq."createdOn"
+			FROM dbview_schema.enabled_quotes eq
 			WHERE "slotCreatedSub" = $1
+			AND NOT EXISTS(
+				SELECT 1 FROM dbview_schema.enabled_bookings eb WHERE eb."quoteId" = eq.id
+			)
 		`, userSub)
 
 		bookingsReq = util.BatchQueryMap[types.IBooking](info.Batch, "id", `

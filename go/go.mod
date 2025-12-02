@@ -3,6 +3,7 @@ module github.com/keybittech/awayto-v3/go
 go 1.25.1
 
 require (
+	github.com/gorilla/websocket v1.5.3
 	github.com/playwright-community/playwright-go v0.5101.0
 	golang.org/x/crypto v0.38.0
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6

@@ -73,33 +73,6 @@ func TestAPI_SiteRoleCheckMiddleware(t *testing.T) {
 	}
 }
 
-func TestCacheWriter_Write(t *testing.T) {
-	type args struct {
-		data []byte
-	}
-	tests := []struct {
-		name    string
-		cw      *CacheWriter
-		args    args
-		want    int
-		wantErr bool
-	}{
-		// TODO: Add test cases.
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tt.cw.Write(tt.args.data)
-			if (err != nil) != tt.wantErr {
-				t.Errorf("CacheWriter.Write(%v) error = %v, wantErr %v", tt.args.data, err, tt.wantErr)
-				return
-			}
-			if got != tt.want {
-				t.Errorf("CacheWriter.Write(%v) = %v, want %v", tt.args.data, got, tt.want)
-			}
-		})
-	}
-}
-
 func TestAPI_CacheMiddleware(t *testing.T) {
 	type args struct {
 		opts *util.HandlerOptions

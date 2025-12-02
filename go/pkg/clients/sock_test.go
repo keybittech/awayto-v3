@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"testing"
 
+	"github.com/gorilla/websocket"
 	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -217,7 +218,7 @@ func getNewConnection(t *testing.T, userSub string) (*types.ConcurrentUserSessio
 		t.Fatal(err)
 	}
 
-	_, err = testSocket.StoreConn(context.Background(), ticket, &util.NullConn{})
+	_, err = testSocket.StoreConn(context.Background(), ticket, &websocket.Conn{})
 	if err != nil {
 		t.Errorf("failed to store connection err %v", err)
 	}

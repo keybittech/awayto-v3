@@ -148,7 +148,7 @@ func (h *Handlers) GetGroupScheduleByDate(info ReqInfo, data *types.GetGroupSche
 		`
 	}
 
-	rows, err := info.Tx.Query(info.Ctx, query, data.Date, data.GroupScheduleId, info.Session.GetTimezone())
+	rows, err := info.Tx.Query(info.Ctx, query, data.Date, data.GroupScheduleId, info.Req.Header.Get("X-Tz"))
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

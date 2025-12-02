@@ -27,7 +27,11 @@ export function SubmitMessageForm({ sendTextMessage }: SubmitMessageFormProps): 
         multiline
         value={textMessage}
         onChange={e => setTextMessage(e.target.value)}
+        helperText={`Text Limit: ${textMessage.length}/1500`}
         slotProps={{
+          htmlInput: {
+            maxLength: 1500
+          },
           input: {
             sx: {
               'textarea': {

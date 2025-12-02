@@ -54,7 +54,7 @@ export function PendingQuotesProvider({ children }: IComponent): React.JSX.Eleme
 
       openConfirm({
         isConfirming: true,
-        confirmEffect: `Approve ${plural(selectedValues.length, 'request', 'requests')}, creating ${plural(selectedValues.length, 'booking', 'bookings')}, for ${bookingFormat(slotDate, startTime)}.`,
+        confirmEffect: `Create ${plural(selectedValues.length, 'booking', 'bookings')} for ${bookingFormat(slotDate, startTime)}.`,
         confirmSideEffect: !copies.length ? undefined : {
           approvalAction: 'Auto-Deny Remaining',
           approvalEffect: `Automatically deny all other requests for ${bookingFormat(slotDate, startTime)} (this cannot be undone).`,

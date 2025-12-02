@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useState } from 'react';
 
 import Button from '@mui/material/Button';
 import Dialog from '@mui/material/Dialog';
@@ -308,8 +308,14 @@ export function WhiteboardOptionsMenu({
     <Dialog onClose={setDialog} open={dialog === 'box_edit'} maxWidth="md" fullWidth>
       <Box p={2}>
         <TextField
-          {...targets(`box text entry`, `Box Text`, `enter text for the box to be added to the whiteboard`)}
+          {...targets(`box text entry`, `Label Box Text`, `enter text for the box to be added to the whiteboard`)}
           value={boxText}
+          helperText={`Text Limit: ${boxText.length}/1500`}
+          slotProps={{
+            htmlInput: {
+              maxLength: 1500
+            }
+          }}
           onChange={e => setBoxText(e.target.value)}
           multiline
           autoFocus

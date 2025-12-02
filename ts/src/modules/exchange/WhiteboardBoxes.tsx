@@ -12,7 +12,7 @@ import { DraggableBoxData, getRelativeCoordinates, targets } from 'awayto/hooks'
 declare global {
   interface Window {
     MathJax: {
-      options: Record<string, any>
+      options: Record<string, any>;
     }
   }
 }
@@ -48,7 +48,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
     return boxes.reduce((m, d) => {
       return {
         ...m,
-        [d.id]: <MathJax>\[ {d.text} \]</MathJax>
+        [d.id]: <MathJax style={{ width: '100%' }}>{d.text}</MathJax>
       }
     }, {} as Record<number, React.JSX.Element>)
   }, [boxes]);
@@ -112,9 +112,12 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
           padding: '32px 14px 12px',
           bgcolor: box.color,
           color: '#222',
-          width: 'max-content',
+          width: 'fit-content',
           minWidth: '80px',
           maxWidth: '400px',
+          wordBreak: 'break-word',
+          overflowWrap: 'anywhere',
+          whiteSpace: 'normal',
           borderRadius: 1,
           touchAction: 'none' // Prevent default touch actions
         }}

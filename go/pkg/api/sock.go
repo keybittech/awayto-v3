@@ -3,12 +3,12 @@ package api
 import (
 	"context"
 	"errors"
-	"io"
 	"net/http"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -37,6 +37,14 @@ var (
 		Action:  types.SocketActions_PING_PONG,
 		Payload: "PING",
 	}
+	upgrader = websocket.Upgrader{
+		ReadBufferSize:  1024,
+		WriteBufferSize: 1024,
+		CheckOrigin: func(r *http.Request) bool {
+			// TODO need anything from cors policy?
+			return true
+		},
+	}
 )
 
 // The sock handler takes a typical HTTP request and upgrades it to a websocket connection
@@ -54,41 +62,16 @@ func (a *API) InitSockServer() {
 			return
 		}
 
-		if !strings.Contains(req.Header.Get("Connection"), "Upgrade") || req.Header.Get("Upgrade") != "websocket" {
-			http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
-			return
-		}
-
-		w.Header().Set("Upgrade", "websocket")
-		w.Header().Set("Connection", "Upgrade")
-		w.Header().Set("Sec-WebSocket-Accept", util.ComputeWebSocketAcceptKey(req.Header.Get("Sec-WebSocket-Key")))
-		w.WriteHeader(http.StatusSwitchingProtocols)
-
-		hijacker, ok := w.(*responseCodeWriter).ResponseWriter.(http.Hijacker)
-		if !ok {
-			http.Error(w, "Websocket upgrade failed", http.StatusInternalServerError)
-			return
-		}
-
-		conn, bufrw, err := hijacker.Hijack()
+		conn, err := upgrader.Upgrade(w, req, nil)
 		if err != nil {
-			http.Error(w, "Websocket upgrade failed", http.StatusInternalServerError)
+			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 		defer conn.Close()
-		defer bufrw.Flush()
 
-		err = conn.SetReadDeadline(time.Time{})
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			return
-		}
-
-		err = conn.SetWriteDeadline(time.Time{})
-		if err != nil {
-			util.ErrorLog.Println(util.ErrCheck(err))
-			return
-		}
+		// Set limits on reading
+		conn.SetReadLimit(1 << 11) // 2kb limit
+		conn.SetReadDeadline(time.Time{})
 
 		if req.URL.Query().Get("ticket") == "" {
 			return
@@ -213,18 +196,19 @@ func (a *API) InitSockServer() {
 
 		// Start listening for messages over the socket
 		go func() {
+			defer close(errs)
 			for {
 				if sockRl.Limit(userSub) {
+					time.Sleep(10 * time.Millisecond)
 					continue
 				}
 
-				data, err := util.ReadSocketConnectionMessage(conn)
+				_, data, err := conn.ReadMessage()
 				if err != nil {
-					if io.EOF == err {
-						return
+					if websocket.IsUnexpectedCloseError(err, websocket.CloseGoingAway, websocket.CloseAbnormalClosure) {
+						errs <- err
 					}
-					errs <- err
-					continue
+					return
 				}
 
 				if data == nil {
@@ -278,39 +262,39 @@ func (a *API) InitSockServer() {
 					return
 				}
 				cancel()
-			case data := <-messages:
-				if len(data) == 2 {
-					// EOF
-					partSockMessage.WriteString("returned due to messages EOF")
+			case data, ok := <-messages:
+				if !ok {
+					// closed connection
+					partSockMessage.WriteString("returned due to messages closed")
 					return
-				} else {
-					// handle received message bytes
-					ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
+				}
 
-					smResultChan := make(chan *types.SocketMessage, 1)
+				// handle received message bytes
+				ctx, cancel := context.WithDeadline(context.Background(), time.Now().Add(socketEventTimeoutAfter))
 
-					go func() {
-						smResultChan <- a.SocketMessageReceiver(data)
-					}()
+				smResultChan := make(chan *types.SocketMessage, 1)
 
-					select {
-					case <-ctx.Done():
-						cancel()
-						errs <- socketEventTimeout
-						return
-					case sm := <-smResultChan:
-						if sm.Action == types.SocketActions_PING_PONG {
-							pings.Store(connId, time.Now())
-						} else {
-							a.SocketMessageRouter(ctx, connId, socketId, sm, clients.DbSession{
-								Topic:                 sm.Topic,
-								Pool:                  a.Handlers.Database.DatabaseClient.Pool,
-								ConcurrentUserSession: session,
-							})
-							clients.GetGlobalWorkerPool().CleanUpClientMapping(userSub)
-						}
-						cancel()
+				go func() {
+					smResultChan <- a.SocketMessageReceiver(data)
+				}()
+
+				select {
+				case <-ctx.Done():
+					cancel()
+					errs <- socketEventTimeout
+					return
+				case sm := <-smResultChan:
+					if sm.Action == types.SocketActions_PING_PONG {
+						pings.Store(connId, time.Now())
+					} else {
+						a.SocketMessageRouter(ctx, connId, socketId, sm, clients.DbSession{
+							Topic:                 sm.Topic,
+							Pool:                  a.Handlers.Database.DatabaseClient.Pool,
+							ConcurrentUserSession: session,
+						})
+						clients.GetGlobalWorkerPool().CleanUpClientMapping(userSub)
 					}
+					cancel()
 				}
 			case err := <-errs:
 				// normally shouldn't error, but if it does it could potentially be heavy load
@@ -320,7 +304,12 @@ func (a *API) InitSockServer() {
 				}
 				errStr := err.Error()
 
-				if strings.Index(errStr, "connection reset by peer") != -1 {
+				if strings.Contains(errStr, "close 1000") || strings.Contains(errStr, "close 1001") {
+					partSockMessage.WriteString("connection closed normally")
+					return
+				}
+
+				if strings.Contains(errStr, "connection reset by peer") {
 					partSockMessage.WriteString(errStr)
 					return
 				} else {

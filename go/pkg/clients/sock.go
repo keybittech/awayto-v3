@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net"
 	"strings"
 	"sync"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -52,7 +52,7 @@ var (
 )
 
 type Subscribers map[string]*types.Subscriber
-type Connections map[string]net.Conn
+type Connections map[string]*websocket.Conn
 type GroupTargets map[string]string
 type AuthSubscribers map[string]string
 
@@ -247,7 +247,7 @@ func InitSocket() *Socket {
 						// }
 
 						// println("did match connection")
-						sendErr = util.WriteSocketConnectionMessage(cmd.Request.MessageBytes, conn)
+						sendErr = conn.WriteMessage(websocket.TextMessage, cmd.Request.MessageBytes)
 						if sendErr != nil {
 							// println("FAILED WITH WRITE ", sendErr.Error())
 							continue
@@ -353,7 +353,7 @@ func InitSocket() *Socket {
 }
 
 type SocketRequest struct {
-	Conn net.Conn
+	*websocket.Conn
 	*types.SocketRequestParams
 }
 
@@ -423,7 +423,7 @@ func (s *Socket) SendCommand(ctx context.Context, cmdType int32, request *types.
 	return res.SocketResponseParams, nil
 }
 
-func (s *Socket) StoreConn(ctx context.Context, ticket string, conn net.Conn) (*types.ConcurrentUserSession, error) {
+func (s *Socket) StoreConn(ctx context.Context, ticket string, conn *websocket.Conn) (*types.ConcurrentUserSession, error) {
 	createCmd := func(replyChan chan SocketResponse) SocketCommand {
 		return SocketCommand{
 			WorkerCommandParams: &types.WorkerCommandParams{
