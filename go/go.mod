@@ -5,7 +5,7 @@ go 1.25.1
 require (
 	github.com/gorilla/websocket v1.5.3
 	github.com/playwright-community/playwright-go v0.5101.0
-	golang.org/x/crypto v0.38.0
+	golang.org/x/crypto v0.45.0
 	golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6
 	golang.org/x/time v0.11.0
 	google.golang.org/protobuf v1.36.6
@@ -32,8 +32,8 @@ require (
 	github.com/lib/pq v1.10.9
 	github.com/redis/go-redis/v9 v9.8.0
 	github.com/stoewer/go-strcase v1.3.0 // indirect
-	golang.org/x/sync v0.14.0 // indirect
-	golang.org/x/text v0.25.0
+	golang.org/x/sync v0.18.0 // indirect
+	golang.org/x/text v0.31.0
 	google.golang.org/genproto/googleapis/api v0.0.0-20250512202823-5a2f75b736a9
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250512202823-5a2f75b736a9 // indirect
 )
