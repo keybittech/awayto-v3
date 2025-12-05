@@ -45,23 +45,25 @@ public class CustomUserRegistration extends RegistrationUserCreation {
     KeycloakSession session = context.getSession();
 
     HttpRequest request = context.getHttpRequest();
-    MultivaluedMap<String, String> queryParams = request.getUri().getQueryParameters();
 
-    String groupCode = queryParams.getFirst("groupCode");
-    Boolean failedValidation = groupCode == null;
+    String groupCode = request.getUri().getQueryParameters().getFirst("groupCode");
 
-    if (failedValidation && request != null) {
+    if (groupCode == null && request.getDecodedFormParameters() != null) {
       groupCode = request.getDecodedFormParameters().getFirst("groupCode");
     }
 
     Boolean suppliedCode = groupCode != null && groupCode.length() > 0;
 
     Boolean invalidFlag = session.getAttribute("invalidGroupFlag", Boolean.class);
+
     if (suppliedCode && invalidFlag != null && !invalidFlag) {
       String groupName = (String) session.getAttribute("groupName");
       String allowedDomains = (String) session.getAttribute("allowedDomains");
+      String sessionGroupCode = (String) session.getAttribute("groupCode");
 
-      if (groupName == null || allowedDomains == null || groupCode != (String) session.getAttribute("groupCode")) {
+      boolean codeChanged = sessionGroupCode == null || !sessionGroupCode.equals(groupCode);
+
+      if (groupName == null || allowedDomains == null || codeChanged) {
         // This block is getting basic group code info
         JSONObject registrationValidationPayload = new JSONObject();
         registrationValidationPayload.put("groupCode", groupCode);
@@ -81,12 +83,6 @@ public class CustomUserRegistration extends RegistrationUserCreation {
         }
       }
 
-      if (!failedValidation) {
-        MultivaluedMap<String, String> formData = new MultivaluedHashMap<String, String>();
-        formData.putSingle("groupCode", groupCode);
-        form.setFormData(formData);
-      }
-
       form
           .setAttribute("groupName", groupName)
           .setAttribute("allowedDomains", allowedDomains);
@@ -95,6 +91,15 @@ public class CustomUserRegistration extends RegistrationUserCreation {
       session.removeAttribute("groupCode");
       session.removeAttribute("groupName");
       session.removeAttribute("allowedDomains");
+    }
+
+    if (suppliedCode) {
+      MultivaluedMap<String, String> formData = new MultivaluedHashMap<>();
+      if (request.getDecodedFormParameters() != null) {
+        formData.putAll(request.getDecodedFormParameters());
+      }
+      formData.putSingle("groupCode", groupCode);
+      form.setFormData(formData);
     }
   }
 

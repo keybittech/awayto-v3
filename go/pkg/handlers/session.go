@@ -44,6 +44,10 @@ func (h *Handlers) GenerateLoginOrRegisterParams(req *http.Request) string {
 		"code_challenge_method": {"S256"},
 	}
 
+	if groupCode := req.URL.Query().Get("groupCode"); groupCode != "" {
+		params.Set("groupCode", groupCode)
+	}
+
 	return "?" + params.Encode()
 }
 
