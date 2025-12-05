@@ -280,7 +280,8 @@ func (h *Handlers) RefreshSession(req *http.Request, session *types.ConcurrentUs
 
 	refreshedSession, err := util.GetValidTokenRefresh(req, refreshToken, session.GetUserAgent(), session.GetTimezone(), session.GetAnonIp())
 	if err != nil {
-		return nil, util.ErrCheck(err)
+		util.ErrorLog.Printf("refresh session valid token refresh err, %v", err)
+		return nil, util.ErrCheck(errors.New("issue refreshing sesssion"))
 	}
 
 	refreshedSession.Id = session.GetId()

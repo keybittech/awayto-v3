@@ -138,6 +138,7 @@ func (a *API) InitAuthProxy() {
 
 		session, err := util.GetValidTokenChallenge(req, code, codeVerifier, tempSession.GetUa(), tempSession.GetTz(), util.AnonIp(req.RemoteAddr))
 		if err != nil {
+			util.ErrorLog.Printf("valid token challenge error: %v", err)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}

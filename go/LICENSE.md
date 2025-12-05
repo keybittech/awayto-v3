@@ -44,9 +44,6 @@ Copyright (c) 2013-2022 Ralph Caraveo (deckarep@gmail.com)
 ### github.com/go-stack/stack
 Copyright (c) 2014 Chris Hines
 
-### github.com/golang-jwt/jwt
-Copyright (c) 2012 Dave Grijalva Copyright (c) 2021 golang-jwt maintainers
-
 ### github.com/dgryski/go-rendezvous
 Copyright (c) 2017-2020 Damian Gryski <damian@gryski.com>
 

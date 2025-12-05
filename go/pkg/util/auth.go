@@ -1,12 +1,14 @@
 package util
 
 import (
+	"crypto"
 	"crypto/hmac"
 	"crypto/rand"
 	"crypto/rsa"
 	"crypto/sha256"
 	"crypto/x509"
 	"encoding/base64"
+	"encoding/json"
 	"encoding/pem"
 	"errors"
 	"fmt"
@@ -16,9 +18,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/golang-jwt/jwt"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"google.golang.org/protobuf/encoding/protojson"
+)
+
+const (
+	maxTokenBytes = 30 * 1024
 )
 
 func SetSessionCookie(w http.ResponseWriter, duration int64, value string) {
@@ -149,32 +154,86 @@ func FetchAndValidateToken(req *http.Request, data url.Values, ua, tz, ip string
 	return ValidateToken(&tokens, ua, tz, ip)
 }
 
+type tokenHeader struct {
+	Alg string `json:"alg"`
+	Typ string `json:"typ"`
+}
+
 type KeycloakUserWithClaims struct {
 	types.KeycloakUser
-	jwt.StandardClaims
+	Subject        string   `json:"sub,omitempty"`
+	Email          string   `json:"email,omitempty"`
+	Groups         []string `json:"groups,omitempty"`
+	Azp            string   `json:"azp,omitempty"`
+	ExpiresAt      int64    `json:"exp,omitempty"`
 	ResourceAccess map[string]struct {
 		Roles []string `json:"roles,omitempty"`
 	} `json:"resource_access,omitempty"`
 }
 
+func decodeJWTSegment(seg string) ([]byte, error) {
+	if l := len(seg) % 4; l > 0 {
+		seg += strings.Repeat("=", 4-l)
+	}
+	return base64.URLEncoding.DecodeString(seg)
+}
+
 func ValidateToken(tokens *types.OIDCToken, userAgent, timezone, anonIp string) (*types.UserSession, error) {
-	parsedToken, err := jwt.ParseWithClaims(tokens.GetAccessToken(), &KeycloakUserWithClaims{}, func(t *jwt.Token) (any, error) {
-		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok {
-			return nil, errors.New("bad signing method")
-		}
-		return E_KC_PUBLIC_KEY, nil
-	})
+	rawToken := tokens.GetAccessToken()
+
+	if len(rawToken) > maxTokenBytes {
+		return nil, ErrCheck(errors.New("token too large"))
+	}
+
+	if strings.Count(rawToken, ".") != 2 {
+		return nil, ErrCheck(errors.New("invalid token format: must have exactly 3 parts"))
+	}
+
+	headerRaw, rest, _ := strings.Cut(rawToken, ".")
+	payloadRaw, sigRaw, _ := strings.Cut(rest, ".")
+
+	headerBytes, err := decodeJWTSegment(headerRaw)
 	if err != nil {
-		return nil, ErrCheck(err)
+		return nil, ErrCheck(fmt.Errorf("failed to decode header, %v", err))
 	}
 
-	if !parsedToken.Valid {
-		return nil, ErrCheck(errors.New("invalid token during parse"))
+	var header tokenHeader
+	if err := json.Unmarshal(headerBytes, &header); err != nil {
+		return nil, ErrCheck(errors.New("failed to unmarshal header"))
 	}
 
-	claims, ok := parsedToken.Claims.(*KeycloakUserWithClaims)
-	if !ok {
-		return nil, ErrCheck(errors.New("could not parse claims"))
+	if header.Alg != "RS256" {
+		return nil, ErrCheck(errors.New("invalid signing algorithm: " + header.Alg))
+	}
+
+	sigBytes, err := decodeJWTSegment(sigRaw)
+	if err != nil {
+		return nil, ErrCheck(fmt.Errorf("failed to decode signature, %v", err))
+	}
+
+	signingInput := headerRaw + "." + payloadRaw
+
+	hasher := sha256.New()
+	hasher.Write([]byte(signingInput))
+	hashed := hasher.Sum(nil)
+
+	err = rsa.VerifyPKCS1v15(E_KC_PUBLIC_KEY, crypto.SHA256, hashed, sigBytes)
+	if err != nil {
+		return nil, ErrCheck(fmt.Errorf("invalid token signature, %v", err))
+	}
+
+	payloadBytes, err := decodeJWTSegment(payloadRaw)
+	if err != nil {
+		return nil, ErrCheck(fmt.Errorf("failed to decode claims, %v", err))
+	}
+
+	var claims KeycloakUserWithClaims
+	if err := json.Unmarshal(payloadBytes, &claims); err != nil {
+		return nil, ErrCheck(fmt.Errorf("could not parse claims, %v", err))
+	}
+
+	if time.Now().Unix() > claims.ExpiresAt {
+		return nil, ErrCheck(errors.New("token has expired"))
 	}
 
 	var roleBits int32
