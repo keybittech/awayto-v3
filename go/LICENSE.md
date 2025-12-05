@@ -90,6 +90,9 @@ SOFTWARE.
 
 ## BSD-2 Clause Licensed Dependencies
 
+### github.com/gorilla/websocket
+Copyright (c) 2013 The Gorilla WebSocket Authors
+
 ### github.com/redis/go-redis/v9
 Copyright 2013 The github.com/redis/go-redis Authors
 
