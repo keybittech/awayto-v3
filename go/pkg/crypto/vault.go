@@ -241,20 +241,20 @@ func ServerDecrypt(dk *HybridPrivateKey, blob []byte, sid string) ([]byte, []byt
 	// 5. Derive AES Key
 	aesKey, err := deriveAESKey(combinedSecret)
 	if err != nil {
-		return nil, nil, fmt.Errorf("server dec: %v", err)
+		return nil, nil, fmt.Errorf("server dec: derive bad, %v", err)
 	}
 
 	// 6. Decrypt Body
 	aad := []byte(sid)
 	decryptedPacket, err := symDecrypt(aesKey, aesCT, aad)
 	if err != nil {
-		return nil, nil, fmt.Errorf("server dec: %v", err)
+		return nil, nil, fmt.Errorf("server dec: decrypt bad or server restarted and old key failed, %v", err)
 	}
 
 	// 7. Verify timestamp
 	plaintext, err := unpackAndVerifyTimestamp(decryptedPacket)
 	if err != nil {
-		return nil, nil, fmt.Errorf("server dec: %v", err)
+		return nil, nil, fmt.Errorf("server dec: verify bad, %v", err)
 	}
 
 	return plaintext, combinedSecret, nil
