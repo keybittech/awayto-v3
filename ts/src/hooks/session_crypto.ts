@@ -1,4 +1,13 @@
-async function getKey(vaultKey: string, userId: string) {
+export const isSecureEnvironment = (): boolean => {
+  return !!(
+    typeof window !== 'undefined' &&
+    window.crypto &&
+    typeof window.crypto.getRandomValues === 'function' &&
+    typeof window.TextEncoder === 'function' // Required for byte conversion
+  );
+};
+
+async function getKey(vaultKey: string, sessionId: string) {
   const enc = new TextEncoder();
   const keyMaterial = await window.crypto.subtle.importKey(
     "raw",
@@ -11,7 +20,7 @@ async function getKey(vaultKey: string, userId: string) {
   return window.crypto.subtle.deriveKey(
     {
       name: "PBKDF2",
-      salt: enc.encode("RTK_CACHE_SALT" + userId),
+      salt: enc.encode("RTK_CACHE_SALT" + sessionId),
       iterations: 10000,
       hash: "SHA-256",
     },
@@ -22,9 +31,13 @@ async function getKey(vaultKey: string, userId: string) {
   );
 }
 
-export async function encryptCacheData(data: any, vaultKey: string, userId: string): Promise<string | null> {
+export async function encryptCacheData(data: any, vaultKey: string, sessionId: string): Promise<string | null> {
+  if (!isSecureEnvironment()) {
+    console.warn("Vault disabled: Environment lacks secure entropy.");
+    return null;
+  }
   try {
-    const key = await getKey(vaultKey, userId);
+    const key = await getKey(vaultKey, sessionId);
     const iv = window.crypto.getRandomValues(new Uint8Array(12));
     const encodedData = new TextEncoder().encode(JSON.stringify(data));
 
@@ -46,10 +59,11 @@ export async function encryptCacheData(data: any, vaultKey: string, userId: stri
   }
 }
 
-export async function decryptCacheData(storedString: string, vaultKey: string, userId: string): Promise<any | null> {
+export async function decryptCacheData(storedString: string, vaultKey: string, sessionId: string): Promise<any | null> {
+  if (!isSecureEnvironment()) return null;
   try {
     const { iv, content } = JSON.parse(storedString);
-    const key = await getKey(vaultKey, userId);
+    const key = await getKey(vaultKey, sessionId);
 
     const decryptedContent = await window.crypto.subtle.decrypt(
       { name: "AES-GCM", iv: new Uint8Array(iv) },

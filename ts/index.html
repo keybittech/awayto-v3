@@ -68,31 +68,42 @@
     <div id="root"></div>
     <script type="module" src="/src/index.tsx"></script>
     <script type="application/javascript">
-      const basePath = "/app/";
+      if (window.crypto && window.crypto.getRandomValues) {
+        const basePath = "/app/";
 
-      const script = document.createElement('script');
-      script.src = basePath + "wasm_exec.js";
-      script.async = false;
-      
-      script.onload = function() {
-        const go = new Go();
-        WebAssembly.instantiateStreaming(fetch(basePath + "lib.wasm"), go.importObject).then((result) => {
-          go.run(result.instance);
-        }).catch(err => {
-          console.error("Wasm failed to load:", err);
-        });
-      };
-      
-      document.body.appendChild(script);
+        const script = document.createElement('script');
+        script.setAttribute('nonce', 'VITE_NONCE');
+        script.src = basePath + "wasm_exec.js";
+        script.async = false;
+        
+        script.onload = function() {
+          const go = new Go();
+          const integrityHash = "VITE_WASM_INTEGRITY";
+          const fetchOpts = {};
+          if (integrityHash.startsWith("sha384-")) {
+            fetchOpts.integrity = integrityHash;
+          }
+          WebAssembly.instantiateStreaming(fetch(basePath + "lib.wasm", fetchOpts), go.importObject).then((result) => {
+            go.run(result.instance);
+          }).catch(err => {
+            console.error("Wasm failed to load:", err);
+          });
+        };
+        
+        document.body.appendChild(script);
 
-      window.INT_SITE_LOAD = false;
+        window.INT_SITE_LOAD = false;
 
-      const checkLoadingInterval = setInterval(() => {
-        if (window.INT_SITE_LOAD) {
-          document.getElementById("loading_site_root").remove();
-          clearInterval(checkLoadingInterval);
-        }
-      }, 100);
+        const checkLoadingInterval = setInterval(() => {
+          if (window.INT_SITE_LOAD) {
+            const el = document.getElementById("loading_site_root");
+            if(el) el.remove();
+            clearInterval(checkLoadingInterval);
+          }
+        }, 100);
+      } else { 
+        console.warn("WASM Vault skipped: Secure context missing.");
+      }
     </script>
   </body>
 </html>

@@ -11,9 +11,10 @@ import (
 )
 
 const (
-	API_READ_TIMEOUT  = 5 * time.Second
-	API_WRITE_TIMEOUT = 15 * time.Second
-	API_IDLE_TIMEOUT  = 15 * time.Second
+	API_READ_HEADER_TIMEOUT = 5 * time.Second
+	API_READ_TIMEOUT        = 5 * time.Second
+	API_WRITE_TIMEOUT       = 15 * time.Second
+	API_IDLE_TIMEOUT        = 120 * time.Second
 )
 
 type API struct {
@@ -40,11 +41,12 @@ func NewAPI(httpsPort int) *API {
 
 	return &API{
 		Server: &http.Server{
-			Addr:         fmt.Sprintf("[::]:%d", httpsPort),
-			ReadTimeout:  API_READ_TIMEOUT,
-			WriteTimeout: API_WRITE_TIMEOUT,
-			IdleTimeout:  API_IDLE_TIMEOUT,
-			Handler:      http.NewServeMux(),
+			Addr:              fmt.Sprintf("[::]:%d", httpsPort),
+			ReadHeaderTimeout: API_READ_HEADER_TIMEOUT,
+			ReadTimeout:       API_READ_TIMEOUT,
+			WriteTimeout:      API_WRITE_TIMEOUT,
+			IdleTimeout:       API_IDLE_TIMEOUT,
+			Handler:           http.NewServeMux(),
 		},
 		Handlers:  h,
 		Cache:     h.Cache,

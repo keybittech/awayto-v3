@@ -6,5 +6,8 @@ import (
 )
 
 func (h *Handlers) GetVaultKey(info ReqInfo, data *types.GetVaultKeyRequest) (*types.GetVaultKeyResponse, error) {
-	return &types.GetVaultKeyResponse{Key: crypto.EncodedVaultKey}, nil
+	return &types.GetVaultKeyResponse{
+		Key: crypto.EncodedVaultKey,
+		Sid: info.Session.GetId(),
+	}, nil
 }

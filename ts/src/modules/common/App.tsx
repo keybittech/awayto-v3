@@ -7,7 +7,7 @@ import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { LocalizationProvider } from '@mui/x-date-pickers/LocalizationProvider';
 
-import { siteApi, theme, useAppSelector, useAuth } from 'awayto/hooks';
+import { siteApi, theme, useAppSelector, useAuth, isSecureEnvironment } from 'awayto/hooks';
 
 import Layout from './Layout';
 
@@ -17,7 +17,7 @@ import SnackAlert from './SnackAlert';
 
 export default function App(props: IComponent): React.JSX.Element {
 
-  const { setVaultKey, setUserId } = useAuth();
+  const { setVault } = useAuth();
   const { authenticated, vaultKey } = useAppSelector(state => state.auth);
 
   const { data: keyRequest, isSuccess: keyIsSuccess } = siteApi.useVaultServiceGetVaultKeyQuery(authenticated ? undefined : skipToken);
@@ -27,21 +27,21 @@ export default function App(props: IComponent): React.JSX.Element {
   const isAppLoading = (authenticated && isLoading) || !vaultKey;
 
   useEffect(() => {
-    if (keyIsSuccess) {
-      setVaultKey({ vaultKey: keyRequest?.key });
+    if (keyIsSuccess && isSecureEnvironment()) {
+      setVault({
+        sessionId: keyRequest?.sid,
+        vaultKey: keyRequest?.key
+      });
     }
   }, [keyIsSuccess, keyRequest]);
 
   useEffect(() => {
-    if (profileRequest?.userProfile.email) {
-      setUserId({ userId: profileRequest.userProfile.email });
-    }
     if (isSuccess || isError || !isAppLoading) {
       window.INT_SITE_LOAD = true;
     }
   }, [isSuccess, isError, isAppLoading, profileRequest]);
 
-  if (isAppLoading) {
+  if (isAppLoading || !isSecureEnvironment()) {
     return <></>;
   }
 

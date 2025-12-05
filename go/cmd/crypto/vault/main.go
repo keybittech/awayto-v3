@@ -4,8 +4,6 @@ package main
 
 import (
 	"encoding/base64"
-	"errors"
-	"fmt"
 	"strings"
 	"syscall/js"
 
@@ -13,7 +11,11 @@ import (
 )
 
 func encryptRequest(this js.Value, args []js.Value) any {
-	// args[0]: Server PubKey (base64), args[1]: JSON String
+	// args[0]: Server PubKey (base64), args[1]: JSON String, args[2]: sess id String
+	if len(args) < 3 {
+		return nil
+	}
+
 	pubKey, _ := base64.StdEncoding.DecodeString(args[0].String())
 
 	var plaintext []byte
@@ -27,9 +29,10 @@ func encryptRequest(this js.Value, args []js.Value) any {
 		js.CopyBytesToGo(plaintext, args[1])
 	}
 
-	blob, secret, err := crypto.EncryptForServer(pubKey, plaintext)
+	sid := args[2].String()
+
+	blob, secret, err := crypto.ClientEncrypt(pubKey, plaintext, sid)
 	if err != nil {
-		fmt.Println("WASM: Into encryption issue")
 		return nil
 	}
 
@@ -44,32 +47,22 @@ func decryptResponse(this js.Value, args []js.Value) any {
 		return nil
 	}
 
-	// Ensure inputs are clean
 	blobStr := strings.TrimSpace(args[0].String())
 	secretStr := strings.TrimSpace(args[1].String())
 
-	// Robust Decode: Tries Standard (with padding), falls back to Raw
-	decodeSafe := func(in string) ([]byte, error) {
-		if b, err := base64.StdEncoding.DecodeString(in); err == nil {
-			return b, nil
-		}
-		if b, err := base64.RawStdEncoding.DecodeString(in); err == nil {
-			return b, nil
-		}
-		return nil, errors.New("WASM: From server decoding failed")
-	}
-
-	blob, err := decodeSafe(blobStr)
+	blob, err := base64.StdEncoding.DecodeString(blobStr)
 	if err != nil {
 		return nil
 	}
 
-	secret, err := decodeSafe(secretStr)
+	secret, err := base64.StdEncoding.DecodeString(secretStr)
 	if err != nil {
 		return nil
 	}
 
-	plaintext, err := crypto.DecryptResponse(blob, secret)
+	sid := args[2].String()
+
+	plaintext, err := crypto.ClientDecrypt(blob, secret, sid)
 	if err != nil {
 		return nil
 	}

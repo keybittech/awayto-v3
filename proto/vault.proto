@@ -21,4 +21,5 @@ message GetVaultKeyRequest {}
 
 message GetVaultKeyResponse {
   string key = 1 [(google.api.field_behavior) = REQUIRED];
+  string sid = 2 [(google.api.field_behavior) = REQUIRED];
 }

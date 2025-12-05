@@ -25,16 +25,21 @@ func main() {
 	)
 
 	server := api.NewAPI(util.E_GO_HTTPS_PORT)
+
 	server.Server.TLSConfig = &tls.Config{
 		MinVersion:               tls.VersionTLS13,
 		PreferServerCipherSuites: true,
-		CipherSuites: []uint16{
+		CipherSuites: []uint16{ // keep if tls 1.2 needed in some future situation
+			tls.TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,
 			tls.TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384,
+			tls.TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305,
+			tls.TLS_ECDHE_RSA_WITH_CHACHA20_POLY1305,
 		},
 		CurvePreferences: []tls.CurveID{
 			tls.X25519,
 			tls.CurveP256,
 		},
+		NextProtos: []string{"h2", "http/1.1"},
 	}
 
 	go server.RedirectHTTP(util.E_GO_HTTP_PORT)

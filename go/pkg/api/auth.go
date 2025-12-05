@@ -160,7 +160,7 @@ func (a *API) InitAuthProxy() {
 
 		sessionId, err := util.GetSessionIdFromCookie(req)
 		if err != nil {
-			util.ErrorLog.Println(errors.Join(errors.New("no sessionId during logout"), err))
+			util.ErrorLog.Println(fmt.Errorf("no sessionId during logout, %v", err))
 			http.Redirect(w, req, "/", http.StatusOK)
 			return
 		}

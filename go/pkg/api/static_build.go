@@ -14,8 +14,24 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
+var wasmIntegrity string
+
+func initWasmHash() {
+	path := fmt.Sprintf("%s/ts/build/lib.wasm", util.E_PROJECT_DIR)
+	hash, err := util.CalcFileIntegrity(path)
+	if err != nil {
+		util.ErrorLog.Printf("CRITICAL: could not calc wasm integrity, %v", err)
+		wasmIntegrity = ""
+	} else {
+		wasmIntegrity = hash
+		util.DebugLog.Printf("wasm integrity pinned, %s", wasmIntegrity)
+	}
+}
+
 func setupStaticBuildOrProxy(a *API) {
 	util.DebugLog.Println("Using build folder")
+
+	initWasmHash()
 
 	fileServer := http.FileServer(http.Dir(fmt.Sprintf("%s/ts/build/", util.E_PROJECT_DIR)))
 
@@ -38,7 +54,19 @@ func setupStaticBuildOrProxy(a *API) {
 				fileServer.ServeHTTP(redirect, req)
 			} else {
 				req.URL.Path = "/"
-				util.WriteNonceIntoBody(fileServer, w, req)
+
+				nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
+				if !ok {
+					http.Error(w, "no csp nonce", http.StatusInternalServerError)
+					return
+				}
+
+				replacements := map[string]string{
+					"VITE_NONCE":          string(nonce),
+					"VITE_WASM_INTEGRITY": wasmIntegrity,
+				}
+
+				util.WriteIndexHtml(fileServer, w, req, replacements)
 				return
 			}
 

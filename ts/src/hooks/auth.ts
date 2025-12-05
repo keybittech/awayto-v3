@@ -12,8 +12,8 @@ import LockIcon from '@mui/icons-material/Lock';
 import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 
 export type IAuth = {
-  userId?: string;
   authenticated?: boolean;
+  sessionId?: string;
   vaultKey?: string;
 }
 
@@ -30,19 +30,18 @@ export async function logout() {
 export const authConfig = {
   name: 'auth',
   initialState: {
-    userId: '',
     authenticated: undefined,
+    sessionId: '',
     vaultKey: ''
   } as IAuth,
   reducers: {
-    setUserId: (state: IAuth, action: { payload: IAuth }) => {
-      state.userId = action.payload.userId;
-    },
     setAuthenticated: (state: IAuth, action: { payload: IAuth }) => {
       state.authenticated = action.payload.authenticated;
     },
-    setVaultKey: (state: IAuth, action: { payload: IAuth }) => {
-      state.vaultKey = action.payload.vaultKey;
+    setVault: (state: IAuth, action: { payload: IAuth }) => {
+      const { vaultKey, sessionId } = action.payload;
+      if (vaultKey) state.vaultKey = vaultKey;
+      if (sessionId) state.sessionId = sessionId;
     },
   },
 };

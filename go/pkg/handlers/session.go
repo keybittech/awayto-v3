@@ -161,7 +161,7 @@ func (h *Handlers) GetSession(req *http.Request, userSub ...string) (concurrentS
 	} else {
 		sessionId, err = util.GetSessionIdFromCookie(req)
 		if err != nil {
-			return nil, util.ErrCheck(errors.Join(errors.New("no session id from cookie check"), err))
+			return nil, util.ErrCheck(fmt.Errorf("no session id from cookie check, %v", err))
 		}
 	}
 	if sessionId == "" {

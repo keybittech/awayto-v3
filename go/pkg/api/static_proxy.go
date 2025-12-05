@@ -30,7 +30,15 @@ func setupStaticBuildOrProxy(a *API) {
 	a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app/",
 		http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			if strings.Contains(req.Header.Get("Accept"), "text/html") {
-				util.WriteNonceIntoBody(proxy, w, req)
+				nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
+				if !ok {
+					http.Error(w, "no csp nonce", http.StatusInternalServerError)
+					return
+				}
+				replacements := map[string]string{
+					"VITE_NONCE": string(nonce),
+				}
+				util.WriteIndexHtml(proxy, w, req, replacements)
 			} else {
 				proxy.ServeHTTP(w, req)
 			}

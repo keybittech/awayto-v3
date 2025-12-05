@@ -4,6 +4,7 @@ import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, TypedUseQu
 import { utilSlice } from './util';
 import { RootState } from './store';
 import { decryptCacheData, encryptCacheData } from './session_crypto';
+import { authSlice } from './auth';
 
 const {
   VITE_REACT_APP_APP_HOST_URL,
@@ -33,8 +34,8 @@ type CustomExtraOptions = {
   vaultSecret?: string;
 }
 
-const getCacheKey = (url: string) => {
-  return `RTK_CACHE_${url}`;
+const getCacheKey = (url: string, sid?: string) => {
+  return `RTK_CACHE_${sid || 'NO_SESS'}${url}`;
 }
 
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, CustomExtraOptions> = async (args, api, extraOptions = {}) => {
@@ -47,11 +48,11 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
   (args.headers as Headers).set('X-Tz', tz);
 
   const state = api.getState() as RootState;
-  const { userId, vaultKey } = state.auth;
+  const { sessionId, vaultKey } = state.auth;
 
   const isMutation = ['POST', 'PUT', 'PATCH'].includes(args.method || '');
 
-  if (vaultKey && "function" == typeof window.pqcEncrypt) {
+  if (vaultKey && sessionId && "function" == typeof window.pqcEncrypt) {
 
     if (isMutation) {
 
@@ -59,7 +60,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
         args.body = {};
       }
 
-      const encryptedBody = window.pqcEncrypt(vaultKey, JSON.stringify(args.body));
+      const encryptedBody = window.pqcEncrypt(vaultKey, JSON.stringify(args.body), sessionId);
 
       if (encryptedBody && encryptedBody.blob) {
         const bstring = atob(encryptedBody.blob);
@@ -76,7 +77,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
         extraOptions.vaultSecret = encryptedBody.secret;
       }
     } else {
-      const encryptedBody = window.pqcEncrypt(vaultKey, " ");
+      const encryptedBody = window.pqcEncrypt(vaultKey, " ", sessionId);
       if (encryptedBody && encryptedBody.blob) {
         (args.headers as Headers).set('X-Awayto-Vault', encryptedBody.blob);
         extraOptions.vaultSecret = encryptedBody.secret;
@@ -86,14 +87,14 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     (args.headers as Headers).set('Content-Type', 'application/json');
   }
 
-  const cacheKey = getCacheKey(args.url);
+  const cacheKey = getCacheKey(args.url, sessionId);
   let cachedData: { etag: string, data: any, timestamp: number } | null = null;
 
-  if (!isMutation && vaultKey && userId) {
+  if (!isMutation && vaultKey && sessionId) {
     try {
       const cached = sessionStorage.getItem(cacheKey);
       if (cached) {
-        cachedData = await decryptCacheData(cached, vaultKey, userId);
+        cachedData = await decryptCacheData(cached, vaultKey, sessionId);
         if (cachedData?.etag) {
           (args.headers as Headers).set('If-None-Match', cachedData.etag);
         }
@@ -105,7 +106,28 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
 
   let result = await baseQuery(args, api, extraOptions);
 
-  if (304 == result.meta?.response?.status) {
+  if (401 === result.error?.status) { // client is no longer authenticated
+    localStorage.clear();
+    sessionStorage.clear();
+    window.location.href = `/auth/login?tz=${tz}`
+  }
+
+  // TODO this isn't retrying after server restart
+  if ("PARSING_ERROR" === result.error?.status && extraOptions.vaultSecret) { // key may have changed
+    const refreshResult = await baseQuery({ url: '/v1/vault/key', method: 'GET' }, api, {});
+
+    if (refreshResult.data) {
+      const newKey = (refreshResult.data as { key: string }).key;
+      if (newKey.length) {
+        api.dispatch(authSlice.actions.setVault({ vaultKey: newKey }));
+        if (args.body && 'string' === typeof args.body) {
+          return customBaseQuery(args, api, extraOptions);
+        }
+      }
+    }
+  }
+
+  if (304 === result.meta?.response?.status) { // request was cached
     if (cachedData && cachedData.data) {
       // Cached on server and locally
       result.data = cachedData.data;
@@ -117,14 +139,9 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     }
   }
 
-  if (401 == result.error?.status) {
-    sessionStorage.clear();
-    window.location.href = `/auth/login?tz=${tz}`
-  }
-
-  if (extraOptions.vaultSecret && result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault') {
+  if (extraOptions.vaultSecret && sessionId && result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault') {
     if (typeof result.data === 'string') {
-      const decryptedJson = window.pqcDecrypt(result.data.trim(), extraOptions.vaultSecret);
+      const decryptedJson = window.pqcDecrypt(result.data.trim(), extraOptions.vaultSecret, sessionId);
       if (!decryptedJson) {
         console.error("WASM pqcDecrypt returned null. Check WASM console logs.");
         api.dispatch(setSnack({ snackOn: "Vault Decryption Failed" }));
@@ -141,14 +158,14 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
 
   if (!isMutation && result.data && 200 == result.meta?.response?.status) {
     const etag = result.meta.response.headers.get('ETag');
-    if (etag && vaultKey && userId) {
+    if (etag && vaultKey && sessionId) {
       try {
         const cacheResult = {
           etag,
           data: result.data,
           timestamp: Date.now(),
         };
-        const encryptedEntry = await encryptCacheData(cacheResult, vaultKey, userId);
+        const encryptedEntry = await encryptCacheData(cacheResult, vaultKey, sessionId);
         if (encryptedEntry) {
           sessionStorage.setItem(cacheKey, encryptedEntry);
         }

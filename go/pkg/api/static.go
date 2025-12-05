@@ -59,7 +59,15 @@ func (a *API) InitStatic() {
 			w.Header().Set("Cache-Control", maxAgeStr)
 			w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
 			if req.URL.Path == "" {
-				util.WriteNonceIntoBody(landingFiles, w, req)
+				nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
+				if !ok {
+					http.Error(w, "no csp nonce", http.StatusInternalServerError)
+					return
+				}
+				replacements := map[string]string{
+					"VITE_NONCE": string(nonce),
+				}
+				util.WriteIndexHtml(landingFiles, w, req, replacements)
 			} else {
 				landingFiles.ServeHTTP(w, req)
 			}

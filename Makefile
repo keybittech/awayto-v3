@@ -306,7 +306,7 @@ $(PROTO_GEN_MUTEX_FILES): $(PROTO_GEN_MUTEX) $(PROTO_FILES)
 		--mutex_opt=module=${PROJECT_REPO}/$(GO_GEN_DIR) \
 		$(PROTO_FILES)
 
-$(TS_VAULT_WASM):
+$(TS_VAULT_WASM): $(GO_VAULT_WASM_DIR)/main.go
 	cp $$($(GO) env GOROOT)/lib/wasm/wasm_exec.js $(TS_VAULT_WASM_JS)
 	GOOS=js GOARCH=wasm $(GO) build -C $(GO_VAULT_WASM_DIR) -ldflags="-s -w" -o $(abspath $(TS_VAULT_WASM)) ./...
 
@@ -607,16 +607,12 @@ host_sync_files:
 host_local_update_cert:
 	$(SSH) " \
 		sudo mkdir -p /etc/letsencrypt/live/${DOMAIN_NAME}; \
-		sudo openssl req -x509 -nodes -days 365 -newkey rsa:2048 \
+		sudo openssl req -x509 -nodes -days 365 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 \
 			-keyout /etc/letsencrypt/live/${DOMAIN_NAME}/privkey.pem \
 			-out /etc/letsencrypt/live/${DOMAIN_NAME}/cert.pem \
 			-subj \"/C=US/ST=State/L=City/O=Organization/CN=${DOMAIN_NAME}\"; \
 	"
-	$(SSH) " \
-		sudo chgrp -R ssl-certs /etc/letsencrypt/live; \
-		sudo chmod -R g+r /etc/letsencrypt/live; \
-		sudo chmod g+x /etc/letsencrypt/live; \
-	"
+	$(MAKE) host_group_cert
 
 # if we don't have certs locally or we're renewing, do the normal cert request and store the certs locally
 # if the server still doesn't have certs then we aren't renewing and already have certs locally, likely new deployment
@@ -628,14 +624,18 @@ host_update_cert: host_install_cert host_replace_cert
 host_install_cert:
 	@if [ ! -d "$(CERT_BACKUP_DIR)/${PROJECT_PREFIX}" ] || [ -n "$$RENEW_CERT" ]; then \
 		$(SSH) " \
-			sudo rm -rf /etc/letsencrypt/archive /etc/letsencrypt/live; \
-			sudo iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true; \
-			sudo certbot certonly --standalone -d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} -m ${ADMIN_EMAIL} --agree-tos --no-eff-email; \
-			sudo iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}; \
+			sudo certbot certonly --standalone \
+				--non-interactive \
+				--key-type ecdsa \
+				-d ${DOMAIN_NAME} -d www.${DOMAIN_NAME} \
+				-m ${ADMIN_EMAIL} \
+				--agree-tos --no-eff-email \
+				--pre-hook 'iptables -D PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT} || true' \
+				--post-hook 'iptables -A PREROUTING -t nat -p tcp --dport 80 -j REDIRECT --to-port ${GO_HTTP_PORT}' \
+				--deploy-hook 'chgrp -R ssl-certs /etc/letsencrypt/live /etc/letsencrypt/archive && chmod -R g+r /etc/letsencrypt/live /etc/letsencrypt/archive && chmod g+x /etc/letsencrypt/live /etc/letsencrypt/archive'; \
 		"; \
-		$(MAKE) host_group_cert; \
 		$(MAKE) host_backup_cert; \
-		echo "installed certs, renew=$$RENEW_CERT"; \
+		echo "installed ECDSA certs, renew=$$RENEW_CERT"; \
 	else \
 		echo "skipping install"; \
 	fi

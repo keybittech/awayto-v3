@@ -3,6 +3,8 @@ package util
 import (
 	"bytes"
 	"context"
+	"crypto/sha512"
+	"encoding/base64"
 	json "encoding/json"
 	"errors"
 	"fmt"
@@ -10,7 +12,9 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"regexp"
+	"os"
+	"strconv"
+	"strings"
 )
 
 type ErrRes struct {
@@ -175,7 +179,25 @@ func PostFormData(ctx context.Context, url string, headers http.Header, data io.
 	return respBody, nil
 }
 
-func WriteNonceIntoBody(handler http.Handler, w http.ResponseWriter, req *http.Request) {
+func CalcFileIntegrity(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", err
+	}
+	defer f.Close()
+
+	h := sha512.New384()
+	if _, err := io.Copy(h, f); err != nil {
+		return "", err
+	}
+
+	hashBytes := h.Sum(nil)
+	b64Hash := base64.StdEncoding.EncodeToString(hashBytes)
+
+	return fmt.Sprintf("sha384-%s", b64Hash), nil
+}
+
+func WriteIndexHtml(handler http.Handler, w http.ResponseWriter, req *http.Request, replacements map[string]string) {
 	recorder := httptest.NewRecorder()
 
 	handler.ServeHTTP(recorder, req)
@@ -186,14 +208,25 @@ func WriteNonceIntoBody(handler http.Handler, w http.ResponseWriter, req *http.R
 		return
 	}
 
-	nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
-	if !ok {
-		http.Error(w, "No csp nonce for index build", http.StatusInternalServerError)
-		return
-	}
-	modifiedBody := regexp.MustCompile(`VITE_NONCE`).ReplaceAll(originalBody, nonce)
+	bodyStr := string(originalBody)
 
-	_, err = w.Write(modifiedBody)
+	for k, v := range replacements {
+		bodyStr = strings.ReplaceAll(bodyStr, k, v)
+	}
+
+	newBodyBytes := []byte(bodyStr)
+
+	for k, v := range recorder.Result().Header {
+		w.Header()[k] = v
+	}
+
+	w.Header().Set("Content-Length", strconv.Itoa(len(newBodyBytes)))
+
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+	w.Header().Set("Pragma", "no-cache")
+	w.Header().Set("Expires", "0")
+
+	_, err = w.Write(newBodyBytes)
 	if err != nil {
 		ErrorLog.Println(ErrCheck(err))
 	}
