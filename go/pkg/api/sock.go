@@ -296,7 +296,13 @@ func (a *API) InitSockServer() {
 					}
 					cancel()
 				}
-			case err := <-errs:
+			case err, ok := <-errs:
+				if !ok {
+					// channel closed (maybe user reloaded page)
+					partSockMessage.WriteString("read routine closed")
+					return
+				}
+
 				// normally shouldn't error, but if it does it could potentially be heavy load
 				// so only err log once every ping timer
 				if errorFlag {
