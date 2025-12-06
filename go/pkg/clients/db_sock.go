@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"slices"
 	"time"
@@ -175,11 +176,72 @@ func (ds DbSession) StoreTopicMessage(ctx context.Context, connId string, messag
 	message.Historical = true
 	message.Timestamp = time.Now().Local().String()
 
+	switch message.Action {
+	case types.SocketActions_TEXT:
+		return ds.storeChatText(ctx, connId, message)
+
+	case types.SocketActions_SET_BOX, types.SocketActions_DRAW_LINES:
+		return ds.upsertCanvasElement(ctx, connId, message)
+
+	default:
+		return ds.storeChatText(ctx, connId, message)
+	}
+}
+
+func (ds DbSession) storeChatText(ctx context.Context, connId string, message *types.SocketMessage) error {
 	_, err := ds.SessionBatchExec(ctx, `
 		INSERT INTO dbtable_schema.topic_messages (created_sub, connection_id, topic, message)
 		VALUES ($1, $2, $3, $4)
 	`, ds.ConcurrentUserSession.GetUserSub(), connId, message.Topic, util.GenerateMessage(util.DefaultPadding, message))
-	if err != nil {
+
+	return util.ErrCheck(err)
+}
+
+type BoxPayload struct {
+	Boxes []map[string]any
+}
+
+func (ds DbSession) upsertCanvasElement(ctx context.Context, connId string, message *types.SocketMessage) error {
+
+	elementQuery := `
+		INSERT INTO dbtable_schema.topic_canvas_elements (created_sub, connection_id, topic, element_id, element_type, properties, updated_sub, updated_on)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
+		ON CONFLICT (topic, element_id) 
+		DO UPDATE SET properties = EXCLUDED.properties, updated_sub = EXCLUDED.updated_sub, updated_on = NOW();
+	`
+	userSub := ds.ConcurrentUserSession.GetUserSub()
+
+	if message.Action == types.SocketActions_SET_BOX {
+		var p BoxPayload
+		if err := json.Unmarshal([]byte(message.Payload), &p); err != nil {
+			return util.ErrCheck(err)
+		}
+
+		for _, box := range p.Boxes {
+			boxIdStr := fmt.Sprintf("%v", box["id"])
+
+			boxJSON, _ := json.Marshal(box)
+
+			_, err := ds.SessionBatchExec(ctx, elementQuery, userSub, connId, message.Topic, boxIdStr, "box", boxJSON, userSub)
+			if err != nil {
+				return util.ErrCheck(err)
+			}
+		}
+		return nil
+	}
+
+	if message.Action == types.SocketActions_DRAW_LINES {
+		var payload map[string]any
+		if err := json.Unmarshal([]byte(message.Payload), &payload); err != nil {
+			return util.ErrCheck(err)
+		}
+
+		lineId := fmt.Sprintf("%s-%d", ds.ConcurrentUserSession.GetUserSub(), time.Now().UnixNano())
+		payload["id"] = lineId
+
+		lineJSON, _ := json.Marshal(payload)
+
+		_, err := ds.SessionBatchExec(ctx, elementQuery, userSub, connId, message.Topic, lineId, "line", lineJSON, userSub)
 		return util.ErrCheck(err)
 	}
 
@@ -217,6 +279,62 @@ func (ds DbSession) GetTopicMessages(ctx context.Context, page, pageSize int) ([
 			Topic:  ds.Topic,
 			Action: types.SocketActions_HAS_MORE_MESSAGES,
 		}))
+	}
+
+	return messages, nil
+}
+
+func (ds DbSession) GetTopicElements(ctx context.Context) ([][]byte, error) {
+	finish := util.RunTimer()
+	defer finish()
+
+	rows, done, err := ds.SessionBatchQuery(ctx, `
+		SELECT element_type, properties FROM dbtable_schema.topic_canvas_elements
+		WHERE topic = $1
+	`, ds.Topic)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	defer done()
+
+	var allBoxes []map[string]any
+	var allLines []map[string]any
+
+	for rows.Next() {
+		var elType string
+		var elProps map[string]any
+		if err := rows.Scan(&elType, &elProps); err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		if elType == "box" {
+			allBoxes = append(allBoxes, elProps)
+		} else if elType == "line" {
+			allLines = append(allLines, elProps)
+		}
+	}
+
+	var messages [][]byte
+
+	if len(allBoxes) > 0 {
+		boxesBytes, _ := json.Marshal(map[string]any{"boxes": allBoxes})
+
+		sm := &types.SocketMessage{
+			Topic:   ds.Topic,
+			Action:  types.SocketActions_SET_BOX,
+			Payload: string(boxesBytes),
+		}
+		messages = append(messages, util.GenerateMessage(util.DefaultPadding, sm))
+	}
+
+	for _, lineProps := range allLines {
+		lineBytes, _ := json.Marshal(lineProps)
+		sm := &types.SocketMessage{
+			Topic:   ds.Topic,
+			Action:  types.SocketActions_DRAW_LINES,
+			Payload: string(lineBytes),
+		}
+		messages = append(messages, util.GenerateMessage(util.DefaultPadding, sm))
 	}
 
 	return messages, nil

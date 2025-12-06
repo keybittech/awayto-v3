@@ -220,13 +220,24 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 			return
 		}
 
-		messages, err := ds.GetTopicMessages(ctx, pageInfo["page"], 100) // int(pageInfo["pageSize"])
+		chatMessages, err := ds.GetTopicMessages(ctx, pageInfo["page"], 100) // int(pageInfo["pageSize"])
 		if err != nil {
 			util.ErrorLog.Println(util.ErrCheck(err))
 			return
 		}
 
-		for _, messageBytes := range messages {
+		var stateMessages [][]byte
+		if pageInfo["page"] == 0 || pageInfo["page"] == 1 {
+			stateMessages, err = ds.GetTopicElements(ctx)
+			if err != nil {
+				util.ErrorLog.Println(util.ErrCheck(err))
+				return
+			}
+		}
+
+		allMessages := append(stateMessages, chatMessages...)
+
+		for _, messageBytes := range allMessages {
 			if messageBytes != nil {
 				_, err := a.Handlers.Socket.SendCommand(ctx, clients.SendSocketMessageSocketCommand, &types.SocketRequestParams{
 					UserSub:      ds.ConcurrentUserSession.GetUserSub(),
