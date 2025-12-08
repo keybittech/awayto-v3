@@ -39,6 +39,17 @@ const getCacheKey = (url: string, sid?: string) => {
   return `RTK_CACHE_${sid || 'NO_SESS'}${url}`;
 }
 
+const handle401 = (tz: string, errObj?: FetchBaseQueryError) => {
+  if (errObj) {
+    const { status } = errObj;
+    if (status === 401 || (status === 'PARSING_ERROR' && errObj.originalStatus === 401)) {
+      localStorage.clear();
+      sessionStorage.clear();
+      window.location.href = `/auth/login?tz=${tz}`
+    }
+  }
+}
+
 const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, CustomExtraOptions> = async (xargs, api, extraOptions = {}) => {
   // handle originalArgs versus currentArgs when needing to retry, as we need to preserve whatever encryption occurs
   const oArgs = typeof xargs === 'string' ? { url: xargs } : { ...xargs };
@@ -111,6 +122,8 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     if (!extraOptions.hasRetriedVault) {
       const refreshResult = await baseQuery({ url: '/v1/vault/key', method: 'GET' }, api, {});
 
+      handle401(tz, refreshResult.error);
+
       if (refreshResult.data) {
         const newKey = (refreshResult.data as { key: string }).key;
         if (newKey.length) {
@@ -123,11 +136,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     api.dispatch(setSnack({ snackOn: result.error.data as string }));
   }
 
-  if (401 === result.error?.status) { // client is no longer authenticated
-    localStorage.clear();
-    sessionStorage.clear();
-    window.location.href = `/auth/login?tz=${tz}`
-  }
+  handle401(tz, result.error);
 
   if (304 === result.meta?.response?.status) { // request was cached
     if (cachedData && cachedData.data) {
@@ -176,16 +185,6 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
       }
     }
   }
-
-  // switch (result.error?.status) {
-  //   case "PARSING_ERROR":
-  //     api.dispatch(setSnack({ snackOn: result.error.data as string }));
-  //     break
-  //   case "FETCH_ERROR":
-  //     result = await retry(baseQuery)(args, api, {});
-  //     break
-  //   default:
-  // }
 
   return result;
 }
