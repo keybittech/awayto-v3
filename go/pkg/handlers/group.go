@@ -62,7 +62,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	// group "code" is generated via TRIGGER set_group_code
 	err = info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.groups (external_id, code, admin_role_external_id, created_sub, name, purpose, allowed_domains, display_name, ai, sub)
-		VALUES ($1::uuid, $1, $1::uuid, $1::uuid, $2, $3, $4, $5, $6, $7)
+		VALUES ($1::uuid, 'unset_code', $1::uuid, $1::uuid, $2, $3, $4, $5, $6, $7)
 		RETURNING id, name
 	`, userSub, data.Name, data.Purpose, data.AllowedDomains, data.DisplayName, data.Ai, groupSub).Scan(&groupId, &groupName)
 	if err != nil {

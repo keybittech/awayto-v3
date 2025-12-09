@@ -1,24 +1,19 @@
-import Button from "@mui/material/Button";
-import DialogActions from "@mui/material/DialogActions";
-import DialogContent from "@mui/material/DialogContent";
-import DialogTitle from "@mui/material/DialogTitle";
-import Grid from "@mui/material/Grid";
-import TextField from "@mui/material/TextField";
-import Typography from "@mui/material/Typography";
+import { useState } from 'react';
 
-import { plural, targets, useStyles } from "awayto/hooks";
+import Button from '@mui/material/Button';
+import DialogActions from '@mui/material/DialogActions';
+import DialogContent from '@mui/material/DialogContent';
+import DialogTitle from '@mui/material/DialogTitle';
+import Grid from '@mui/material/Grid';
+import Typography from '@mui/material/Typography';
+
+import { plural, targets, useStyles, siteApi } from 'awayto/hooks';
 
 export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
 
   const classes = useStyles();
 
-  // const [seatsToAdd, setSeatsToAdd] = useState(0);
-
-  // const [postGroupSeats] = siteApi.useGroupSeatServicePostGroupSeatMutation();
-
-  const handleSubmit = function() {
-    // void postGroupSeats({ postGroupSeatRequest: { seats: seatsToAdd } });
-  }
+  const [postGroupSeats] = siteApi.useGroupSeatServicePostGroupSeatMutation();
 
   return <>
     <DialogTitle>Group Seats</DialogTitle>
@@ -35,7 +30,7 @@ export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
               ...classes.variableText,
               my: .5,
             }}
-            onClick={handleSubmit}
+            onClick={_ => postGroupSeats({ postGroupSeatRequest: { seats: gs } })}
           >
             {label}
           </Button>;
@@ -50,7 +45,7 @@ export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
         >Cancel</Button>
         {/* <Button */}
         {/*   {...targets(`group seat submit`, `submit the form to add more group seats`)} */}
-        {/*   // disabled={seatsToAdd < 1} */}
+        {/*   disabled={seatsToAdd < 1} */}
         {/*   onClick={handleSubmit} */}
         {/* >Add Seats</Button> */}
       </Grid>

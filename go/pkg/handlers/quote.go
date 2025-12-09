@@ -11,8 +11,21 @@ import (
 )
 
 func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types.PostQuoteResponse, error) {
-	var slotReserved bool
+
+	var goodStanding bool
 	err := info.Tx.QueryRow(info.Ctx, `
+		SELECT dbfunc_schema.check_group_standing($1)
+	`, info.Session.GetGroupId()).Scan(&goodStanding)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	if !goodStanding {
+		return nil, util.ErrCheck(util.UserError("Service temporarily paused due to account status."))
+	}
+
+	var slotReserved bool
+	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT dbfunc_schema.is_slot_taken($1, $2)
 	`, data.ScheduleBracketSlotId, data.SlotDate).Scan(&slotReserved)
 	if err != nil {

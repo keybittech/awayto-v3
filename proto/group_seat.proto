@@ -1,6 +1,8 @@
 syntax = "proto3";
 package types;
 
+import "util.proto";
+
 import "google/api/annotations.proto";
 import "google/api/field_behavior.proto";
 
@@ -12,6 +14,7 @@ service GroupSeatService {
       post: "/v1/group/seats"
       body: "*"
     };
+    option (use_tx) = true;
   };
   rpc GetGroupSeats(GetGroupSeatsRequest) returns (GetGroupSeatsResponse) {
     option (google.api.http) = {

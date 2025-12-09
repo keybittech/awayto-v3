@@ -357,7 +357,6 @@ func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession)
 		`, params...)
 		batch.Send(ctx)
 	} else {
-
 		params[0] = session.GetUserSub()
 		dbSessionInsert := util.BatchQueryRow[types.ILookup](batch, `
 			INSERT INTO dbtable_schema.user_sessions (sub, id_token, access_token, access_expires_at, refresh_token, refresh_expires_at, ip_address, timezone, user_agent, group_id)
@@ -367,6 +366,17 @@ func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession)
 		batch.Send(ctx)
 		dbSession := *dbSessionInsert
 		session.Id = dbSession.GetId()
+	}
+
+	if (session.GetRoleBits()&8) > 0 && groupId != "" {
+		batch.Reset()
+		// Log this user for the current month
+		util.BatchExec(batch, `
+			INSERT INTO dbtable_schema.group_seat_usage (group_id, created_sub, month_date)
+			VALUES ($1, $2::uuid, DATE_TRUNC('month', NOW()))
+			ON CONFLICT (group_id, created_sub, month_date) DO NOTHING
+		`, groupId, session.UserSub)
+		batch.Send(ctx)
 	}
 
 	h.Cache.UserSessionIds.Store(session.GetUserSub(), session.GetId())

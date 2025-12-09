@@ -304,7 +304,10 @@ CREATE
 OR REPLACE VIEW dbview_schema.enabled_payments AS
 SELECT
   id,
-  details,
+  status,
+  code,
+  amount,
+  group_id as "groupId",
   created_sub as "createdSub",
   created_on as "createdOn"
 FROM
