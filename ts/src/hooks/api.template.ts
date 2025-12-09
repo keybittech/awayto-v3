@@ -117,8 +117,8 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
 
   let result = await baseQuery(cArgs, api, extraOptions);
 
+  // Handle auth/key issues
   if ('PARSING_ERROR' === result.error?.status && extraOptions.vaultSecret) { // key may have changed
-
     if (!extraOptions.hasRetriedVault) {
       const refreshResult = await baseQuery({ url: '/v1/vault/key', method: 'GET' }, api, {});
 
@@ -135,9 +135,9 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
 
     api.dispatch(setSnack({ snackOn: result.error.data as string }));
   }
-
   handle401(tz, result.error);
 
+  // Check for server/local cache disparity
   if (304 === result.meta?.response?.status) { // request was cached
     if (cachedData && cachedData.data) {
       // Cached on server and locally
@@ -150,23 +150,33 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     }
   }
 
-  if (extraOptions.vaultSecret && sessionId && result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault') {
-    if (typeof result.data === 'string') {
-      const decryptedJson = window.pqcDecrypt(result.data.trim(), extraOptions.vaultSecret, sessionId);
-      if (!decryptedJson) {
-        console.error("WASM pqcDecrypt returned null. Check WASM console logs.");
-        api.dispatch(setSnack({ snackOn: "Vault Decryption Failed" }));
-      }
+  // Decrypt result
+  if (extraOptions.vaultSecret && sessionId && result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault' && (typeof result.data === 'string' || typeof result.error?.data === 'string')) {
 
-      try {
-        result.data = JSON.parse(decryptedJson);
-      } catch (e) {
-        console.error("JSON Parse error after decryption", decryptedJson);
-        api.dispatch(setSnack({ snackOn: "Invalid JSON after decrypt" }));
-      }
+    const resultData = (result.data || result.error?.data) as string;
+
+    const decryptedJson = window.pqcDecrypt(resultData.trim(), extraOptions.vaultSecret, sessionId);
+    if (!decryptedJson) {
+      api.dispatch(setSnack({ snackOn: "Decryption Failed" }));
+      return retry.fail({ status: 'PARSING_ERROR', error: "Decryption Failed", data: undefined });
+    }
+
+    // Display expected server errors
+    if (decryptedJson.startsWith("Request Id")) {
+      api.dispatch(setSnack({ snackOn: decryptedJson }));
+      return retry.fail({ status: 'CUSTOM_ERROR', error: decryptedJson, data: decryptedJson });
+    }
+
+    // Parse successful payload
+    try {
+      result.data = JSON.parse(decryptedJson);
+    } catch (e) {
+      api.dispatch(setSnack({ snackOn: "Invalid JSON" }));
+      return retry.fail({ status: 'PARSING_ERROR', error: "Invalid JSON", data: undefined });
     }
   }
 
+  // Cache successful result
   if (!isMutation && result.data && 200 === result.meta?.response?.status) {
     const etag = result.meta.response.headers.get('ETag');
     if (etag && vaultKey && sessionId) {
