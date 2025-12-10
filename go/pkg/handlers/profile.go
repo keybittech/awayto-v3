@@ -60,8 +60,9 @@ func (h *Handlers) GetUserProfileDetails(info ReqInfo, data *types.GetUserProfil
 		var bookingsReq *map[string]*types.IBooking
 
 		groupsReq = util.BatchQueryMap[types.IGroup](info.Batch, "code", `
-			SELECT code, name, "defaultRoleId", "displayName", "createdOn", purpose, ai, true as active
-			FROM dbview_schema.enabled_groups
+			SELECT code, name, "defaultRoleId", "displayName", "createdOn", purpose, ai, true as active, gs.balance as "seatsBalance"
+			FROM dbview_schema.enabled_groups eg
+			JOIN dbtable_schema.group_seats gs ON gs.group_id = eg.id
 			WHERE code = $1
 		`, groupCode)
 

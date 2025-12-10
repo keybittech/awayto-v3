@@ -368,14 +368,13 @@ func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession)
 		session.Id = dbSession.GetId()
 	}
 
-	if (session.GetRoleBits()&8) > 0 && groupId != "" {
+	isScheduler := (session.GetRoleBits() & int32(types.SiteRoles_APP_GROUP_SCHEDULES)) > 0
+	isNotAdmin := (session.GetRoleBits() & int32(types.SiteRoles_APP_GROUP_ADMIN)) == 0
+	if isScheduler && isNotAdmin && groupId != "" {
 		batch.Reset()
-		// Log this user for the current month
 		util.BatchExec(batch, `
-			INSERT INTO dbtable_schema.group_seat_usage (group_id, created_sub, month_date)
-			VALUES ($1, $2::uuid, DATE_TRUNC('month', NOW()))
-			ON CONFLICT (group_id, created_sub, month_date) DO NOTHING
-		`, groupId, session.UserSub)
+			SELECT dbfunc_schema.register_monthly_seat_usage($1::uuid, $2::uuid)
+		`, groupId, session.GetUserSub())
 		batch.Send(ctx)
 	}
 

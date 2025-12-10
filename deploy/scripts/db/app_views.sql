@@ -301,7 +301,7 @@ WHERE
   b.enabled = true;
 
 CREATE
-OR REPLACE VIEW dbview_schema.enabled_payments AS
+OR REPLACE VIEW dbview_schema.enabled_seat_payments AS
 SELECT
   id,
   status,
@@ -311,7 +311,7 @@ SELECT
   created_sub as "createdSub",
   created_on as "createdOn"
 FROM
-  dbtable_schema.payments
+  dbtable_schema.seat_payments
 WHERE
   enabled = true;
 

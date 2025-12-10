@@ -181,7 +181,6 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 		}
 
 		if len(sharedSecret) == 0 {
-			util.ErrorLog.Println("VaultMiddleware no secret found")
 			http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 			return
 		}

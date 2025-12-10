@@ -12,19 +12,30 @@ BEGIN
 END;
 $$ LANGUAGE PLPGSQL;
 
-CREATE OR REPLACE FUNCTION dbfunc_schema.make_group_code() RETURNS TRIGGER 
+CREATE OR REPLACE FUNCTION dbfunc_schema.make_generic_code() RETURNS TRIGGER 
 AS $$
-  BEGIN
-    LOOP
-      BEGIN
-        UPDATE dbtable_schema.groups SET "code" = LOWER(SUBSTRING(MD5(''||NOW()::TEXT||RANDOM()::TEXT) FOR 8))
-        WHERE "id" = NEW.id;
-        EXIT;
-      EXCEPTION WHEN unique_violation THEN
-      END;
-    END LOOP;
-    RETURN NEW;
-  END;
+DECLARE
+  target_column text := TG_ARGV[0];
+  code_length   int  := TG_ARGV[1];
+  sql_query     text;
+BEGIN
+  sql_query := format(
+    'UPDATE %I.%I SET %I = LOWER(SUBSTRING(MD5(''''||NOW()::TEXT||RANDOM()::TEXT) FOR %s)) WHERE "id" = $1.id',
+    TG_TABLE_SCHEMA,
+    TG_TABLE_NAME,
+    target_column,
+    code_length
+  );
+
+  LOOP
+    BEGIN
+      EXECUTE sql_query USING NEW;
+      EXIT;
+    EXCEPTION WHEN unique_violation THEN
+    END;
+  END LOOP;
+  RETURN NEW;
+END;
 $$ LANGUAGE PLPGSQL VOLATILE;
 
 CREATE OR REPLACE FUNCTION dbfunc_schema.get_scheduled_parts (
@@ -100,5 +111,91 @@ BEGIN
     WHERE schedule_bracket_slot_id = p_slot_id 
     AND slot_date = p_date
   );
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION dbfunc_schema.trg_handle_seat_payment()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- New Payment Created (Pending or Paid) -> Add Seats
+  IF (TG_OP = 'INSERT') THEN
+    -- Add the seats
+    UPDATE dbtable_schema.group_seats
+    SET balance = balance + NEW.seats, updated_sub = NEW.created_sub, updated_on = NOW()
+    WHERE group_id = NEW.group_id;
+  
+  -- Payment Updated to VOID -> Remove Seats
+  ELSIF (TG_OP = 'UPDATE') THEN
+    -- If status of the seat_payments record changed to 'void' from something else, subtract the seats from group_seats
+    IF (NEW.status = 'void' AND OLD.status != 'void') THEN
+      UPDATE dbtable_schema.group_seats
+      SET balance = balance - NEW.seats, updated_sub = NEW.created_sub, updated_on = NOW()
+      WHERE group_id = NEW.group_id;
+    END IF;
+    
+    -- un-void (manual correction), add them back
+    IF (NEW.status != 'void' AND OLD.status = 'void') THEN
+      UPDATE dbtable_schema.group_seats
+      SET balance = balance + NEW.seats, updated_sub = NEW.created_sub, updated_on = NOW()
+      WHERE group_id = NEW.group_id;
+    END IF;
+  END IF;
+
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE FUNCTION dbfunc_schema.register_monthly_seat_usage(
+  p_group_id UUID, 
+  p_user_sub UUID
+)
+RETURNS VOID AS $$
+DECLARE
+  v_month DATE := DATE_TRUNC('month', NOW());
+BEGIN
+  -- Try to insert the usage record
+  INSERT INTO dbtable_schema.group_seat_usage (group_id, created_sub, month_date)
+  VALUES (p_group_id, p_user_sub, v_month)
+  ON CONFLICT (group_id, created_sub, month_date) DO NOTHING;
+
+  -- If the insertion actually happened (row was created), decrement balance
+  -- We check the system variable 'FOUND' to see if the INSERT processed a row
+  IF FOUND THEN
+    UPDATE dbtable_schema.group_seats
+    SET balance = balance - 1, updated_sub = p_user_sub, updated_on = NOW()
+    WHERE group_id = p_group_id;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+CREATE OR REPLACE FUNCTION dbfunc_schema.check_group_standing(p_group_id UUID)
+RETURNS BOOLEAN AS $$
+DECLARE
+  overdue_invoices INT;
+  current_balance INT;
+BEGIN
+  -- Stop service if any unpaid invoice is older than 30 days
+  SELECT COUNT(*) INTO overdue_invoices
+  FROM dbtable_schema.seat_payments p
+  WHERE p.group_id = p_group_id
+  AND p.status = 'pending'
+  AND p.created_on < NOW() - INTERVAL '30 days';
+
+  IF overdue_invoices > 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  -- Check if the balance is negative
+  SELECT balance INTO current_balance
+  FROM dbtable_schema.group_seats
+  WHERE group_id = p_group_id;
+
+  -- If no row exists, balance is effectively 0 (or we treat as valid until used)
+  -- If row exists and balance < 0, return false
+  IF current_balance IS NOT NULL AND current_balance < 0 THEN
+    RETURN FALSE;
+  END IF;
+
+  RETURN TRUE;
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;

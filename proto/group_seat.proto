@@ -15,6 +15,7 @@ service GroupSeatService {
       body: "*"
     };
     option (use_tx) = true;
+    option (invalidates) = "GetUserProfileDetails";
   };
   rpc GetGroupSeats(GetGroupSeatsRequest) returns (GetGroupSeatsResponse) {
     option (google.api.http) = {
@@ -32,6 +33,7 @@ message IGroupSeat {
   string id = 1;
   string groupId = 2;
   int32 seats = 3;
+  int32 balance = 4;
 }
 
 message PostGroupSeatRequest {
@@ -44,7 +46,7 @@ message PostGroupSeatResponse {
 message GetGroupSeatsRequest {}
 
 message GetGroupSeatsResponse {
-  repeated IGroupSeat groupSeats = 1 [(google.api.field_behavior) = REQUIRED];
+  int32 balance = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message DeleteGroupSeatRequest {

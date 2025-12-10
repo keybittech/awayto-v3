@@ -155,6 +155,14 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	}
 
 	_, err = info.Tx.Exec(info.Ctx, `
+		INSERT INTO dbtable_schema.group_seats (group_id, created_sub)
+		VALUES ($1, $2)
+	`, groupId, userSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.user_sessions
 		SET group_id = $1
 		WHERE sub = $2

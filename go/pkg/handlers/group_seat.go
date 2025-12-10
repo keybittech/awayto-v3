@@ -10,32 +10,25 @@ func (h *Handlers) PostGroupSeat(info ReqInfo, data *types.PostGroupSeatRequest)
 	amount := 10 * seats
 
 	batch := util.NewBatchable(h.Database.DatabaseClient.Pool, "worker", "", 0)
-	paymentReq := util.BatchQueryRow[types.IPayment](batch, `
-		INSERT INTO dbtable_schema.payments (group_id, created_sub, code, amount)
-		VALUES ($1, $2::uuid, 'unset_code', $3)
-		RETURNING id 
-	`, info.Session.GetGroupId(), info.Session.GetUserSub(), amount)
-
-	batch.Send(info.Ctx)
-
-	paymentId := (*paymentReq).GetId()
-
-	var paymentCode string
-	err := info.Tx.QueryRow(info.Ctx, `
-		SELECT code
-		FROM dbtable_schema.payments
-		WHERE id = $1
-	`, paymentId).Scan(&paymentCode)
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	batch.Reset()
 	util.BatchExec(batch, `
-		INSERT INTO dbtable_schema.group_seats (group_id, payment_id, seats, created_sub)
-		VALUES ($1, $2::uuid, $3, $4::uuid)
-	`, info.Session.GetGroupId(), paymentId, seats, info.Session.GetUserSub())
+		INSERT INTO dbtable_schema.seat_payments (group_id, created_sub, code, seats, amount)
+		VALUES ($1::uuid, $2::uuid, 'unset_code', $3, $4)
+		RETURNING id 
+	`, info.Session.GetGroupId(), info.Session.GetUserSub(), seats, amount)
+
 	batch.Send(info.Ctx)
 
 	return nil, nil
+}
+
+func (h *Handlers) GetGroupSeats(info ReqInfo, data *types.GetGroupSeatsRequest) (*types.GetGroupSeatsResponse, error) {
+	seatsReq := util.BatchQueryRow[types.IGroupSeat](info.Batch, `
+		SELECT balance
+		FROM dbtable_schema.group_seats
+		WHERE group_id = $1
+	`, info.Session.GetGroupId())
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetGroupSeatsResponse{Balance: (*seatsReq).GetBalance()}, nil
 }

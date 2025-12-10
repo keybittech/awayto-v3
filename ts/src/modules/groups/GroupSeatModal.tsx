@@ -1,5 +1,3 @@
-import { useState } from 'react';
-
 import Button from '@mui/material/Button';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -14,6 +12,11 @@ export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
   const classes = useStyles();
 
   const [postGroupSeats] = siteApi.useGroupSeatServicePostGroupSeatMutation();
+
+  const handlePost = (seats: number) => {
+    postGroupSeats({ postGroupSeatRequest: { seats } });
+    closeModal && closeModal();
+  }
 
   return <>
     <DialogTitle>Group Seats</DialogTitle>
@@ -30,7 +33,7 @@ export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
               ...classes.variableText,
               my: .5,
             }}
-            onClick={_ => postGroupSeats({ postGroupSeatRequest: { seats: gs } })}
+            onClick={_ => handlePost(gs)}
           >
             {label}
           </Button>;

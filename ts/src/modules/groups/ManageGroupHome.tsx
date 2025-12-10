@@ -111,7 +111,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
     setSnack({ snackType: 'success', snackOn: 'Group code copied to clipboard!' })
   }
 
-  const groupUrl = `https://${window.location.hostname}/app/join?groupCode=${group.code}`;
+  const groupUrl = `https://${window.location.host}/app/join?groupCode=${group.code}`;
 
   const copyUrl = () => {
     window.navigator.clipboard.writeText(groupUrl).catch(console.error);
@@ -197,7 +197,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
           {...targets(`manage group home seats input`, `Seats`, `number of available group seats`)}
           fullWidth
           variant="standard"
-          value={`∞`}
+          value={group.seatsBalance || 0}
           slotProps={{
             inputLabel: {
               shrink: true
@@ -235,7 +235,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
       <Dialog onClose={setDialog} open={dialog === 'add_seats'} fullWidth maxWidth="sm">
         <GroupSeatModal {...props} closeModal={() => {
           setDialog('');
-          console.log("did finish")
+          void getUserProfileDetails();
         }} />
       </Dialog>
     </Suspense>

@@ -518,11 +518,12 @@ CREATE POLICY table_delete ON dbtable_schema.group_feedback FOR DELETE TO $PG_WO
 
 CREATE TYPE dbtable_schema.payment_status AS ENUM ('pending', 'paid', 'void');
 
-CREATE TABLE dbtable_schema.payments (
+CREATE TABLE dbtable_schema.seat_payments (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id),
   status dbtable_schema.payment_status DEFAULT 'pending',
   code TEXT NOT NULL,
+  seats INTEGER NOT NULL,
   amount INTEGER NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
@@ -530,16 +531,15 @@ CREATE TABLE dbtable_schema.payments (
   updated_sub uuid REFERENCES dbtable_schema.users (sub),
   enabled BOOLEAN NOT NULL DEFAULT true
 );
-ALTER TABLE dbtable_schema.payments ENABLE ROW LEVEL SECURITY;
-CREATE POLICY table_select ON dbtable_schema.payments FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $HAS_GROUP);
-CREATE POLICY table_insert ON dbtable_schema.payments FOR INSERT TO $PG_WORKER WITH CHECK ($IS_WORKER);
-CREATE POLICY table_update ON dbtable_schema.payments FOR UPDATE TO $PG_WORKER USING ($IS_WORKER);
+ALTER TABLE dbtable_schema.seat_payments ENABLE ROW LEVEL SECURITY;
+CREATE POLICY table_select ON dbtable_schema.seat_payments FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $HAS_GROUP);
+CREATE POLICY table_insert ON dbtable_schema.seat_payments FOR INSERT TO $PG_WORKER WITH CHECK ($IS_WORKER);
+CREATE POLICY table_update ON dbtable_schema.seat_payments FOR UPDATE TO $PG_WORKER USING ($IS_WORKER);
 
 CREATE TABLE dbtable_schema.group_seats (
   id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
-  group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
-  payment_id uuid REFERENCES dbtable_schema.payments (id),
-  seats SMALLINT NOT NULL DEFAULT 5,
+  group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE UNIQUE,
+  balance SMALLINT NOT NULL DEFAULT 5,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
   updated_on TIMESTAMP,
@@ -548,7 +548,7 @@ CREATE TABLE dbtable_schema.group_seats (
 );
 ALTER TABLE dbtable_schema.group_seats ENABLE ROW LEVEL SECURITY;
 CREATE POLICY table_select ON dbtable_schema.group_seats FOR SELECT TO $PG_WORKER USING ($IS_WORKER OR $HAS_GROUP);
-CREATE POLICY table_insert ON dbtable_schema.group_seats FOR INSERT TO $PG_WORKER WITH CHECK ($IS_WORKER);
+CREATE POLICY table_insert ON dbtable_schema.group_seats FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
 CREATE POLICY table_update ON dbtable_schema.group_seats FOR UPDATE TO $PG_WORKER USING ($IS_WORKER);
 CREATE POLICY table_delete ON dbtable_schema.group_seats FOR DELETE TO $PG_WORKER USING ($IS_WORKER);
 

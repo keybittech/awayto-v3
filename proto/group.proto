@@ -77,13 +77,14 @@ message IGroup {
   string code = 14;
   string checkedName = 15;
   string error = 16;
-  int32 usersCount = 17;
-  bool active = 18;
-  bool ai = 19;
-  bool ldr = 20;
-  bool isValid = 21;
-  bool needCheckName = 22;
-  bool checkingName = 23;
+  int32 seatsBalance = 17;
+  int32 usersCount = 18;
+  bool active = 19;
+  bool ai = 20;
+  bool ldr = 21;
+  bool isValid = 22;
+  bool needCheckName = 23;
+  bool checkingName = 24;
 
   option (types.mutex) = true;
 }
