@@ -1,5 +1,5 @@
 CREATE TABLE dbtable_schema.budgets (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL UNIQUE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid REFERENCES dbtable_schema.users (sub),
@@ -18,7 +18,7 @@ VALUES
   ('$10,000 - $100,000');
 
 CREATE TABLE dbtable_schema.timelines (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL UNIQUE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid REFERENCES dbtable_schema.users (sub),
@@ -37,7 +37,7 @@ VALUES
   ('1 year');
 
 CREATE TABLE dbtable_schema.forms (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (500) NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
@@ -47,7 +47,7 @@ CREATE TABLE dbtable_schema.forms (
 );
 
 CREATE TABLE dbtable_schema.group_forms (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -63,7 +63,7 @@ CREATE POLICY table_select ON dbtable_schema.group_forms FOR SELECT TO $PG_WORKE
 CREATE POLICY table_delete ON dbtable_schema.group_forms FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 CREATE TABLE dbtable_schema.form_versions (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
   form JSONB NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -74,7 +74,7 @@ CREATE TABLE dbtable_schema.form_versions (
 );
 
 CREATE TABLE dbtable_schema.form_version_submissions (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   form_version_id uuid NOT NULL REFERENCES dbtable_schema.form_versions (id) ON DELETE CASCADE,
   submission JSONB NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -85,7 +85,7 @@ CREATE TABLE dbtable_schema.form_version_submissions (
 );
 
 CREATE TABLE dbtable_schema.services (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL,
   cost INTEGER,
   form_id uuid REFERENCES dbtable_schema.forms (id),
@@ -99,7 +99,7 @@ CREATE TABLE dbtable_schema.services (
 );
 
 CREATE TABLE dbtable_schema.group_services (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -116,7 +116,7 @@ CREATE POLICY table_update ON dbtable_schema.group_services FOR UPDATE TO $PG_WO
 CREATE POLICY table_delete ON dbtable_schema.group_services FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 CREATE TABLE dbtable_schema.service_addons (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL UNIQUE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
@@ -126,7 +126,7 @@ CREATE TABLE dbtable_schema.service_addons (
 );
 
 CREATE TABLE dbtable_schema.group_service_addons (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   service_addon_id uuid NOT NULL REFERENCES dbtable_schema.service_addons (id) ON DELETE CASCADE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -138,7 +138,7 @@ CREATE TABLE dbtable_schema.group_service_addons (
 );
 
 CREATE TABLE dbtable_schema.service_tiers (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
   form_id uuid REFERENCES dbtable_schema.forms (id),
   survey_id uuid REFERENCES dbtable_schema.forms (id),
@@ -164,7 +164,7 @@ CREATE TABLE dbtable_schema.service_tier_addons (
 );
 
 CREATE TABLE dbtable_schema.time_units (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL UNIQUE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid REFERENCES dbtable_schema.users (sub),
@@ -184,7 +184,7 @@ VALUES
   ('year');
 
 CREATE TABLE dbtable_schema.schedules (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50),
   start_date TIMESTAMPTZ,
   end_date TIMESTAMPTZ,
@@ -201,7 +201,7 @@ CREATE TABLE dbtable_schema.schedules (
 );
 
 CREATE TABLE dbtable_schema.group_schedules ( -- master schedules tied to the group, created sub is group db user
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -218,7 +218,7 @@ CREATE POLICY table_update ON dbtable_schema.group_schedules FOR UPDATE TO $PG_W
 CREATE POLICY table_delete ON dbtable_schema.group_schedules FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 CREATE TABLE dbtable_schema.group_user_schedules ( -- user schedules based off the masters
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   group_schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
   user_schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
@@ -259,7 +259,7 @@ CREATE POLICY table_delete ON dbtable_schema.schedules FOR DELETE TO $PG_WORKER 
 );
 
 CREATE TABLE dbtable_schema.schedule_brackets (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   schedule_id uuid NOT NULL REFERENCES dbtable_schema.schedules (id) ON DELETE CASCADE,
   duration INTEGER NOT NULL,
@@ -278,7 +278,7 @@ CREATE POLICY table_update ON dbtable_schema.schedule_brackets FOR UPDATE TO $PG
 CREATE POLICY table_delete ON dbtable_schema.schedule_brackets FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 CREATE TABLE dbtable_schema.schedule_bracket_slots (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   schedule_bracket_id uuid NOT NULL REFERENCES dbtable_schema.schedule_brackets (id) ON DELETE CASCADE,
   start_time INTERVAL NOT NULL,
@@ -299,7 +299,7 @@ ON dbtable_schema.schedule_bracket_slots(schedule_bracket_id, start_time)
 WHERE enabled = true;
 
 CREATE TABLE dbtable_schema.schedule_bracket_slot_exclusions (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   exclusion_date DATE NOT NULL,
   schedule_bracket_slot_id uuid REFERENCES dbtable_schema.schedule_bracket_slots (id) ON DELETE CASCADE,
@@ -316,7 +316,7 @@ CREATE POLICY table_update ON dbtable_schema.schedule_bracket_slot_exclusions FO
 CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_slot_exclusions FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 CREATE TABLE dbtable_schema.schedule_bracket_services (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   schedule_bracket_id uuid NOT NULL REFERENCES dbtable_schema.schedule_brackets (id) ON DELETE CASCADE,
   service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
@@ -334,7 +334,7 @@ CREATE POLICY table_update ON dbtable_schema.schedule_bracket_services FOR UPDAT
 CREATE POLICY table_delete ON dbtable_schema.schedule_bracket_services FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 CREATE TABLE dbtable_schema.quotes (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   slot_date DATE NOT NULL,
   schedule_bracket_slot_id uuid NOT NULL REFERENCES dbtable_schema.schedule_bracket_slots (id),
@@ -376,7 +376,7 @@ CREATE POLICY table_select_2 ON dbtable_schema.file_contents FOR SELECT TO $PG_W
 );
 
 CREATE TABLE dbtable_schema.quote_files (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   quote_id uuid NOT NULL REFERENCES dbtable_schema.quotes (id) ON DELETE CASCADE,
   file_id uuid NOT NULL REFERENCES dbtable_schema.files (id) ON DELETE CASCADE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -394,7 +394,7 @@ CREATE POLICY table_select ON dbtable_schema.quote_files FOR SELECT TO $PG_WORKE
 CREATE POLICY table_insert ON dbtable_schema.quote_files FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
 
 CREATE TABLE dbtable_schema.bookings (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   quote_id uuid NOT NULL REFERENCES dbtable_schema.quotes (id),
   slot_date DATE NOT NULL,
   schedule_bracket_slot_id uuid NOT NULL REFERENCES dbtable_schema.schedule_bracket_slots (id),
@@ -418,7 +418,7 @@ CREATE POLICY table_insert ON dbtable_schema.bookings FOR INSERT TO $PG_WORKER W
 CREATE POLICY table_update ON dbtable_schema.bookings FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
 
 CREATE TABLE dbtable_schema.sock_connections (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   connection_id TEXT NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
@@ -439,7 +439,7 @@ CREATE POLICY table_insert ON dbtable_schema.sock_connections FOR INSERT TO $PG_
 CREATE POLICY table_delete ON dbtable_schema.sock_connections FOR DELETE TO $PG_WORKER USING ($IS_WORKER);
 
 CREATE TABLE dbtable_schema.topic_messages (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   connection_id TEXT NOT NULL,
   topic TEXT NOT NULL,
   message TEXT NOT NULL,
@@ -477,7 +477,7 @@ CREATE POLICY table_modify_state ON dbtable_schema.topic_canvas_elements FOR ALL
 CREATE INDEX topic_element_index ON dbtable_schema.topic_canvas_elements (topic, element_id);
 
 CREATE TABLE dbtable_schema.exchange_call_log (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   booking_id uuid NOT NULL REFERENCES dbtable_schema.bookings (id),
   style TEXT NOT NULL,
   connected TIMESTAMP NOT NULL,
@@ -491,7 +491,7 @@ CREATE TABLE dbtable_schema.exchange_call_log (
 );
 
 CREATE TABLE dbtable_schema.feedback (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   message TEXT,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
@@ -501,7 +501,7 @@ CREATE TABLE dbtable_schema.feedback (
 );
 
 CREATE TABLE dbtable_schema.group_feedback (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   message TEXT,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -519,7 +519,7 @@ CREATE POLICY table_delete ON dbtable_schema.group_feedback FOR DELETE TO $PG_WO
 CREATE TYPE dbtable_schema.payment_status AS ENUM ('pending', 'paid', 'void');
 
 CREATE TABLE dbtable_schema.seat_payments (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id),
   status dbtable_schema.payment_status DEFAULT 'pending',
   code TEXT NOT NULL,
@@ -537,7 +537,7 @@ CREATE POLICY table_insert ON dbtable_schema.seat_payments FOR INSERT TO $PG_WOR
 CREATE POLICY table_update ON dbtable_schema.seat_payments FOR UPDATE TO $PG_WORKER USING ($IS_WORKER);
 
 CREATE TABLE dbtable_schema.group_seats (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE UNIQUE,
   balance SMALLINT NOT NULL DEFAULT 5,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
@@ -553,7 +553,7 @@ CREATE POLICY table_update ON dbtable_schema.group_seats FOR UPDATE TO $PG_WORKE
 CREATE POLICY table_delete ON dbtable_schema.group_seats FOR DELETE TO $PG_WORKER USING ($IS_WORKER);
 
 CREATE TABLE dbtable_schema.group_seat_usage (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   month_date DATE NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),

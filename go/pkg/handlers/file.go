@@ -82,17 +82,17 @@ func (h *Handlers) PostFileContents(info ReqInfo, data *types.PostFileContentsRe
 			pdfDoc = convertedData
 		}
 
-		fileUuid, _ := uuid.NewV7()
+		fileUuid := uuid.New().String()
 
 		_, err := info.Tx.Exec(info.Ctx, `
 			INSERT INTO dbtable_schema.file_contents (uuid, name, content, content_length, created_sub, upload_id)
 			VALUES ($1::uuid, $2, $3::bytea, $4, $5, $6)
-		`, fileUuid.String(), file.GetName(), pdfDoc, len(pdfDoc), info.Session.GetUserSub(), data.UploadId)
+		`, fileUuid, file.GetName(), pdfDoc, len(pdfDoc), info.Session.GetUserSub(), data.UploadId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 
-		newUuids[idx] = string(fileUuid.String())
+		newUuids[idx] = fileUuid
 	}
 
 	// Remove overwritten files

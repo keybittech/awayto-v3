@@ -41,12 +41,7 @@ func (h *Handlers) PostGroup(info ReqInfo, data *types.PostGroupRequest) (*types
 	var kcGroupExternalId, kcAdminSubGroupExternalId, groupId, groupName string
 
 	// Create group system user
-	gs, err := uuid.NewV7()
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
-	groupSub := gs.String()
+	groupSub := uuid.New().String()
 	info.Session.SetGroupSub(groupSub)
 
 	_, err = info.Tx.Exec(info.Ctx, `

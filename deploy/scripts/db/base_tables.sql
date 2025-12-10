@@ -1,26 +1,3 @@
--- from https://gist.github.com/kjmph/5bd772b2c2df145aa645b837da7eca74
-CREATE OR REPLACE FUNCTION dbfunc_schema.uuid_generate_v7() RETURNS uuid
-AS $$
-BEGIN
-  -- use random v4 uuid as starting point (which has the same variant we need)
-  -- then overlay timestamp
-  -- then set version 7 by flipping the 2 and 1 bit in the version 4 string
-  return encode(
-    set_bit(
-      set_bit(
-        overlay(uuid_send(gen_random_uuid())
-                placing substring(int8send(floor(extract(epoch from clock_timestamp()) * 1000)::bigint) from 3)
-                from 1 for 6
-        ),
-        52, 1
-      ),
-      53, 1
-    ),
-    'hex')::uuid;
-END;
-$$ LANGUAGE PLPGSQL
-VOLATILE;
-
 -- from https://stackoverflow.com/questions/46433459/postgres-select-where-the-where-is-uuid-or-string/46433640#46433640
 CREATE OR REPLACE FUNCTION dbfunc_schema.uuid_or_null(str text) RETURNS uuid
 AS $$
@@ -32,7 +9,7 @@ END;
 $$ LANGUAGE PLPGSQL;
 
 CREATE TABLE dbtable_schema.users (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   username VARCHAR (255) NOT NULL UNIQUE,
   sub uuid NOT NULL UNIQUE,
   image VARCHAR (250),
@@ -57,7 +34,7 @@ CREATE POLICY table_update ON dbtable_schema.users FOR UPDATE TO $PG_WORKER USIN
 CREATE POLICY table_delete ON dbtable_schema.users FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $IS_USER);
 
 CREATE TABLE dbtable_schema.user_sessions (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
   group_id VARCHAR (36),
   id_token VARCHAR (2000) NOT NULL,
@@ -81,7 +58,7 @@ CREATE POLICY table_update ON dbtable_schema.user_sessions FOR UPDATE TO $PG_WOR
 CREATE POLICY table_delete ON dbtable_schema.user_sessions FOR DELETE TO $PG_WORKER USING ($IS_WORKER);
 
 CREATE TABLE dbtable_schema.roles (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL UNIQUE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid REFERENCES dbtable_schema.users (sub),
@@ -96,13 +73,13 @@ CREATE POLICY table_insert ON dbtable_schema.roles FOR INSERT TO $PG_WORKER WITH
 DO $$
 DECLARE admin_id uuid;
 BEGIN
-  admin_id := dbfunc_schema.uuid_generate_v7();
+  admin_id := gen_random_uuid();
   INSERT INTO dbtable_schema.users (username, sub, created_sub) VALUES ('system_owner', admin_id, admin_id);
   INSERT INTO dbtable_schema.roles (name, created_sub) VALUES ('Admin', admin_id);
 END $$;
 
 CREATE TABLE dbtable_schema.file_types (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL UNIQUE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid REFERENCES dbtable_schema.users (sub),
@@ -120,7 +97,7 @@ VALUES
   ('documents');
 
 CREATE TABLE dbtable_schema.files (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid VARCHAR (50) NOT NULL,
   name VARCHAR (500) NOT NULL,
   mime_type TEXT,
@@ -136,7 +113,7 @@ CREATE POLICY table_insert ON dbtable_schema.files FOR INSERT TO $PG_WORKER WITH
 CREATE POLICY table_delete ON dbtable_schema.files FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
 CREATE TABLE dbtable_schema.file_contents (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   uuid VARCHAR (50) NOT NULL,
   name VARCHAR (500) NOT NULL,
   content BYTEA NOT NULL,
@@ -155,7 +132,7 @@ CREATE POLICY table_insert ON dbtable_schema.file_contents FOR INSERT TO $PG_WOR
 CREATE POLICY table_delete ON dbtable_schema.file_contents FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
 CREATE TABLE dbtable_schema.groups (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   external_id uuid NOT NULL UNIQUE,
   admin_role_external_id TEXT NOT NULL UNIQUE,
   default_role_id uuid REFERENCES dbtable_schema.roles (id),
@@ -183,7 +160,7 @@ CREATE POLICY table_update ON dbtable_schema.groups FOR UPDATE TO $PG_WORKER USI
 CREATE POLICY table_delete ON dbtable_schema.groups FOR DELETE TO $PG_WORKER USING ($IS_CREATOR);
 
 CREATE TABLE dbtable_schema.group_roles (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   role_id uuid NOT NULL REFERENCES dbtable_schema.roles (id) ON DELETE CASCADE,
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   external_id TEXT NOT NULL UNIQUE,
@@ -206,7 +183,7 @@ CREATE POLICY table_update ON dbtable_schema.group_roles FOR UPDATE TO $PG_WORKE
 CREATE POLICY table_delete ON dbtable_schema.group_roles FOR DELETE TO $PG_WORKER USING ($IS_CREATOR OR $HAS_GROUP);
 
 CREATE TABLE dbtable_schema.group_users (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id uuid NOT NULL REFERENCES dbtable_schema.users (id) ON DELETE CASCADE,
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   external_id TEXT NOT NULL, -- this refers to the external subgroup id i.e. app db group role external id
@@ -232,7 +209,7 @@ CREATE POLICY table_select_by_group_admin ON dbtable_schema.users FOR SELECT TO 
 );
 
 CREATE TABLE dbtable_schema.group_files (
-  id uuid PRIMARY KEY DEFAULT dbfunc_schema.uuid_generate_v7(),
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   file_id uuid NOT NULL REFERENCES dbtable_schema.files (id) ON DELETE CASCADE,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
