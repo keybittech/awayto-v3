@@ -1,7 +1,7 @@
-import React, { useMemo } from 'react';
 import { GridColDef, GridRowSelectionModel, GridValidRowModel } from '@mui/x-data-grid';
 
 import Grid from '@mui/material/Grid';
+import { initialState } from './valid';
 
 type UseScheduleProps<T extends GridValidRowModel> = {
   rows: T[];
@@ -13,9 +13,10 @@ type UseScheduleProps<T extends GridValidRowModel> = {
   disableRowSelectionOnClick?: boolean;
   onSelected?: (value: GridRowSelectionModel) => void;
   toolbar?: () => React.JSX.Element;
+  initialSort?: { field: string; sort: 'asc' | 'desc' };
 };
 
-export function useGrid<T extends GridValidRowModel>({ rows, columns, columnHeaderHeight, rowId, noPagination, selected, onSelected, toolbar, disableRowSelectionOnClick = true }: UseScheduleProps<T>) {
+export function useGrid<T extends GridValidRowModel>({ rows, columns, columnHeaderHeight, rowId, noPagination, selected, onSelected, toolbar, disableRowSelectionOnClick = true, initialSort }: UseScheduleProps<T>) {
   const defaultHeight = 42;
   return {
     autoHeight: true,
@@ -35,6 +36,11 @@ export function useGrid<T extends GridValidRowModel>({ rows, columns, columnHead
     pageSizeOptions: noPagination ? [] : [5, 10, 25, 50, 100],
     disableRowSelectionOnClick,
     getRowId: (row: T) => (rowId ? row[rowId] : row.id) as string,
-    slots: { toolbar: () => toolbar ? <Grid container p={2} alignItems="center">{toolbar()}</Grid> : <></> }
+    slots: { toolbar: () => toolbar ? <Grid container p={2} alignItems="center">{toolbar()}</Grid> : <></> },
+    initialState: initialSort ? {
+      sorting: {
+        sortModel: [initialSort],
+      },
+    } : undefined
   }
 }

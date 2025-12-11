@@ -310,7 +310,7 @@ $(TS_VAULT_WASM): $(GO_VAULT_WASM_DIR)/main.go
 	cp $$($(GO) env GOROOT)/lib/wasm/wasm_exec.js $(TS_VAULT_WASM_JS)
 	GOOS=js GOARCH=wasm $(GO) build -C $(GO_VAULT_WASM_DIR) -ldflags="-s -w" -o $(abspath $(TS_VAULT_WASM)) ./...
 
-$(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go $(GO_HANDLERS_DIR)/*.go $(PROTO_FILES)
+$(GO_HANDLERS_REGISTER): $(GO_HANDLERS_REGISTER_CMD_DIR)/main.go $(filter-out $(GO_HANDLERS_REGISTER), $(wildcard $(GO_HANDLERS_DIR)/*.go)) $(PROTO_FILES)
 	$(GO) run -C $(GO_HANDLERS_REGISTER_CMD_DIR) ./...
 
 $(GO_TARGET): $(GO_FILES)

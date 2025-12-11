@@ -525,6 +525,8 @@ CREATE TABLE dbtable_schema.seat_payments (
   code TEXT NOT NULL,
   seats INTEGER NOT NULL,
   amount INTEGER NOT NULL,
+  paid_on TIMESTAMP,
+  check_no TEXT,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
   updated_on TIMESTAMP,

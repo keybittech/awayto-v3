@@ -1,3 +1,5 @@
+import { useNavigate } from 'react-router';
+
 import Button from '@mui/material/Button';
 import DialogActions from '@mui/material/DialogActions';
 import DialogContent from '@mui/material/DialogContent';
@@ -10,12 +12,14 @@ import { plural, targets, useStyles, siteApi } from 'awayto/hooks';
 export function GroupSeatModal({ closeModal }: IComponent): React.JSX.Element {
 
   const classes = useStyles();
+  const navigate = useNavigate();
 
   const [postGroupSeats] = siteApi.useGroupSeatServicePostGroupSeatMutation();
 
   const handlePost = (seats: number) => {
     postGroupSeats({ postGroupSeatRequest: { seats } });
     closeModal && closeModal();
+    navigate('/group/manage/seats');
   }
 
   return <>

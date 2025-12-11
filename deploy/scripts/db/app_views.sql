@@ -306,7 +306,10 @@ SELECT
   id,
   status,
   code,
+  seats,
   amount,
+  paid_on as "paidOn",
+  check_no as "checkNo",
   group_id as "groupId",
   created_sub as "createdSub",
   created_on as "createdOn"

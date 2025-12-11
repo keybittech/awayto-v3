@@ -23,7 +23,8 @@ import ManageFeedback from '../feedback/ManageFeedback';
 import ManageForms from '../forms/ManageForms';
 import ManageServices from '../services/ManageServices';
 import ManageGroupModal from './ManageGroupModal';
-import GroupSeatModal from './GroupSeatModal';
+import GroupSeatsModal from '../seats/GroupSeatsModal';
+import ManageGroupSeats from '../seats/ManageGroupSeats';
 import { useTheme } from '@mui/material';
 
 const { APP_GROUP_ADMIN, APP_GROUP_ROLES, APP_GROUP_SCHEDULE_KEYS, APP_GROUP_SERVICES, APP_GROUP_USERS } = SiteRoles;
@@ -54,6 +55,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
     permissions: [APP_GROUP_ADMIN],
     feedback: [APP_GROUP_ADMIN],
     forms: [APP_GROUP_ADMIN],
+    seats: [APP_GROUP_ADMIN],
   }
 
   useEffect(() => {
@@ -99,6 +101,8 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
         return <ManageFeedback {...props} />
       case 'forms':
         return <ManageForms {...props} />
+      case 'seats':
+        return <ManageGroupSeats {...props} />
       case 'services':
       default:
         return <ManageServices {...props} />
@@ -233,7 +237,7 @@ export function ManageGroupHome(props: IComponent): React.JSX.Element {
       </Dialog>
 
       <Dialog onClose={setDialog} open={dialog === 'add_seats'} fullWidth maxWidth="sm">
-        <GroupSeatModal {...props} closeModal={() => {
+        <GroupSeatsModal {...props} closeModal={() => {
           setDialog('');
           void getUserProfileDetails();
         }} />

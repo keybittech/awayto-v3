@@ -16,24 +16,39 @@ service GroupSeatService {
     };
     option (use_tx) = true;
     option (invalidates) = "GetUserProfileDetails";
+    option (invalidates) = "GetGroupSeatPayments";
   };
-  rpc GetGroupSeats(GetGroupSeatsRequest) returns (GetGroupSeatsResponse) {
+  rpc GetGroupSeatPayments(GetGroupSeatPaymentsRequest) returns (GetGroupSeatPaymentsResponse) {
     option (google.api.http) = {
-      get: "/v1/group/seats"
+      get: "/v1/group/seat/payments"
     };
   };
-  rpc DeleteGroupSeat(DeleteGroupSeatRequest) returns (DeleteGroupSeatResponse) {
+  rpc GetGroupSeatPurchaseOrder(GetGroupSeatPurchaseOrderRequest) returns (GetGroupSeatPurchaseOrderResponse) {
     option (google.api.http) = {
-      delete: "/v1/group/seats"
+      get: "/v1/group/seats/po/{code}"
     };
-  };
+  }
+  rpc GetGroupSeatReceipt(GetGroupSeatReceiptRequest) returns (GetGroupSeatReceiptResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/seats/receipt/{code}"
+    };
+  }
 }
 
 message IGroupSeat {
   string id = 1;
   string groupId = 2;
-  int32 seats = 3;
-  int32 balance = 4;
+  int32 balance = 3;
+}
+
+message IGroupSeatPayment {
+  string status = 1;
+  string code = 2;
+  string createdOn = 3;
+  string paidOn = 4;
+  string checkNo = 5;
+  int32 seats = 6;
+  int32 amount = 7;
 }
 
 message PostGroupSeatRequest {
@@ -43,17 +58,24 @@ message PostGroupSeatRequest {
 message PostGroupSeatResponse {
 }
 
-message GetGroupSeatsRequest {}
+message GetGroupSeatPaymentsRequest {}
 
-message GetGroupSeatsResponse {
-  int32 balance = 1 [(google.api.field_behavior) = REQUIRED];
+message GetGroupSeatPaymentsResponse {
+  repeated IGroupSeatPayment seatPayments = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message DeleteGroupSeatRequest {
-  string ids = 1 [(google.api.field_behavior) = REQUIRED];
+message GetGroupSeatPurchaseOrderRequest {
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
-message DeleteGroupSeatResponse {
-  bool success = 1 [(google.api.field_behavior) = REQUIRED];
+message GetGroupSeatPurchaseOrderResponse {
+  string html = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
+message GetGroupSeatReceiptRequest {
+  string code = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupSeatReceiptResponse {
+  string html = 1 [(google.api.field_behavior) = REQUIRED];
+}
