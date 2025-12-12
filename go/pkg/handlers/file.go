@@ -134,17 +134,18 @@ func (h *Handlers) PatchFileContents(info ReqInfo, data *types.PatchFileContents
 
 func (h *Handlers) GetFileContents(info ReqInfo, data *types.GetFileContentsRequest) (*types.GetFileContentsResponse, error) {
 	type FileContents struct {
-		content []byte
+		Content []byte
 	}
 
 	fileContents := util.BatchQueryRow[FileContents](info.Batch, `
-		SELECT content FROM dbtable_schema.file_contents
+		SELECT content
+		FROM dbtable_schema.file_contents
 		WHERE uuid = $1
 	`, data.FileId)
 
 	info.Batch.Send(info.Ctx)
 
-	return &types.GetFileContentsResponse{Content: (*fileContents).content}, nil
+	return &types.GetFileContentsResponse{Content: (*fileContents).Content}, nil
 }
 
 func (h *Handlers) PostFile(info ReqInfo, data *types.PostFileRequest) (*types.PostFileResponse, error) {

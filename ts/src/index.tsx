@@ -1,7 +1,9 @@
-import { ReactNode } from 'react';
+import { StrictMode, ReactNode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { Provider } from 'react-redux';
 import { BrowserRouter } from 'react-router-dom';
+import { CacheProvider } from '@emotion/react';
+import createCache from '@emotion/cache';
 
 import './index.css';
 import './fonts.css';
@@ -24,6 +26,14 @@ const rootElement = document.getElementById('root');
 if (!rootElement) throw new Error('Failed to find the root element');
 const root = createRoot(rootElement);
 
+const nonceMeta = document.querySelector('meta[property="csp-nonce"]');
+const nonce = nonceMeta ? (nonceMeta.getAttribute('content') || '') : '';
+const cache = createCache({
+  key: 'css',
+  prepend: true,
+  nonce
+});
+
 async function loadInternal() {
   const { store } = (await import('./hooks/store'));
   const { authSlice } = (await import('./hooks/auth'));
@@ -32,11 +42,15 @@ async function loadInternal() {
 
   const App = (await import('./modules/common/App')).default;
   root.render(
-    <Provider store={store}>
-      <BrowserRouter basename="/app">
-        <App />
-      </BrowserRouter>
-    </Provider>
+    <StrictMode>
+      <CacheProvider value={cache}>
+        <Provider store={store}>
+          <BrowserRouter basename="/app">
+            <App />
+          </BrowserRouter>
+        </Provider>
+      </CacheProvider>
+    </StrictMode>
   );
 }
 

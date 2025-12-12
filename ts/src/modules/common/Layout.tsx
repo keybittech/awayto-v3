@@ -1,7 +1,7 @@
 import React, { useEffect, Suspense } from 'react';
 import { Route, Outlet, Routes, Navigate } from 'react-router-dom';
-import { MathJaxContext } from 'better-react-mathjax';
-import mathJaxURL from 'mathjax-full/es5/tex-chtml.js?url';
+// import { MathJaxContext } from 'better-react-mathjax';
+// import mathJaxURL from 'mathjax-full/es5/tex-chtml.js?url';
 
 import Grid from '@mui/material/Grid';
 import TopLevelProviders from './TopLevelProviders';
@@ -54,9 +54,9 @@ const Layout = (props: IComponent): React.JSX.Element => {
             <Grid sx={{ display: 'flex', height: 'calc(100vh - 60px)', width: '100%' }}>
               <Suspense>
                 <ExchangeProvider>
-                  <MathJaxContext src={mathJaxURL}>
-                    <Outlet />
-                  </MathJaxContext>
+                  {/* <MathJaxContext src={mathJaxURL}> */}
+                  <Outlet />
+                  {/* </MathJaxContext> */}
                 </ExchangeProvider>
               </Suspense>
             </Grid>

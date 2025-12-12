@@ -39,7 +39,9 @@ func setupStaticBuildOrProxy(a *API) {
 		http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
 			redirect := &StaticRedirect{ResponseWriter: w}
 
-			if slices.Contains([]string{".js", ".css", ".mjs"}, filepath.Ext(req.URL.Path)) {
+			ext := filepath.Ext(req.URL.Path)
+
+			if slices.Contains([]string{".js", ".css", ".mjs"}, ext) {
 				w.Header().Set("Cache-Control", maxAgeStr)
 				w.Header().Set("Expires", time.Now().Add(maxAgeDur).UTC().Format(http.TimeFormat))
 				w.Header().Set("Content-Encoding", "gzip")
@@ -47,7 +49,13 @@ func setupStaticBuildOrProxy(a *API) {
 				defer gz.Close()
 				gzr := StaticGzip{Writer: gz, ResponseWriter: redirect}
 				fileServer.ServeHTTP(gzr, req)
-			} else if strings.HasSuffix(req.URL.Path, ".png") {
+			} else if slices.Contains([]string{".png", ".jpg", ".jpeg", ".svg", ".woff", ".woff2", ".ttf", ".eot"}, ext) {
+				if ext == ".woff2" {
+					w.Header().Set("Content-Type", "font/woff2")
+				} else if ext == ".woff" {
+					w.Header().Set("Content-Type", "font/woff")
+				}
+
 				fileServer.ServeHTTP(redirect, req)
 			} else if strings.HasSuffix(req.URL.Path, ".wasm") {
 				w.Header().Set("Content-Type", "application/wasm")
