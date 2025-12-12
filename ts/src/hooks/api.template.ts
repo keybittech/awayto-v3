@@ -72,7 +72,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
         cArgs.body = {};
       }
 
-      const encryptedBody = window.pqcEncrypt(vaultKey, JSON.stringify(cArgs.body), sessionId);
+      const encryptedBody = window.pqcEncrypt(vaultKey, sessionId, JSON.stringify(cArgs.body));
 
       if (encryptedBody && encryptedBody.blob) {
         const bstring = atob(encryptedBody.blob);
@@ -89,7 +89,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
         extraOptions.vaultSecret = encryptedBody.secret;
       }
     } else {
-      const encryptedBody = window.pqcEncrypt(vaultKey, " ", sessionId);
+      const encryptedBody = window.pqcEncrypt(vaultKey, sessionId, " ");
       if (encryptedBody && encryptedBody.blob) {
         (cArgs.headers as Headers).set('X-Awayto-Vault', encryptedBody.blob);
         extraOptions.vaultSecret = encryptedBody.secret;
@@ -155,7 +155,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
 
     const resultData = (result.data || result.error?.data) as string;
 
-    const decryptedJson = window.pqcDecrypt(resultData.trim(), extraOptions.vaultSecret, sessionId);
+    const decryptedJson = window.pqcDecrypt(extraOptions.vaultSecret, sessionId, resultData.trim());
     if (!decryptedJson) {
       api.dispatch(setSnack({ snackOn: "Decryption Failed" }));
       return retry.fail({ status: 'PARSING_ERROR', error: "Decryption Failed", data: undefined });
