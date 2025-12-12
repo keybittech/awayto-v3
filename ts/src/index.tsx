@@ -11,8 +11,8 @@ import './fonts.css';
 declare global {
   interface Window {
     INT_SITE_LOAD: boolean;
-    pqcEncrypt: (serverPubKey: string, sessionId: string, jsonBody: string) => { blob: string, secret: string };
-    pqcDecrypt: (vaultSecret: string, sessionId: string, encryptedBlob: string) => string;
+    pqcEncrypt: (pk: Uint8Array, sessionId: string, data: Uint8Array) => { blob: Uint8Array, secret: Uint8Array } | null;
+    pqcDecrypt: (secret: Uint8Array, sessionId: string, blob: Uint8Array) => Uint8Array | null;
   }
 
   interface IComponent {

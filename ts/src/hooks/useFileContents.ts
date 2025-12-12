@@ -1,6 +1,8 @@
 import { useCallback, useMemo, useState } from 'react';
 import { BufferResponse, IFile } from './api';
 import { useUtil } from './useUtil';
+import { useAppSelector } from './store';
+import { decryptData, encryptData } from './pqc';
 
 export type UseFileContents = () => {
   fileContents: IFile | undefined;
@@ -21,66 +23,104 @@ export interface OrderedFiles {
 export const useFileContents: UseFileContents = () => {
 
   const { setSnack } = useUtil();
-
   const [fileContents, setFileContents] = useState<IFile | undefined>();
+  const { vaultKey, sessionId } = useAppSelector(state => state.auth);
 
   // postFileContents and getFileContents are implemented manually instead of using RTK Query generated methods, in order to support binary transfer
   const postFileContents = useCallback<ReturnType<UseFileContents>['postFileContents']>(async (uploadId, fileRef, existingIds, overwriteIds) => {
-    const fd = new FormData();
+    if (!vaultKey || !sessionId) return [];
 
+    const fd = new FormData();
     fd.append('uploadId', uploadId);
     fd.append('overwriteIds', overwriteIds.join(","));
     fd.append('existingIds', existingIds.join(","));
+    for (const f of fileRef) fd.append('contents', f);
 
-    for (const f of fileRef) {
-      fd.append('contents', f);
-    }
+    const payloadResponse = new Response(fd);
+    const payloadBuffer = new Uint8Array(await payloadResponse.arrayBuffer());
+    const multipartContentType = payloadResponse.headers.get('Content-Type') || '';
 
-    const res = await fetch('/api/v1/files/content', {
-      body: fd,
-      method: 'POST',
-      credentials: 'include'
-    });
+    const crypto = encryptData(vaultKey, sessionId, payloadBuffer);
 
-    if (200 !== res.status) {
-      const errText = await res.text();
-      setSnack({ snackType: 'warning', snackOn: errText });
+    if (!crypto) {
+      setSnack({ snackType: 'error', snackOn: "Encryption Failed" });
       return [];
     }
 
-    const { ids } = await res.json() as { ids: string[] };
+    const response = await fetch('/api/v1/files/content', {
+      method: 'POST',
+      body: crypto.blobBytes,
+      credentials: 'include',
+      headers: {
+        'Content-Type': 'application/x-awayto-vault',
+        'X-Original-Content-Type': multipartContentType,
+        'X-Tz': Intl.DateTimeFormat().resolvedOptions().timeZone
+      }
+    });
 
-    return ids;
-  }, []);
+    const responseBody = await response.text();
+    const decrypted = decryptData(crypto.secretB64, sessionId, responseBody);
+
+    if (!decrypted) {
+      setSnack({ snackType: 'error', snackOn: "Decryption Failed" });
+      return [];
+    }
+
+    if (response.status !== 200) {
+      console.error("Decrypt issue", decrypted.string);
+      setSnack({ snackType: 'warning', snackOn: "File Decryption Unsuccessful" });
+      return [];
+    }
+
+    try {
+      const { ids } = JSON.parse(decrypted.string);
+      return ids;
+    } catch (e) {
+      return [];
+    }
+  }, [vaultKey, sessionId]);
 
   const getFileContents = useCallback<ReturnType<UseFileContents>['getFileContents']>(async (fileRef, download) => {
-    if (!fileRef.uuid || !fileRef.mimeType) {
+    if (!fileRef.uuid || !fileRef.mimeType || !vaultKey || !sessionId) {
       setFileContents(undefined);
       return undefined;
     }
 
+    const crypto = encryptData(vaultKey, sessionId, ' ');
+    if (!crypto) return undefined;
+
     const response = await fetch(`/api/v1/files/content/${fileRef.uuid}`, {
-      credentials: 'include'
+      credentials: 'include',
+      headers: {
+        'X-Awayto-Vault': crypto.blobB64,
+        'X-Tz': Intl.DateTimeFormat().resolvedOptions().timeZone,
+      },
     });
 
-    const fileBlob = await response.blob();
+    if (response.status !== 200) return undefined;
 
+    const encryptedBody = await response.text();
+    const decrypted = decryptData(crypto.secretB64, sessionId, encryptedBody);
+
+    if (!decrypted) {
+      setSnack({ snackType: 'error', snackOn: "Read File Decryption Failed" });
+      return undefined;
+    }
+
+    const fileBlob = new Blob([decrypted.bytes], { type: 'application/pdf' });
     fileRef.url = window.URL.createObjectURL(fileBlob);
 
     setFileContents(fileRef as IFile);
 
     if (download) {
       const link = document.createElement('a');
-      link.id = 'site-file-downloader';
       link.href = fileRef.url || "";
-      link.setAttribute('download', 'downloaded-' + fileRef.name); // or any other extension
-      document.body.appendChild(link);
+      link.setAttribute('download', 'downloaded-' + fileRef.name);
       link.click();
-      document.body.removeChild(link);
     }
 
     return fileRef as IFile;
-  }, []);
+  }, [vaultKey, sessionId]);
 
   return useMemo(() => ({ fileContents, postFileContents, getFileContents }), [fileContents]);
 }

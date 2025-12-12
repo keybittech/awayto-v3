@@ -3,70 +3,60 @@
 package main
 
 import (
-	"encoding/base64"
-	"strings"
 	"syscall/js"
 
 	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 )
 
+func bytesToJS(b []byte) js.Value {
+	out := js.Global().Get("Uint8Array").New(len(b))
+	js.CopyBytesToJS(out, b)
+	return out
+}
+
+func jsToBytes(v js.Value) []byte {
+	b := make([]byte, v.Get("length").Int())
+	js.CopyBytesToGo(b, v)
+	return b
+}
+
 func encryptRequest(this js.Value, args []js.Value) any {
-	// args[0]: Server PubKey (base64), args[1]: sessionId, args[2]: data String/bytes
+	// args[0]: PubKey (Uint8Array), args[1]: SessionId (String), args[2]: Data (Uint8Array)
 	if len(args) < 3 {
 		return nil
 	}
 
-	pubKey, _ := base64.StdEncoding.DecodeString(args[0].String())
-
+	pubKey := jsToBytes(args[0])
 	sid := args[1].String()
+	data := jsToBytes(args[2])
 
-	var plaintext []byte
-	// handle (json) strings or (file) bytes
-	if args[2].Type() == js.TypeString {
-		plaintext = []byte(args[2].String())
-	} else {
-		length := args[2].Get("length").Int()
-		plaintext = make([]byte, length)
-		js.CopyBytesToGo(plaintext, args[2])
-	}
-
-	blob, secret, err := crypto.ClientEncrypt(pubKey, plaintext, sid)
+	blob, secret, err := crypto.ClientEncrypt(pubKey, data, sid)
 	if err != nil {
 		return nil
 	}
 
 	return map[string]any{
-		"blob":   base64.StdEncoding.EncodeToString(blob),
-		"secret": base64.StdEncoding.EncodeToString(secret),
+		"blob":   bytesToJS(blob),
+		"secret": bytesToJS(secret),
 	}
 }
 
 func decryptResponse(this js.Value, args []js.Value) any {
-	// args[0]: vault secret string, args[1]: sessionId, args[2]: data b64
+	// args[0]: Secret (Uint8Array), args[1]: SessionId (String), args[2]: Blob (Uint8Array)
 	if len(args) < 3 {
 		return nil
 	}
 
-	secretStr := strings.TrimSpace(args[0].String())
+	secret := jsToBytes(args[0])
 	sid := args[1].String()
-	blobStr := strings.TrimSpace(args[2].String())
-
-	blob, err := base64.StdEncoding.DecodeString(blobStr)
-	if err != nil {
-		return nil
-	}
-
-	secret, err := base64.StdEncoding.DecodeString(secretStr)
-	if err != nil {
-		return nil
-	}
+	blob := jsToBytes(args[2])
 
 	plaintext, err := crypto.ClientDecrypt(blob, secret, sid)
 	if err != nil {
 		return nil
 	}
 
-	return string(plaintext)
+	return bytesToJS(plaintext)
 }
 
 func main() {

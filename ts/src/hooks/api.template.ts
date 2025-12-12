@@ -3,6 +3,7 @@ import { FetchArgs, BaseQueryFn, fetchBaseQuery, FetchBaseQueryError, TypedUseQu
 
 import { utilSlice } from './util';
 import { RootState } from './store';
+import { decryptData, encryptData } from './pqc';
 import { decryptCacheData, encryptCacheData } from './session_crypto';
 import { authSlice } from './auth';
 
@@ -66,37 +67,26 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
 
   if (vaultKey && sessionId && "function" == typeof window.pqcEncrypt) {
 
-    if (isMutation) {
+    if (vaultKey && sessionId) {
+      const isJson = !isMutation || !cArgs.body || typeof cArgs.body === 'object';
+      const payload = isJson ? JSON.stringify(cArgs.body || {}) : (cArgs.body as any);
 
-      if (!cArgs.body) {
-        cArgs.body = {};
-      }
+      const crypto = encryptData(vaultKey, sessionId, isMutation ? payload : " ");
 
-      const encryptedBody = window.pqcEncrypt(vaultKey, sessionId, JSON.stringify(cArgs.body));
+      if (crypto) {
+        extraOptions.vaultSecret = crypto.secretB64;
 
-      if (encryptedBody && encryptedBody.blob) {
-        const bstring = atob(encryptedBody.blob);
-        const len = bstring.length;
-        const bbytes = new Uint8Array(len);
-        for (let i = 0; i < len; i++) {
-          bbytes[i] = bstring.charCodeAt(i);
+        if (isMutation) {
+          cArgs.body = crypto.blobBytes;
+          (cArgs.headers as Headers).set('Content-Type', 'application/x-awayto-vault');
+          (cArgs.headers as Headers).set('X-Original-Content-Type', 'application/json');
+        } else {
+          (cArgs.headers as Headers).set('X-Awayto-Vault', crypto.blobB64);
         }
-
-        cArgs.body = bbytes;
-        (cArgs.headers as Headers).set('Content-Type', 'application/x-awayto-vault');
-        (cArgs.headers as Headers).set('X-Original-Content-Type', 'application/json');
-
-        extraOptions.vaultSecret = encryptedBody.secret;
       }
     } else {
-      const encryptedBody = window.pqcEncrypt(vaultKey, sessionId, " ");
-      if (encryptedBody && encryptedBody.blob) {
-        (cArgs.headers as Headers).set('X-Awayto-Vault', encryptedBody.blob);
-        extraOptions.vaultSecret = encryptedBody.secret;
-      }
+      (cArgs.headers as Headers).set('Content-Type', 'application/json');
     }
-  } else {
-    (cArgs.headers as Headers).set('Content-Type', 'application/json');
   }
 
   let cachedData: { etag: string, data: any, timestamp: number } | null = null;
@@ -150,26 +140,25 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
     }
   }
 
-  // Decrypt result
-  if (extraOptions.vaultSecret && sessionId && result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault' && (typeof result.data === 'string' || typeof result.error?.data === 'string')) {
+  if (extraOptions.vaultSecret && sessionId &&
+    result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault') {
 
     const resultData = (result.data || result.error?.data) as string;
 
-    const decryptedJson = window.pqcDecrypt(extraOptions.vaultSecret, sessionId, resultData.trim());
-    if (!decryptedJson) {
+    const decrypted = decryptData(extraOptions.vaultSecret, sessionId, resultData);
+
+    if (!decrypted) {
       api.dispatch(setSnack({ snackOn: "Decryption Failed" }));
       return retry.fail({ status: 'PARSING_ERROR', error: "Decryption Failed", data: undefined });
     }
 
-    // Display expected server errors
-    if (decryptedJson.startsWith("Request Id")) {
-      api.dispatch(setSnack({ snackOn: decryptedJson }));
-      return retry.fail({ status: 'CUSTOM_ERROR', error: decryptedJson, data: decryptedJson });
+    if (decrypted.string.startsWith("Request Id")) {
+      api.dispatch(setSnack({ snackOn: decrypted.string }));
+      return retry.fail({ status: 'CUSTOM_ERROR', error: decrypted.string, data: decrypted.string });
     }
 
-    // Parse successful payload
     try {
-      result.data = JSON.parse(decryptedJson);
+      result.data = JSON.parse(decrypted.string);
     } catch (e) {
       api.dispatch(setSnack({ snackOn: "Invalid JSON" }));
       return retry.fail({ status: 'PARSING_ERROR', error: "Invalid JSON", data: undefined });

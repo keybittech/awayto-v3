@@ -138,7 +138,7 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 		ct := req.Header.Get("Content-Type")
 
 		// If content type is vault, handle body
-		if ct == "application/x-awayto-vault" {
+		if ct == "application/x-awayto-vault" && !strings.HasPrefix(ct, "multipart/form-data") {
 			reqBytes, readErr := io.ReadAll(req.Body)
 			req.Body.Close()
 			if readErr == nil && len(reqBytes) > 0 {

@@ -6,6 +6,7 @@ export * from './exchange';
 export * from './form';
 export * from './middleware';
 export * from './kiosk';
+export * from './pqc';
 export * from './store';
 export * from './style';
 export * from './session_crypto';
