@@ -7,6 +7,7 @@ import createCache from '@emotion/cache';
 
 import './index.css';
 import './fonts.css';
+import 'katex/dist/katex.min.css';
 
 declare global {
   interface Window {

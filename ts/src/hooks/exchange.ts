@@ -8,7 +8,7 @@ export enum ExchangeActions {
 }
 
 export interface DraggableBoxData {
-  id: number;
+  id: string;
   x: number;
   y: number;
   color: string;

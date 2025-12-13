@@ -1,7 +1,5 @@
-import React, { useCallback, useState, useEffect, useMemo } from 'react';
-import { MathJax } from 'better-react-mathjax';
+import React, { useCallback, useState, useEffect } from 'react';
 
-import Box from '@mui/material/Box';
 import IconButton from '@mui/material/IconButton';
 
 import CloseIcon from '@mui/icons-material/Close';
@@ -9,19 +7,7 @@ import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
 
 import { DraggableBoxData, getRelativeCoordinates, targets } from 'awayto/hooks';
 
-declare global {
-  interface Window {
-    MathJax: {
-      options: Record<string, any>;
-    }
-  }
-}
-
-window.MathJax = {
-  options: {
-    enableMenu: false
-  },
-}
+import WhiteboardBox from './WhiteboardBox';
 
 interface WhiteboardBoxesProps extends IComponent {
   boxes: DraggableBoxData[];
@@ -32,9 +18,9 @@ interface WhiteboardBoxesProps extends IComponent {
 
 export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpdate }: WhiteboardBoxesProps): React.JSX.Element {
 
-  const [draggingId, setDraggingId] = useState<number | null>(null);
+  const [draggingId, setDraggingId] = useState<string | null>(null);
 
-  const handleMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent, boxId: number) => {
+  const handleMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent, boxId: string) => {
     e.preventDefault();
     setDraggingId(boxId);
   }, []);
@@ -43,17 +29,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
     setDraggingId(null);
   }, []);
 
-  // MathJax is slow to drag around unless memoized
-  const boxComponents = useMemo(() => {
-    return boxes.reduce((m, d) => {
-      return {
-        ...m,
-        [d.id]: <MathJax style={{ width: '100%' }}>{d.text}</MathJax>
-      }
-    }, {} as Record<number, React.JSX.Element>)
-  }, [boxes]);
-
-  const setCoordinates = (e: MouseEvent | React.Touch, draggingId: number) => {
+  const setCoordinates = (e: MouseEvent | React.Touch, draggingId: string) => {
     if (!whiteboardRef) return;
 
     const { x, y } = getRelativeCoordinates(e, whiteboardRef);
@@ -101,28 +77,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
 
   return <>
     {boxes.map(box => (
-      <Box
-        key={box.id}
-        sx={{
-          zIndex: 1001,
-          pointerEvents: 'auto',
-          position: "absolute",
-          left: box.x,
-          top: box.y,
-          padding: '32px 14px 12px',
-          bgcolor: box.color,
-          color: '#222',
-          width: 'fit-content',
-          minWidth: '80px',
-          maxWidth: '400px',
-          wordBreak: 'break-word',
-          overflowWrap: 'anywhere',
-          whiteSpace: 'normal',
-          borderRadius: 1,
-          touchAction: 'none' // Prevent default touch actions
-        }}
-        onTouchEnd={handleMouseUp}
-      >
+      <WhiteboardBox sx={{ position: 'absolute' }} key={box.id} {...box} onTouchEnd={handleMouseUp}>
         <DragIndicatorIcon
           {...targets(`whiteboard boxes drag box ${box.id}`, `press and hold the mouse to drag this box over the whiteboard`)}
           sx={{
@@ -137,7 +92,6 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
           onMouseUp={handleMouseUp}
           onTouchStart={e => handleMouseDown(e, box.id)}
         />
-        {boxComponents[box.id]}
         <IconButton
           {...targets(`whiteboard boxes close box ${box.id}`, `close whiteboard text box`)}
           size="small"
@@ -158,7 +112,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
         >
           <CloseIcon fontSize="small" />
         </IconButton>
-      </Box>
+      </WhiteboardBox>
     ))}
   </>
 }

@@ -1,6 +1,14 @@
 const enc = new TextEncoder();
 const dec = new TextDecoder();
-const toB64 = (bytes: Uint8Array) => btoa(String.fromCharCode(...bytes));
+const toB64 = (bytes: Uint8Array) => {
+  let binary = '';
+  const len = bytes.byteLength;
+  const chunkSize = 0x8000; // 32768
+  for (let i = 0; i < len; i += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(i, i + chunkSize));
+  }
+  return btoa(binary);
+};
 const fromB64 = (str: string) => Uint8Array.from(atob(str), c => c.charCodeAt(0));
 
 export function encryptData(pubKeyB64: string, sessionId: string, data: string | Uint8Array) {

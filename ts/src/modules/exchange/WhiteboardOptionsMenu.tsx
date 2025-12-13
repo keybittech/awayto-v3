@@ -29,6 +29,7 @@ import InsertPageBreak from '@mui/icons-material/InsertPageBreak';
 import TextFieldsIcon from '@mui/icons-material/TextFields';
 
 import { SocketActions, IWhiteboard, targets, generateLightBgColor, DraggableBoxData } from 'awayto/hooks';
+import WhiteboardBox, { MathHelpTooltip } from './WhiteboardBox';
 
 const scales = [.1, .25, .5, .8, 1, 1.25, 1.5, 2, 2.5, 3, 4];
 
@@ -88,7 +89,7 @@ export function WhiteboardOptionsMenu({
     setBoxText('');
     onCanvasInputChanged('addedBox');
     onBoxAdded({
-      id: (new Date()).getTime(),
+      id: (new Date()).getTime().toString(),
       color: generateLightBgColor(),
       x: 100,
       y: 100,
@@ -306,26 +307,42 @@ export function WhiteboardOptionsMenu({
     </AppBar>
 
     <Dialog onClose={setDialog} open={dialog === 'box_edit'} maxWidth="md" fullWidth>
-      <Box p={2}>
-        <TextField
-          {...targets(`box text entry`, `Label Box Text`, `enter text for the box to be added to the whiteboard`)}
-          value={boxText}
-          helperText={`Text Limit: ${boxText.length}/1500`}
-          slotProps={{
-            htmlInput: {
-              maxLength: 1500
+      <Grid container p={2} spacing={2}>
+        <Grid size={6}>
+
+          <TextField
+            {...targets(`box text entry`, `Enter text here`, `enter text for the box to be added to the whiteboard`)}
+            value={boxText}
+            helperText={
+              <Grid container spacing={1} alignItems="center">
+                <Grid size="grow">Text Limit: {boxText.length}/1500</Grid>
+                <Grid size="auto"><MathHelpTooltip /></Grid>
+              </Grid>
             }
-          }}
-          onChange={e => setBoxText(e.target.value)}
-          multiline
-          autoFocus
-          fullWidth
-          rows="10"
-        />
+            slotProps={{
+              htmlInput: {
+                maxLength: 1500
+              }
+            }}
+            onChange={e => setBoxText(e.target.value)}
+            multiline
+            autoFocus
+            fullWidth
+            rows="10"
+          />
+        </Grid>
+        <Grid size={6}>
+          <Typography>Preview</Typography>
+          <WhiteboardBox id="preview-box" x={1} y={1} color="#aaa" text={boxText} />
+        </Grid>
+      </Grid>
+      <Box p={2}>
+      </Box>
+      <Grid>
         <Button onClick={handleAddBox}>
           Add
         </Button>
-      </Box>
+      </Grid>
     </Dialog>
   </>
 }

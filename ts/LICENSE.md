@@ -7,9 +7,6 @@ This project incorporates material from the projects listed below. Each project 
 ### pdfjs-dist
 Copyright 2014 Mozilla Corporation
 
-### mathjax-full
-Copyright 2018 MathJax
-
 ### typescript
 Copyright 2014 Microsoft Corporation
 
@@ -38,6 +35,12 @@ Copyright (c) 2018-present iamkun
 ### @date-io/dayjs
 Copyright (c) 2017 Dmitriy Kovalenko
 
+### katex
+Copyright (c) 2013-2020 Khan Academy and other contributors
+
+### react-katex
+Copyright (c) 2020 Matej Bransky
+
 ### react, react-dom
 Copyright (c) Meta Platforms, Inc. and affiliates.
 
@@ -61,9 +64,6 @@ Copyright (c) 2017–2024 Wojciech Maj
 
 ### react-window
 Copyright (c) 2018 Brian Vaughn
-
-### better-react-mathjax
-Copyright (c) 2021 Elias Lousseief
 
 ### vite
 Copyright (c) 2019-present VoidZero Inc. and Vite contributors
