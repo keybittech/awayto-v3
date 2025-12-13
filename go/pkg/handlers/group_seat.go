@@ -37,71 +37,18 @@ func (h *Handlers) GetGroupSeatPayments(info ReqInfo, data *types.GetGroupSeatPa
 	return &types.GetGroupSeatPaymentsResponse{SeatPayments: *seatsReq}, nil
 }
 
-const commonStyles = `
-{{define "common_css"}}
-  body { 
-    font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; 
-    padding: 40px; 
-    color: #333; 
-    max-width: 800px; 
-    margin: 0 auto; 
-  }
-  .header { display: flex; justify-content: space-between; border-bottom: 2px solid #eee; padding-bottom: 20px; margin-bottom: 30px; }
-  .title h1 { margin: 0; color: #2c3e50; font-size: 24px; text-transform: uppercase; letter-spacing: 1px; }
-  .meta { text-align: right; }
-  .meta p { margin: 2px 0; font-size: 14px; }
-  
-  .payable-section { 
-    padding: 20px; 
-    border-radius: 4px; 
-    margin-bottom: 30px; 
-    border-left-width: 4px; 
-    border-left-style: solid; 
-    display: flex; 
-    justify-content: space-between;
-  }
-  .payable-section div { flex: 1; }
-  .payable-section h3 { margin-top: 0; margin-bottom: 10px; font-size: 14px; text-transform: uppercase; }
-  .payable-section p { margin: 0; line-height: 1.5; font-size: 15px; }
-
-  table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; padding: 12px; background: #2c3e50; color: white; font-size: 12px; text-transform: uppercase; }
-  td { padding: 12px; border-bottom: 1px solid #eee; }
-  .total-row td { border-top: 2px solid #333; font-weight: bold; font-size: 18px; }
-  .text-right { text-align: right; }
-
-  .status { padding: 5px 10px; font-size: 12px; font-weight: bold; display: inline-block; margin-top: 5px; }
-  
-  .footer { padding-top: 20px; border-top: 1px solid #eee; font-size: 12px; color: #7f8c8d; text-align: center; }
-  
-  .btn-print { margin-top:20px; padding: 10px 25px; cursor: pointer; background: #2c3e50; color: white; border: none; border-radius: 4px; font-size: 14px; }
-
-  @media print { 
-    @page { margin: 0; size: auto; }
-    body { margin: 1cm; padding: 20px; max-width: 100%; width: auto; } 
-    #print-btn { display: none; } 
-    .payable-section { background: none !important; border: 1px solid #ccc !important; }
-    * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-  }
-{{end}}
-`
-
 const poTemplate = `
 <!DOCTYPE html>
 <html>
 <head>
   <title>Purchase Order {{.Code}}</title>
-  <style>
-    {{template "common_css" .}}
-    .payable-section { background: #f9f9f9; border-left-color: #2c3e50; }
-    .status { background: #eee; }
-  </style>
+	<link rel="stylesheet" href="/app/print.css">
 </head>
 <body>
   <div class="header">
     <div class="title">
       <h1>Purchase Order</h1>
-      <span class="status">Status: {{.Status}}</span>
+      <span class="status status-po">Status: {{.Status}}</span>
     </div>
     <div class="meta">
       <p><strong>PO #:</strong> {{.Code}}</p>
@@ -109,7 +56,7 @@ const poTemplate = `
     </div>
   </div>
   
-  <div class="payable-section">
+  <div class="payable-section payable-section-po">
     <div>
       <h3>Pay to the order of:</h3>
       <p><strong>{{.PaymentTo}}</strong><br>
@@ -186,7 +133,7 @@ func (h *Handlers) GetGroupSeatPurchaseOrder(info ReqInfo, data *types.GetGroupS
 		PaymentAddr2:    util.E_PAYMENT_ADDR2,
 	}
 
-	t, err := template.New("po").Parse(commonStyles + poTemplate)
+	t, err := template.New("po").Parse(poTemplate)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -204,18 +151,13 @@ const receiptTemplate = `
 <html>
 <head>
   <title>Receipt {{.Code}}</title>
-  <style>
-		{{template "common_css" .}}
-    .payable-section { background: #f0fdf4; border-left-color: #166534; }
-    .status { background: #166534; color: white; }
-    .balance-row td { font-size: 16px; border-bottom: none; }
-  </style>
+	<link rel="stylesheet" href="/app/print.css">
 </head>
 <body>
   <div class="header">
     <div class="title">
       <h1>Payment Receipt</h1>
-      <span class="status">Status: {{.Status}}</span>
+      <span class="status status-receipt">Status: {{.Status}}</span>
     </div>
     <div class="meta">
       <p><strong>Receipt For PO #:</strong> {{.Code}}</p>
@@ -223,7 +165,7 @@ const receiptTemplate = `
     </div>
   </div>
   
-  <div class="payable-section">
+  <div class="payable-section payable-section-recepit">
     <div>
       <h3>Payment Received By:</h3>
       <p><strong>{{.PaymentTo}}</strong><br>
@@ -315,7 +257,7 @@ func (h *Handlers) GetGroupSeatReceipt(info ReqInfo, data *types.GetGroupSeatRec
 		CheckNo:         p.GetCheckNo(),
 	}
 
-	t, err := template.New("receipt").Parse(commonStyles + receiptTemplate)
+	t, err := template.New("receipt").Parse(receiptTemplate)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -6,7 +6,7 @@ import Tooltip from '@mui/material/Tooltip';
 import IconButton from '@mui/material/IconButton';
 import PrintIcon from '@mui/icons-material/Print';
 
-import { useGrid, siteApi, dayjs, utcDTLocal } from 'awayto/hooks';
+import { useGrid, siteApi, dayjs } from 'awayto/hooks';
 
 export function ManageSeats(_: IComponent): React.JSX.Element {
   const { data: seatRequest } = siteApi.useGroupSeatServiceGetGroupSeatPaymentsQuery();
@@ -21,34 +21,40 @@ export function ManageSeats(_: IComponent): React.JSX.Element {
       return;
     }
 
-    if (printWindow.document.body) {
-      printWindow.document.body.innerHTML = '<h5>Generating document...</h5>';
-    }
+    printWindow.document.write('<h5>Generating document...</h5>');
 
     try {
       const { data } = await (kind == 'po' ? getPo : getReceipt)({ code });
 
       if (data?.html) {
-        if (printWindow.document.documentElement) {
-          printWindow.document.documentElement.innerHTML = data.html;
-        }
+        printWindow.document.open();
+        printWindow.document.write(data.html);
+        printWindow.document.close();
+
         const btn = printWindow.document.getElementById('print-btn');
+        const link = printWindow.document.querySelector('link[rel="stylesheet"]') as HTMLLinkElement;
+
         if (btn) {
           btn.onclick = () => printWindow.print();
+
+          if (link) {
+            if (link.sheet) {
+            } else {
+              link.onload = () => { };
+              link.onerror = () => console.error("CSS failed to load");
+            }
+          }
         }
       } else {
-        if (printWindow.document.body) {
-          printWindow.document.body.innerHTML = '<h3>Error: Could not retrieve document.</h3>';
-        }
+        printWindow.document.body.innerHTML = '<h3>Error: Could not retrieve document.</h3>';
       }
     } catch (e) {
       console.error(e);
-      if (printWindow.document.body) {
+      if (printWindow && printWindow.document) {
         printWindow.document.body.innerHTML = '<h3>Error loading document.</h3>';
       }
     }
   }
-
 
   const seatGridProps = useGrid({
     rowId: 'code',
