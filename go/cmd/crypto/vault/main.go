@@ -15,7 +15,16 @@ func bytesToJS(b []byte) js.Value {
 }
 
 func jsToBytes(v js.Value) []byte {
-	b := make([]byte, v.Get("length").Int())
+	if v.IsNull() || v.IsUndefined() {
+		return nil
+	}
+
+	lenProp := v.Get("length")
+	if lenProp.IsUndefined() || lenProp.IsNull() {
+		return nil
+	}
+
+	b := make([]byte, lenProp.Int())
 	js.CopyBytesToGo(b, v)
 	return b
 }
@@ -50,6 +59,10 @@ func decryptResponse(this js.Value, args []js.Value) any {
 	secret := jsToBytes(args[0])
 	sid := args[1].String()
 	blob := jsToBytes(args[2])
+
+	if secret == nil || blob == nil {
+		return nil
+	}
 
 	plaintext, err := crypto.ClientDecrypt(blob, secret, sid)
 	if err != nil {

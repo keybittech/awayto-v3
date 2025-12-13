@@ -141,6 +141,7 @@ const customBaseQuery: BaseQueryFn<FetchArgs, unknown, FetchBaseQueryError, Cust
   }
 
   if (extraOptions.vaultSecret && sessionId &&
+    result.meta?.response?.status !== 304 &&
     result.meta?.response?.headers.get('Content-Type') === 'application/x-awayto-vault') {
 
     const resultData = (result.data || result.error?.data) as string;
