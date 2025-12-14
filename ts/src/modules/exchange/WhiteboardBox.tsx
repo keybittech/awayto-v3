@@ -56,7 +56,7 @@ export const MathHelpTooltip = () => (
   </Tooltip>
 );
 
-export default function WhiteboardBox({ sx, x, y, color, text, children, ...props }: DraggableBoxData & BoxProps): React.JSX.Element {
+export default function WhiteboardBox({ id, sx, x, y, width, height, zIndex, color, text, children, onResizeStart, ...props }: DraggableBoxData & BoxProps): React.JSX.Element {
 
   const renderTextWithMath = (rawText: string) => {
     if (!rawText) return null;
@@ -67,11 +67,13 @@ export default function WhiteboardBox({ sx, x, y, color, text, children, ...prop
     return parts.map((part, index) => {
       if (part.startsWith('$$') && part.endsWith('$$')) {
         return (
-          <BlockMath
-            key={index}
-            math={part.slice(2, -2)}
-            renderError={(err) => <span style={{ color: 'red' }}>{err.message}</span>}
-          />
+          <Box key={index} sx={{ overflowX: 'auto', overflowY: 'hidden', maxWidth: '100%' }}>
+            <BlockMath
+              key={index}
+              math={part.slice(2, -2)}
+              renderError={(err) => <span style={{ color: 'red' }}>{err.message}</span>}
+            />
+          </Box>
         );
       }
       else if (part.startsWith('$') && part.endsWith('$')) {
@@ -92,29 +94,80 @@ export default function WhiteboardBox({ sx, x, y, color, text, children, ...prop
 
   return <Box
     {...props}
-    sx={{
-      ...sx,
-      zIndex: 1001,
-      pointerEvents: 'auto',
+    id={id}
+    style={{ // dynamic properties need to be inlined to prevent emotion style tags in <head>
       left: x,
       top: y,
-      padding: '32px 14px 12px',
+      width: width ? `${width}px` : 'max-content',
+      height: height ? `${height}px` : 'auto',
+      zIndex: zIndex || 1001,
+    }}
+    sx={{
+      ...sx,
+      pointerEvents: 'auto',
+      minWidth: '80px',
+      minHeight: '80px',
       bgcolor: color,
       color: '#222',
-      width: 'fit-content',
-      minWidth: '80px',
-      // maxWidth: '400px',
-      wordBreak: 'break-word',
-      overflowWrap: 'anywhere',
-      whiteSpace: 'pre-line',
       borderRadius: 1,
       touchAction: 'none',
+      display: 'flex',
+      flexDirection: 'column',
+      overflow: 'hidden',
+      padding: 0,
       '& .katex-html': {
         display: 'none',
       },
     }}
   >
     {children}
-    {renderTextWithMath(text)}
+    <Box sx={{ height: '32px', width: '100%', flexShrink: 0 }} />
+    <Box
+      sx={{
+        flex: 1,
+        overflow: 'auto',
+        padding: '0 14px 12px',
+        width: '100%',
+        wordBreak: 'break-word',
+        overflowWrap: 'anywhere',
+        whiteSpace: 'pre-wrap',
+        '&::-webkit-scrollbar': { width: '6px', height: '6px' },
+        '&::-webkit-scrollbar-track': { background: 'transparent' },
+        '&::-webkit-scrollbar-thumb': { backgroundColor: 'rgba(0,0,0,0.2)', borderRadius: '4px' },
+        '&::-webkit-scrollbar-thumb:hover': { backgroundColor: 'rgba(0,0,0,0.4)' },
+      }}
+    >
+      {renderTextWithMath(text)}
+    </Box>
+    <Box // resize handle
+      onMouseDown={(e) => {
+        e.stopPropagation();
+        onResizeStart(e, id);
+      }}
+      onTouchStart={(e) => {
+        e.stopPropagation();
+        onResizeStart(e, id);
+      }}
+      sx={{
+        position: 'absolute',
+        bottom: 0,
+        right: 0,
+        width: '15px',
+        height: '15px',
+        cursor: 'se-resize',
+        zIndex: 1002,
+        '&::after': {
+          content: '""',
+          position: 'absolute',
+          bottom: '4px',
+          right: '4px',
+          width: '0',
+          height: '0',
+          borderStyle: 'solid',
+          borderWidth: '0 0 10px 10px',
+          borderColor: 'transparent transparent rgba(0,0,0,0.3) transparent',
+        }
+      }}
+    />
   </Box>
 }

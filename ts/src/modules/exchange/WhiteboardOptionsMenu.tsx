@@ -37,6 +37,7 @@ interface WhiteboardOptionsMenuProps extends IComponent {
   whiteboard: IWhiteboard;
   whiteboardRef: HTMLCanvasElement | null;
   sendWhiteboardMessage: (action: SocketActions, payload?: Partial<IWhiteboard> | undefined) => void;
+  storeWhiteboardMessage: (action: SocketActions, payload?: Partial<IWhiteboard> | undefined) => void;
   onCanvasInputChanged: (inputMethod: string) => void;
   onBoxAdded: (box: DraggableBoxData) => void;
   pageNumber: number;
@@ -48,6 +49,7 @@ export function WhiteboardOptionsMenu({
   whiteboard,
   whiteboardRef,
   sendWhiteboardMessage,
+  storeWhiteboardMessage,
   onCanvasInputChanged,
   onBoxAdded,
   pageNumber,
@@ -189,16 +191,13 @@ export function WhiteboardOptionsMenu({
                 {...targets(`whiteboard clear canvas`, `remove all drawings from whiteboard`)}
                 color="error"
                 onClick={() => {
-                  if (whiteboardRef) {
-                    whiteboardRef.getContext('2d')?.clearRect(0, 0, whiteboardRef.width, whiteboardRef.height)
-                  }
+                  storeWhiteboardMessage(SocketActions.DRAW_LINES, { lines: [] });
                 }}
               >
                 <LayersClearIcon />
               </IconButton>
             </Tooltip>
           </Grid>
-
 
           {numPages > 0 && <Grid container size={{ xs: 12, sm: 'auto' }}>
             <Divider sx={{ mx: 2, display: { xs: 'none', xl: 'flex' } }} orientation="vertical" variant="middle" flexItem />
@@ -309,7 +308,6 @@ export function WhiteboardOptionsMenu({
     <Dialog onClose={setDialog} open={dialog === 'box_edit'} maxWidth="md" fullWidth>
       <Grid container p={2} spacing={2}>
         <Grid size={6}>
-
           <TextField
             {...targets(`box text entry`, `Enter text here`, `enter text for the box to be added to the whiteboard`)}
             value={boxText}
@@ -322,6 +320,9 @@ export function WhiteboardOptionsMenu({
             slotProps={{
               htmlInput: {
                 maxLength: 1500
+              },
+              formHelperText: {
+                component: 'div'
               }
             }}
             onChange={e => setBoxText(e.target.value)}
@@ -336,9 +337,7 @@ export function WhiteboardOptionsMenu({
           <WhiteboardBox id="preview-box" x={1} y={1} color="#aaa" text={boxText} />
         </Grid>
       </Grid>
-      <Box p={2}>
-      </Box>
-      <Grid>
+      <Grid p={1}>
         <Button onClick={handleAddBox}>
           Add
         </Button>

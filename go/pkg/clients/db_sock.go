@@ -209,6 +209,7 @@ func (ds DbSession) upsertCanvasElement(ctx context.Context, connId string, mess
 		ON CONFLICT (topic, element_id) 
 		DO UPDATE SET properties = EXCLUDED.properties, updated_sub = EXCLUDED.updated_sub, updated_on = NOW();
 	`
+
 	userSub := ds.ConcurrentUserSession.GetUserSub()
 
 	if message.Action == types.SocketActions_SET_BOX {
@@ -218,13 +219,23 @@ func (ds DbSession) upsertCanvasElement(ctx context.Context, connId string, mess
 		}
 
 		for _, box := range p.Boxes {
-			boxIdStr := fmt.Sprintf("%v", box["id"])
+			boxId := fmt.Sprintf("%v", box["id"])
+			textStr := fmt.Sprintf("%v", box["text"])
 
-			boxJSON, _ := json.Marshal(box)
-
-			_, err := ds.SessionBatchExec(ctx, elementQuery, userSub, connId, message.Topic, boxIdStr, "box", boxJSON, userSub)
-			if err != nil {
-				return util.ErrCheck(err)
+			if textStr == "" {
+				_, err := ds.SessionBatchExec(ctx, `
+					DELETE FROM dbtable_schema.topic_canvas_elements
+					WHERE element_id = $1
+				`, boxId)
+				if err != nil {
+					return util.ErrCheck(err)
+				}
+			} else {
+				boxJSON, _ := json.Marshal(box)
+				_, err := ds.SessionBatchExec(ctx, elementQuery, userSub, connId, message.GetTopic(), boxId, "box", boxJSON, userSub)
+				if err != nil {
+					return util.ErrCheck(err)
+				}
 			}
 		}
 		return nil
@@ -236,13 +247,27 @@ func (ds DbSession) upsertCanvasElement(ctx context.Context, connId string, mess
 			return util.ErrCheck(err)
 		}
 
-		lineId := fmt.Sprintf("%s-%d", ds.ConcurrentUserSession.GetUserSub(), time.Now().UnixNano())
-		payload["id"] = lineId
+		lines, isSlice := payload["lines"].([]any)
 
-		lineJSON, _ := json.Marshal(payload)
+		if !isSlice || len(lines) == 0 {
+			_, err := ds.SessionBatchExec(ctx, `
+				DELETE FROM dbtable_schema.topic_canvas_elements
+				WHERE topic = $1 AND element_type = 'line'
+			`, message.GetTopic())
+			if err != nil {
+				return util.ErrCheck(err)
+			}
+		} else {
+			lineId := fmt.Sprintf("%s-%d", connId, time.Now().UnixNano())
+			payload["id"] = lineId
 
-		_, err := ds.SessionBatchExec(ctx, elementQuery, userSub, connId, message.Topic, lineId, "line", lineJSON, userSub)
-		return util.ErrCheck(err)
+			lineJSON, _ := json.Marshal(payload)
+
+			_, err := ds.SessionBatchExec(ctx, elementQuery, userSub, connId, message.GetTopic(), lineId, "line", lineJSON, userSub)
+			if err != nil {
+				return util.ErrCheck(err)
+			}
+		}
 	}
 
 	return nil

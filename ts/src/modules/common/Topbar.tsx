@@ -208,8 +208,6 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
       {exchangeId ? <Tooltip title="Go to Exchange Summary">
         <Button
           {...targets(`exchange summary navigate`, `go to exchange summary`)}
-          color="success"
-          sx={{ backgroundColor: '#203040' }}
           onClick={() => {
             openConfirm({
               isConfirming: true,
@@ -228,9 +226,8 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
             });
           }}
           variant="outlined"
-          startIcon={<DoneIcon />}
         >
-          Go to Summary
+          Finish Exchange
         </Button>
       </Tooltip> : <>
         {secure([SiteRoles.APP_GROUP_SCHEDULES]) && <Grid>
@@ -289,10 +286,10 @@ export function Topbar(props: TopbarProps): React.JSX.Element {
             handleMenuClose={handleMenuClose}
           />
         </Grid>
-        <Grid>
-          <FeedbackMenu />
-        </Grid>
       </>}
+      <Grid>
+        <FeedbackMenu />
+      </Grid>
     </Grid>
   </Grid>;
 }

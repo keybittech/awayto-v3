@@ -11,8 +11,12 @@ export interface DraggableBoxData {
   id: string;
   x: number;
   y: number;
+  width: number;
+  height: number;
+  zIndex: number;
   color: string;
   text: string;
+  onResizeStart: (e: React.MouseEvent | React.TouchEvent, id: string) => void;
 }
 
 /**

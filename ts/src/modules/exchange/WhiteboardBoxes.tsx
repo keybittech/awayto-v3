@@ -19,14 +19,24 @@ interface WhiteboardBoxesProps extends IComponent {
 export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpdate }: WhiteboardBoxesProps): React.JSX.Element {
 
   const [draggingId, setDraggingId] = useState<string | null>(null);
+  const [activeId, setActiveId] = useState<string | null>(null);
+  const [resizingState, setResizingState] = useState<{
+    id: string;
+    startX: number;
+    startY: number;
+    startWidth: number;
+    startHeight: number;
+  } | null>(null);
 
   const handleMouseDown = useCallback((e: React.MouseEvent | React.TouchEvent, boxId: string) => {
     e.preventDefault();
     setDraggingId(boxId);
+    setActiveId(boxId);
   }, []);
 
   const handleMouseUp = useCallback(() => {
     setDraggingId(null);
+    setResizingState(null);
   }, []);
 
   const setCoordinates = (e: MouseEvent | React.Touch, draggingId: string) => {
@@ -34,8 +44,19 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
 
     const { x, y } = getRelativeCoordinates(e, whiteboardRef);
 
+    const boxElem = document.getElementById(draggingId);
+    const boxWidth = boxElem?.offsetWidth || 0;
+    const boxHeight = boxElem?.offsetHeight || 0;
+
     let newX = Math.max(x, 0);
+    if (boxWidth > 0) {
+      newX = Math.min(newX, whiteboardRef.offsetWidth - boxWidth);
+    }
+
     let newY = Math.max(y, 0);
+    if (boxHeight > 0) {
+      newY = Math.min(newY, whiteboardRef.offsetHeight - boxHeight);
+    }
 
     setBoxes(prevBoxes => {
       const updatedBoxes = prevBoxes.map(box =>
@@ -48,17 +69,74 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
     });
   }
 
+  const handleResizeStart = useCallback((e: React.MouseEvent | React.TouchEvent, boxId: string) => {
+    if (!whiteboardRef) return;
+
+    const eventData = 'touches' in e ? e.touches[0] : e.nativeEvent;
+
+    const { x, y } = getRelativeCoordinates(eventData, whiteboardRef);
+    const boxElem = document.getElementById(boxId); // Use the ID passed to the DOM
+
+    if (boxElem) {
+      setResizingState({
+        id: boxId,
+        startX: x,
+        startY: y,
+        startWidth: boxElem.offsetWidth,
+        startHeight: boxElem.offsetHeight
+      });
+      setActiveId(boxId);
+    }
+  }, [whiteboardRef]);
+
+  const setDimensions = (e: MouseEvent | React.Touch) => {
+    if (!whiteboardRef || !resizingState) return;
+
+    const { x: mouseX, y: mouseY } = getRelativeCoordinates(e, whiteboardRef);
+
+    const deltaX = mouseX - resizingState.startX;
+    const deltaY = mouseY - resizingState.startY;
+
+    setBoxes(prev => {
+      const updated = prev.map(box => {
+        if (box.id !== resizingState.id) return box;
+
+        let newWidth = resizingState.startWidth + deltaX;
+        let newHeight = resizingState.startHeight + deltaY;
+
+        newWidth = Math.max(newWidth, 80);
+        newHeight = Math.max(newHeight, 80);
+
+        if (box.x + newWidth > whiteboardRef.offsetWidth) {
+          newWidth = whiteboardRef.offsetWidth - box.x;
+        }
+        if (box.y + newHeight > whiteboardRef.offsetHeight) {
+          newHeight = whiteboardRef.offsetHeight - box.y;
+        }
+
+        return { ...box, width: newWidth, height: newHeight };
+      });
+      didUpdate(updated);
+      return updated;
+    });
+  }
+
   useEffect(() => {
-    if (draggingId) {
+    if (draggingId || resizingState) {
+      document.body.style.userSelect = 'none';
       const handleGlobalMouseMove = (e: MouseEvent) => {
-        setCoordinates(e, draggingId);
+        if (draggingId) setCoordinates(e, draggingId);
+        if (resizingState) setDimensions(e);
       };
       const handleGlobalTouchMove = (e: TouchEvent) => {
-        setCoordinates(e.touches[0], draggingId);
+        if (draggingId) setCoordinates(e.touches[0], draggingId);
+        if (resizingState) setDimensions(e.touches[0]);
       };
 
       const handleGlobalMouseUp = () => {
+        document.body.style.userSelect = 'auto';
         setDraggingId(null);
+        setResizingState(null);
       };
 
       window.addEventListener('touchmove', handleGlobalTouchMove);
@@ -73,17 +151,24 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
         window.removeEventListener('mouseup', handleGlobalMouseUp);
       };
     }
-  }, [draggingId, whiteboardRef, setBoxes, didUpdate]);
+  }, [draggingId, resizingState, whiteboardRef, setBoxes, didUpdate]);
 
   return <>
     {boxes.map(box => (
-      <WhiteboardBox sx={{ position: 'absolute' }} key={box.id} {...box} onTouchEnd={handleMouseUp}>
+      <WhiteboardBox
+        {...box}
+        sx={{ position: 'absolute' }}
+        key={box.id}
+        zIndex={activeId === box.id ? 1002 : 1001}
+        onTouchEnd={handleMouseUp}
+        onResizeStart={handleResizeStart}
+      >
         <DragIndicatorIcon
           {...targets(`whiteboard boxes drag box ${box.id}`, `press and hold the mouse to drag this box over the whiteboard`)}
           sx={{
             color: 'black',
             position: 'absolute',
-            top: '6px',
+            top: '8px',
             left: '8px',
             cursor: draggingId === box.id ? "grabbing" : "grab",
           }}
@@ -99,14 +184,18 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
             color: 'black',
             position: 'absolute',
             top: 0,
-            right: '8px'
+            right: '8px',
+            mt: '4px'
           }}
           onClick={e => {
             e.preventDefault();
             setBoxes(prevBoxes => {
-              const newBoxes = prevBoxes.filter(b => b.id !== box.id);
-              didUpdate(newBoxes);
-              return newBoxes;
+              const bid = prevBoxes.find(b => b.id == box.id);
+              if (bid) {
+                bid.text = "";
+              }
+              didUpdate(prevBoxes);
+              return prevBoxes;
             });
           }}
         >

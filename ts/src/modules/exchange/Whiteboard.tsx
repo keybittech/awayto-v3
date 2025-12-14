@@ -87,6 +87,9 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         if (connectionId !== sender) {
           handleLines(payload.lines, board.settings?.stroke, board.settings?.highlight);
         }
+        if (!payload.lines?.length && whiteboardRef.current) {
+          whiteboardRef.current.getContext('2d')?.clearRect(0, 0, whiteboardRef.current.width, whiteboardRef.current.height)
+        }
       } else if (SocketActions.SHARE_FILE === action) {
         setNumPages(0);
         setPageNumber(1);
@@ -118,10 +121,18 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
           setSelectedText({ [sender]: payload.selectedText });
         }
       } else if (SocketActions.SET_BOX === action) {
+        const pb = (payload.boxes || []);
         if (connectionId !== sender) {
-          whiteboard.current.boxes = payload.boxes || [];
-          setBoxes(payload.boxes || []);
+          whiteboard.current.boxes = pb;
+          setBoxes(pb);
         }
+        // Check for deletions
+        const validBoxes = pb.filter(b => b && b.text != '');
+        if (validBoxes.length != pb.length) {
+          whiteboard.current.boxes = validBoxes;
+          setBoxes(validBoxes);
+        }
+
       } else if (SocketActions.CHANGE_SETTING === action) {
       }
       return { ...b, [sender]: board };
@@ -356,6 +367,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
         whiteboard: whiteboard.current,
         whiteboardRef: whiteboardRef.current,
         sendWhiteboardMessage,
+        storeWhiteboardMessage,
         onCanvasInputChanged(inputMethod) {
           setCanvasPointerEvents('auto');
           switch (inputMethod) {
