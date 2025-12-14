@@ -28,6 +28,11 @@ func testIntegrationUser(t *testing.T) {
 			t.Fatalf("could not login as admin, %v", err)
 		}
 
+		err = testUser.GetVaultKey()
+		if err != nil {
+			t.Fatalf("could not get vault key: %v", err)
+		}
+
 		profile, err := testUser.GetProfileDetails()
 		if err != nil {
 			t.Fatalf("could not get admin profile, %v", err)

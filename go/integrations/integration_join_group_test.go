@@ -47,6 +47,11 @@ func testIntegrationJoinGroup(t *testing.T) {
 				t.Fatalf("could not login as test user, %v", err)
 			}
 
+			err = testUser.GetVaultKey()
+			if err != nil {
+				t.Fatalf("could not get vault key: %v", err)
+			}
+
 			profile, err := testUser.GetProfileDetails()
 			if err != nil {
 				t.Fatalf("could not get test user profile, %v", err)

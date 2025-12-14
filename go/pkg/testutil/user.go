@@ -4,15 +4,18 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
+	"encoding/base64"
 	"errors"
 	"fmt"
 	"log"
 	"net/http"
 	"net/http/cookiejar"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
@@ -20,8 +23,10 @@ import (
 )
 
 type TestUsersStruct struct {
-	Client     *http.Client
-	CookieData []http.Cookie
+	Client         *http.Client
+	CookieData     []http.Cookie
+	VaultKey       []byte
+	VaultSessionId string
 	*types.TestUser
 }
 
@@ -97,17 +102,17 @@ func (tus *TestUsersStruct) getUserClient() *http.Client {
 	if tus.Client != nil {
 		return tus.Client
 	}
-	if tus.CookieData == nil {
+	if tus.CookieData == nil || len(tus.CookieData) == 0 {
 		log.Fatal("no cookie data to getUserClient with, did the user login?")
 	}
 
 	jar, _ := cookiejar.New(nil)
 	appURL, _ := url.Parse(util.E_APP_HOST_URL)
 
-	// convert regular struct data to pointer
 	cookies := make([]*http.Cookie, 0, len(tus.CookieData))
 	for _, c := range tus.CookieData {
-		cookies = append(cookies, &c)
+		cookieCopy := c
+		cookies = append(cookies, &cookieCopy)
 	}
 	jar.SetCookies(appURL, cookies)
 	return &http.Client{
@@ -121,7 +126,7 @@ func (tus *TestUsersStruct) getUserClient() *http.Client {
 func (tus *TestUsersStruct) apiRequest(method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 	reqURL := util.E_APP_HOST_URL + path
 
-	if queryParams != nil && len(queryParams) > 0 {
+	if len(queryParams) > 0 {
 		values := url.Values{}
 		for k, v := range queryParams {
 			values.Add(k, v)
@@ -129,21 +134,73 @@ func (tus *TestUsersStruct) apiRequest(method, path string, body []byte, queryPa
 		reqURL = reqURL + "?" + values.Encode()
 	}
 
-	req, err := http.NewRequest(method, reqURL, bytes.NewBuffer(body))
+	headers := map[string]string{
+		"Accept":     "application/json",
+		"X-Tz":       "America/Los_Angeles",
+		"User-Agent": "api unit test",
+	}
+
+	var reqBody []byte
+	var sharedSecret []byte
+	var err error
+
+	if tus.VaultKey != nil && !strings.Contains(path, "/vault/key") {
+		isMutation := method == http.MethodPost || method == http.MethodPut || method == http.MethodPatch
+		plaintext := body
+		if len(plaintext) == 0 {
+			if isMutation {
+				plaintext = []byte("{}")
+			} else {
+				plaintext = []byte(" ")
+			}
+		}
+
+		var blob []byte
+		blob, sharedSecret, err = crypto.ClientEncrypt(tus.VaultKey, plaintext, tus.VaultSessionId)
+		if err != nil {
+			return fmt.Errorf("encryption failed: %w", err)
+		}
+
+		if isMutation {
+			reqBody = blob
+			headers["Content-Type"] = "application/x-awayto-vault"
+			headers["X-Original-Content-Type"] = "application/json"
+		} else {
+			headers["X-Awayto-Vault"] = base64.StdEncoding.EncodeToString(blob)
+		}
+	} else {
+		reqBody = body
+		if len(reqBody) > 0 {
+			headers["Content-Type"] = "application/json"
+		}
+	}
+
+	req, err := http.NewRequest(method, reqURL, bytes.NewBuffer(reqBody))
 	if err != nil {
 		return fmt.Errorf("error creating request: %w", err)
 	}
 
-	if body != nil && len(body) > 0 {
-		req.Header.Set("Content-Type", "application/json")
+	for k, v := range headers {
+		req.Header.Set(k, v)
 	}
-	req.Header.Set("Accept", "application/json")
-	req.Header.Add("X-Tz", "America/Los_Angeles")
 
 	client := tus.getUserClient()
 	resp, err := doAndRead(client, req)
 	if err != nil {
 		return fmt.Errorf("error sending request: %w", err)
+	}
+
+	if len(resp) > 0 && sharedSecret != nil {
+		encryptedBytes, err := base64.StdEncoding.DecodeString(string(resp))
+		if err != nil {
+			return fmt.Errorf("response base64 decode error: %w", err)
+		}
+
+		decrypted, err := crypto.ClientDecrypt(encryptedBytes, sharedSecret, tus.VaultSessionId)
+		if err != nil {
+			return fmt.Errorf("decrypt response error: %w", err)
+		}
+		resp = decrypted
 	}
 
 	if len(resp) > 0 && responseObj != nil {
@@ -157,6 +214,24 @@ func (tus *TestUsersStruct) apiRequest(method, path string, body []byte, queryPa
 
 func (tus *TestUsersStruct) DoHandler(method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 	return tus.apiRequest(method, path, body, queryParams, responseObj)
+}
+
+func (tus *TestUsersStruct) GetVaultKey() error {
+	vaultResp := &types.GetVaultKeyResponse{}
+	// Reuse apiRequest to ensure headers (UA, TZ) match the session
+	err := tus.apiRequest(http.MethodGet, "/api/v1/vault/key", nil, nil, vaultResp)
+	if err != nil {
+		return err
+	}
+
+	keyBytes, err := base64.StdEncoding.DecodeString(vaultResp.Key)
+	if err != nil {
+		return err
+	}
+
+	tus.VaultKey = keyBytes
+	tus.VaultSessionId = vaultResp.Sid
+	return nil
 }
 
 func (tus *TestUsersStruct) GetProfileDetails() (*types.IUserProfile, error) {

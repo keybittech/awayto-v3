@@ -224,7 +224,10 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 			return nil, fmt.Errorf("failed to post login form %s: %v", formActionURL, err)
 		}
 		appURL, _ := url.Parse(util.E_APP_HOST_URL)
-		sessionCookies = append(sessionCookies, jar.Cookies(appURL)...)
+		sessionCookies = []*http.Cookie{}
+		for _, c := range jar.Cookies(appURL) {
+			sessionCookies = append(sessionCookies, c)
+		}
 	}
 
 	var sessionId string
@@ -238,6 +241,8 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 	if sessionId == "" {
 		return nil, fmt.Errorf("session_id cookie not found after login")
 	}
+
+	tus.Client = client
 
 	tus.SetCookieData(sessionCookies)
 

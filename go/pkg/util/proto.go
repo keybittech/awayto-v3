@@ -270,8 +270,10 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 	}
 
 	if siteRoles, ok := proto.GetExtension(inputOpts, types.E_SiteRole).([]types.SiteRoles); ok {
-		roles := strings.Split(fmt.Sprint(siteRoles), ",")
-		roleBits := StringsToSiteRoles(roles)
+		var roleBits int32
+		for _, r := range siteRoles {
+			roleBits |= int32(r)
+		}
 		parsedOptions.SiteRole = roleBits
 	}
 

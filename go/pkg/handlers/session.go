@@ -365,6 +365,9 @@ func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession)
 		`, params...)
 		batch.Send(ctx)
 		dbSession := *dbSessionInsert
+		if dbSession == nil || dbSession.GetId() == "" {
+			return nil, fmt.Errorf("failed to retrieve session ID after database insert for user: %s", session.GetUserSub())
+		}
 		session.Id = dbSession.GetId()
 	}
 

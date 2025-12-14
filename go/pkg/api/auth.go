@@ -151,7 +151,7 @@ func (a *API) InitAuthProxy() {
 			return
 		}
 
-		util.SetSessionCookie(w, session.GetRefreshExpiresAt(), signedSessionId)
+		util.SetSessionCookie(w, int64(time.Until(time.Unix(0, session.GetRefreshExpiresAt())).Seconds()), signedSessionId)
 
 		http.Redirect(w, req, "/app/", http.StatusFound)
 	}))
