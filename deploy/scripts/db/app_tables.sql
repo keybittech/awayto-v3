@@ -450,10 +450,8 @@ CREATE TABLE dbtable_schema.topic_messages (
   enabled BOOLEAN NOT NULL DEFAULT true
 );
 ALTER TABLE dbtable_schema.topic_messages ENABLE ROW LEVEL SECURITY;
-CREATE POLICY table_select ON dbtable_schema.topic_messages FOR SELECT TO $PG_WORKER USING (
-  $IS_WORKER OR dbtable_schema.topic_messages.topic = current_setting('app_session.sock_topic')
-);
-CREATE POLICY table_insert ON dbtable_schema.topic_messages FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
+CREATE POLICY table_select ON dbtable_schema.topic_messages FOR SELECT TO $PG_WORKER USING ($HAS_TOPIC);
+CREATE POLICY table_insert ON dbtable_schema.topic_messages FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_TOPIC);
 CREATE INDEX topic_index ON dbtable_schema.topic_messages (topic);
 
 CREATE TABLE dbtable_schema.topic_canvas_elements (
@@ -470,10 +468,7 @@ CREATE TABLE dbtable_schema.topic_canvas_elements (
   PRIMARY KEY (topic, element_id)
 );
 ALTER TABLE dbtable_schema.topic_canvas_elements ENABLE ROW LEVEL SECURITY;
-CREATE POLICY table_select_state ON dbtable_schema.topic_canvas_elements FOR SELECT TO $PG_WORKER USING (
-  $IS_WORKER OR dbtable_schema.topic_canvas_elements.topic = current_setting('app_session.sock_topic')
-);
-CREATE POLICY table_modify_state ON dbtable_schema.topic_canvas_elements FOR ALL TO $PG_WORKER USING ($IS_CREATOR);
+CREATE POLICY table_modify_state ON dbtable_schema.topic_canvas_elements FOR ALL TO $PG_WORKER USING ($HAS_TOPIC);
 CREATE INDEX topic_element_index ON dbtable_schema.topic_canvas_elements (topic, element_id);
 
 CREATE TABLE dbtable_schema.exchange_call_log (

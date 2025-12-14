@@ -7,6 +7,7 @@ ENV IS_WORKER="'worker' = current_setting('app_session.user_sub')"
 ENV IS_USER="sub = dbfunc_schema.uuid_or_null(current_setting('app_session.user_sub'))"
 ENV IS_CREATOR="created_sub = dbfunc_schema.uuid_or_null(current_setting('app_session.user_sub'))"
 ENV HAS_GROUP="group_id = dbfunc_schema.uuid_or_null(current_setting('app_session.group_id'))"
+ENV HAS_TOPIC="topic = current_setting('app_session.sock_topic')"
 
 ENV IS_GROUP_ADMIN="(current_setting('app_session.role_bits')::int & 2) > 0";
 ENV IS_GROUP_BOOKINGS="(current_setting('app_session.role_bits')::int & 4) > 0";
