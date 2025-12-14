@@ -35,6 +35,7 @@ export default function WhiteboardBoxes({ boxes, setBoxes, whiteboardRef, didUpd
   }, []);
 
   const handleMouseUp = useCallback(() => {
+    document.body.style.userSelect = 'auto';
     setDraggingId(null);
     setResizingState(null);
   }, []);
