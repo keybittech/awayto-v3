@@ -88,7 +88,7 @@ export default function Whiteboard({ chatOpen, chatBox, callBox, optionsMenu, sh
           handleLines(payload.lines, board.settings?.stroke, board.settings?.highlight);
         }
         if (!payload.lines?.length && whiteboardRef.current) {
-          whiteboardRef.current.getContext('2d')?.clearRect(0, 0, whiteboardRef.current.width, whiteboardRef.current.height)
+          whiteboardRef.current.width = whiteboardRef.current.width;
         }
       } else if (SocketActions.SHARE_FILE === action) {
         setNumPages(0);

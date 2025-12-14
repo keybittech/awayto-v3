@@ -279,7 +279,7 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 
 		return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
 			if session.GetRoleBits()&siteRole == 0 {
-				util.WriteAuthRequest(req, session.GetUserSub(), opts.SiteRoleName)
+				util.WriteAuthRequest(req, session.GetUserSub(), string(siteRole))
 				http.Error(w, http.StatusText(http.StatusForbidden), http.StatusForbidden)
 				return
 			}

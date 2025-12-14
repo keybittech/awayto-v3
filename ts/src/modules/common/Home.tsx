@@ -65,9 +65,9 @@ export function Home(props: IComponent): React.JSX.Element {
       </Card>
     </Grid>
     <Grid container spacing={2}>
-      <Grid size={{ md: 3, xl: 2 }} sx={{ display: { xs: 'none', md: 'block' } }}>
+      {roleActions.length > 0 && <Grid size={{ md: 3, xl: 2 }} sx={{ display: { xs: 'none', md: 'block' } }}>
         {roleActions}
-      </Grid>
+      </Grid>}
 
       <Grid container size={{ sm: 12, md: 9 }} direction="column" spacing={2}>
         <Grid size="grow">

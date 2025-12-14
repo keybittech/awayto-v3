@@ -3,7 +3,6 @@ package util
 import (
 	"fmt"
 	"log"
-	"math"
 	"net/http"
 	"reflect"
 	"regexp"
@@ -26,7 +25,6 @@ type HandlerOptionsConfig struct {
 	ServiceMethodInputType protoreflect.MessageType
 	ServiceMethodName      string
 	ServiceMethodURL       string
-	SiteRoleName           string
 	Pattern                string
 	CacheDuration          uint32
 	CacheType              types.CacheType
@@ -50,7 +48,6 @@ type HandlerOptions struct {
 	ServiceMethodInputType protoreflect.MessageType
 	ServiceMethodName      string
 	ServiceMethodURL       string
-	SiteRoleName           string
 	Pattern                string
 
 	packedNumeric  uint32
@@ -172,7 +169,6 @@ func NewHandlerOptions(config HandlerOptionsConfig) (*HandlerOptions, error) {
 		ServiceMethodInputType: config.ServiceMethodInputType,
 		ServiceMethodName:      config.ServiceMethodName,
 		ServiceMethodURL:       config.ServiceMethodURL,
-		SiteRoleName:           config.SiteRoleName,
 		Pattern:                config.Pattern,
 		packedNumeric:          packedNumeric,
 		packedBooleans:         packedBooleans,
@@ -273,13 +269,10 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 		parsedOptions.HasPathParams = true
 	}
 
-	if siteRoles, ok := proto.GetExtension(inputOpts, types.E_SiteRole).(types.SiteRoles); ok {
+	if siteRoles, ok := proto.GetExtension(inputOpts, types.E_SiteRole).([]types.SiteRoles); ok {
 		roles := strings.Split(fmt.Sprint(siteRoles), ",")
 		roleBits := StringsToSiteRoles(roles)
 		parsedOptions.SiteRole = roleBits
-		if roleBits > 0 && roleBits < math.MaxInt32 {
-			parsedOptions.SiteRoleName = types.SiteRoles_name[int32(roleBits)]
-		}
 	}
 
 	if cacheType, ok := proto.GetExtension(inputOpts, types.E_Cache).(types.CacheType); ok {

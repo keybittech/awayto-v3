@@ -11,13 +11,14 @@ import VideocamIcon from '@mui/icons-material/Videocam';
 import CallIcon from '@mui/icons-material/Call';
 import FileCopyIcon from '@mui/icons-material/FileCopy';
 
-import { ExchangeActions, IFile, OrderedFiles, targets, usePulse } from 'awayto/hooks';
+import { bookingFormat, ExchangeActions, IFile, OrderedFiles, targets, usePulse } from 'awayto/hooks';
 
 import ExchangeContext, { ExchangeContextType } from './ExchangeContext';
 import WSTextContext, { WSTextContextType } from '../web_socket/WSTextContext';
 import WSCallContext, { WSCallContextType } from '../web_socket/WSCallContext';
 import FileSelectionModal from '../files/FileSelectionModal';
 import Whiteboard from './Whiteboard';
+import BookingContext, { BookingContextType } from '../bookings/BookingContext';
 
 export function Exchange(_: IComponent): React.JSX.Element {
 
@@ -51,11 +52,15 @@ export function Exchange(_: IComponent): React.JSX.Element {
     leaveCall
   } = useContext(WSCallContext) as WSCallContextType;
 
+  const { bookingValues: upcomingBookings } = useContext(BookingContext) as BookingContextType;
+
   useEffect(() => {
     setFileGroups(() => [
       { name: 'Exchange', order: 1, files: bookingFilesRequest?.files || [] }
     ]);
   }, [bookingFilesRequest?.files]);
+
+  const exchangeBooking = upcomingBookings.find(b => b.id == exchangeId);
 
   return <>
 
@@ -64,9 +69,8 @@ export function Exchange(_: IComponent): React.JSX.Element {
       sharedFile={sharedFile}
       setSharedFile={setSharedFile}
       chatOpen={chatOpen}
-      chatBox={
+      chatBox={<>
         <Grid
-          p={1}
           sx={{
             flex: '1 0 25%',
             display: chatOpen ? 'flex' : 'none',
@@ -75,15 +79,20 @@ export function Exchange(_: IComponent): React.JSX.Element {
             height: '100%'
           }}
         >
-          <Grid sx={{ flex: 1, overflow: 'auto' }}>
+          {exchangeBooking && exchangeBooking.slotDate && exchangeBooking.scheduleBracketSlot?.startTime && <Grid p={1} sx={{ bgcolor: 'primary.light' }}>
+            {exchangeBooking.service?.name} {exchangeBooking.serviceTier?.name}
+            <br />{bookingFormat(exchangeBooking.slotDate, exchangeBooking.scheduleBracketSlot.startTime)}
+          </Grid>}
+          <Grid sx={{ flex: 1, overflow: 'auto' }} m={1}>
             {chatLog}
             {messagesEnd}
           </Grid>
 
-          <Grid pt={1}>
+          <Grid pt={1} m={1}>
             {submitMessageForm}
           </Grid>
         </Grid>
+      </>
       }
       callBox={
         !localStreamElement && !senderStreamsElements ? <></> :

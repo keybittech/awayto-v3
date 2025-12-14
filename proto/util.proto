@@ -9,7 +9,7 @@ extend google.protobuf.MethodOptions {
   CacheType cache = 50000;
   uint32 cache_duration = 50001;
   uint32 throttle = 50002;
-  SiteRoles site_role = 50003;
+  repeated SiteRoles site_role = 50003;
   bool multipart_request = 50004;
   bool multipart_response = 50005;
   bool use_tx = 50006;

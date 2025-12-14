@@ -55,6 +55,7 @@ service BookingService {
     option (google.api.http) = {
       get: "/v1/bookings/{id}/files"
     };
+    option (site_role) = APP_GROUP_BOOKINGS;
     option (site_role) = APP_GROUP_SCHEDULES;
   }
   rpc DeleteBooking(DeleteBookingRequest) returns (DeleteBookingResponse) {

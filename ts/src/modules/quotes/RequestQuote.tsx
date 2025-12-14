@@ -233,7 +233,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
                     files
                   }
                 }).unwrap().then(() => {
-                  setSnack({ snackType: 'success', snackOn: 'You\'re all set!' });
+                  setSnack({ snackType: 'success', snackOn: 'You\'re all set! Appointments will be visible once approved.' });
                   reset();
                 }).catch((e: { data: string }) => {
                   if (e.data.includes('select a new time')) {
