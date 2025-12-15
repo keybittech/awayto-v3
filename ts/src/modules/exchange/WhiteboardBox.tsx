@@ -115,8 +115,11 @@ export default function WhiteboardBox({ id, sx, x, y, width, height, zIndex, col
       flexDirection: 'column',
       overflow: 'hidden',
       padding: 0,
+      '& .katex-mathml': {
+        position: 'inherit !important',
+      },
       '& .katex-html': {
-        display: 'none',
+        display: 'none !important',
       },
     }}
   >

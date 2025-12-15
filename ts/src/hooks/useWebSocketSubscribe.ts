@@ -40,7 +40,6 @@ export function useWebSocketSubscribe<T>(topic: string, callback: SocketResponse
         } else if (SocketActions.LOAD_SUBSCRIBERS == message.action) {
           const socketParticipants = message.payload as Record<string, SocketParticipant>;
 
-
           setUserList(ul => {
             for (const participant of Object.values(socketParticipants)) {
               const sub = ul[participant.scid];
