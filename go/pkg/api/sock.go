@@ -348,9 +348,9 @@ func (a *API) TearDownSocketConnection(socketId, connId string, ds clients.DbSes
 
 		for topic, targets := range topics {
 			err := a.Handlers.Socket.SendMessage(ctx, userSub, targets, &types.SocketMessage{
-				Action:  types.SocketActions_UNSUBSCRIBE_TOPIC,
-				Topic:   topic,
-				Payload: socketId,
+				Action: types.SocketActions_UNSUBSCRIBE_TOPIC,
+				Topic:  topic,
+				Sender: socketId,
 			})
 			if err != nil {
 				continue

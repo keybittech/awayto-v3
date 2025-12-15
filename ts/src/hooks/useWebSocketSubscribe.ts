@@ -1,5 +1,5 @@
 // useWebSocket.js
-import { useContext, useCallback, useEffect, useMemo, useState } from 'react';
+import { useContext, useEffect, useMemo, useState, useRef } from 'react';
 import { generateLightBgColor } from './style';
 import { SocketActions, SocketParticipant, SocketResponseHandler } from './web_socket';
 
@@ -23,12 +23,11 @@ export function useWebSocketSubscribe<T>(topic: string, callback: SocketResponse
 
   const [userList, setUserList] = useState<Record<string, SocketParticipant>>({});
 
-  const callbackRef = useCallback(callback, [callback]);
+  const callbackRef = useRef(callback);
 
   useEffect(() => {
-    if (subscribed) {
-    }
-  }, [subscribed]);
+    callbackRef.current = callback;
+  }, [callback]);
 
   useEffect(() => {
     if (connected) {
@@ -37,11 +36,10 @@ export function useWebSocketSubscribe<T>(topic: string, callback: SocketResponse
 
         if (SocketActions.SUBSCRIBE == message.action) {
           setSubscribed(true);
-
           transmit(false, SocketActions.LOAD_SUBSCRIBERS, topic);
         } else if (SocketActions.LOAD_SUBSCRIBERS == message.action) {
-
           const socketParticipants = message.payload as Record<string, SocketParticipant>;
+
 
           setUserList(ul => {
             for (const participant of Object.values(socketParticipants)) {
@@ -61,16 +59,17 @@ export function useWebSocketSubscribe<T>(topic: string, callback: SocketResponse
           if (message.sender == connectionId) {
             transmit(false, SocketActions.LOAD_MESSAGES, topic, { page: 1, pageSize: 10 });
           }
-        } else if (SocketActions.UNSUBSCRIBE_TOPIC === message.action) {
+        } else if (SocketActions.UNSUBSCRIBE_TOPIC === message.action || SocketActions.UNSUBSCRIBE === message.action) {
 
-          const [scid] = (message.payload as string).split(':');
+          const [scid] = message.sender.split(':');
 
           setUserList(ul => {
             ul[scid].online = false;
             return { ...ul };
           })
+
         } else {
-          await callbackRef(message);
+          await callbackRef.current(message);
         }
       });
 

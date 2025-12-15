@@ -153,9 +153,9 @@ func (a *API) SocketMessageRouter(ctx context.Context, connId, socketId string, 
 
 		if cachedParticipantTargets != "" {
 			err = a.Handlers.Socket.SendMessage(ctx, ds.ConcurrentUserSession.GetUserSub(), cachedParticipantTargets, &types.SocketMessage{
-				Action:  types.SocketActions_UNSUBSCRIBE,
-				Topic:   sm.Topic,
-				Payload: socketId,
+				Action: types.SocketActions_UNSUBSCRIBE,
+				Topic:  sm.Topic,
+				Sender: socketId,
 			})
 			if err != nil {
 				util.ErrorLog.Println(util.ErrCheck(err))

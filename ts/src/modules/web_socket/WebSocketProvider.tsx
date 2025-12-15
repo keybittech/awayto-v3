@@ -171,7 +171,7 @@ function WebSocketProvider({ children }: IComponent): React.JSX.Element {
                 socketResponse.payload = JSON.parse(socketResponse.payload || '{}')
                 await listener(socketResponse);
               } catch (e) {
-                console.log({ socketResponse })
+                console.error({ socketResponse }, e)
               }
             }
           }
