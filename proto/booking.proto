@@ -73,20 +73,20 @@ service BookingService {
 }
 
 message IBooking {
-  string id = 1;
-  int32 rating = 2;
-  string slotDate = 3;
-  string quoteId = 4;
-  string scheduleBracketSlotId = 5;
-  string tierSurveyVersionSubmissionId = 6;
-  string serviceSurveyVersionSubmissionId = 7;
-  string createdOn = 8;
-  IQuote quote = 9;
-  IService service = 10;
-  IScheduleBracketSlot scheduleBracketSlot = 11;
-  IServiceTier serviceTier = 12;
-  string timezone = 13;
-  string scheduleName = 14;
+  IQuote quote = 1;
+  IService service = 2;
+  IScheduleBracketSlot scheduleBracketSlot = 3;
+  IServiceTier serviceTier = 4;
+  string id = 5;
+  string slotDate = 6;
+  string quoteId = 7;
+  string scheduleBracketSlotId = 8;
+  string createdOn = 9;
+  string timezone = 10;
+  string scheduleName = 11;
+  optional string tierSurveyVersionSubmissionId = 12;
+  optional string serviceSurveyVersionSubmissionId = 13;
+  optional int32 rating = 14;
 }
 
 message PostBookingRequest {

@@ -26,11 +26,15 @@ const Layout = (props: IComponent): React.JSX.Element => {
             {/* <Grid width={175} sx={{ bgcolor: 'primary.dark', position: 'fixed', minWidth: '175px', display: { xs: 'none', md: 'flex' } }}>
               <Sidebar />
             </Grid> */}
-            <Grid size={12} container direction="column" sx={{ marginLeft: { xs: 0, md: true ? 0 : '175px' } }}>
+            <Grid size={12} container direction="column" sx={{
+              marginLeft: { xs: 0, md: true ? 0 : '175px' },
+              minHeight: '100vh',
+              flexWrap: 'nowrap'
+            }}>
               <Grid px={1} sx={{ bgcolor: 'secondary.dark' }}>
                 <Topbar {...props} />
               </Grid>
-              <Grid p={2} sx={{ width: '100%', minHeight: 'calc(100vh - 75px)' }}>
+              <Grid p={2} sx={{ width: '100%', flexGrow: 1 }}>
                 <Suspense>
                   <Outlet />
                 </Suspense>
