@@ -8,6 +8,7 @@ import CardHeader from '@mui/material/CardHeader';
 import CardActions from '@mui/material/CardActions';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
 
 import { siteApi, useUtil, IForm, IFormVersion, IField, deepClone, IGroupForm, targets } from 'awayto/hooks';
 import FormBuilder from './FormBuilder';
@@ -18,6 +19,7 @@ interface ManageFormModalProps extends IComponent {
 
 export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormModalProps): React.JSX.Element {
 
+  const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const [postGroupFormVersion] = siteApi.useGroupFormServicePostGroupFormVersionMutation();
   const [postGroupForm] = siteApi.useGroupFormServicePostGroupFormMutation();
   const [getGroupFormById] = siteApi.useLazyGroupFormServiceGetGroupFormByIdQuery();
@@ -27,6 +29,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
   const [version, setVersion] = useState({ form: {} } as IFormVersion);
   const [form, setForm] = useState({ name: '', ...editForm } as IForm);
   const [editable, setEditable] = useState(true);
+  const [groupRoleIds, setGroupRoleIds] = useState<string[]>([]);
 
   useEffect(() => {
     if (editForm) {
@@ -86,7 +89,6 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
       }
     }, {});
 
-
     if (id) {
       await postGroupFormVersion({
         postGroupFormVersionRequest: {
@@ -122,22 +124,44 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
   return <Card sx={{ display: 'flex', flex: 1, flexDirection: 'column' }}>
     <CardHeader title={`${editForm?.id ? 'Edit' : 'Create'} Form`} />
     <CardContent sx={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'auto' }}>
-      <Box mt={2} />
-
-      <Box mb={4}>
-        <TextField
-          {...targets(`manage form modal name`, `Form Name`, `change the name of the form being edited or created`)}
-          fullWidth
-          autoFocus
-          value={form.name}
-          onKeyDown={e => {
-            if ('Enter' === e.key) {
-              handleSubmit();
-            }
-          }}
-          onChange={e => setForm({ ...form, name: e.target.value })}
-        />
-      </Box>
+      <Grid container spacing={2} mb={4}>
+        <Grid size={6}>
+          <TextField
+            {...targets(`manage form modal name`, `Form Name`, `change the name of the form being edited or created`)}
+            fullWidth
+            autoFocus
+            value={form.name}
+            onKeyDown={e => {
+              if ('Enter' === e.key) {
+                handleSubmit();
+              }
+            }}
+            onChange={e => setForm({ ...form, name: e.target.value })}
+          />
+        </Grid>
+        {groupRolesRequest?.groupRoles && groupRolesRequest?.groupRoles.length && <Grid size={6}>
+          <TextField
+            {...targets(`manage form modal group roles selection`, `Surveying Roles`, `select the roles which see this form during surveying`)}
+            select
+            fullWidth
+            helperText={'During post-session surveying, this form will only be visible to users with these roles.'}
+            required
+            onChange={e => setGroupRoleIds(e.target.value as unknown as string[])}
+            value={groupRoleIds}
+            slotProps={{
+              select: {
+                multiple: true,
+              }
+            }}
+          >
+            {groupRolesRequest?.groupRoles.map(groupRole => {
+              return <MenuItem key={`${groupRole.roleId}_surveying_role_select`} value={groupRole.roleId}>
+                {groupRole.name}
+              </MenuItem>
+            })}
+          </TextField>
+        </Grid>}
+      </Grid>
 
       <FormBuilder {...props} editable={editable} version={version} setVersion={setVersion} />
 
