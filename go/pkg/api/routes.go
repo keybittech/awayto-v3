@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/clients"
+	"github.com/keybittech/awayto-v3/go/pkg/handlers"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 
@@ -14,7 +15,7 @@ import (
 )
 
 func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
-	handlerFunc, ok := a.Handlers.Functions[handlerOpts.ServiceMethodName]
+	requestHandler, ok := a.Handlers.Functions[handlerOpts.ServiceMethodName]
 	if !ok {
 		util.DebugLog.Println("Service Method Not Implemented:", handlerOpts.ServiceMethodName)
 		return func(w http.ResponseWriter, r *http.Request, session *types.ConcurrentUserSession) {
@@ -62,11 +63,17 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 	}
 
 	return func(w http.ResponseWriter, req *http.Request, session *types.ConcurrentUserSession) {
-		var err error
-		var pb proto.Message
+		var requestBody proto.Message
+		var executor handlers.ReqInfo
+		var done func(error) error
 
 		defer func() {
 			if p := recover(); p != nil {
+				// if done was not disarmed, a genuine panic occurred somewhere before/during the handler
+				if done != nil {
+					_ = done(fmt.Errorf("panic occurred: %v", p))
+				}
+
 				// ErrCheck handled errors will already have a trace
 				// If there is no trace file hint, print the full stack
 				var sb strings.Builder
@@ -76,8 +83,9 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 				sb.WriteString(fmt.Sprint(p))
 				errStr := sb.String()
 
-				util.RequestError(w, errStr, noLogFields, pb)
+				util.RequestError(w, errStr, noLogFields, requestBody)
 
+				// if this is a genuine panic not handled by ErrCheck-ing, which adds the ".go:" text
 				if !strings.Contains(errStr, ".go:") {
 					util.ErrorLog.Println(string(debug.Stack()))
 				}
@@ -86,28 +94,30 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 			clients.GetGlobalWorkerPool().CleanUpClientMapping(session.GetUserSub())
 		}()
 
-		pb = bodyParser(w, req, msgType)
-		queryParser(pb, req)
-		pathParser(pb, req)
+		requestBody = bodyParser(w, req, msgType)
+		queryParser(requestBody, req)
+		pathParser(requestBody, req)
 
 		ctx := req.Context()
 
-		reqInfo, done := requestExecutor(ctx, a.Handlers.Database.DatabaseClient, session)
+		executor, done = requestExecutor(ctx, w, req, session, a.Handlers.Database.DatabaseClient)
 
-		reqInfo.Ctx = ctx
-		reqInfo.W = w
-		reqInfo.Req = req
-		reqInfo.Session = session
+		handlerResponse, handlerErr := requestHandler(executor, requestBody)
 
-		results, err := handlerFunc(reqInfo, pb)
-		if err != nil {
-			done()
-			panic(err)
+		// if handler errors, the done fn will return that error and roll back the tx
+		// otherwise this will return errors during unsetting session and tx commit
+		doneErr := done(handlerErr)
+
+		// disarm for defer
+		done = nil
+
+		// if error occurs during rollback
+		if doneErr != nil {
+			panic(doneErr)
 		}
-		done()
 
 		resetGroup(req, session.GetGroupId())
 
-		responseHandler(w, req, results)
+		responseHandler(w, req, handlerResponse)
 	}
 }
