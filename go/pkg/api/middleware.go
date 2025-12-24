@@ -44,16 +44,15 @@ func (a *API) SecurityHeadersMiddleware(next http.Handler) http.Handler {
 		csp.WriteString("frame-ancestors 'none'; ")
 		csp.WriteString("form-action 'self'; ")
 		csp.WriteString("base-uri 'self'; ")
-		csp.WriteString("upgrade-insecure-requests;")
+		csp.WriteString("upgrade-insecure-requests; ")
 
 		cs := csp.String()
 
 		w.Header().Set("Content-Security-Policy", cs)
-		w.Header().Set("X-Content-Security-Policy", cs)
 
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("X-Frame-Options", "DENY")
-		w.Header().Set("X-XSS-Protection", "1; mode=block")
+		w.Header().Set("Cross-Origin-Resource-Policy", "same-origin")
 		w.Header().Set("Referrer-Policy", "strict-origin-when-cross-origin")
 		w.Header().Set("Permissions-Policy", "geolocation=(), microphone=(self), camera=(self)")
 
