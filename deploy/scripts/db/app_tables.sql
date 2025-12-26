@@ -62,6 +62,17 @@ CREATE POLICY table_insert ON dbtable_schema.group_forms FOR INSERT TO $PG_WORKE
 CREATE POLICY table_select ON dbtable_schema.group_forms FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
 CREATE POLICY table_delete ON dbtable_schema.group_forms FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
+CREATE TABLE dbtable_schema.group_form_roles (
+  group_form_id uuid NOT NULL REFERENCES dbtable_schema.group_forms (id) ON DELETE CASCADE,
+  group_role_id uuid NOT NULL REFERENCES dbtable_schema.group_roles (id) ON DELETE CASCADE,
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  UNIQUE(group_form_id, group_role_id)
+);
+
 CREATE TABLE dbtable_schema.form_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
@@ -115,6 +126,19 @@ CREATE POLICY table_insert ON dbtable_schema.group_services FOR INSERT TO $PG_WO
 CREATE POLICY table_update ON dbtable_schema.group_services FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
 CREATE POLICY table_delete ON dbtable_schema.group_services FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
+CREATE TABLE dbtable_schema.service_forms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
+  form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
+  stage VARCHAR(10) NOT NULL CHECK (stage IN ('quote', 'booking')),
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  UNIQUE(service_id, form_id, stage)
+);
+
 CREATE TABLE dbtable_schema.service_addons (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL UNIQUE,
@@ -150,6 +174,19 @@ CREATE TABLE dbtable_schema.service_tiers (
   updated_sub uuid REFERENCES dbtable_schema.users (sub),
   enabled BOOLEAN NOT NULL DEFAULT true,
   UNIQUE (name, service_id)
+);
+
+CREATE TABLE dbtable_schema.service_tier_forms (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  service_tier_id uuid NOT NULL REFERENCES dbtable_schema.service_tiers (id) ON DELETE CASCADE,
+  form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
+  stage VARCHAR(10) NOT NULL CHECK (stage IN ('quote', 'booking')),
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true,
+  UNIQUE(service_tier_id, form_id, stage)
 );
 
 CREATE TABLE dbtable_schema.service_tier_addons (

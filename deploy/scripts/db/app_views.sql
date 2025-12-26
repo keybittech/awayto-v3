@@ -96,6 +96,7 @@ FROM
 CREATE
 OR REPLACE VIEW dbview_schema.enabled_group_forms_ext AS
 SELECT
+  egf.id,
   egf."formId",
   egf."groupId",
   eef.* as form

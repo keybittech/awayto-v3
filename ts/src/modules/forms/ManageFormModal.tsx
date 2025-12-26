@@ -1,7 +1,6 @@
 import React, { useEffect, useState, useCallback } from 'react';
 
 import Grid from '@mui/material/Grid';
-import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
@@ -29,6 +28,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
   const [version, setVersion] = useState({ form: {} } as IFormVersion);
   const [form, setForm] = useState({ name: '', ...editForm } as IForm);
   const [editable, setEditable] = useState(true);
+  const [groupFormId, setGroupFormId] = useState<string | null>();
   const [groupRoleIds, setGroupRoleIds] = useState<string[]>([]);
 
   useEffect(() => {
@@ -36,6 +36,8 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
       getGroupFormById({ formId: editForm.id }).unwrap().then(res => {
         const gf = res.groupForm;
         if (gf.form) {
+          setGroupFormId(gf.id);
+          setGroupRoleIds(res.groupRoleIds);
           setForm(gf.form as IForm);
           if (gf.form.version) {
             setVersion(gf.form.version as IFormVersion);
@@ -66,7 +68,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
 
   const handleSubmit = useCallback(async () => {
     setEditable(false);
-    const { id, name } = form;
+    const { id: formId, name } = form;
 
     if (!name || !Object.keys(version.form).length || Object.values(version.form).some(v => v.some(f => !f.l))) {
       setSnack({ snackType: 'error', snackOn: 'Forms must have a name, and at least 1 field. All fields must have a label.' });
@@ -89,14 +91,16 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
       }
     }, {});
 
-    if (id) {
+    if (groupFormId && formId) {
       await postGroupFormVersion({
         postGroupFormVersionRequest: {
           name,
-          formId: id,
+          groupFormId,
+          formId,
+          groupRoleIds,
           groupFormVersion: {
             form: newForm,
-            formId: id
+            formId
           } as IFormVersion
         }
       }).unwrap();
@@ -104,10 +108,11 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
       await postGroupForm({
         postGroupFormRequest: {
           name,
+          groupRoleIds,
           groupForm: {
             form: {
               name,
-              formId: id,
+              formId,
               version: {
                 form: newForm
               }
@@ -119,7 +124,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
 
     if (closeModal)
       closeModal();
-  }, [form, version.form]);
+  }, [form, version.form, groupFormId, groupRoleIds]);
 
   return <Card sx={{ display: 'flex', flex: 1, flexDirection: 'column' }}>
     <CardHeader title={`${editForm?.id ? 'Edit' : 'Create'} Form`} />
@@ -141,10 +146,10 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
         </Grid>
         {groupRolesRequest?.groupRoles && groupRolesRequest?.groupRoles.length && <Grid size={6}>
           <TextField
-            {...targets(`manage form modal group roles selection`, `Surveying Roles`, `select the roles which see this form during surveying`)}
+            {...targets(`manage form modal group roles selection`, `Roles`, `select the roles which may see this form`)}
             select
             fullWidth
-            helperText={'During post-session surveying, this form will only be visible to users with these roles.'}
+            helperText={'Only users with the specified roles will be able to see this form.'}
             required
             onChange={e => setGroupRoleIds(e.target.value as unknown as string[])}
             value={groupRoleIds}
@@ -155,7 +160,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
             }}
           >
             {groupRolesRequest?.groupRoles.map(groupRole => {
-              return <MenuItem key={`${groupRole.roleId}_surveying_role_select`} value={groupRole.roleId}>
+              return <MenuItem key={`${groupRole.id}_form_role_select`} value={groupRole.id}>
                 {groupRole.name}
               </MenuItem>
             })}

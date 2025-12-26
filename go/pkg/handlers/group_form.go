@@ -27,7 +27,8 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 	}
 
 	// Group forms should be owned by the group user
-	info.Session.SetUserSub(info.Session.GetGroupSub())
+	groupSub := info.Session.GetGroupSub()
+	info.Session.SetUserSub(groupSub)
 
 	formResp, err := h.PostForm(info, &types.PostFormRequest{Form: data.GetGroupForm().GetForm()})
 	if err != nil {
@@ -45,13 +46,25 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = info.Tx.Exec(info.Ctx, `
+	var groupFormId string
+	err = info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.group_forms (group_id, form_id, created_sub)
 		VALUES ($1::uuid, $2::uuid, $3::uuid)
 		ON CONFLICT (group_id, form_id) DO NOTHING
-	`, info.Session.GetGroupId(), formResp.Id, info.Session.GetGroupSub())
+		RETURNING id
+	`, info.Session.GetGroupId(), formResp.GetId(), groupSub).Scan(&groupFormId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
+	}
+
+	for _, groupRoleId := range data.GetGroupRoleIds() {
+		_, err = info.Tx.Exec(info.Ctx, `
+			INSERT INTO dbtable_schema.group_form_roles (group_form_id, group_role_id, created_sub)
+			VALUES ($1::uuid, $2::uuid, $3::uuid)
+		`, groupFormId, groupRoleId, groupSub)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 	}
 
 	return &types.PostGroupFormResponse{Id: formResp.Id}, nil
@@ -61,6 +74,29 @@ func (h *Handlers) PostGroupFormVersion(info ReqInfo, data *types.PostGroupFormV
 	formVersionResp, err := h.PostFormVersion(info, &types.PostFormVersionRequest{Name: data.GetName(), Version: data.GetGroupFormVersion()})
 	if err != nil {
 		return nil, util.ErrCheck(err)
+	}
+
+	groupSub := info.Session.GetGroupSub()
+	info.Session.SetUserSub(groupSub)
+
+	groupFormId := data.GetGroupFormId()
+
+	_, err = info.Tx.Exec(info.Ctx, `
+		DELETE FROM dbtable_schema.group_form_roles
+		WHERE group_form_id = $1::uuid
+	`, groupFormId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	for _, groupRoleId := range data.GetGroupRoleIds() {
+		_, err = info.Tx.Exec(info.Ctx, `
+			INSERT INTO dbtable_schema.group_form_roles (group_form_id, group_role_id, created_sub)
+			VALUES ($1::uuid, $2::uuid, $3::uuid)
+		`, groupFormId, groupRoleId, groupSub)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
 	}
 
 	return &types.PostGroupFormVersionResponse{Id: formVersionResp.GetId()}, nil
@@ -94,15 +130,32 @@ func (h *Handlers) GetGroupForms(info ReqInfo, data *types.GetGroupFormsRequest)
 }
 
 func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRequest) (*types.GetGroupFormByIdResponse, error) {
-	groupForm := util.BatchQueryRow[types.IGroupForm](info.Batch, `
-		SELECT "formId", "groupId", form
+	groupFormReq := util.BatchQueryRow[types.IGroupForm](info.Batch, `
+		SELECT id, "formId", "groupId", form
 		FROM dbview_schema.enabled_group_forms_ext 
 		WHERE "groupId" = $1 AND "formId" = $2
-	`, info.Session.GetGroupId(), data.FormId)
+	`, info.Session.GetGroupId(), data.GetFormId())
 
 	info.Batch.Send(info.Ctx)
 
-	return &types.GetGroupFormByIdResponse{GroupForm: *groupForm}, nil
+	groupForm := *groupFormReq
+
+	info.Batch.Reset()
+
+	groupRoleIdsReq := util.BatchQuery[types.ILookup](info.Batch, `
+		SELECT group_role_id as id
+		FROM dbtable_schema.group_form_roles
+		WHERE group_form_id = $1::uuid
+	`, groupForm.GetId())
+
+	info.Batch.Send(info.Ctx)
+
+	var groupRoleIds []string
+	for _, idLookup := range *groupRoleIdsReq {
+		groupRoleIds = append(groupRoleIds, (*idLookup).GetId())
+	}
+
+	return &types.GetGroupFormByIdResponse{GroupForm: groupForm, GroupRoleIds: groupRoleIds}, nil
 }
 
 func (h *Handlers) DeleteGroupForm(info ReqInfo, data *types.DeleteGroupFormRequest) (*types.DeleteGroupFormResponse, error) {

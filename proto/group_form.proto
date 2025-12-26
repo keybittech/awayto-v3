@@ -24,6 +24,7 @@ service GroupFormService {
     };
     option (invalidates) = "GetGroupForms";
     option (invalidates) = "GetGroupFormById";
+    option (use_tx) = true;
   };
   rpc PatchGroupForm(PatchGroupFormRequest) returns (PatchGroupFormResponse) {
     option (google.api.http) = {
@@ -31,6 +32,7 @@ service GroupFormService {
       body: "*"
     };
     option (invalidates) = "GetGroupFormById";
+    option (use_tx) = true;
   };
   rpc GetGroupForms(GetGroupFormsRequest) returns (GetGroupFormsResponse) {
     option (google.api.http) = {
@@ -46,6 +48,7 @@ service GroupFormService {
     option (google.api.http) = {
       delete: "/v1/group/forms/{ids}"
     };
+    option (invalidates) = "GetGroupForms";
   };
 }
 
@@ -60,6 +63,7 @@ message IGroupForm {
 message PostGroupFormRequest {
   string name = 1 [(google.api.field_behavior) = REQUIRED];
   IGroupForm groupForm = 2 [(google.api.field_behavior) = REQUIRED];
+  repeated string groupRoleIds = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostGroupFormResponse {
@@ -68,8 +72,10 @@ message PostGroupFormResponse {
 
 message PostGroupFormVersionRequest {
   string name = 1 [(google.api.field_behavior) = REQUIRED];
-  string formId = 2 [(google.api.field_behavior) = REQUIRED];
-  IProtoFormVersion groupFormVersion = 3 [(google.api.field_behavior) = REQUIRED];
+  string groupFormId = 2 [(google.api.field_behavior) = REQUIRED];
+  string formId = 3 [(google.api.field_behavior) = REQUIRED];
+  IProtoFormVersion groupFormVersion = 4 [(google.api.field_behavior) = REQUIRED];
+  repeated string groupRoleIds = 5 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostGroupFormVersionResponse {
@@ -96,6 +102,7 @@ message GetGroupFormByIdRequest {
 
 message GetGroupFormByIdResponse {
   IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
+  repeated string groupRoleIds = 2 [(google.api.field_behavior) = REQUIRED];
 }
 
 message DeleteGroupFormRequest {
