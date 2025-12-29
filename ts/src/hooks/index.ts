@@ -1,4 +1,4 @@
-export type { CustomBaseQuery } from './api.template';
+export type { CustomBaseQuery, UseSiteQuery } from './api.template';
 export * from './api';
 export * from './assist';
 export * from './auth';
@@ -21,6 +21,7 @@ export * from './useStyles';
 export * from './useSecure';
 // export * from './useGroupSecure';
 export * from './useGroupForm';
+export * from './useGroupForms';
 export * from './useSelectOne';
 export * from './useSchedule';
 export * from './useSuggestions';

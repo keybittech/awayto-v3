@@ -15,14 +15,14 @@ import Dialog from '@mui/material/Dialog';
 interface FormPickerProps extends IComponent {
   label: string;
   helperText: string;
-  formId?: string;
-  onSelectForm: (formId?: string) => void;
+  formIds?: string[];
+  onSelectForm: (formIds?: string[]) => void;
 }
 
-export function FormPicker({ formId, label, helperText, onSelectForm, ...props }: FormPickerProps): React.JSX.Element {
+export function FormPicker({ formIds, label, helperText, onSelectForm, ...props }: FormPickerProps): React.JSX.Element {
   const { data: groupFormsRequest, refetch: getGroupForms, isSuccess: groupFormsLoaded } = siteApi.useGroupFormServiceGetGroupFormsQuery();
   const [dialog, setDialog] = useState('');
-  const [value, setValue] = useState(formId || '');
+  const [value, setValue] = useState<string[]>(formIds || []);
 
   return <>
     {groupFormsLoaded && onSelectForm && <TextField
@@ -32,10 +32,19 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
       value={value}
       helperText={helperText}
       onChange={e => {
-        setValue(e.target.value);
-        onSelectForm(e.target.value.length ? e.target.value : undefined);
+        const formValue = e.target.value as unknown as string[];
+        if (formValue.filter(f => f === "").length) {
+          setValue([]);
+          onSelectForm(undefined);
+          return;
+        }
+        setValue(formValue);
+        onSelectForm(formValue.length ? formValue : undefined);
       }}
       slotProps={{
+        select: {
+          multiple: true
+        },
         input: {
           endAdornment: <InputAdornment position="end" sx={{ mr: 2 }}>
             <Tooltip title="Create Form">
@@ -51,9 +60,9 @@ export function FormPicker({ formId, label, helperText, onSelectForm, ...props }
         }
       }}
     >
-      {formId && <MenuItem key="unset-selection" value=""><Typography variant="caption">Remove selection</Typography></MenuItem>}
+      {formIds?.length && <MenuItem key="unset-selection" value=""><Typography variant="caption">Remove selection</Typography></MenuItem>}
       {groupFormsRequest?.groupForms?.map(gf => <MenuItem key={`form-version-select${gf.form?.id}`} value={gf.form?.id}>{gf.form?.name}</MenuItem>)}
-      {!groupFormsRequest.groupForms && <MenuItem key={`no-forms`} value="">No forms created</MenuItem>}
+      {!groupFormsRequest.groupForms && <MenuItem key={`no-forms`} value="" inert>No forms created</MenuItem>}
     </TextField>}
 
     <Dialog onClose={setDialog} open={dialog === 'create_form'} fullWidth maxWidth="lg">

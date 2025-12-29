@@ -14,12 +14,12 @@ func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*t
 	service := data.GetService()
 
 	err := info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.services (name, cost, form_id, survey_id, created_sub)
-		VALUES ($1, $2::integer, $3, $4, $5::uuid)
+		INSERT INTO dbtable_schema.services (name, cost, created_sub) -- , form_id, survey_id
+		VALUES ($1, $2::integer, $3::uuid)
 		ON CONFLICT (name, created_sub) DO UPDATE
-		SET enabled = true, cost = $2::integer, form_id = $3, survey_id = $4
+		SET enabled = true, cost = $2::integer -- , form_id = $3, survey_id = $4
 		RETURNING id
-	`, service.GetName(), service.Cost, service.FormId, service.SurveyId, info.Session.GetUserSub()).Scan(&service.Id)
+	`, service.GetName(), service.GetCost(), info.Session.GetUserSub()).Scan(&service.Id) // , service.FormId, service.SurveyId
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -34,13 +34,34 @@ func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*t
 
 func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (*types.PatchServiceResponse, error) {
 	service := data.GetService()
+	serviceId := service.GetId()
+	userSub := info.Session.GetUserSub()
+
+	// update service forms
+	_, err := info.Tx.Exec(info.Ctx, `
+		DELETE FROM dbtable_schema.service_forms
+		WHERE service_id = $1
+	`, serviceId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	for _, formId := range service.GetIntakeIds() {
+		_, err := info.Tx.Exec(info.Ctx, `
+			INSERT INTO dbtable_schema.service_forms (service_id, form_id, stage, created_sub)
+			VALUES ($1::uuid, $2::uuid, $3, $4::uuid)
+		`, serviceId, formId, "intake", userSub)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
 
 	// insert new tiers, re-enabling if conflicting
 	insertedTierIds := make([]string, 0)
 	for _, tier := range service.GetTiers() {
 		var tierId string
 
-		err := info.Tx.QueryRow(info.Ctx, `
+		err = info.Tx.QueryRow(info.Ctx, `
 			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
 				SELECT name, service_id, multiplier, form_id, survey_id, created_sub FROM input_rows
@@ -54,7 +75,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 			SELECT st.id
 			FROM input_rows
 			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), service.Id, tier.GetMultiplier(), tier.FormId, tier.SurveyId, info.Session.GetUserSub(), time.Now()).Scan(&tierId)
+		`, tier.GetName(), serviceId, tier.GetMultiplier(), tier.FormId, tier.SurveyId, userSub, time.Now()).Scan(&tierId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -69,7 +90,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 				VALUES ($1, $2, $3::uuid)
 				ON CONFLICT (service_addon_id, service_tier_id) DO UPDATE
 				SET enabled = true
-			`, addon.GetId(), tierId, info.Session.GetUserSub())
+			`, addon.GetId(), tierId, userSub)
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -93,7 +114,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 
 	// disable tiers that were not inserted or re-enabled
 	// may be referenced by a quote, which must show accurate info at the time of the request
-	_, err := info.Tx.Exec(info.Ctx, `
+	_, err = info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.service_tiers
 		SET enabled = false
 		WHERE id IN (
@@ -102,7 +123,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 			WHERE service_id = $1
 			AND id NOT IN (SELECT unnest($2::uuid[]))
 		)
-	`, service.Id, pq.Array(insertedTierIds))
+	`, serviceId, pq.Array(insertedTierIds))
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -110,9 +131,9 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 	// update service
 	_, err = info.Tx.Exec(info.Ctx, `
 		UPDATE dbtable_schema.services
-		SET name = $2, form_id = $3, survey_id = $4, updated_sub = $5, updated_on = $6
+		SET name = $2, updated_sub = $3, updated_on = $4
 		WHERE id = $1
-	`, service.GetId(), service.GetName(), service.FormId, service.SurveyId, info.Session.GetUserSub(), time.Now())
+	`, serviceId, service.GetName(), userSub, time.Now())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -134,7 +155,7 @@ func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*t
 
 func (h *Handlers) GetServiceById(info ReqInfo, data *types.GetServiceByIdRequest) (*types.GetServiceByIdResponse, error) {
 	service := util.BatchQueryRow[types.IService](info.Batch, `
-		SELECT id, name, "formId", "surveyId", "createdOn", tiers
+		SELECT id, name, "intakeIds", "surveyIds", "createdOn", tiers
 		FROM dbview_schema.enabled_services_ext
 		WHERE id = $1
 	`, data.Id)

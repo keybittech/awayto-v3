@@ -66,12 +66,10 @@ message IService {
     (buf.validate.field).map.min_pairs = 1,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  optional string formId = 5 [
-    (buf.validate.field).string.uuid = true,
+  repeated string intakeIds = 5 [
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  optional string surveyId = 6 [
-    (buf.validate.field).string.uuid = true,
+  repeated string surveyIds = 6 [
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
   string createdOn = 7;

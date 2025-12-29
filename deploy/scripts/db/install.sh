@@ -6,7 +6,7 @@ ENV_LIST="PG_DB PG_WORKER_PASS PG_WORKER USER_SUB GROUP_ID IS_WORKER IS_USER IS_
 
 for f in "$SCRIPT_DIR"/*.sql; do
   for var in $ENV_LIST; do
-    val="${!var}"
+    val="${!var//&/\\&}"
     sed -i "s|\$$var|$val|g" "$f"
   done
 done

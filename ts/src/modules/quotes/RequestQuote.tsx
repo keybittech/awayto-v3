@@ -15,7 +15,7 @@ import Slide from '@mui/material/Slide';
 import Divider from '@mui/material/Divider';
 import { TransitionProps } from '@mui/material/transitions';
 
-import { siteApi, useUtil, useGroupForm, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat, nid, SiteRoles, useSecure } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForm, useGroupForms, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat, nid, SiteRoles, useSecure, IProtoFormVersionSubmission } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -72,11 +72,11 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   } = useContext(GroupScheduleSelectionContext) as GroupScheduleSelectionContextType;
 
   const {
-    form: serviceForm,
-    comp: ServiceForm,
-    valid: serviceFormValid,
-    reset: resetServiceForm,
-  } = useGroupForm(groupScheduleService?.formId, didSubmit);
+    forms: serviceForms,
+    comp: ServiceForms,
+    valid: serviceFormsValid,
+    reset: resetServiceForms,
+  } = useGroupForms(groupScheduleService?.intakeIds, didSubmit);
 
   const {
     form: tierForm,
@@ -91,7 +91,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     setFiles([]);
     setSelectedDate(undefined);
     setSelectedTime(undefined);
-    resetServiceForm();
+    resetServiceForms();
     resetTierForm();
   }
 
@@ -122,7 +122,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   }
 
   const { startDate, endDate } = groupSchedule.schedule || {};
-  const hasForms = Boolean(serviceForm?.id || tierForm?.id);
+  const hasForms = Boolean(serviceForms?.length || tierForm?.id);
   const scheduleInactive = !startDate || dayjs().isBefore(dayjs(startDate));
 
   return <>
@@ -193,8 +193,8 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
             <Divider sx={{ my: 2 }} />
             <Grid container spacing={4} direction="column">
               <Typography variant="h6">Request Details</Typography>
-              {serviceForm && <Grid size="grow">
-                {ServiceForm}
+              {serviceForms?.length && <Grid size="grow">
+                {ServiceForms}
               </Grid>}
               {tierForm && <Grid size="grow">
                 {TierForm}
@@ -207,7 +207,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
           className="actionBtnFade"
           onClick={() => {
             setDidSubmit(true);
-            if (!serviceFormValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
+            if (!serviceFormsValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
               setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
               return;
             }
@@ -222,10 +222,11 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
                     slotDate: quote.slotDate!,
                     scheduleBracketSlotId: quote.scheduleBracketSlotId!,
                     serviceTierId: groupScheduleServiceTier.id!,
-                    serviceFormVersionSubmission: (serviceForm ? {
-                      formVersionId: serviceForm.version.id,
-                      submission: serviceForm.version.submission
-                    } : {}) as IFormVersionSubmission,
+                    serviceFormVersionSubmission: {} as IProtoFormVersionSubmission,
+                    // serviceFormVersionSubmission: (serviceForms.length ? {
+                    //   formVersionId: serviceForm.version.id,
+                    //   submission: serviceForm.version.submission
+                    // } : {}) as IFormVersionSubmission,
                     tierFormVersionSubmission: (tierForm ? {
                       formVersionId: tierForm.version.id,
                       submission: tierForm.version.submission

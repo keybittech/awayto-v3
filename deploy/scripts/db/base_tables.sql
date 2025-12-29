@@ -225,3 +225,38 @@ CREATE POLICY table_insert ON dbtable_schema.group_files FOR INSERT TO $PG_WORKE
 CREATE POLICY table_update ON dbtable_schema.group_files FOR UPDATE TO $PG_WORKER USING ($HAS_GROUP);
 CREATE POLICY table_delete ON dbtable_schema.group_files FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
+-- any functions pertaining to base tables so they can be used in app_tables
+CREATE OR REPLACE FUNCTION dbfunc_schema.session_user_has_group_role(p_group_role_id uuid)
+RETURNS BOOLEAN AS $$
+DECLARE
+  v_user_sub uuid;
+  v_group_id uuid;
+BEGIN
+  -- 1. Safely retrieve session variables
+  -- We cast inside the assignment to ensure types match
+  v_user_sub := nullif(current_setting('app_session.user_sub', true), '')::uuid;
+  v_group_id := nullif(current_setting('app_session.group_id', true), '')::uuid;
+
+  -- 2. Fast exit if session context is missing
+  IF v_user_sub IS NULL OR v_group_id IS NULL THEN
+    RETURN FALSE;
+  END IF;
+
+  -- 3. Check permission using standard IF EXISTS logic
+  -- This is often safer than 'SELECT INTO' for boolean checks in PLPGSQL
+  IF EXISTS (
+    SELECT 1
+    FROM dbtable_schema.group_users gu
+    JOIN dbtable_schema.group_roles gr ON gr.external_id = gu.external_id
+    JOIN dbtable_schema.users u ON u.id = gu.user_id
+    WHERE gr.id = p_group_role_id
+      AND u.sub = v_user_sub
+      AND gu.group_id = v_group_id
+      AND gu.enabled = true
+  ) THEN
+    RETURN TRUE;
+  ELSE
+    RETURN FALSE;
+  END IF;
+END;
+$$ LANGUAGE plpgsql STABLE SECURITY DEFINER;

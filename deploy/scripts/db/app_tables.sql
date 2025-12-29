@@ -57,10 +57,6 @@ CREATE TABLE dbtable_schema.group_forms (
   enabled BOOLEAN NOT NULL DEFAULT true,
   UNIQUE (group_id, form_id)
 );
-ALTER TABLE dbtable_schema.group_forms ENABLE ROW LEVEL SECURITY;
-CREATE POLICY table_insert ON dbtable_schema.group_forms FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP);
-CREATE POLICY table_select ON dbtable_schema.group_forms FOR SELECT TO $PG_WORKER USING ($HAS_GROUP);
-CREATE POLICY table_delete ON dbtable_schema.group_forms FOR DELETE TO $PG_WORKER USING ($HAS_GROUP);
 
 CREATE TABLE dbtable_schema.group_form_roles (
   group_form_id uuid NOT NULL REFERENCES dbtable_schema.group_forms (id) ON DELETE CASCADE,
@@ -72,6 +68,17 @@ CREATE TABLE dbtable_schema.group_form_roles (
   enabled BOOLEAN NOT NULL DEFAULT true,
   UNIQUE(group_form_id, group_role_id)
 );
+
+-- add group_forms RLS after group_roles to lock down form selection
+ALTER TABLE dbtable_schema.group_forms ENABLE ROW LEVEL SECURITY;
+CREATE POLICY table_insert ON dbtable_schema.group_forms FOR INSERT TO $PG_WORKER WITH CHECK ($HAS_GROUP AND $IS_GROUP_ADMIN);
+CREATE POLICY table_select ON dbtable_schema.group_forms FOR SELECT TO $PG_WORKER USING ($HAS_GROUP AND ($IS_GROUP_ADMIN OR EXISTS (
+    SELECT 1 FROM dbtable_schema.group_form_roles gfr
+    WHERE gfr.group_form_id = dbtable_schema.group_forms.id
+    AND dbfunc_schema.session_user_has_group_role(gfr.group_role_id)
+  ))
+);
+CREATE POLICY table_delete ON dbtable_schema.group_forms FOR DELETE TO $PG_WORKER USING ($HAS_GROUP AND $IS_GROUP_ADMIN);
 
 CREATE TABLE dbtable_schema.form_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -130,7 +137,7 @@ CREATE TABLE dbtable_schema.service_forms (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
   form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
-  stage VARCHAR(10) NOT NULL CHECK (stage IN ('quote', 'booking')),
+  stage VARCHAR(10) NOT NULL CHECK (stage IN ('intake', 'survey')),
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
   updated_on TIMESTAMP,
@@ -180,7 +187,7 @@ CREATE TABLE dbtable_schema.service_tier_forms (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   service_tier_id uuid NOT NULL REFERENCES dbtable_schema.service_tiers (id) ON DELETE CASCADE,
   form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
-  stage VARCHAR(10) NOT NULL CHECK (stage IN ('quote', 'booking')),
+  stage VARCHAR(10) NOT NULL CHECK (stage IN ('intake', 'survey')),
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
   updated_on TIMESTAMP,

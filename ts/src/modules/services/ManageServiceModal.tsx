@@ -57,8 +57,8 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   const debouncedService = useDebounce(newService, 150);
   const [newServiceTier, setNewServiceTier] = useState({ ...serviceTierSchema });
   const [serviceTierAddonIds, setServiceTierAddonIds] = useState<string[]>([]);
-  const [hasServiceFormOrSurvey, setHasServiceFormOrSurvey] = useState(!!newService.formId || !!newService.surveyId);
-  const [hasTierFormOrSurvey, setHasTierFormOrSurvey] = useState(!!newServiceTier.formId || !!newServiceTier.surveyId);
+  const [hasServiceIntakeOrSurvey, setHasServiceIntakeOrSurvey] = useState(Boolean(newService.intakeIds || newService.surveyIds));
+  const [hasTierIntakeOrSurvey, setHasTierIntakeOrSurvey] = useState(!!newServiceTier.formId || !!newServiceTier.surveyId);
 
   const { data: existingServiceRequest } = siteApi.useServiceServiceGetServiceByIdQuery({ id: newService.id || '' }, { skip: !newService.id });
   const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery();
@@ -189,11 +189,11 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   }, [existingServiceRequest]);
 
   useEffect(() => {
-    setHasServiceFormOrSurvey(Boolean(newService.formId || newService.surveyId));
+    setHasServiceIntakeOrSurvey(Boolean(newService.intakeIds || newService.surveyIds));
   }, [newService]);
 
   useEffect(() => {
-    setHasTierFormOrSurvey(Boolean(newServiceTier.formId || newServiceTier.surveyId));
+    setHasTierIntakeOrSurvey(Boolean(newServiceTier.formId || newServiceTier.surveyId));
   }, [newServiceTier]);
 
   return <Card>
@@ -238,37 +238,37 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
               {...targets(`manage service modal service forms`, `Include Service Forms`, `toggle if forms should be included with the service`)}
               control={
                 <Checkbox
-                  checked={hasServiceFormOrSurvey}
+                  checked={hasServiceIntakeOrSurvey}
                   onChange={() => {
-                    if (newService.surveyId || newService.formId && hasServiceFormOrSurvey) {
-                      delete newService.surveyId;
-                      delete newService.formId;
+                    if (hasServiceIntakeOrSurvey) {
+                      delete newService.intakeIds;
+                      delete newService.surveyIds;
                       setNewService({ ...newService });
                     }
-                    setHasServiceFormOrSurvey(!hasServiceFormOrSurvey)
+                    setHasServiceIntakeOrSurvey(!hasServiceIntakeOrSurvey)
                   }}
                 />
               }
             />
 
-            {hasServiceFormOrSurvey && <Suspense>
+            {hasServiceIntakeOrSurvey && <Suspense>
               <Box my={2}>
                 <FormPicker
-                  formId={newService.formId}
+                  formIds={newService.intakeIds}
                   label="Service Intake Form"
                   helperText="Optional. Shown during appointment creation."
-                  onSelectForm={(formId?: string) => {
-                    setNewService({ ...newService, formId });
+                  onSelectForm={(intakeIds?: string[]) => {
+                    setNewService({ ...newService, intakeIds });
                   }}
                 />
               </Box>
               <Box my={2}>
                 <FormPicker
-                  formId={newService.surveyId}
+                  formIds={newService.surveyIds}
                   label="Service Survey Form"
                   helperText="Optional. Shown during post-appointment summary."
-                  onSelectForm={(surveyId?: string) => {
-                    setNewService({ ...newService, surveyId });
+                  onSelectForm={(surveyIds?: string[]) => {
+                    setNewService({ ...newService, surveyIds });
                   }}
                 />
               </Box>
@@ -372,41 +372,42 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                 {...targets(`manage service modal tier forms`, `Include Tier Forms`, `toggle if forms should be included with the current service tier`)}
                 control={
                   <Checkbox
-                    checked={hasTierFormOrSurvey}
+                    checked={hasTierIntakeOrSurvey}
                     onChange={() => {
-                      if (newServiceTier.surveyId || newServiceTier.formId && hasTierFormOrSurvey) {
+                      if (newServiceTier.surveyId || newServiceTier.formId && hasTierIntakeOrSurvey) {
                         delete newServiceTier.surveyId;
                         delete newServiceTier.formId;
                         setNewServiceTier({ ...newServiceTier });
                       }
-                      setHasTierFormOrSurvey(!hasTierFormOrSurvey)
+                      setHasTierIntakeOrSurvey(!hasTierIntakeOrSurvey)
                     }}
                   />
                 }
               />
 
-              {hasTierFormOrSurvey && <Suspense>
+              {hasTierIntakeOrSurvey && <Suspense>
                 <>
-                  <Box my={2}>
-                    <FormPicker
-                      formId={newServiceTier.formId}
-                      label="Tier Intake Form"
-                      helperText="Optional. Shown during appointment creation."
-                      onSelectForm={(formId?: string) => {
-                        setNewServiceTier({ ...newServiceTier, formId });
-                      }}
-                    />
-                  </Box>
-                  <Box my={2}>
-                    <FormPicker
-                      formId={newServiceTier.surveyId}
-                      label="Tier Survey Form"
-                      helperText="Optional. Shown during post-appointment summary."
-                      onSelectForm={(surveyId?: string) => {
-                        setNewServiceTier({ ...newServiceTier, surveyId });
-                      }}
-                    />
-                  </Box>
+                  {/* TODO fix formIds usage */}
+                  {/* <Box my={2}> */}
+                  {/*   <FormPicker */}
+                  {/*     formIds={newServiceTier.formId} */}
+                  {/*     label="Tier Intake Form" */}
+                  {/*     helperText="Optional. Shown during appointment creation." */}
+                  {/*     onSelectForm={formIds => { */}
+                  {/*       setNewServiceTier({ ...newServiceTier, formId }); */}
+                  {/*     }} */}
+                  {/*   /> */}
+                  {/* </Box> */}
+                  {/* <Box my={2}> */}
+                  {/*   <FormPicker */}
+                  {/*     formIds={newServiceTier.surveyId} */}
+                  {/*     label="Tier Survey Form" */}
+                  {/*     helperText="Optional. Shown during post-appointment summary." */}
+                  {/*     onSelectForm={surveyId => { */}
+                  {/*       setNewServiceTier({ ...newServiceTier, surveyId }); */}
+                  {/*     }} */}
+                  {/*   /> */}
+                  {/* </Box> */}
                 </>
               </Suspense>}
             </Box>
@@ -458,7 +459,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                     setNewServiceTier({ ...serviceTierSchema });
                     setServiceTierAddonIds([]);
                     setNewService({ ...newService, tiers: { ...newService.tiers, [st.id]: st } });
-                    setHasTierFormOrSurvey(false);
+                    setHasTierIntakeOrSurvey(false);
                   } else {
                     void setSnack({ snackOn: 'Provide a unique tier name.', snackType: 'info' });
                   }
@@ -475,9 +476,9 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
             <Box mb={2}>
               <Typography variant="button">Service Name</Typography>
               <Typography sx={{ mb: 1 }} variant="h2">{newService.name}</Typography>
-              {!!newService.formId && <Chip color="info" size="small" label="Intake Form" />} &nbsp;
-              {!!newService.surveyId && <Chip color="warning" size="small" label="Survey Form" />}
-              {!(newService.surveyId || newService.formId) && <Chip size="small" label="No Forms" />}
+              {!!newService.intakeIds && <Chip color="info" size="small" label="Intake Form" />} &nbsp;
+              {!!newService.surveyIds && <Chip color="warning" size="small" label="Survey Form" />}
+              {!hasServiceIntakeOrSurvey && <Chip size="small" label="No Forms" />}
             </Box>
             <Suspense>
               <ServiceTierAddons
