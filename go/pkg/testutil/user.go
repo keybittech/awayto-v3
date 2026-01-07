@@ -402,11 +402,11 @@ func (tus *TestUsersStruct) PostQuote(serviceTierId string, slot *types.IGroupSc
 	}
 
 	postQuoteRequest := &types.PostQuoteRequest{
-		SlotDate:                     slot.StartDate,
-		ScheduleBracketSlotId:        slot.ScheduleBracketSlotId,
-		ServiceTierId:                serviceTierId,
-		ServiceFormVersionSubmission: serviceForm,
-		TierFormVersionSubmission:    tierForm,
+		SlotDate:              slot.StartDate,
+		ScheduleBracketSlotId: slot.ScheduleBracketSlotId,
+		ServiceTierId:         serviceTierId,
+		// ServiceFormVersionSubmission: serviceForm,
+		// TierFormVersionSubmission:    tierForm,
 	}
 
 	postQuoteBytes, err := protojson.Marshal(postQuoteRequest)

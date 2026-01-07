@@ -53,8 +53,9 @@ service FormService {
 
 message IProtoFormVersionSubmission {
   string id = 1;
-  string formVersionId = 2;
-  google.protobuf.Value submission = 3 [(google.api.field_behavior) = REQUIRED];
+  string formId = 2;
+  string formVersionId = 3;
+  google.protobuf.Value submission = 4 [(google.api.field_behavior) = REQUIRED];
 }
 
 message IProtoFormVersion {

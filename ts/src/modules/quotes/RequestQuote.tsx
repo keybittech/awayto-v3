@@ -15,7 +15,7 @@ import Slide from '@mui/material/Slide';
 import Divider from '@mui/material/Divider';
 import { TransitionProps } from '@mui/material/transitions';
 
-import { siteApi, useUtil, useGroupForm, useGroupForms, IFormVersionSubmission, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat, nid, SiteRoles, useSecure, IProtoFormVersionSubmission } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForms, IFile, bookingFormat, targets, useStyles, dayjs, dateFormat, nid, SiteRoles, useSecure } from 'awayto/hooks';
 
 import GroupScheduleSelectionContext, { GroupScheduleSelectionContextType } from '../group_schedules/GroupScheduleSelectionContext';
 import GroupScheduleContext, { GroupScheduleContextType } from '../group_schedules/GroupScheduleContext';
@@ -23,6 +23,7 @@ import ScheduleDatePicker from '../group_schedules/ScheduleDatePicker';
 import ScheduleTimePicker from '../group_schedules/ScheduleTimePicker';
 import ServiceTierAddons from '../services/ServiceTierAddons';
 import FileManager from '../files/FileManager';
+import FormDisplay from '../forms/FormDisplay';
 
 const Transition = React.forwardRef(function Transition(
   props: TransitionProps & {
@@ -73,17 +74,17 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
 
   const {
     forms: serviceForms,
-    comp: ServiceForms,
+    setForm: setServiceForm,
     valid: serviceFormsValid,
     reset: resetServiceForms,
-  } = useGroupForms(groupScheduleService?.intakeIds, didSubmit);
+  } = useGroupForms(groupScheduleService?.intakeIds);
 
   const {
-    form: tierForm,
-    comp: TierForm,
-    valid: tierFormValid,
-    reset: resetTierForm,
-  } = useGroupForm(groupScheduleServiceTier?.formId, didSubmit);
+    forms: tierForms,
+    setForm: setTierForm,
+    valid: tierFormsValid,
+    reset: resetTierForms,
+  } = useGroupForms([]); // groupScheduleServiceTier?.formId
 
   const reset = () => {
     setDidSubmit(false);
@@ -92,7 +93,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     setSelectedDate(undefined);
     setSelectedTime(undefined);
     resetServiceForms();
-    resetTierForm();
+    resetTierForms();
   }
 
   useEffect(() => {
@@ -122,7 +123,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
   }
 
   const { startDate, endDate } = groupSchedule.schedule || {};
-  const hasForms = Boolean(serviceForms?.length || tierForm?.id);
+  const hasForms = Boolean(serviceForms?.length || tierForms?.length);
   const scheduleInactive = !startDate || dayjs().isBefore(dayjs(startDate));
 
   return <>
@@ -193,12 +194,18 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
             <Divider sx={{ my: 2 }} />
             <Grid container spacing={4} direction="column">
               <Typography variant="h6">Request Details</Typography>
-              {serviceForms?.length && <Grid size="grow">
-                {ServiceForms}
-              </Grid>}
-              {tierForm && <Grid size="grow">
-                {TierForm}
-              </Grid>}
+              <Grid container spacing={2} direction="column">
+                {!!serviceForms?.length && serviceForms?.map((sf, i) => (
+                  <Grid key={sf.id} size="grow">
+                    <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
+                  </Grid>
+                ))}
+                {!!tierForms?.length && tierForms?.map((tf, i) => (
+                  <Grid key={tf.id} size="grow">
+                    <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
+                  </Grid>
+                ))}
+              </Grid>
             </Grid>
           </>}
         </CardContent>
@@ -207,7 +214,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
           className="actionBtnFade"
           onClick={() => {
             setDidSubmit(true);
-            if (!serviceFormsValid || !tierFormValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
+            if (!serviceFormsValid || !tierFormsValid || !groupScheduleServiceTier?.id || !quote.slotDate || !quote.startTime || !quote.scheduleBracketSlotId) {
               setSnack({ snackType: 'error', snackOn: 'Please ensure all required fields are filled out and without error.' });
               return;
             }
@@ -222,15 +229,16 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
                     slotDate: quote.slotDate!,
                     scheduleBracketSlotId: quote.scheduleBracketSlotId!,
                     serviceTierId: groupScheduleServiceTier.id!,
-                    serviceFormVersionSubmission: {} as IProtoFormVersionSubmission,
-                    // serviceFormVersionSubmission: (serviceForms.length ? {
-                    //   formVersionId: serviceForm.version.id,
-                    //   submission: serviceForm.version.submission
-                    // } : {}) as IFormVersionSubmission,
-                    tierFormVersionSubmission: (tierForm ? {
-                      formVersionId: tierForm.version.id,
-                      submission: tierForm.version.submission
-                    } : {}) as IFormVersionSubmission,
+                    serviceFormVersionSubmissions: serviceForms?.map(sf => ({
+                      formId: sf.id,
+                      formVersionId: sf.version.id,
+                      submission: sf.version.submission
+                    })) || [],
+                    tierFormVersionSubmissions: tierForms?.map(tf => ({
+                      formId: tf.id,
+                      formVersionId: tf.version.id,
+                      submission: tf.version.submission
+                    })) || [],
                     files
                   }
                 }).unwrap().then(() => {

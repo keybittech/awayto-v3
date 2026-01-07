@@ -67,8 +67,8 @@ message IQuote {
   string scheduleBracketSlotId = 8;
   optional string serviceFormVersionSubmissionId = 9;
   optional string tierFormVersionSubmissionId = 10;
-  IProtoFormVersionSubmission serviceFormVersionSubmission = 11;
-  IProtoFormVersionSubmission tierFormVersionSubmission = 12;
+  repeated IProtoFormVersionSubmission serviceFormVersionSubmissions = 11;
+  repeated IProtoFormVersionSubmission tierFormVersionSubmissions = 12;
   string createdOn = 13;
   string timezone = 14;
   string scheduleName = 15;
@@ -78,8 +78,8 @@ message PostQuoteRequest {
   string scheduleBracketSlotId = 1 [(google.api.field_behavior) = REQUIRED];
   string serviceTierId = 2 [(google.api.field_behavior) = REQUIRED];
   string slotDate = 3 [(google.api.field_behavior) = REQUIRED];
-  IProtoFormVersionSubmission serviceFormVersionSubmission = 4 [(google.api.field_behavior) = REQUIRED];
-  IProtoFormVersionSubmission tierFormVersionSubmission = 5 [(google.api.field_behavior) = REQUIRED];
+  repeated IProtoFormVersionSubmission serviceFormVersionSubmissions = 4 [(google.api.field_behavior) = REQUIRED];
+  repeated IProtoFormVersionSubmission tierFormVersionSubmissions = 5 [(google.api.field_behavior) = REQUIRED];
   repeated IFile files = 6 [(google.api.field_behavior) = REQUIRED];
 }
 

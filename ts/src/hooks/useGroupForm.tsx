@@ -1,14 +1,12 @@
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, SetStateAction, Dispatch } from 'react';
 
 import { siteApi } from './api';
 import { IForm } from './form';
 import { deepClone } from './util';
 
-import FormDisplay from '../modules/forms/FormDisplay';
-
 type UseGroupFormResponse = {
   form?: IForm;
-  comp: React.JSX.Element;
+  setForm: Dispatch<SetStateAction<IForm | undefined>>;
   valid: boolean;
   reset: () => void;
 };
@@ -57,7 +55,7 @@ export function useGroupForm(id = '', didSubmit = false): UseGroupFormResponse {
 
   return {
     form,
-    comp: form ? <FormDisplay form={form} setForm={setForm} didSubmit={didSubmit} /> : <></>,
+    setForm,
     valid,
     reset
   }

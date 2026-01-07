@@ -1,7 +1,6 @@
 import { GridColDef, GridRowSelectionModel, GridValidRowModel } from '@mui/x-data-grid';
 
 import Grid from '@mui/material/Grid';
-import { initialState } from './valid';
 
 type UseScheduleProps<T extends GridValidRowModel> = {
   rows: T[];

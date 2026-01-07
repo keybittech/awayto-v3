@@ -419,6 +419,30 @@ CREATE POLICY table_select_2 ON dbtable_schema.file_contents FOR SELECT TO $PG_W
   )
 );
 
+CREATE TABLE dbtable_schema.quote_service_form_version_submissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  quote_id uuid NOT NULL REFERENCES dbtable_schema.quotes (id) ON DELETE CASCADE,
+  service_form_id uuid NOT NULL REFERENCES dbtable_schema.service_forms (id) ON DELETE CASCADE,
+  form_version_submission_id uuid NOT NULL REFERENCES dbtable_schema.form_version_submissions (id) ON DELETE CASCADE,
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE TABLE dbtable_schema.quote_service_tier_form_version_submissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  quote_id uuid NOT NULL REFERENCES dbtable_schema.quotes (id) ON DELETE CASCADE,
+  service_tier_form_id uuid NOT NULL REFERENCES dbtable_schema.service_tier_forms (id) ON DELETE CASCADE,
+  form_version_submission_id uuid NOT NULL REFERENCES dbtable_schema.form_version_submissions (id) ON DELETE CASCADE,
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true
+);
+
 CREATE TABLE dbtable_schema.quote_files (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   quote_id uuid NOT NULL REFERENCES dbtable_schema.quotes (id) ON DELETE CASCADE,
@@ -460,6 +484,30 @@ CREATE POLICY table_select ON dbtable_schema.bookings FOR SELECT TO $PG_WORKER U
 );
 CREATE POLICY table_insert ON dbtable_schema.bookings FOR INSERT TO $PG_WORKER WITH CHECK ($IS_CREATOR);
 CREATE POLICY table_update ON dbtable_schema.bookings FOR UPDATE TO $PG_WORKER USING ($IS_CREATOR);
+
+CREATE TABLE dbtable_schema.booking_service_form_version_submissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id uuid NOT NULL REFERENCES dbtable_schema.bookings (id) ON DELETE CASCADE,
+  service_form_id uuid NOT NULL REFERENCES dbtable_schema.service_forms (id) ON DELETE CASCADE,
+  form_version_submission_id uuid NOT NULL REFERENCES dbtable_schema.form_version_submissions (id) ON DELETE CASCADE,
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true
+);
+
+CREATE TABLE dbtable_schema.booking_service_tier_form_version_submissions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  booking_id uuid NOT NULL REFERENCES dbtable_schema.bookings (id) ON DELETE CASCADE,
+  service_tier_form_id uuid NOT NULL REFERENCES dbtable_schema.service_tier_forms (id) ON DELETE CASCADE,
+  form_version_submission_id uuid NOT NULL REFERENCES dbtable_schema.form_version_submissions (id) ON DELETE CASCADE,
+  created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  updated_on TIMESTAMP,
+  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  enabled BOOLEAN NOT NULL DEFAULT true
+);
 
 CREATE TABLE dbtable_schema.sock_connections (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

@@ -1,19 +1,17 @@
-import { useMemo, useState, useEffect, useCallback, useRef } from 'react';
+import { useMemo, useState, useEffect, useCallback, useRef, SetStateAction } from 'react';
 
 import { siteApi } from './api';
 import { IForm } from './form';
 import { deepClone } from './util';
 
-import FormDisplay from '../modules/forms/FormDisplay';
-
 type UseGroupFormResponse = {
   forms?: IForm[];
-  comp: React.JSX.Element;
+  setForm: (index: number, valueOrFn: SetStateAction<IForm | undefined>) => void;
   valid: boolean;
   reset: () => void;
 };
 
-export function useGroupForms(ids: string[] = [], didSubmit = false): UseGroupFormResponse {
+export function useGroupForms(ids: string[] = []): UseGroupFormResponse {
 
   const [forms, setForms] = useState<IForm[]>([]);
   const original = useRef<IForm[]>([]);
@@ -24,7 +22,7 @@ export function useGroupForms(ids: string[] = [], didSubmit = false): UseGroupFo
     setForms(ids.length ? deepClone(original.current) : []);
   }, [ids]);
 
-  const updateFormAtIndex = useCallback((index: number, valueOrFn: IForm | undefined | ((prev: IForm | undefined) => IForm | undefined)) => {
+  const setForm = useCallback((index: number, valueOrFn: IForm | undefined | ((prev: IForm | undefined) => IForm | undefined)) => {
     setForms(prevForms => {
       const newForms = [...prevForms];
 
@@ -74,15 +72,17 @@ export function useGroupForms(ids: string[] = [], didSubmit = false): UseGroupFo
     });
   }, [forms]);
 
-  const comp = useMemo(() => <>
-    {forms.map((form, index) => (
-      <FormDisplay key={form.id} form={form} setForm={val => updateFormAtIndex(index, val)} didSubmit={didSubmit} />
-    ))}
-  </>, [forms, didSubmit, updateFormAtIndex]);
+  // const comp = useMemo(() => <>
+  //   {forms.map((form, index) => (
+  //
+  //     <FormDisplay form={form} setForm={val => updateFormAtIndex(index, val)} didSubmit={didSubmit} />
+  //
+  //   ))}
+  // </>, [forms, didSubmit, updateFormAtIndex]);
 
   return {
     forms,
-    comp,
+    setForm,
     valid,
     reset
   }
