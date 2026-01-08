@@ -58,7 +58,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   const [newServiceTier, setNewServiceTier] = useState({ ...serviceTierSchema });
   const [serviceTierAddonIds, setServiceTierAddonIds] = useState<string[]>([]);
   const [hasServiceIntakeOrSurvey, setHasServiceIntakeOrSurvey] = useState(Boolean(newService.intakeIds || newService.surveyIds));
-  const [hasTierIntakeOrSurvey, setHasTierIntakeOrSurvey] = useState(!!newServiceTier.formId || !!newServiceTier.surveyId);
+  const [hasTierIntakeOrSurvey, setHasTierIntakeOrSurvey] = useState(Boolean(newServiceTier.intakeIds || newServiceTier.surveyIds));
 
   const { data: existingServiceRequest } = siteApi.useServiceServiceGetServiceByIdQuery({ id: newService.id || '' }, { skip: !newService.id });
   const { data: groupServiceAddonsRequest, refetch: getGroupServiceAddons } = siteApi.useGroupServiceAddonsServiceGetGroupServiceAddonsQuery();
@@ -193,7 +193,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
   }, [newService]);
 
   useEffect(() => {
-    setHasTierIntakeOrSurvey(Boolean(newServiceTier.formId || newServiceTier.surveyId));
+    setHasTierIntakeOrSurvey(Boolean(newServiceTier.intakeIds || newServiceTier.surveyIds));
   }, [newServiceTier]);
 
   return <Card>
@@ -374,9 +374,9 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
                   <Checkbox
                     checked={hasTierIntakeOrSurvey}
                     onChange={() => {
-                      if (newServiceTier.surveyId || newServiceTier.formId && hasTierIntakeOrSurvey) {
-                        delete newServiceTier.surveyId;
-                        delete newServiceTier.formId;
+                      if (newServiceTier.surveyIds || newServiceTier.intakeIds && hasTierIntakeOrSurvey) {
+                        delete newServiceTier.intakeIds;
+                        delete newServiceTier.surveyIds;
                         setNewServiceTier({ ...newServiceTier });
                       }
                       setHasTierIntakeOrSurvey(!hasTierIntakeOrSurvey)
@@ -387,27 +387,26 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
 
               {hasTierIntakeOrSurvey && <Suspense>
                 <>
-                  {/* TODO fix formIds usage */}
-                  {/* <Box my={2}> */}
-                  {/*   <FormPicker */}
-                  {/*     formIds={newServiceTier.formId} */}
-                  {/*     label="Tier Intake Form" */}
-                  {/*     helperText="Optional. Shown during appointment creation." */}
-                  {/*     onSelectForm={formIds => { */}
-                  {/*       setNewServiceTier({ ...newServiceTier, formId }); */}
-                  {/*     }} */}
-                  {/*   /> */}
-                  {/* </Box> */}
-                  {/* <Box my={2}> */}
-                  {/*   <FormPicker */}
-                  {/*     formIds={newServiceTier.surveyId} */}
-                  {/*     label="Tier Survey Form" */}
-                  {/*     helperText="Optional. Shown during post-appointment summary." */}
-                  {/*     onSelectForm={surveyId => { */}
-                  {/*       setNewServiceTier({ ...newServiceTier, surveyId }); */}
-                  {/*     }} */}
-                  {/*   /> */}
-                  {/* </Box> */}
+                  <Box my={2}>
+                    <FormPicker
+                      formIds={newServiceTier.intakeIds}
+                      label="Tier Intake Form"
+                      helperText="Optional. Shown during appointment creation."
+                      onSelectForm={(intakeIds?: string[]) => {
+                        setNewServiceTier({ ...newServiceTier, intakeIds });
+                      }}
+                    />
+                  </Box>
+                  <Box my={2}>
+                    <FormPicker
+                      formIds={newServiceTier.surveyIds}
+                      label="Tier Survey Form"
+                      helperText="Optional. Shown during post-appointment summary."
+                      onSelectForm={(surveyIds?: string[]) => {
+                        setNewServiceTier({ ...newServiceTier, surveyIds });
+                      }}
+                    />
+                  </Box>
                 </>
               </Suspense>}
             </Box>

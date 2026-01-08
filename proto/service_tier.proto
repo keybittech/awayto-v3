@@ -46,13 +46,15 @@ service ServiceTierService {
 message IServiceTier {
   string id = 1;
   string serviceId = 2;
-  optional string formId = 3;
-  optional string surveyId = 4;
-  string name = 5;
-  int32 multiplier = 6;
-  map<string, IServiceAddon> addons = 7;
-  int32 order = 8;
-  string createdOn = 9;
+  repeated string intakeIds = 3;
+  repeated string surveyIds = 4;
+  optional string formId = 5;
+  optional string surveyId = 6;
+  string name = 7;
+  int32 multiplier = 8;
+  map<string, IServiceAddon> addons = 9;
+  int32 order = 10;
+  string createdOn = 11;
 }
 
 

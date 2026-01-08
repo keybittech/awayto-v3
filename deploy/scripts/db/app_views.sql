@@ -322,9 +322,20 @@ CREATE
 OR REPLACE VIEW dbview_schema.enabled_service_tiers_ext AS
 SELECT
   est.*,
+  COALESCE(f.intakes, '{}') AS "intakeIds",
+  COALESCE(f.surveys, '{}') as "surveyIds",
   essa.* as addons
 FROM
   dbview_schema.enabled_service_tiers est
+  LEFT JOIN LATERAL (
+    SELECT
+      ARRAY_AGG(stf.form_id::TEXT) FILTER (WHERE stf.stage = 'intake') as intakes,
+      ARRAY_AGG(stf.form_id::TEXT) FILTER (WHERE stf.stage = 'survey') as surveys
+    FROM dbtable_schema.service_tier_forms stf
+    JOIN dbtable_schema.group_services gs ON gs.service_id = est."serviceId"
+    JOIN dbtable_schema.group_forms gf ON gf.form_id = stf.form_id AND gf.group_id = gs.group_id -- utilize RLS for form roles
+    WHERE stf.service_tier_id = est.id AND stf.enabled = true
+  ) f ON true
   LEFT JOIN LATERAL (
     SELECT
       JSONB_OBJECT_AGG(soa.id, TO_JSONB(soa)) as addons
@@ -369,6 +380,8 @@ FROM
           este.id,
           este.name,
           este.multiplier,
+          este."intakeIds",
+          este."surveyIds",
           este."formId",
           este."surveyId",
           este."createdOn",

@@ -13,6 +13,8 @@ import (
 func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types.PostQuoteResponse, error) {
 	userSub := info.Session.GetUserSub()
 
+	// Validate quote access and time
+
 	var goodStanding bool
 	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT dbfunc_schema.check_group_standing($1)
@@ -37,6 +39,8 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		return nil, util.ErrCheck(util.UserError("The selected time has already been taken. Please select a new time."))
 	}
 
+	// Create quote record
+
 	var slotCreatedSub, quoteId string
 
 	err = info.Tx.QueryRow(info.Ctx, `
@@ -44,6 +48,9 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		FROM dbtable_schema.schedule_bracket_slots
 		WHERE id = $1
 	`, data.ScheduleBracketSlotId).Scan(&slotCreatedSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
 	err = info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.quotes (slot_date, schedule_bracket_slot_id, service_tier_id, created_sub, group_id, slot_created_sub)
@@ -53,6 +60,8 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
+
+	// Handle quote intake forms for both service and tier
 
 	serviceFormSubmissions, tierFormSubmissions := data.GetServiceFormVersionSubmissions(), data.GetTierFormVersionSubmissions()
 
@@ -78,7 +87,6 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		}
 	}
 
-	// insert serviceForms into quote_service_form_version_submissions
 	for _, formSubmission := range serviceFormSubmissions {
 		if formSubmission.GetId() != "" {
 			var serviceFormId string
@@ -102,7 +110,29 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 		}
 	}
 
-	// insert tierForms into quote_service_tier_form_version_submissions
+	for _, formSubmission := range tierFormSubmissions {
+		if formSubmission.GetId() != "" {
+			var tierFormId string
+			err = info.Tx.QueryRow(info.Ctx, `
+				SELECT id
+				FROM dbtable_schema.service_tier_forms
+				WHERE service_tier_id = $1::uuid AND form_id = $2::uuid
+			`, data.GetServiceTierId(), formSubmission.GetFormId()).Scan(&tierFormId)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+
+			_, err = info.Tx.Exec(info.Ctx, `
+				INSERT INTO dbtable_schema.quote_service_tier_form_version_submissions (quote_id, service_tier_form_id, form_version_submission_id, created_sub)
+				VALUES ($1::uuid, $2::uuid, $3::uuid, $4::uuid)
+			`, quoteId, tierFormId, formSubmission.GetId(), userSub)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+		}
+	}
+
+	// Handle quote files
 
 	for _, file := range data.GetFiles() {
 		fileRes, err := h.PostFile(info, &types.PostFileRequest{File: file})
@@ -117,6 +147,8 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 			return nil, util.ErrCheck(err)
 		}
 	}
+
+	// Ping staff if they're online
 
 	var staffSub string
 	err = info.Tx.QueryRow(info.Ctx, `

@@ -84,7 +84,7 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
     setForm: setTierForm,
     valid: tierFormsValid,
     reset: resetTierForms,
-  } = useGroupForms([]); // groupScheduleServiceTier?.formId
+  } = useGroupForms(groupScheduleServiceTier?.intakeIds);
 
   const reset = () => {
     setDidSubmit(false);
@@ -192,20 +192,23 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
           </Grid>
           {hasForms && <>
             <Divider sx={{ my: 2 }} />
-            <Grid container spacing={4} direction="column">
-              <Typography variant="h6">Request Details</Typography>
-              <Grid container spacing={2} direction="column">
-                {!!serviceForms?.length && serviceForms?.map((sf, i) => (
+            <Grid container spacing={2} direction="column">
+              {groupScheduleService && !!serviceForms?.length && serviceForms?.map((sf, i) => (
+                <>
+                  <Typography variant="subtitle1">Intake: {groupScheduleService.name}</Typography>
                   <Grid key={sf.id} size="grow">
                     <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
                   </Grid>
-                ))}
-                {!!tierForms?.length && tierForms?.map((tf, i) => (
+                </>
+              ))}
+              {groupScheduleServiceTier && !!tierForms?.length && tierForms?.map((tf, i) => (
+                <>
+                  <Typography variant="subtitle1">Intake: {groupScheduleServiceTier.name}</Typography>
                   <Grid key={tf.id} size="grow">
                     <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
                   </Grid>
-                ))}
-              </Grid>
+                </>
+              ))}
             </Grid>
           </>}
         </CardContent>

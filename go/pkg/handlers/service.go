@@ -40,7 +40,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 	// update service forms
 	_, err := info.Tx.Exec(info.Ctx, `
 		DELETE FROM dbtable_schema.service_forms
-		WHERE service_id = $1
+		WHERE service_id = $1::uuid
 	`, serviceId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -51,6 +51,16 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 			INSERT INTO dbtable_schema.service_forms (service_id, form_id, stage, created_sub)
 			VALUES ($1::uuid, $2::uuid, $3, $4::uuid)
 		`, serviceId, formId, "intake", userSub)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+	}
+
+	for _, formId := range service.GetSurveyIds() {
+		_, err := info.Tx.Exec(info.Ctx, `
+			INSERT INTO dbtable_schema.service_forms (service_id, form_id, stage, created_sub)
+			VALUES ($1::uuid, $2::uuid, $3, $4::uuid)
+		`, serviceId, formId, "survey", userSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -109,6 +119,35 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		`, tierId, pq.Array(insertedTierAddonIds))
 		if err != nil {
 			return nil, util.ErrCheck(err)
+		}
+
+		// update tier forms
+		_, err := info.Tx.Exec(info.Ctx, `
+			DELETE FROM dbtable_schema.service_tier_forms
+			WHERE service_tier_id = $1::uuid
+		`, tierId)
+		if err != nil {
+			return nil, util.ErrCheck(err)
+		}
+
+		for _, formId := range tier.GetIntakeIds() {
+			_, err := info.Tx.Exec(info.Ctx, `
+				INSERT INTO dbtable_schema.service_tier_forms (service_tier_id, form_id, stage, created_sub)
+				VALUES ($1::uuid, $2::uuid, $3, $4::uuid)
+			`, tierId, formId, "intake", userSub)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+		}
+
+		for _, formId := range tier.GetSurveyIds() {
+			_, err := info.Tx.Exec(info.Ctx, `
+				INSERT INTO dbtable_schema.service_tier_forms (service_tier_id, form_id, stage, created_sub)
+				VALUES ($1::uuid, $2::uuid, $3, $4::uuid)
+			`, tierId, formId, "survey", userSub)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
 		}
 	}
 

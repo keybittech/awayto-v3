@@ -58,7 +58,7 @@ export function ServiceTierAddons({ service, showFormChips, onClickHeader }: Ser
         sortable: false
       },
       ...serviceTiers.map<GridColDef<{ tiers: string[] }>>(st => {
-        const hasFormOrSurvey = !!st.formId || !!st.surveyId;
+        const hasFormOrSurvey = !!st.intakeIds || !!st.surveyIds;
         return ({
           type: 'string',
           field: `sta_col_${st.id}`,
@@ -69,8 +69,8 @@ export function ServiceTierAddons({ service, showFormChips, onClickHeader }: Ser
             return !showFormChips ? col.colDef.headerName : <Box mt={-2}>
               <Typography mt={2}>{col.colDef.headerName}</Typography>
               <Grid container mt={1} spacing={1}>
-                {st.formId && <Chip color="info" size="small" label="Intake" />}
-                {st.surveyId && <Chip color="warning" size="small" label="Survey" />}
+                {st.intakeIds && <Chip color="info" size="small" label="Intake" />}
+                {st.surveyIds && <Chip color="warning" size="small" label="Survey" />}
                 {!hasFormOrSurvey && <Chip size="small" label="No Forms" />}
               </Grid>
             </Box>;
