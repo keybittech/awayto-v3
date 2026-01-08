@@ -14,10 +14,10 @@ func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*t
 	service := data.GetService()
 
 	err := info.Tx.QueryRow(info.Ctx, `
-		INSERT INTO dbtable_schema.services (name, cost, created_sub) -- , form_id, survey_id
+		INSERT INTO dbtable_schema.services (name, cost, created_sub)
 		VALUES ($1, $2::integer, $3::uuid)
 		ON CONFLICT (name, created_sub) DO UPDATE
-		SET enabled = true, cost = $2::integer -- , form_id = $3, survey_id = $4
+		SET enabled = true, cost = $2::integer
 		RETURNING id
 	`, service.GetName(), service.GetCost(), info.Session.GetUserSub()).Scan(&service.Id) // , service.FormId, service.SurveyId
 	if err != nil {
@@ -72,11 +72,11 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		var tierId string
 
 		err = info.Tx.QueryRow(info.Ctx, `
-			WITH input_rows(name, service_id, multiplier, form_id, survey_id, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid, $5::uuid, $6::uuid)), ins AS (
-				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, form_id, survey_id, created_sub)
-				SELECT name, service_id, multiplier, form_id, survey_id, created_sub FROM input_rows
+			WITH input_rows(name, service_id, multiplier, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid)), ins AS (
+				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, created_sub)
+				SELECT name, service_id, multiplier, created_sub FROM input_rows
 				ON CONFLICT (name, service_id) DO UPDATE
-				SET enabled = true, multiplier = $3::decimal, form_id = $4::uuid, survey_id = $5::uuid, updated_sub = $6::uuid, updated_on = $7
+				SET enabled = true, multiplier = $3::decimal, updated_sub = $4::uuid, updated_on = $5
 				RETURNING id
 			)
 			SELECT id
@@ -85,7 +85,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 			SELECT st.id
 			FROM input_rows
 			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), serviceId, tier.GetMultiplier(), tier.FormId, tier.SurveyId, userSub, time.Now()).Scan(&tierId)
+		`, tier.GetName(), serviceId, tier.GetMultiplier(), userSub, time.Now()).Scan(&tierId)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -182,7 +182,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 
 func (h *Handlers) GetServices(info ReqInfo, data *types.GetServicesRequest) (*types.GetServicesResponse, error) {
 	services := util.BatchQuery[types.IService](info.Batch, `
-		SELECT id, name, "formId", "surveyId", "createdOn"
+		SELECT id, name, "createdOn"
 		FROM dbview_schema.enabled_services
 		WHERE "createdSub" = $1
 	`, info.Session.GetUserSub())

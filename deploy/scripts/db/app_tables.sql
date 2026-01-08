@@ -106,8 +106,6 @@ CREATE TABLE dbtable_schema.services (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   name VARCHAR (50) NOT NULL,
   cost INTEGER,
-  form_id uuid REFERENCES dbtable_schema.forms (id),
-  survey_id uuid REFERENCES dbtable_schema.forms (id),
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
   updated_on TIMESTAMP,
@@ -171,8 +169,6 @@ CREATE TABLE dbtable_schema.group_service_addons (
 CREATE TABLE dbtable_schema.service_tiers (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   service_id uuid NOT NULL REFERENCES dbtable_schema.services (id) ON DELETE CASCADE,
-  form_id uuid REFERENCES dbtable_schema.forms (id),
-  survey_id uuid REFERENCES dbtable_schema.forms (id),
   name VARCHAR (500) NOT NULL,
   multiplier INTEGER NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),

@@ -45,7 +45,7 @@ func (h *Handlers) GetServiceTiers(info ReqInfo, data *types.GetServiceTiersRequ
 
 func (h *Handlers) GetServiceTierById(info ReqInfo, data *types.GetServiceTierByIdRequest) (*types.GetServiceTierByIdResponse, error) {
 	serviceTier := util.BatchQueryRow[types.IServiceTier](info.Batch, `
-		SELECT id, name, multiplier, addons, "serviceId", "formId", "surveyId", "createdOn"
+		SELECT id, name, multiplier, addons, "serviceId", "intakeIds", "surveyIds", "createdOn"
 		FROM dbview_schema.enabled_service_tiers_ext
 		WHERE id = $1
 	`, data.Id)

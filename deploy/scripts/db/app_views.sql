@@ -121,8 +121,6 @@ OR REPLACE VIEW dbview_schema.enabled_services AS
 SELECT
   id,
   name,
-  form_id as "formId",
-  survey_id as "surveyId",
   created_sub as "createdSub",
   created_on as "createdOn"
 FROM
@@ -171,8 +169,6 @@ OR REPLACE VIEW dbview_schema.enabled_service_tiers AS
 SELECT
   id,
   service_id as "serviceId",
-  form_id as "formId",
-  survey_id as "surveyId",
   name,
   multiplier,
   created_sub as "createdSub",
@@ -382,8 +378,6 @@ FROM
           este.multiplier,
           este."intakeIds",
           este."surveyIds",
-          este."formId",
-          este."surveyId",
           este."createdOn",
           este.addons
         FROM
@@ -412,9 +406,7 @@ FROM
           -- ese.cost,
           ese.tiers,
           ese."intakeIds",
-          ese."surveyIds",
-          ese."formId",
-          ese."surveyId"
+          ese."surveyIds"
         FROM
           dbtable_schema.schedule_bracket_services sbs
           JOIN dbview_schema.enabled_services_ext ese ON ese.id = sbs.service_id
