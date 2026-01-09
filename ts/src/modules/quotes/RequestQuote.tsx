@@ -194,20 +194,20 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
             <Divider sx={{ my: 2 }} />
             <Grid container spacing={2} direction="column">
               {groupScheduleService && !!serviceForms?.length && serviceForms?.map((sf, i) => (
-                <>
+                <Box key={`service_form_intake_${i}`}>
                   <Typography variant="subtitle1">Intake: {groupScheduleService.name}</Typography>
                   <Grid key={sf.id} size="grow">
                     <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
                   </Grid>
-                </>
+                </Box>
               ))}
               {groupScheduleServiceTier && !!tierForms?.length && tierForms?.map((tf, i) => (
-                <>
+                <Box key={`tier_form_intake_${i}`}>
                   <Typography variant="subtitle1">Intake: {groupScheduleServiceTier.name}</Typography>
                   <Grid key={tf.id} size="grow">
                     <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
                   </Grid>
-                </>
+                </Box>
               ))}
             </Grid>
           </>}

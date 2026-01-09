@@ -11,9 +11,10 @@ import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import CardActionArea from '@mui/material/CardActionArea';
 
-import { siteApi, useUtil, useGroupForm, targets } from 'awayto/hooks';
+import { siteApi, useUtil, useGroupForms, targets } from 'awayto/hooks';
 
 import ExchangeRating from './ExchangeRating';
+import FormDisplay from '../forms/FormDisplay';
 
 export function ExchangeSummary(_: IComponent): React.JSX.Element {
   const { summaryId } = useParams();
@@ -26,19 +27,22 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
 
   const booking = useMemo(() => bookingRequest?.booking || {}, [bookingRequest?.booking]);
 
+  println({ booking });
+
+  // use booking.scheduleBracketSlot.scheduleBracketId to retrieve enabled_schedule_brackets_ext record for survey ids
   const {
-    form: serviceSurvey,
-    comp: ServiceSurvey,
+    forms: serviceSurveys,
+    setForm: setServiceForm,
     valid: serviceSurveyValid
-  } = useGroupForm(booking?.service?.surveyId, didSubmit);
+  } = useGroupForms(booking?.service?.surveyIds);
 
   const {
-    form: tierSurvey,
-    comp: TierSurvey,
+    forms: tierSurveys,
+    setForm: setTierForm,
     valid: tierSurveyValid
-  } = useGroupForm(booking?.serviceTier?.surveyId, didSubmit);
+  } = useGroupForms(booking?.serviceTier?.surveyIds);
 
-  const hasForms = booking?.service?.surveyId || booking?.serviceTier?.surveyId;
+  const hasForms = Boolean(booking?.service?.surveyIds?.length || booking?.serviceTier?.surveyIds?.length);
 
   return <>
     <Card variant="outlined">
@@ -53,14 +57,24 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
 
       <CardContent>
         <Divider sx={{ my: 2 }} />
-        {hasForms ? <Grid container spacing={4} direction="column">
-          <Typography variant="h6">Review Details</Typography>
-          {serviceSurvey && <Grid size="grow">
-            {ServiceSurvey}
-          </Grid>}
-          {tierSurvey && <Grid size="grow">
-            {TierSurvey}
-          </Grid>}
+
+        {hasForms ? <Grid container spacing={2} direction="column">
+          {!!serviceSurveys?.length && serviceSurveys?.map((sf, i) => (
+            <Box key={`service_form_intake_${i}`}>
+              {/* <Typography variant="subtitle1">Intake: {groupScheduleService.name}</Typography> */}
+              <Grid key={sf.id} size="grow">
+                <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
+              </Grid>
+            </Box>
+          ))}
+          {!!tierSurveys?.length && tierSurveys?.map((tf, i) => (
+            <Box key={`tier_form_intake_${i}`}>
+              {/* <Typography variant="subtitle1">Intake: {groupScheduleServiceTier.name}</Typography> */}
+              <Grid key={tf.id} size="grow">
+                <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
+              </Grid>
+            </Box>
+          ))}
         </Grid> : <Alert severity="info">
           This service requires no further feedback. Thank you!
         </Alert>}
