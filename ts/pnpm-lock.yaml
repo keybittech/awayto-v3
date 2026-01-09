@@ -73,8 +73,8 @@ importers:
         specifier: ^9.2.0
         version: 9.2.0(@types/react@19.1.4)(react@19.1.0)(redux@5.0.1)
       react-router:
-        specifier: ^7.6.0
-        version: 7.6.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+        specifier: ^7.12.0
+        version: 7.12.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
       react-router-dom:
         specifier: ^7.6.0
         version: 7.6.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -1393,6 +1393,16 @@ packages:
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
+
+  react-router@7.12.0:
+    resolution: {integrity: sha512-kTPDYPFzDVGIIGNLS5VJykK0HfHLY5MF3b+xj0/tTyNYL1gF1qs7u67Z9jEhQk2sQ98SUaHxlG31g1JtF7IfVw==}
+    engines: {node: '>=20.0.0'}
+    peerDependencies:
+      react: '>=18'
+      react-dom: '>=18'
+    peerDependenciesMeta:
+      react-dom:
+        optional: true
 
   react-router@7.6.0:
     resolution: {integrity: sha512-GGufuHIVCJDbnIAXP3P9Sxzq3UUsddG3rrI3ut1q6m0FI6vxVBF3JoPQ38+W/blslLH4a5Yutp8drkEpXoddGQ==}
@@ -2906,6 +2916,14 @@ snapshots:
       react: 19.1.0
       react-dom: 19.1.0(react@19.1.0)
       react-router: 7.6.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+
+  react-router@7.12.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
+    dependencies:
+      cookie: 1.0.2
+      react: 19.1.0
+      set-cookie-parser: 2.7.1
+    optionalDependencies:
+      react-dom: 19.1.0(react@19.1.0)
 
   react-router@7.6.0(react-dom@19.1.0(react@19.1.0))(react@19.1.0):
     dependencies:
