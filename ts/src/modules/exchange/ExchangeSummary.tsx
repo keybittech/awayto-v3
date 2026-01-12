@@ -27,9 +27,6 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
 
   const booking = useMemo(() => bookingRequest?.booking || {}, [bookingRequest?.booking]);
 
-  println({ booking });
-
-  // use booking.scheduleBracketSlot.scheduleBracketId to retrieve enabled_schedule_brackets_ext record for survey ids
   const {
     forms: serviceSurveys,
     setForm: setServiceForm,
@@ -56,21 +53,21 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
       </Box>
 
       <CardContent>
-        <Divider sx={{ my: 2 }} />
-
         {hasForms ? <Grid container spacing={2} direction="column">
           {!!serviceSurveys?.length && serviceSurveys?.map((sf, i) => (
             <Box key={`service_form_intake_${i}`}>
-              {/* <Typography variant="subtitle1">Intake: {groupScheduleService.name}</Typography> */}
-              <Grid key={sf.id} size="grow">
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1">{sf.name} Survey</Typography>
+              <Grid key={sf.id} pt={2} size="grow">
                 <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
               </Grid>
             </Box>
           ))}
           {!!tierSurveys?.length && tierSurveys?.map((tf, i) => (
             <Box key={`tier_form_intake_${i}`}>
-              {/* <Typography variant="subtitle1">Intake: {groupScheduleServiceTier.name}</Typography> */}
-              <Grid key={tf.id} size="grow">
+              <Divider sx={{ my: 2 }} />
+              <Typography variant="subtitle1">{tf.name} Survey</Typography>
+              <Grid key={tf.id} pt={2} size="grow">
                 <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
               </Grid>
             </Box>
@@ -98,9 +95,6 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
       </CardActionArea>}
 
     </Card>
-
-
-
   </>;
 }
 

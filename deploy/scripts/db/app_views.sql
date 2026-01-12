@@ -248,55 +248,6 @@ WHERE
   enabled = true;
 
 CREATE
-OR REPLACE VIEW dbview_schema.enabled_quotes AS
-SELECT
-  q.id,
-  esbs."startTime",
-  q.slot_date as "slotDate",
-  q.schedule_bracket_slot_id as "scheduleBracketSlotId",
-  q.service_tier_id as "serviceTierId",
-  est.name as "serviceTierName",
-  es.name as "serviceName",
-  q.service_form_version_submission_id as "serviceFormVersionSubmissionId",
-  q.tier_form_version_submission_id as "tierFormVersionSubmissionId",
-  q.created_on as "createdOn",
-  q.created_sub as "createdSub",
-  q.slot_created_sub as "slotCreatedSub"
-FROM
-  dbtable_schema.quotes q
-JOIN dbview_schema.enabled_schedule_bracket_slots esbs ON esbs.id = q.schedule_bracket_slot_id
-JOIN dbview_schema.enabled_service_tiers est ON est.id = q.service_tier_id
-JOIN dbview_schema.enabled_services es ON es.id = est."serviceId"
-WHERE
-  q.enabled = true;
-
-CREATE
-OR REPLACE VIEW dbview_schema.enabled_bookings AS
-SELECT
-  b.id,
-  b.rating,
-  b.slot_date as "slotDate",
-  b.quote_id as "quoteId",
-  b.schedule_bracket_slot_id as "scheduleBracketSlotId",
-  b.tier_survey_version_submission_id as "tierSurveyVersionSubmissionId",
-  b.service_survey_version_submission_id as "serviceSurveyVersionSubmissionId",
-  b.created_on as "createdOn",
-  b.created_sub as "createdSub",
-  b.quote_created_sub as "quoteCreatedSub",
-  ROW_TO_JSON(q.*) as quote,
-  ROW_TO_JSON(es.*) as service,
-  ROW_TO_JSON(esbs.*) as "scheduleBracketSlot",
-  ROW_TO_JSON(est.*) as "serviceTier"
-FROM
-  dbtable_schema.bookings b
-JOIN dbview_schema.enabled_quotes q ON q.id = b.quote_id
-JOIN dbview_schema.enabled_schedule_bracket_slots esbs ON esbs.id = q."scheduleBracketSlotId"
-JOIN dbview_schema.enabled_service_tiers est ON est.id = q."serviceTierId"
-JOIN dbview_schema.enabled_services es ON es.id = est."serviceId"
-WHERE
-  b.enabled = true;
-
-CREATE
 OR REPLACE VIEW dbview_schema.enabled_seat_payments AS
 SELECT
   id,
@@ -449,7 +400,30 @@ FROM
         WHERE
           esbe."scheduleId" = es.id
       ) sbss
-  ) as eesb ON true;  
+  ) as eesb ON true;
+
+CREATE
+OR REPLACE VIEW dbview_schema.enabled_quotes AS
+SELECT
+  q.id,
+  esbs."startTime",
+  q.slot_date as "slotDate",
+  q.schedule_bracket_slot_id as "scheduleBracketSlotId",
+  q.service_tier_id as "serviceTierId",
+  est.name as "serviceTierName",
+  es.name as "serviceName",
+  q.service_form_version_submission_id as "serviceFormVersionSubmissionId",
+  q.tier_form_version_submission_id as "tierFormVersionSubmissionId",
+  q.created_on as "createdOn",
+  q.created_sub as "createdSub",
+  q.slot_created_sub as "slotCreatedSub"
+FROM
+  dbtable_schema.quotes q
+JOIN dbview_schema.enabled_schedule_bracket_slots esbs ON esbs.id = q.schedule_bracket_slot_id
+JOIN dbview_schema.enabled_service_tiers est ON est.id = q.service_tier_id
+JOIN dbview_schema.enabled_services es ON es.id = est."serviceId"
+WHERE
+  q.enabled = true;
 
 CREATE
 OR REPLACE VIEW dbview_schema.enabled_quotes_ext AS
@@ -467,6 +441,32 @@ FROM
   LEFT JOIN dbview_schema.enabled_service_tiers est ON est.id = eq."serviceTierId"
   LEFT JOIN dbview_schema.enabled_form_version_submissions sform ON sform.id = eq."serviceFormVersionSubmissionId"
   LEFT JOIN dbview_schema.enabled_form_version_submissions tform ON tform.id = eq."tierFormVersionSubmissionId";
+
+CREATE
+OR REPLACE VIEW dbview_schema.enabled_bookings AS
+SELECT
+  b.id,
+  b.rating,
+  b.slot_date as "slotDate",
+  b.quote_id as "quoteId",
+  b.schedule_bracket_slot_id as "scheduleBracketSlotId",
+  b.tier_survey_version_submission_id as "tierSurveyVersionSubmissionId",
+  b.service_survey_version_submission_id as "serviceSurveyVersionSubmissionId",
+  b.created_on as "createdOn",
+  b.created_sub as "createdSub",
+  b.quote_created_sub as "quoteCreatedSub",
+  ROW_TO_JSON(q.*) as quote,
+  ROW_TO_JSON(es.*) as service,
+  ROW_TO_JSON(esbs.*) as "scheduleBracketSlot",
+  ROW_TO_JSON(est.*) as "serviceTier"
+FROM
+  dbtable_schema.bookings b
+JOIN dbview_schema.enabled_quotes q ON q.id = b.quote_id
+JOIN dbview_schema.enabled_schedule_bracket_slots esbs ON esbs.id = q."scheduleBracketSlotId"
+JOIN dbview_schema.enabled_service_tiers_ext est ON est.id = q."serviceTierId"
+JOIN dbview_schema.enabled_services_ext es ON es.id = est."serviceId"
+WHERE
+  b.enabled = true;
 
 CREATE
 OR REPLACE VIEW dbview_schema.enabled_bookings_ext AS

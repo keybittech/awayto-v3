@@ -190,27 +190,26 @@ export function RequestQuote(_: IComponent): React.JSX.Element {
               </Button>
             </Grid>
           </Grid>
-          {hasForms && <>
-            <Divider sx={{ my: 2 }} />
-            <Grid container spacing={2} direction="column">
-              {groupScheduleService && !!serviceForms?.length && serviceForms?.map((sf, i) => (
-                <Box key={`service_form_intake_${i}`}>
-                  <Typography variant="subtitle1">Intake: {groupScheduleService.name}</Typography>
-                  <Grid key={sf.id} size="grow">
-                    <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
-                  </Grid>
-                </Box>
-              ))}
-              {groupScheduleServiceTier && !!tierForms?.length && tierForms?.map((tf, i) => (
-                <Box key={`tier_form_intake_${i}`}>
-                  <Typography variant="subtitle1">Intake: {groupScheduleServiceTier.name}</Typography>
-                  <Grid key={tf.id} size="grow">
-                    <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
-                  </Grid>
-                </Box>
-              ))}
-            </Grid>
-          </>}
+          {hasForms && <Grid container spacing={2} direction="column">
+            {groupScheduleService && !!serviceForms?.length && serviceForms?.map((sf, i) => (
+              <Box key={`service_form_intake_${i}`}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle1">{groupScheduleService.name} Info</Typography>
+                <Grid key={sf.id} pt={2} size="grow">
+                  <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
+                </Grid>
+              </Box>
+            ))}
+            {groupScheduleServiceTier && !!tierForms?.length && tierForms?.map((tf, i) => (
+              <Box key={`tier_form_intake_${i}`}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle1">{groupScheduleServiceTier.name} Info</Typography>
+                <Grid key={tf.id} pt={2} size="grow">
+                  <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
+                </Grid>
+              </Box>
+            ))}
+          </Grid>}
         </CardContent>
         <CardActionArea
           {...targets(`request quote submit request`, `submit your completed request for service`)}
