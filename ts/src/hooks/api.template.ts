@@ -199,7 +199,7 @@ const createApi = buildCreateApi(
 // Keep data for longer than the server 3 min cache
 export const siteApiTemplate = createApi({
   keepUnusedDataFor: 200,
-  refetchOnMountOrArgChange: 200,
+  refetchOnMountOrArgChange: 5,
   baseQuery: retry(customBaseQuery, { maxRetries: 3 }),
   endpoints: () => ({}),
 });

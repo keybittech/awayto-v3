@@ -63,7 +63,7 @@ export function useWebSocketSubscribe<T>(topic: string, callback: SocketResponse
           const [scid] = message.sender.split(':');
 
           setUserList(ul => {
-            ul[scid].online = false;
+            if (ul[scid]) ul[scid].online = false;
             return { ...ul };
           })
 

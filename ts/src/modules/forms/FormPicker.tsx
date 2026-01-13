@@ -43,7 +43,14 @@ export function FormPicker({ formIds, label, helperText, onSelectForm, ...props 
       }}
       slotProps={{
         select: {
-          multiple: true
+          multiple: true,
+          renderValue: (selected: unknown) => {
+            const selectedIds = selected as string[];
+            return selectedIds.map(id => {
+              const match = groupFormsRequest?.groupForms?.find(gf => gf.form?.id === id);
+              return match ? match.form?.name : id;
+            }).join(', ');
+          },
         },
         input: {
           endAdornment: <InputAdornment position="end" sx={{ mr: 2 }}>

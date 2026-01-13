@@ -25,7 +25,9 @@ service ServiceService {
       body: "*"
     };
     option (use_tx) = true;
+    option (invalidates) = "GetGroupServices";
     option (invalidates) = "GetServiceById";
+    option (invalidates) = "GetBookingById";
   }
 
   rpc GetServices(GetServicesRequest) returns (GetServicesResponse) {

@@ -23,7 +23,7 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
   const { setSnack } = useUtil();
 
   const [didSubmit, setDidSubmit] = useState(false);
-  const { data: bookingRequest } = siteApi.useBookingServiceGetBookingByIdQuery({ id: summaryId || '' }, { skip: !summaryId });
+  const { data: bookingRequest } = siteApi.useBookingServiceGetBookingByIdQuery({ id: summaryId || '' });
 
   const booking = useMemo(() => bookingRequest?.booking || {}, [bookingRequest?.booking]);
 
@@ -54,24 +54,30 @@ export function ExchangeSummary(_: IComponent): React.JSX.Element {
 
       <CardContent>
         {hasForms ? <Grid container spacing={2} direction="column">
-          {!!serviceSurveys?.length && serviceSurveys?.map((sf, i) => (
-            <Box key={`service_form_intake_${i}`}>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1">{sf.name} Survey</Typography>
-              <Grid key={sf.id} pt={2} size="grow">
-                <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
-              </Grid>
-            </Box>
-          ))}
-          {!!tierSurveys?.length && tierSurveys?.map((tf, i) => (
-            <Box key={`tier_form_intake_${i}`}>
-              <Divider sx={{ my: 2 }} />
-              <Typography variant="subtitle1">{tf.name} Survey</Typography>
-              <Grid key={tf.id} pt={2} size="grow">
-                <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
-              </Grid>
-            </Box>
-          ))}
+          {!!serviceSurveys?.length && booking.service && <>
+            <Typography variant="h5">{booking.service.name} Survey</Typography>
+            {serviceSurveys?.map((sf, i) => (
+              <Box key={`service_form_intake_${i}`}>
+                {i !== 0 && <Divider sx={{ my: 2 }} />}
+                <Typography variant="subtitle1">{sf.name}</Typography>
+                <Grid key={sf.id} pt={2} size="grow">
+                  <FormDisplay form={sf} setForm={val => setServiceForm(i, val)} didSubmit={didSubmit} />
+                </Grid>
+              </Box>
+            ))}
+          </>}
+          {!!tierSurveys?.length && booking.serviceTier && <>
+            <Typography variant="h5">{booking.serviceTier.name} Survey</Typography>
+            {tierSurveys?.map((tf, i) => (
+              <Box key={`tier_form_intake_${i}`}>
+                <Divider sx={{ my: 2 }} />
+                <Typography variant="subtitle1">{tf.name}</Typography>
+                <Grid key={tf.id} pt={2} size="grow">
+                  <FormDisplay form={tf} setForm={val => setTierForm(i, val)} didSubmit={didSubmit} />
+                </Grid>
+              </Box>
+            ))}
+          </>}
         </Grid> : <Alert severity="info">
           This service requires no further feedback. Thank you!
         </Alert>}
