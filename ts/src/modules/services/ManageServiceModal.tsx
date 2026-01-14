@@ -82,6 +82,7 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
     suggest: suggestAddons
   } = useSuggestions('service_tier_addons');
 
+  const [getUserProfileDetails] = siteApi.useLazyUserProfileServiceGetUserProfileDetailsQuery();
   const [postServiceAddon] = siteApi.useServiceAddonServicePostServiceAddonMutation();
   const [postGroupServiceAddon] = siteApi.useGroupServiceAddonsServicePostGroupServiceAddonMutation();
   const [deleteGroupServiceAddon] = siteApi.useGroupServiceAddonsServiceDeleteGroupServiceAddonMutation();
@@ -118,6 +119,8 @@ export function ManageServiceModal({ groupDisplayName, groupPurpose, editGroupSe
         }).unwrap();
         setNewService({ ...newService, id });
       }
+
+      void getUserProfileDetails();
 
       if (getGroupUserSchedules) {
         await getGroupUserSchedules.refetch().unwrap();

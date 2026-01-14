@@ -19,7 +19,7 @@ func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*t
 		ON CONFLICT (name, created_sub) DO UPDATE
 		SET enabled = true, cost = $2::integer
 		RETURNING id
-	`, service.GetName(), service.GetCost(), info.Session.GetUserSub()).Scan(&service.Id) // , service.FormId, service.SurveyId
+	`, service.GetName(), service.GetCost(), info.Session.GetUserSub()).Scan(&service.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
@@ -50,7 +50,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		_, err := info.Tx.Exec(info.Ctx, `
 			INSERT INTO dbtable_schema.service_forms (service_id, form_id, stage, created_sub, created_on)
 			VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5)
-		`, serviceId, formId, "intake", userSub, time.Now().UTC())
+		`, serviceId, formId, "intake", userSub, time.Now())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -60,7 +60,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 		_, err := info.Tx.Exec(info.Ctx, `
 			INSERT INTO dbtable_schema.service_forms (service_id, form_id, stage, created_sub, created_on)
 			VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5)
-		`, serviceId, formId, "survey", userSub, time.Now().UTC())
+		`, serviceId, formId, "survey", userSub, time.Now())
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
@@ -71,23 +71,32 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 	for _, tier := range service.GetTiers() {
 		var tierId string
 
-		err = info.Tx.QueryRow(info.Ctx, `
-			WITH input_rows(name, service_id, multiplier, created_sub) as (VALUES ($1, $2::uuid, $3::decimal, $4::uuid)), ins AS (
+		if !util.IsUUID(tier.GetId()) {
+			// new/re-added tier insertions
+
+			err = info.Tx.QueryRow(info.Ctx, `
 				INSERT INTO dbtable_schema.service_tiers (name, service_id, multiplier, created_sub)
-				SELECT name, service_id, multiplier, created_sub FROM input_rows
+				VALUES ($1, $2::uuid, $3::decimal, $4::uuid)
 				ON CONFLICT (name, service_id) DO UPDATE
 				SET enabled = true, multiplier = $3::decimal, updated_sub = $4::uuid, updated_on = $5
 				RETURNING id
-			)
-			SELECT id
-			FROM ins
-			UNION ALL
-			SELECT st.id
-			FROM input_rows
-			JOIN dbtable_schema.service_tiers st USING (name, service_id)
-		`, tier.GetName(), serviceId, tier.GetMultiplier(), userSub, time.Now()).Scan(&tierId)
-		if err != nil {
-			return nil, util.ErrCheck(err)
+			`, tier.GetName(), serviceId, tier.GetMultiplier(), userSub, time.Now()).Scan(&tierId)
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+		} else {
+			// existing tier updates
+
+			_, err = info.Tx.Exec(info.Ctx, `
+				UPDATE dbtable_schema.service_tiers
+				SET enabled = true, name = $2, multiplier = $3, updated_sub = $4::uuid, updated_on = $5
+				WHERE id = $1::uuid
+			`, tier.GetId(), tier.GetName(), tier.GetMultiplier(), userSub, time.Now())
+			if err != nil {
+				return nil, util.ErrCheck(err)
+			}
+
+			tierId = tier.GetId()
 		}
 
 		insertedTierIds = append(insertedTierIds, tierId)
@@ -134,7 +143,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 			_, err := info.Tx.Exec(info.Ctx, `
 				INSERT INTO dbtable_schema.service_tier_forms (service_tier_id, form_id, stage, created_sub, created_on)
 				VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5)
-			`, tierId, formId, "intake", userSub, time.Now().UTC())
+			`, tierId, formId, "intake", userSub, time.Now())
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
@@ -144,7 +153,7 @@ func (h *Handlers) PatchService(info ReqInfo, data *types.PatchServiceRequest) (
 			_, err := info.Tx.Exec(info.Ctx, `
 				INSERT INTO dbtable_schema.service_tier_forms (service_tier_id, form_id, stage, created_sub, created_on)
 				VALUES ($1::uuid, $2::uuid, $3, $4::uuid, $5)
-			`, tierId, formId, "survey", userSub, time.Now().UTC())
+			`, tierId, formId, "survey", userSub, time.Now())
 			if err != nil {
 				return nil, util.ErrCheck(err)
 			}
