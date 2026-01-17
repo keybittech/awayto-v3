@@ -105,7 +105,7 @@ export function nid(uuid?: string) {
     return uuidv4();
   }
   arbitraryCounter++;
-  return arbitraryCounter;
+  return arbitraryCounter.toString();
 }
 
 export function isString(str?: string | unknown): str is string {

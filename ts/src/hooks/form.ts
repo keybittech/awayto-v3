@@ -1,12 +1,21 @@
-export type IField = Record<string, string | boolean> & {
-  i?: string; // id
+export type IFieldOption = {
+  i: string; // id
   l: string; // label
-  v?: string; // value
+  v: string; // value
+}
+
+export type IFieldValue = string | string[] | boolean | number;
+
+export type IField = {
+  i: string; // id
+  l: string; // label
+  t: 'text' | 'labelntext' | 'time' | 'date' | 'boolean' | 'multi-select' | 'single-select';
+  v?: IFieldValue; // value
   h?: string; // helperText
   x?: string; // text
-  t?: string; // input type
   d?: string; // defaultValue
   r?: boolean; // required
+  o?: IFieldOption[]; // options
 };
 
 /**
@@ -15,11 +24,12 @@ export type IField = Record<string, string | boolean> & {
  */
 export type IFormTemplate = Record<string, IField[]>;
 
+
 /**
  * @category Form
  * @purpose used during Quote submission to record the actual values users typed into the Form
  */
-export type IFormSubmission = Record<string, string[]>;
+export type IFormSubmission = Record<string, IFieldValue>;
 
 /**
  * @category Form

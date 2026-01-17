@@ -1,4 +1,7 @@
 import React, { useCallback, useMemo, useState, useEffect } from 'react';
+
+import Box from '@mui/material/Box';
+import Chip from '@mui/material/Chip';
 import Grid from '@mui/material/Grid';
 import Switch from '@mui/material/Switch';
 import Button from '@mui/material/Button';
@@ -7,86 +10,23 @@ import Divider from '@mui/material/Divider';
 import TextField from '@mui/material/TextField';
 import MenuItem from '@mui/material/MenuItem';
 import IconButton from '@mui/material/IconButton';
+import InputAdornment from '@mui/material/InputAdornment';
 
 import SettingsIcon from '@mui/icons-material/Settings';
 
-import { IField, IFormVersion, deepClone, targets } from 'awayto/hooks';
+import { IField, IFormVersion, deepClone, nid, targets, toSnakeCase } from 'awayto/hooks';
 
 import Field from './Field';
 
-// text
-
-// Single line text input.
-
-// textarea
-
-// Multiple line text input.
-
-// textarea
-
-// select
-
-// Common single select input. See description how to configure options below.
-
-// select
-
-// select-radiobuttons
-
-// Single select input through group of radio buttons. See description how to configure options below.
-
-// group of input
-
-// multiselect
-
-// Common multiselect input. See description how to configure options below.
-
-// select
-
-// multiselect-checkboxes
-
-// Multiselect input through group of checkboxes. See description how to configure options below.
-
-// group of input
-
-// html5-email
-
-// Single line text input for email address based on HTML 5 spec.
-
-// html5-tel
-
-// Single line text input for phone number based on HTML 5 spec.
-
-// html5-url
-
-// Single line text input for URL based on HTML 5 spec.
-
-// html5-number
-
-// Single line input for number (integer or float depending on step) based on HTML 5 spec.
-
-// html5-range
-
-// Slider for number entering based on HTML 5 spec.
-
-// html5-datetime-local
-
-// Date Time input based on HTML 5 spec.
-
-// html5-date
-
-// Date input based on HTML 5 spec.
-
-// html5-month
-
-// Month input based on HTML 5 spec.
-
-// html5-week
-
-// Week input based on HTML 5 spec.
-
-// html5-time
-
-// Time input based on HTML 5 spec.
+const fieldTypes = [
+  { variant: 'labelntext', name: 'Label with Text' },
+  { variant: 'text', name: 'Textfield' },
+  { variant: 'boolean', name: 'Checkbox' },
+  { variant: 'multi-select', name: 'Checkbox Group (Select Multiple)' },
+  { variant: 'single-select', name: 'Radio Group (Select One)' },
+  { variant: 'date', name: 'Date' },
+  { variant: 'time', name: 'Time' },
+];
 
 interface FormBuilderProps extends IComponent {
   version: IFormVersion;
@@ -99,9 +39,9 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
   const [rows, setRows] = useState({} as Record<string, IField[]>);
   const [cell, setCell] = useState({} as IField & Object);
   const [position, setPosition] = useState({ row: '', col: 0 });
+  const [opt, setOpt] = useState<string>('');
 
   const cellSelected = cell.hasOwnProperty('l');
-  const inputTypes = ['text', 'date', 'time'];
 
   useEffect(() => {
     if (Object.keys(version.form).length) {
@@ -118,6 +58,8 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
 
   const rowKeys = useMemo(() => Object.keys(rows), [rows]);
 
+  const makeField = useCallback((): IField => ({ i: nid('random'), l: '', t: 'text', h: '', r: false, v: '', x: '', o: [] }), []);
+
   const addRow = useCallback(() => updateData({ ...rows, [(new Date()).getTime().toString()]: [makeField()] }), [rows]);
 
   const addCol = useCallback((row: string) => updateData({ ...rows, [row]: [...rows[row], makeField()] }), [rows]);
@@ -128,25 +70,28 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
     updateData({ ...rows });
   }, [rows]);
 
-  const makeField = useCallback((): IField => ({ l: '', t: 'text', h: '', r: false, v: '', x: '' }), []);
+  const updateCell = (newCell: IField) => {
+    setCell(newCell);
 
-  const setCellAttr = useCallback((value: string, attr: string) => {
-    if (cell && Object.keys(cell).length) {
-      const newCell = {
-        ...cell,
-        [attr]: value
-      };
+    const newRows = deepClone(rows);
 
-      setCell(newCell);
-
-      const newRows = deepClone(rows);
-
-      if (newRows[position.row] && newRows[position.row][position.col]) {
-        newRows[position.row][position.col] = newCell;
-        updateData({ ...newRows });
-      }
+    if (newRows[position.row] && newRows[position.row][position.col]) {
+      newRows[position.row][position.col] = newCell;
+      updateData({ ...newRows });
     }
-  }, [rows, cell]);
+  }
+
+  const addOpt = () => {
+    const val = toSnakeCase(opt.trim());
+    if (!val) return;
+
+    const newOpt = { i: nid('random'), l: opt.trim(), v: val };
+    updateCell({
+      ...cell,
+      o: [...(cell.o || []), newOpt]
+    })
+    setOpt('');
+  }
 
   return <Grid container spacing={2}>
 
@@ -175,7 +120,6 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
                 sx={{ alignItems: 'center', display: 'flex', flex: 1 }}
                 onClick={() => addCol(rowId)}
               >add column</Button>
-              {/* <ButtonBase sx={{ display: 'flex', padding: '2px', backgroundColor: 'rgba(255, 0, 0, .1)' }} onClick={() => delRow(rowId)}>- row</ButtonBase> */}
             </Grid>
           </Grid>}
           <Grid size={{ xs: 12, md: rows[rowId].length < 3 ? 10 : 12 }}>
@@ -185,13 +129,14 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
                   <Field
                     disabled={true}
                     field={field}
+                    onChange={_ => { }}
                     settingsBtn={
                       <IconButton
                         {...targets(`form build edit field ${field.l}`, `edit field labeled ${field.l}`)}
-                        sx={{ color: position.row == rowId && position.col == j ? 'white' : 'gray' }}
+                        sx={{ color: position.row == rowId && position.col == j ? 'blue' : 'gray' }}
                         onClick={() => {
                           setCell(field);
-                          setPosition({ row: rowId, col: j })
+                          setPosition({ row: rowId, col: j });
                         }}
                       >
                         <SettingsIcon />
@@ -226,8 +171,8 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
                   {...targets(`form build close editing`, `close the field editing panel`)}
                   variant="text"
                   onClick={() => {
-                    setPosition({ row: '', col: 0 })
                     setCell({} as IField);
+                    setPosition({ row: '', col: 0 });
                   }}
                 >Close</Button>
               </Grid>
@@ -240,12 +185,18 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
               fullWidth
               select
               value={cell.t}
-              onChange={e => setCellAttr(e.target.value, 't')}
+              onChange={e => {
+                const newType = e.target.value as IField['t'];
+                updateCell({
+                  ...cell,
+                  t: newType,
+                  v: 'multi-select' === newType ? [] : ('boolean' === newType ? false : '')
+                });
+              }}
             >
-              <MenuItem key={`field_type_1`} value={'text'}>Textfield</MenuItem>
-              <MenuItem key={`field_type_2`} value={'date'}>Date</MenuItem>
-              <MenuItem key={`field_type_3`} value={'time'}>Time</MenuItem>
-              <MenuItem key={`field_type_4`} value={'labelntext'}>Label and Text</MenuItem>
+              {fieldTypes.map((ft, i) => (
+                <MenuItem key={`field_type_${i}`} value={ft.variant}>{ft.name}</MenuItem>
+              ))}
             </TextField>
           </Grid>
 
@@ -253,11 +204,16 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
             <TextField
               {...targets(`form build field label input ${position.row} ${position.col}`, `Label`, `change the label that will appear above the form field`)}
               fullWidth
+              required
               autoFocus
               type="text"
-              helperText="Required."
               value={cell.l}
-              onChange={e => setCellAttr(e.target.value, 'l')}
+              onChange={e => {
+                updateCell({
+                  ...cell,
+                  l: e.target.value
+                });
+              }}
             />
           </Grid>
 
@@ -267,35 +223,102 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
               fullWidth
               type="text"
               value={cell.x}
-              onChange={e => setCellAttr(e.target.value, 'x')}
+              onChange={e => {
+                updateCell({
+                  ...cell,
+                  x: e.target.value
+                });
+              }}
             />
           </Grid>}
 
-          {!inputTypes.includes(cell.t || '') ? <></> : <>
+          {['single-select', 'multi-select'].includes(cell.t || '') && <Grid>
+            <TextField
+              {...targets(`form build field option`, `Options`, `add options for the ${cell.t} form field`)}
+              fullWidth
+              label="Add Option"
+              placeholder="e.g. Rhetorical Analysis"
+              value={opt}
+              onChange={e => setOpt(e.target.value)}
+              onKeyDown={e => {
+                if ('Enter' === e.key) {
+                  addOpt();
+                }
+              }}
+              slotProps={{
+                input: {
+                  endAdornment: <InputAdornment position="end">
+                    <Button
+                      variant="contained"
+                      size="small"
+                      {...targets(`form build add option`, `add an option to the ${cell.t} field`)}
+                      color="secondary"
+                      onClick={addOpt}
+                    >
+                      <Typography variant="button">Add</Typography>
+                    </Button>
+                  </InputAdornment>
+                }
+              }}
+            />
+            <Box sx={{ mt: 1, display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+              {cell.o?.map((opt, i) => (
+                <Chip
+                  key={opt.i}
+                  label={opt.l}
+                  color="primary"
+                  variant="outlined"
+                  onDelete={() => {
+                    const newOpts = cell.o?.filter((_, idx) => idx !== i);
+                    updateCell({ ...cell, o: newOpts });
+                  }}
+                />
+              ))}
+            </Box>
+          </Grid>}
+
+          {'labelntext' === cell.t ? <></> : <>
             <Grid>
               <TextField
                 fullWidth
                 {...targets(`form build field helper text`, `Helper Text`, `change the text that will appear as helper text below the form field`)}
                 type="text"
                 value={cell.h}
-                onChange={e => setCellAttr(e.target.value, 'h')}
-              />
-            </Grid>
-
-            <Grid>
-              <TextField
-                fullWidth
-                {...targets(`form build field default value`, `Default Value`, `change the default value of the form field`)}
-                type={cell.t}
-                value={cell.v}
-                onChange={e => setCellAttr(e.target.value, 'v')}
-                slotProps={{
-                  inputLabel: {
-                    shrink: true
-                  }
+                onChange={e => {
+                  updateCell({
+                    ...cell,
+                    h: e.target.value
+                  });
                 }}
               />
             </Grid>
+
+            {/* <Grid> */}
+            {/*   {['radio', 'checkbox'].includes(cell.t || '') ? */}
+            {/*     <TextField */}
+            {/*       fullWidth */}
+            {/*       {...targets(`form build field default value`, `Default Value`, `change the default value of the form field`)} */}
+            {/*       select */}
+            {/*       value={cell.v} */}
+            {/*       onChange={e => setCellAttr(e.target.value, 'v')} */}
+            {/*     > */}
+            {/*       {cell.o?.map((opt, i) => ( */}
+            {/*         <MenuItem key={`form_opt_default_${i}`} value={opt}>{opt}</MenuItem> */}
+            {/*       ))} */}
+            {/*     </TextField> : */}
+            {/*     <TextField */}
+            {/*       fullWidth */}
+            {/*       {...targets(`form build field default value`, `Default Value`, `change the default value of the form field`)} */}
+            {/*       type={cell.t} */}
+            {/*       value={cell.v} */}
+            {/*       onChange={e => setCellAttr(e.target.value, 'v')} */}
+            {/*       slotProps={{ */}
+            {/*         inputLabel: { */}
+            {/*           shrink: true */}
+            {/*         } */}
+            {/*       }} */}
+            {/*     />} */}
+            {/* </Grid> */}
 
             <Grid>
               <Typography variant="body1">Required</Typography>

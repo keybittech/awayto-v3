@@ -86,6 +86,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
           if ('' === f.h) delete f.h;
           if ('' === f.x) delete f.x;
           if (false === f.r) delete f.r;
+          if (!f.o?.length) delete f.o;
           return f;
         })
       }

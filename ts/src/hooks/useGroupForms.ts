@@ -54,16 +54,28 @@ export function useGroupForms(ids: string[] = []): UseGroupFormResponse {
     if (!forms.length) return true;
 
     return forms.every(form => {
-      if (!form || !form.version.submission) {
-        return true;
-      }
-      for (const rowId of Object.keys(form.version.form || {})) {
-        for (let i = 0; i < form.version.form[rowId].length; i++) {
-          const formField = form.version.form[rowId][i];
-          const submissionValue = form.version.submission[rowId][i];
+      const submission = form.version.submission || {};
 
-          if (formField.r && [undefined, ''].includes(submissionValue)) {
-            return false;
+      for (const rowId of Object.keys(form.version.form || {})) {
+        for (const field of form.version.form[rowId]) {
+          if (field.r) {
+            const val = submission[field.i];
+
+            if (undefined === val || null === val) {
+              return false;
+            }
+
+            if ('string' === typeof val && val.trim() === '') {
+              return false;
+            }
+
+            if (Array.isArray(val) && val.length === 0) {
+              return false;
+            }
+
+            if ('boolean' === field.t && val !== true) {
+              return false;
+            }
           }
         }
       }
@@ -71,14 +83,6 @@ export function useGroupForms(ids: string[] = []): UseGroupFormResponse {
       return true;
     });
   }, [forms]);
-
-  // const comp = useMemo(() => <>
-  //   {forms.map((form, index) => (
-  //
-  //     <FormDisplay form={form} setForm={val => updateFormAtIndex(index, val)} didSubmit={didSubmit} />
-  //
-  //   ))}
-  // </>, [forms, didSubmit, updateFormAtIndex]);
 
   return {
     forms,

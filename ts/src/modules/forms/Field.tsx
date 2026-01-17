@@ -1,48 +1,96 @@
 import React from 'react';
 
-import TextField, { TextFieldProps } from '@mui/material/TextField';
+import TextField from '@mui/material/TextField';
+import FormControl from '@mui/material/FormControl';
+import FormLabel from '@mui/material/FormLabel';
+import FormGroup from '@mui/material/FormGroup';
+import FormControlLabel from '@mui/material/FormControlLabel';
+import FormHelperText from '@mui/material/FormHelperText';
+import Radio from '@mui/material/Radio';
+import RadioGroup from '@mui/material/RadioGroup';
+import Checkbox from '@mui/material/Checkbox';
+import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 
-import type { IField } from 'awayto/hooks';
+import { targets, toSnakeCase, type IField } from 'awayto/hooks';
 
 interface FieldProps extends IComponent {
   field: IField;
+  error?: boolean;
+  disabled?: boolean;
+  onChange: (e: any) => void;
   settingsBtn?: React.JSX.Element;
 }
 
-export function Field({ settingsBtn, field = { l: 'Label', x: 'Text' }, error, disabled, onChange }: FieldProps & TextFieldProps): React.JSX.Element {
-  if (!field) return <></>;
+export function Field({ settingsBtn, field, error, disabled, onChange }: FieldProps): React.JSX.Element {
+  const val = field.v;
+  let comp = <></>;
 
-  if ('labelntext' == field.t) {
-    return <Card variant="outlined" sx={{ flex: 1, p: '6px' }}>
-      <CardHeader title={field.l} variant="h6" action={settingsBtn} />
+  if ('labelntext' === field.t) {
+    comp = <Card variant="outlined" sx={{ flex: 1, p: '6px' }}>
+      <CardHeader title={field.l} variant="h6" />
       <CardContent>{field.x}</CardContent>
     </Card>
+  } else if ('multi-select' === field.t) {
+    const selectedValues = Array.isArray(val) ? val : [];
+    comp = <FormControl error={error} component="fieldset" fullWidth>
+      <FormLabel component="legend">{field.l}</FormLabel>
+      <FormGroup>
+        {field.o?.map(opt => <FormControlLabel key={opt.i || opt.v} label={opt.l} value={opt.v} control={
+          <Checkbox disabled={disabled} checked={selectedValues.includes(opt.v)} value={opt.v} onChange={onChange} />
+        } />)}
+      </FormGroup>
+      {field.h && <FormHelperText>{field.h}</FormHelperText>}
+    </FormControl>
+  } else if ('single-select' === field.t) {
+    comp = <FormControl error={error} component="fieldset" fullWidth>
+      <FormLabel component="legend">{field.l}</FormLabel>
+      <RadioGroup
+        aria-label={toSnakeCase(field.l)}
+        name={field.i}
+        value={val ?? ''}
+        onChange={onChange}
+      >
+        {field.o?.map(opt => <FormControlLabel key={opt.i || opt.v} label={opt.l} value={opt.v} control={
+          <Radio disabled={disabled} />
+        } />)}
+      </RadioGroup>
+      {field.h && <FormHelperText>{field.h}</FormHelperText>}
+    </FormControl>
+  } else if ('boolean' === field.t) {
+    comp = <FormControl error={error} component="fieldset">
+      <FormGroup>
+        <FormControlLabel label={field.l + (field.r ? ' *' : '')} control={
+          <Checkbox disabled={disabled} checked={!!val} onChange={e => onChange({ target: { value: e.target.checked } })} />
+        } />
+      </FormGroup>
+      {field.h && <FormHelperText>{field.h}</FormHelperText>}
+    </FormControl>
+  } else {
+    comp = <TextField
+      fullWidth
+      {...targets(`form field ${field.l}`, field.l)}
+      error={error}
+      disabled={disabled}
+      type={field.t}
+      helperText={`${field.r ? 'Required. ' : ''}${field.h || ''}`}
+      value={val ?? ''}
+      required={field.r}
+      onChange={onChange}
+      slotProps={{
+        inputLabel: {
+          shrink: true
+        }
+      }}
+    />
   }
 
-  return <TextField
-    fullWidth
-    error={error}
-    disabled={disabled}
-    id={`form field ${field.l}`}
-    label={field.l}
-    aria-label={`modify the form field ${field.l} which is of type ${field.t}`}
-    type={field.t}
-    helperText={`${field.r ? 'Required. ' : ''}${field.h || ''}`}
-    value={field.v ?? ''}
-    required={field.r}
-    onChange={onChange}
-    slotProps={{
-      input: {
-        endAdornment: settingsBtn
-      },
-      inputLabel: {
-        shrink: true
-      }
-    }}
-  />;
+  return <Grid container>
+    <Grid>{settingsBtn}</Grid>
+    <Grid size="grow">{comp}</Grid>
+  </Grid>;
 }
 
 export default Field;
