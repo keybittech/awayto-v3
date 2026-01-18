@@ -39,6 +39,10 @@ service FormService {
       get: "/v1/forms/{id}"
     };
   }
+  rpc GetFormData(GetFormDataRequest) returns (GetFormDataResponse) {
+    option (google.api.http) = {
+      get: "/v1/forms/{formId}/data"
+    };  }
   rpc DeleteForm(DeleteFormRequest) returns (DeleteFormResponse) {
     option (google.api.http) = {
       delete: "/v1/forms/{id}"
@@ -49,6 +53,32 @@ service FormService {
       patch: "/v1/forms/{id}/disable"
     };
   }
+}
+
+message IProtoFieldOption {
+  string i = 1; // id
+  string l = 2; // label
+  string v = 3; // value
+}
+
+message IProtoField {
+  string i = 1; // id
+  string l = 2; // label
+  string t = 3; // field type
+  google.protobuf.Value v = 4; // value
+  string h = 5; // helper text
+  string x = 6; // text
+  string d = 7; // default value
+  string r = 8; // required
+  repeated IProtoFieldOption o = 9; // options
+}
+
+message IProtoFieldRow {
+  repeated IProtoField fields = 1;
+}
+
+message IProtoFormTemplate {
+  map<string, IProtoFieldRow> rows = 1;
 }
 
 message IProtoFormVersionSubmission {
@@ -110,6 +140,13 @@ message GetFormByIdRequest {
 
 message GetFormByIdResponse {
   IProtoForm form = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFormDataRequest {
+  string formId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFormDataResponse {
 }
 
 message DeleteFormRequest {

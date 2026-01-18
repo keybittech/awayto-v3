@@ -21,6 +21,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
 
   const [deleteGroupForm] = siteApi.useGroupFormServiceDeleteGroupFormMutation();
   const { data: groupFormsRequest, refetch: getGroupForms } = siteApi.useGroupFormServiceGetGroupFormsQuery();
+  const [getFormData] = siteApi.useLazyFormServiceGetFormDataQuery();
 
   const [groupForm, setGroupForm] = useState<IGroupForm>();
   const [selected, setSelected] = useState<string[]>([]);
@@ -71,7 +72,12 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     rows: groupFormsRequest?.groupForms || [],
     columns: [
       { flex: 1, headerName: 'Name', field: 'name', renderCell: ({ row }) => row.form?.name },
-      { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.form?.createdOn)) }
+      { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.form?.createdOn)) },
+      {
+        flex: 1, headerName: 'Download', field: 'download', renderCell: ({ row }) => {
+          return <Button onClick={() => row.formId && getFormData({ formId: row.formId })}>Down</Button>
+        }
+      },
     ],
     selected,
     onSelected: selection => setSelected(selection as string[]),

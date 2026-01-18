@@ -1,10 +1,15 @@
 package handlers
 
 import (
+	"fmt"
+	"regexp"
+	"sort"
+	"strings"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 func (h *Handlers) PostForm(info ReqInfo, data *types.PostFormRequest) (*types.PostFormResponse, error) {
@@ -85,6 +90,110 @@ func (h *Handlers) GetFormById(info ReqInfo, data *types.GetFormByIdRequest) (*t
 	info.Batch.Send(info.Ctx)
 
 	return &types.GetFormByIdResponse{Form: *form}, nil
+}
+
+var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
+
+func sanitizeColName(name string) string {
+	clean := nonAlphanumericRegex.ReplaceAllString(name, "_")
+	return strings.ToLower(strings.Trim(clean, "_"))
+}
+
+func (h *Handlers) GetFormData(info ReqInfo, data *types.GetFormDataRequest) (*types.GetFormDataResponse, error) {
+
+	version := util.BatchQueryRow[types.IProtoFormVersion](info.Batch, `
+		SELECT id, form
+		FROM dbtable_schema.form_versions
+		WHERE form_id = $1::uuid
+		ORDER BY created_on DESC
+		LIMIT 1
+	`, data.GetFormId())
+
+	info.Batch.Send(info.Ctx)
+
+	formVersion := *version
+
+	formTemplate := &types.IProtoFormTemplate{
+		Rows: make(map[string]*types.IProtoFieldRow),
+	}
+
+	for rowKey, rowVal := range formVersion.GetForm().GetStructValue().Fields {
+		listVal := rowVal.GetListValue()
+		if listVal == nil {
+			continue
+		}
+
+		var typedFields []*types.IProtoField
+
+		for _, rawField := range listVal.Values {
+			fieldBytes, _ := protojson.Marshal(rawField)
+			fieldMsg := &types.IProtoField{}
+			if err := protojson.Unmarshal(fieldBytes, fieldMsg); err == nil {
+				typedFields = append(typedFields, fieldMsg)
+			}
+		}
+
+		formTemplate.Rows[rowKey] = &types.IProtoFieldRow{
+			Fields: typedFields,
+		}
+	}
+
+	dataCols := []string{
+		"id",
+		"created_on",
+		"created_sub",
+	}
+
+	rowKeys := make([]string, 0, len(formTemplate.Rows))
+	for k := range formTemplate.GetRows() {
+		rowKeys = append(rowKeys, k)
+	}
+	sort.Strings(rowKeys)
+
+	for _, rowKey := range rowKeys {
+		fieldRow := formTemplate.Rows[rowKey]
+
+		for _, field := range fieldRow.GetFields() {
+
+			if field.GetT() == "labelntext" {
+				continue
+			}
+
+			colName := sanitizeColName(field.GetL())
+
+			fieldId := field.GetI()
+
+			switch field.GetT() {
+			case "multi-select":
+				for _, opt := range field.GetO() {
+					optLabel := sanitizeColName(opt.GetL())
+					fullColName := fmt.Sprintf("%s_%s", colName, optLabel)
+
+					colDef := fmt.Sprintf(`(submission->'%s' @> '"%s"') AS "%s"`, fieldId, opt.GetV(), fullColName)
+					dataCols = append(dataCols, colDef)
+				}
+			case "boolean":
+				colDef := fmt.Sprintf(`(submission->>'%s')::BOOLEAN AS "%s"`, fieldId, colName)
+				dataCols = append(dataCols, colDef)
+			case "number":
+				colDef := fmt.Sprintf(`(submission->>'%s')::NUMERIC AS "%s"`, fieldId, colName)
+				dataCols = append(dataCols, colDef)
+			default:
+				colDef := fmt.Sprintf(`submission->>'%s' AS "%s"`, fieldId, colName)
+				dataCols = append(dataCols, colDef)
+			}
+		}
+	}
+
+	query := fmt.Sprintf(`
+		SELECT %s
+		FROM dbtable_schema.form_version_submissions
+		WHERE form_version_id = '%s'
+	`, strings.Join(dataCols, ", "), formVersion.GetId())
+
+	println("the query ", query)
+
+	return &types.GetFormDataResponse{}, nil
 }
 
 func (h *Handlers) DeleteForm(info ReqInfo, data *types.DeleteFormRequest) (*types.DeleteFormResponse, error) {
