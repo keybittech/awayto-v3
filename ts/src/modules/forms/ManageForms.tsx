@@ -1,4 +1,5 @@
 import React, { useState, useMemo, Suspense } from 'react';
+import { useNavigate } from 'react-router';
 
 import Box from '@mui/material/Box';
 import Typography from '@mui/material/Typography';
@@ -9,6 +10,8 @@ import Tooltip from '@mui/material/Tooltip';
 import CreateIcon from '@mui/icons-material/Create';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import DeleteIcon from '@mui/icons-material/Delete';
+import DownloadIcon from '@mui/icons-material/Download';
+import AssessmentIcon from '@mui/icons-material/Assessment';
 
 import { DataGrid } from '@mui/x-data-grid';
 
@@ -17,6 +20,7 @@ import { siteApi, useGrid, useStyles, dayjs, IGroupForm, IForm, targets } from '
 import ManageFormModal from './ManageFormModal';
 
 export function ManageForms(props: IComponent): React.JSX.Element {
+  const navigate = useNavigate();
   const classes = useStyles();
 
   const [deleteGroupForm] = siteApi.useGroupFormServiceDeleteGroupFormMutation();
@@ -75,7 +79,24 @@ export function ManageForms(props: IComponent): React.JSX.Element {
       { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.form?.createdOn)) },
       {
         flex: 1, headerName: 'Download', field: 'download', renderCell: ({ row }) => {
-          return <Button onClick={() => row.formId && getFormData({ formId: row.formId })}>Down</Button>
+          const { formId } = row;
+          if (!formId) return <></>;
+          return <>
+            <Button
+              {...targets(`manage forms download`, `download the data for the selected form`)}
+              onClick={() => getFormData({ formId })}
+            >
+              <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Download</Typography>
+              <DownloadIcon sx={classes.variableButtonIcon} />
+            </Button>
+            <Button
+              {...targets(`manage forms delete`, `view reports for the selected form`)}
+              onClick={() => navigate(`/group/manage/forms/${formId}/report`)}
+            >
+              <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Report</Typography>
+              <AssessmentIcon sx={classes.variableButtonIcon} />
+            </Button>
+          </>
         }
       },
     ],

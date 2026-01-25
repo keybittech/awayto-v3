@@ -42,7 +42,15 @@ service FormService {
   rpc GetFormData(GetFormDataRequest) returns (GetFormDataResponse) {
     option (google.api.http) = {
       get: "/v1/forms/{formId}/data"
-    };  }
+    }; 
+    option (use_tx) = true;
+  }
+  rpc GetFormReport(GetFormReportRequest) returns (GetFormReportResponse) {
+    option (google.api.http) = {
+      get: "/v1/forms/{formId}/report/{fieldId}"
+    }; 
+    option (use_tx) = true;
+  }
   rpc DeleteForm(DeleteFormRequest) returns (DeleteFormResponse) {
     option (google.api.http) = {
       delete: "/v1/forms/{id}"
@@ -103,6 +111,11 @@ message IProtoForm {
   string createdOn = 4;
 }
 
+message IProtoFormDataPoint {
+  string label = 1;
+  int64 value = 2;
+}
+
 message PostFormRequest {
   IProtoForm form = 1 [(google.api.field_behavior) = REQUIRED];
 }
@@ -147,6 +160,15 @@ message GetFormDataRequest {
 }
 
 message GetFormDataResponse {
+}
+
+message GetFormReportRequest {
+  string formId = 1 [(google.api.field_behavior) = REQUIRED];
+  string fieldId = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetFormReportResponse {
+  repeated IProtoFormDataPoint dataPoints = 1;
 }
 
 message DeleteFormRequest {

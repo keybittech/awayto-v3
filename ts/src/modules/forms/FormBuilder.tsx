@@ -21,7 +21,7 @@ import Field from './Field';
 const fieldTypes = [
   { variant: 'labelntext', name: 'Label with Text' },
   { variant: 'text', name: 'Textfield' },
-  { variant: 'boolean', name: 'Checkbox' },
+  { variant: 'boolean', name: 'Checkbox (Yes/No)' },
   { variant: 'multi-select', name: 'Checkbox Group (Select Multiple)' },
   { variant: 'single-select', name: 'Radio Group (Select One)' },
   { variant: 'date', name: 'Date' },

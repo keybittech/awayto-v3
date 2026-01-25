@@ -10,6 +10,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"google.golang.org/protobuf/encoding/protojson"
+	"google.golang.org/protobuf/types/known/structpb"
 )
 
 func (h *Handlers) PostForm(info ReqInfo, data *types.PostFormRequest) (*types.PostFormResponse, error) {
@@ -92,6 +93,29 @@ func (h *Handlers) GetFormById(info ReqInfo, data *types.GetFormByIdRequest) (*t
 	return &types.GetFormByIdResponse{Form: *form}, nil
 }
 
+func (h *Handlers) DeleteForm(info ReqInfo, data *types.DeleteFormRequest) (*types.DeleteFormResponse, error) {
+	util.BatchExec(info.Batch, `
+		DELETE FROM dbtable_schema.forms
+		WHERE id = $1
+	`, data.Id)
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.DeleteFormResponse{Success: true}, nil
+}
+
+func (h *Handlers) DisableForm(info ReqInfo, data *types.DisableFormRequest) (*types.DisableFormResponse, error) {
+	util.BatchExec(info.Batch, `
+		UPDATE dbtable_schema.forms
+		SET enabled = false, updated_on = $2, updated_sub = $3
+		WHERE id = $1
+	`, data.Id, time.Now(), info.Session.GetUserSub())
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.DisableFormResponse{Success: true}, nil
+}
+
 var nonAlphanumericRegex = regexp.MustCompile(`[^a-zA-Z0-9_]+`)
 
 func sanitizeColName(name string) string {
@@ -99,19 +123,36 @@ func sanitizeColName(name string) string {
 	return strings.ToLower(strings.Trim(clean, "_"))
 }
 
-func (h *Handlers) GetFormData(info ReqInfo, data *types.GetFormDataRequest) (*types.GetFormDataResponse, error) {
+func getFormVersion(info ReqInfo, formId string) (*types.IProtoFormVersion, error) {
 
-	version := util.BatchQueryRow[types.IProtoFormVersion](info.Batch, `
+	var formVersionId, form string
+
+	err := info.Tx.QueryRow(info.Ctx, `
 		SELECT id, form
 		FROM dbtable_schema.form_versions
 		WHERE form_id = $1::uuid
 		ORDER BY created_on DESC
 		LIMIT 1
-	`, data.GetFormId())
+	`, formId).Scan(&formVersionId, &form)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
 
-	info.Batch.Send(info.Ctx)
+	pbForm := &structpb.Value{}
 
-	formVersion := *version
+	if err := protojson.Unmarshal([]byte(form), pbForm); err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	version := &types.IProtoFormVersion{
+		Id:   formVersionId,
+		Form: pbForm,
+	}
+
+	return version, nil
+}
+
+func getFormTemplate(formVersion *types.IProtoFormVersion) *types.IProtoFormTemplate {
 
 	formTemplate := &types.IProtoFormTemplate{
 		Rows: make(map[string]*types.IProtoFieldRow),
@@ -137,6 +178,16 @@ func (h *Handlers) GetFormData(info ReqInfo, data *types.GetFormDataRequest) (*t
 			Fields: typedFields,
 		}
 	}
+
+	return formTemplate
+}
+
+func (h *Handlers) GetFormData(info ReqInfo, data *types.GetFormDataRequest) (*types.GetFormDataResponse, error) {
+	formVersion, err := getFormVersion(info, data.GetFormId())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	formTemplate := getFormTemplate(formVersion)
 
 	dataCols := []string{
 		"id",
@@ -196,25 +247,124 @@ func (h *Handlers) GetFormData(info ReqInfo, data *types.GetFormDataRequest) (*t
 	return &types.GetFormDataResponse{}, nil
 }
 
-func (h *Handlers) DeleteForm(info ReqInfo, data *types.DeleteFormRequest) (*types.DeleteFormResponse, error) {
-	util.BatchExec(info.Batch, `
-		DELETE FROM dbtable_schema.forms
-		WHERE id = $1
-	`, data.Id)
+func (h *Handlers) GetFormReport(info ReqInfo, data *types.GetFormReportRequest) (*types.GetFormReportResponse, error) {
+	formVersion, err := getFormVersion(info, data.GetFormId())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	formTemplate := getFormTemplate(formVersion)
 
-	info.Batch.Send(info.Ctx)
+	var targetField *types.IProtoField
+	found := false
 
-	return &types.DeleteFormResponse{Success: true}, nil
-}
+	for _, row := range formTemplate.GetRows() {
+		for _, field := range row.GetFields() {
+			if field.GetI() == data.GetFieldId() {
+				targetField = field
+				found = true
+				break
+			}
+		}
+	}
 
-func (h *Handlers) DisableForm(info ReqInfo, data *types.DisableFormRequest) (*types.DisableFormResponse, error) {
-	util.BatchExec(info.Batch, `
-		UPDATE dbtable_schema.forms
-		SET enabled = false, updated_on = $2, updated_sub = $3
-		WHERE id = $1
-	`, data.Id, time.Now(), info.Session.GetUserSub())
+	if !found {
+		return nil, util.ErrCheck(fmt.Errorf("field %s not found in form version", data.GetFieldId()))
+	}
 
-	info.Batch.Send(info.Ctx)
+	var query string
+	isMultiSelect := false
 
-	return &types.DisableFormResponse{Success: true}, nil
+	switch targetField.GetT() {
+	case "multi-select":
+		isMultiSelect = true
+		var sumStatements []string
+		for _, opt := range targetField.GetO() {
+			stmt := fmt.Sprintf(
+				`SUM(CASE WHEN submission->'%s' @> '"%s"' THEN 1 ELSE 0 END) as "%s"`,
+				targetField.GetI(),
+				opt.GetV(),
+				opt.GetL(),
+			)
+			sumStatements = append(sumStatements, stmt)
+		}
+		if len(sumStatements) == 0 {
+			return &types.GetFormReportResponse{DataPoints: []*types.IProtoFormDataPoint{}}, nil
+		}
+		query = fmt.Sprintf(`
+			SELECT %s
+			FROM dbtable_schema.form_version_submissions
+			WHERE form_version_id = '%s'
+		`, strings.Join(sumStatements, ", "), formVersion.GetId())
+	case "boolean", "single-select", "number":
+		coalesceNullText := "No Data"
+		if targetField.GetT() == "boolean" {
+			coalesceNullText = "false"
+		}
+		colSelect := fmt.Sprintf("submission->>'%s'", targetField.GetI())
+		query = fmt.Sprintf(`
+			SELECT COALESCE(%s, '%s') AS label, COUNT(*) AS value
+			FROM dbtable_schema.form_version_submissions
+			WHERE form_version_id = '%s'
+			GROUP BY 1
+			ORDER BY 2 DESC
+		`, colSelect, coalesceNullText, formVersion.GetId())
+	default:
+		return nil, util.ErrCheck(fmt.Errorf("reporting not available for field type: %s", targetField.GetT()))
+	}
+
+	rows, err := info.Tx.Query(info.Ctx, query)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+	defer rows.Close()
+
+	var results []*types.IProtoFormDataPoint
+
+	if isMultiSelect {
+		if rows.Next() {
+			fieldDescs := rows.FieldDescriptions()
+
+			values := make([]any, len(fieldDescs))
+			scanArgs := make([]any, len(fieldDescs))
+
+			for i := range values {
+				scanArgs[i] = &values[i]
+			}
+
+			if err := rows.Scan(scanArgs...); err != nil {
+				return nil, util.ErrCheck(err)
+			}
+
+			for i, fd := range fieldDescs {
+				var countVal int64
+				switch v := values[i].(type) {
+				case int64:
+					countVal = v
+				default:
+					countVal = 0
+				}
+
+				results = append(results, &types.IProtoFormDataPoint{
+					Label: fd.Name,
+					Value: countVal,
+				})
+			}
+		}
+	} else {
+		for rows.Next() {
+			var label string
+			var value int64
+			if err := rows.Scan(&label, &value); err != nil {
+				return nil, util.ErrCheck(err)
+			}
+
+			results = append(results, &types.IProtoFormDataPoint{
+				Label: label,
+				Value: value,
+			})
+		}
+
+	}
+
+	return &types.GetFormReportResponse{DataPoints: results}, nil
 }

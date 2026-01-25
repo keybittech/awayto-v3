@@ -9,7 +9,7 @@ export type IFieldValue = string | string[] | boolean | number;
 export type IField = {
   i: string; // id
   l: string; // label
-  t: 'text' | 'labelntext' | 'time' | 'date' | 'boolean' | 'multi-select' | 'single-select';
+  t: 'text' | 'labelntext' | 'time' | 'date' | 'boolean' | 'multi-select' | 'single-select' | 'number';
   v?: IFieldValue; // value
   h?: string; // helperText
   x?: string; // text
