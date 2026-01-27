@@ -12,6 +12,7 @@
     "@mui/x-data-grid": "^7.29.3",
     "@mui/x-date-pickers": "^7.29.3",
     "@reduxjs/toolkit": "^2.8.2",
+    "chart.js": "^4.4.3",
     "dayjs": "^1.11.13",
     "katex": "^0.16.27",
     "pdfjs-dist": "5.4.530",
