@@ -113,7 +113,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
           <Grid container size="grow" justifyItems="center">
             <Breadcrumbs separator={<NavigateNextIcon fontSize="small" />}>
               {pages.map((pg, i) => <span id={`acc-progress-${i}`} key={`acc-progress-${i}`}><Typography
-                color={pg.complete ? "success" : "primary"}
+                color={pg.complete ? "success" : "#ccc"}
                 sx={{
                   textTransform: 'capitalize',
                   fontWeight: 'bold',
@@ -129,7 +129,7 @@ export function Onboard(_: IComponent): React.JSX.Element {
             <Tooltip title="Logout">
               <Button
                 {...targets(`site logout`, `logout of the website`)}
-                sx={{ fontSize: '1rem' }}
+                sx={{ fontSize: '1rem', color: '#ccc', fontWeight: 'bold' }}
                 onClick={logout}
               >
                 Logout

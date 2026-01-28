@@ -17,16 +17,16 @@ interface FormChartProps extends IComponent {
 
 export function FormChart({ field, chartType, data }: FormChartProps): React.JSX.Element {
 
-  if (!field || !data.length) return <></>;
+  const labels = data ? data.map(d => d.label!) : [];
+  const values = data ? data.map(d => Number(d.value!)) : [];
+
+  if (!field || values.every(isNaN)) return <>No values submitted yet.</>;
 
   const chartRef = useRef<Chart | null>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     if (!canvasRef.current || !data.length) return;
-
-    const labels = data.map(d => d.label!);
-    const values = data.map(d => Number(d.value!));
 
     if (chartRef.current) chartRef.current.destroy();
 

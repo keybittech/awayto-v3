@@ -10,7 +10,6 @@ import Tooltip from '@mui/material/Tooltip';
 import CreateIcon from '@mui/icons-material/Create';
 import NoteAddIcon from '@mui/icons-material/NoteAdd';
 import DeleteIcon from '@mui/icons-material/Delete';
-import DownloadIcon from '@mui/icons-material/Download';
 import AssessmentIcon from '@mui/icons-material/Assessment';
 
 import { DataGrid } from '@mui/x-data-grid';
@@ -25,7 +24,7 @@ export function ManageForms(props: IComponent): React.JSX.Element {
 
   const [deleteGroupForm] = siteApi.useGroupFormServiceDeleteGroupFormMutation();
   const { data: groupFormsRequest, refetch: getGroupForms } = siteApi.useGroupFormServiceGetGroupFormsQuery();
-  const [getFormData] = siteApi.useLazyFormServiceGetFormDataQuery();
+
 
   const [groupForm, setGroupForm] = useState<IGroupForm>();
   const [selected, setSelected] = useState<string[]>([]);
@@ -47,7 +46,17 @@ export function ManageForms(props: IComponent): React.JSX.Element {
           <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Edit</Typography>
           <CreateIcon sx={classes.variableButtonIcon} />
         </Button>
-      </Tooltip>
+      </Tooltip>,
+      <Tooltip key={'view_reports'} title="Report">
+        <Button
+          {...targets(`manage forms report`, `view reports for the selected form`)}
+          color="info"
+          onClick={() => navigate(`/group/manage/forms/${selected[0]}/report`)}
+        >
+          <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Report</Typography>
+          <AssessmentIcon sx={classes.variableButtonIcon} />
+        </Button>
+      </Tooltip>,
     ] : [];
 
     return [
@@ -77,28 +86,6 @@ export function ManageForms(props: IComponent): React.JSX.Element {
     columns: [
       { flex: 1, headerName: 'Name', field: 'name', renderCell: ({ row }) => row.form?.name },
       { flex: 1, headerName: 'Created', field: 'createdOn', renderCell: ({ row }) => dayjs().to(dayjs.utc(row.form?.createdOn)) },
-      {
-        flex: 1, headerName: 'Download', field: 'download', renderCell: ({ row }) => {
-          const { formId } = row;
-          if (!formId) return <></>;
-          return <>
-            <Button
-              {...targets(`manage forms download`, `download the data for the selected form`)}
-              onClick={() => getFormData({ formId })}
-            >
-              <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Download</Typography>
-              <DownloadIcon sx={classes.variableButtonIcon} />
-            </Button>
-            <Button
-              {...targets(`manage forms delete`, `view reports for the selected form`)}
-              onClick={() => navigate(`/group/manage/forms/${formId}/report`)}
-            >
-              <Typography variant="button" sx={{ display: { xs: 'none', md: 'flex' } }}>Report</Typography>
-              <AssessmentIcon sx={classes.variableButtonIcon} />
-            </Button>
-          </>
-        }
-      },
     ],
     selected,
     onSelected: selection => setSelected(selection as string[]),

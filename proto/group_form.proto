@@ -44,11 +44,29 @@ service GroupFormService {
       get: "/v1/group/forms/{formId}"
     };
   };
+  rpc GetGroupFormVersionById(GetGroupFormVersionByIdRequest) returns (GetGroupFormVersionByIdResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/forms/version/{formVersionId}"
+    };
+  }
+  rpc GetGroupFormVersionData(GetGroupFormVersionDataRequest) returns (GetGroupFormVersionDataResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/forms/version/{formVersionId}/data"
+    }; 
+    option (use_tx) = true;
+  }
+  rpc GetGroupFormVersionReport(GetGroupFormVersionReportRequest) returns (GetGroupFormVersionReportResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/forms/version/{formVersionId}/report/{fieldId}"
+    }; 
+    option (use_tx) = true;
+  }
   rpc DeleteGroupForm(DeleteGroupFormRequest) returns (DeleteGroupFormResponse) {
     option (google.api.http) = {
       delete: "/v1/group/forms/{ids}"
     };
     option (invalidates) = "GetGroupForms";
+    option (use_tx) = true;
   };
 }
 
@@ -103,6 +121,31 @@ message GetGroupFormByIdRequest {
 message GetGroupFormByIdResponse {
   IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
   repeated string groupRoleIds = 2 [(google.api.field_behavior) = REQUIRED];
+  repeated string versionIds = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormVersionByIdRequest {
+  string formVersionId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormVersionByIdResponse {
+  IProtoFormVersion version = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormVersionDataRequest {
+  string formVersionId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormVersionDataResponse {
+}
+
+message GetGroupFormVersionReportRequest {
+  string formVersionId = 1 [(google.api.field_behavior) = REQUIRED];
+  string fieldId = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormVersionReportResponse {
+  repeated IProtoFormDataPoint dataPoints = 1;
 }
 
 message DeleteGroupFormRequest {

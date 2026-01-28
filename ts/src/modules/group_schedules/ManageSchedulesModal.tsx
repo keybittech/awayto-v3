@@ -235,8 +235,8 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
             </Box>
 
             <Box mb={4}>
-              <Grid container spacing={2} direction="row">
-                <Grid size={6}>
+              <Grid container spacing={2} direction="column">
+                <Grid size="grow">
                   <DesktopDatePicker
                     {...targets(`manage schedule modal start date`, `Start Date`, `set when the schedule should start`)}
                     value={schedule.startDate ? dayjs(schedule.startDate) : null}
@@ -260,7 +260,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                     }}
                   />
                 </Grid>
-                <Grid size={6}>
+                <Grid size="grow">
                   <DesktopDatePicker
                     {...targets(`manage schedule modal end date`, `End Date`, `set when the schedule should end`)}
                     value={schedule.endDate ? dayjs(schedule.endDate) : null}
