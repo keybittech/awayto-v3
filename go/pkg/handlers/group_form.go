@@ -276,6 +276,8 @@ func getFormTemplate(info ReqInfo, formVersionId string) (*types.IProtoFormTempl
 			fieldMsg := &types.IProtoField{}
 			if err := protojson.Unmarshal(fieldBytes, fieldMsg); err == nil {
 				typedFields = append(typedFields, fieldMsg)
+			} else {
+				panic(util.ErrCheck(fmt.Errorf("field unmarshal error: %s %v", string(fieldBytes), err)))
 			}
 		}
 

@@ -82,7 +82,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
         ...m,
         [i]: fields.map(f => {
           if ('' === f.v) delete f.v;
-          if ('' === f.t) delete f.t;
+          if ('' === f.d) delete f.d;
           if ('' === f.h) delete f.h;
           if ('' === f.x) delete f.x;
           if (false === f.r) delete f.r;

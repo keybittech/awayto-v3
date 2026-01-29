@@ -65,7 +65,7 @@ message IProtoField {
   string h = 5; // helper text
   string x = 6; // text
   string d = 7; // default value
-  string r = 8; // required
+  bool r = 8; // required
   repeated IProtoFieldOption o = 9; // options
 }
 
