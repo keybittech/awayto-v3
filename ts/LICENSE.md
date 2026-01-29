@@ -29,6 +29,9 @@ limitations under the License.
 
 ## MIT Licensed Dependencies
 
+### chart.js
+Copyright (c) 2014-2024 Chart.js Contributors
+
 ### dayjs
 Copyright (c) 2018-present iamkun
 
