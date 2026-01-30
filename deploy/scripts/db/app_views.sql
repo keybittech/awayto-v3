@@ -50,7 +50,8 @@ SELECT
   id,
   form,
   form_id as "formId",
-  created_on as "createdOn"
+  created_on as "createdOn",
+  active
 FROM
   dbtable_schema.form_versions
 WHERE
@@ -71,27 +72,54 @@ WHERE
 CREATE
 OR REPLACE VIEW dbview_schema.enabled_forms_ext AS
 SELECT
-  ef.*,
-  eefv.* as version
-FROM
-  dbview_schema.enabled_forms ef
-  LEFT JOIN LATERAL (
+  ef.id,
+  ef.name,
+  ef."createdOn",
+  (
     SELECT
-      TO_JSONB(vers) as version
+      JSONB_AGG(ver_data)
     FROM
       (
         SELECT
-          efv.*
+          efv.id,
+          efv."formId",
+          efv.form,
+          efv.active,
+          EXISTS (
+            SELECT 1
+            FROM dbview_schema.enabled_form_version_submissions sub
+            WHERE sub."formVersionId" = efv.id
+          ) AS "hasSubmissions",
+          efv."createdOn"
         FROM
           dbview_schema.enabled_form_versions efv
         WHERE
           efv."formId" = ef.id
         ORDER BY
           efv."createdOn" DESC
-        LIMIT
-          1
-      ) vers
-  ) as eefv ON true;
+      ) ver_data
+  ) AS versions
+FROM
+  dbview_schema.enabled_forms ef;
+
+CREATE
+OR REPLACE VIEW dbview_schema.enabled_forms_active AS
+SELECT
+  ef.id,
+  ef.name,
+  (
+    SELECT
+      efv.id,
+      efv.form
+    FROM
+      dbview_schema.enabled_form_versions efv
+    WHERE
+      efv."formId" = ef.id AND efv.active = true
+    ORDER BY
+      efv."createdOn" DESC
+  ) version
+FROM
+  dbview_schema.enabled_forms ef;
 
 CREATE
 OR REPLACE VIEW dbview_schema.enabled_group_forms_ext AS
@@ -99,7 +127,7 @@ SELECT
   egf.id,
   egf."formId",
   egf."groupId",
-  eef.* as form
+  eef.form
 FROM
   dbview_schema.enabled_group_forms egf
   LEFT JOIN LATERAL (
@@ -111,6 +139,29 @@ FROM
           efe.*
         FROM
           dbview_schema.enabled_forms_ext efe
+        WHERE
+          efe.id = egf."formId"
+      ) frm
+  ) as eef ON true;
+
+CREATE
+OR REPLACE VIEW dbview_schema.enabled_group_forms_active AS
+SELECT
+  egf.id,
+  egf."formId",
+  egf."groupId",
+  eef.form
+FROM
+  dbview_schema.enabled_group_forms egf
+  LEFT JOIN LATERAL (
+    SELECT
+      TO_JSONB(frm) as form
+    FROM
+      (
+        SELECT
+          efe.*
+        FROM
+          dbview_schema.enabled_forms_active efe
         WHERE
           efe.id = egf."formId"
       ) frm

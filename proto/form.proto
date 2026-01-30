@@ -87,16 +87,18 @@ message IProtoFormVersionSubmission {
 message IProtoFormVersion {
   string id = 1;
   string formId = 2;
-  google.protobuf.Value form = 3 [(google.api.field_behavior) = REQUIRED];
-  google.protobuf.Value submission = 4;
-  string createdOn = 5;
+  string createdOn = 3;
+  google.protobuf.Value form = 4 [(google.api.field_behavior) = REQUIRED];
+  google.protobuf.Value submission = 5;
+  bool hasSubmissions = 6;
 }
 
 message IProtoForm {
   string id = 1;
   string name = 2;
-  IProtoFormVersion version = 3 [(google.api.field_behavior) = REQUIRED];
-  string createdOn = 4;
+  string createdOn = 3;
+  IProtoFormVersion version = 4 [(google.api.field_behavior) = REQUIRED];
+  repeated IProtoFormVersion versions = 5 [(google.api.field_behavior) = REQUIRED];
 }
 
 message IProtoFormDataPoint {

@@ -84,6 +84,7 @@ CREATE TABLE dbtable_schema.form_versions (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   form_id uuid NOT NULL REFERENCES dbtable_schema.forms (id) ON DELETE CASCADE,
   form JSONB NOT NULL,
+  active BOOLEAN NOT NULL DEFAULT true,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
   updated_on TIMESTAMP,

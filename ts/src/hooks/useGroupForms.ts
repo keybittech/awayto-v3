@@ -16,6 +16,7 @@ export function useGroupForms(ids: string[] = []): UseGroupFormResponse {
   const [forms, setForms] = useState<IForm[]>([]);
   const original = useRef<IForm[]>([]);
 
+  // TODO use the active endpoint
   const [getGroupForm] = siteApi.useLazyGroupFormServiceGetGroupFormByIdQuery();
 
   const reset = useCallback(() => {
@@ -41,7 +42,7 @@ export function useGroupForms(ids: string[] = []): UseGroupFormResponse {
     if (ids.length) {
       const gets = ids.map(id => getGroupForm({ formId: id }).unwrap());
       Promise.all(gets).then(res => {
-        const reqForms = res.map(r => r?.groupForm.form as IForm).filter(Boolean);
+        const reqForms = res.map(r => r?.groupForm.form as unknown as IForm).filter(Boolean);
         original.current = reqForms;
         setForms(deepClone(reqForms));
       }).catch(console.error);

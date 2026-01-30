@@ -25,7 +25,6 @@ export function ManageForms(props: IComponent): React.JSX.Element {
   const [deleteGroupForm] = siteApi.useGroupFormServiceDeleteGroupFormMutation();
   const { data: groupFormsRequest, refetch: getGroupForms } = siteApi.useGroupFormServiceGetGroupFormsQuery();
 
-
   const [groupForm, setGroupForm] = useState<IGroupForm>();
   const [selected, setSelected] = useState<string[]>([]);
   const [dialog, setDialog] = useState('');

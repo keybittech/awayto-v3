@@ -44,6 +44,11 @@ service GroupFormService {
       get: "/v1/group/forms/{formId}"
     };
   };
+  rpc GetGroupFormActive(GetGroupFormActiveRequest) returns (GetGroupFormActiveResponse) {
+    option (google.api.http) = {
+      get: "/v1/group/forms/{formId}/active"
+    };
+  };
   rpc GetGroupFormVersionById(GetGroupFormVersionByIdRequest) returns (GetGroupFormVersionByIdResponse) {
     option (google.api.http) = {
       get: "/v1/group/forms/version/{formVersionId}"
@@ -122,6 +127,14 @@ message GetGroupFormByIdResponse {
   IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
   repeated string groupRoleIds = 2 [(google.api.field_behavior) = REQUIRED];
   repeated string versionIds = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormActiveRequest {
+  string formId = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message GetGroupFormActiveResponse {
+  IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetGroupFormVersionByIdRequest {

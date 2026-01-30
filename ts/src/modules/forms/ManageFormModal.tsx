@@ -18,6 +18,11 @@ interface ManageFormModalProps extends IComponent {
 
 export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormModalProps): React.JSX.Element {
 
+  // TODO add version selection
+  // add help info if hasSubmissions is true
+  // make save behavior switch on hasSubmissions
+  // make patch version endpoint
+
   const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const [postGroupFormVersion] = siteApi.useGroupFormServicePostGroupFormVersionMutation();
   const [postGroupForm] = siteApi.useGroupFormServicePostGroupFormMutation();
@@ -39,8 +44,8 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
           setGroupFormId(gf.id);
           setGroupRoleIds(res.groupRoleIds);
           setForm(gf.form as IForm);
-          if (gf.form.version) {
-            setVersion(gf.form.version as IFormVersion);
+          if (gf.form.versions) {
+            setVersion(gf.form.versions[0] as IFormVersion);
           }
         }
 
