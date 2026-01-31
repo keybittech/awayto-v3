@@ -65,9 +65,10 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
   const addCol = useCallback((row: string) => updateData({ ...rows, [row]: [...rows[row], makeField()] }), [rows]);
 
   const delCol = useCallback((row: string, col: number) => {
-    rows[row].splice(col, 1);
-    if (!rows[row].length) delete rows[row];
-    updateData({ ...rows });
+    const newRows = deepClone(rows);
+    newRows[row].splice(col, 1);
+    if (!newRows[row].length) delete newRows[row];
+    updateData(newRows);
   }, [rows]);
 
   const updateCell = (newCell: IField) => {
@@ -324,11 +325,13 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
               <Typography variant="body1">Required</Typography>
               <Switch
                 {...targets(`form build field required`, `set the field to be required or not during form submission`)}
-                value={cell.r}
+                value={cell.r || false}
                 checked={cell.r}
                 onChange={() => {
-                  rows[position.row][position.col].r = !cell.r;
-                  updateData({ ...rows })
+                  updateCell({
+                    ...cell,
+                    r: !cell.r
+                  });
                 }} />
             </Grid>
           </>}

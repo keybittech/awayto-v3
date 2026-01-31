@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 
 import Grid from '@mui/material/Grid';
 import Card from '@mui/material/Card';
@@ -23,11 +23,6 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
   // make save behavior switch on hasSubmissions
   // make patch version endpoint
 
-  const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
-  const [postGroupFormVersion] = siteApi.useGroupFormServicePostGroupFormVersionMutation();
-  const [postGroupForm] = siteApi.useGroupFormServicePostGroupFormMutation();
-  const [getGroupFormById] = siteApi.useLazyGroupFormServiceGetGroupFormByIdQuery();
-
   const { setSnack } = useUtil();
 
   const [version, setVersion] = useState({ form: {} } as IFormVersion);
@@ -36,22 +31,29 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
   const [groupFormId, setGroupFormId] = useState<string | null>();
   const [groupRoleIds, setGroupRoleIds] = useState<string[]>([]);
 
-  useEffect(() => {
-    if (editForm) {
-      getGroupFormById({ formId: editForm.id }).unwrap().then(res => {
-        const gf = res.groupForm;
-        if (gf.form) {
-          setGroupFormId(gf.id);
-          setGroupRoleIds(res.groupRoleIds);
-          setForm(gf.form as IForm);
-          if (gf.form.versions) {
-            setVersion(gf.form.versions[0] as IFormVersion);
-          }
-        }
+  const [postGroupFormVersion] = siteApi.useGroupFormServicePostGroupFormVersionMutation();
+  const [postGroupForm] = siteApi.useGroupFormServicePostGroupFormMutation();
+  const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
+  const { data: formRequest } = siteApi.useGroupFormServiceGetGroupFormByIdQuery({ formId: editForm?.id! }, { skip: !editForm });
 
-      }).catch(console.error);
+  const versionIds = useMemo(() => {
+    if (!formRequest?.groupForm.form?.versions) return [];
+    return formRequest.groupForm.form.versions.map(v => v.id);
+  }, [formRequest]);
+
+  useEffect(() => {
+    if (!formRequest) return;
+    const gf = formRequest.groupForm;
+    if (gf.form) {
+      setGroupFormId(gf.id);
+      setGroupRoleIds(formRequest.groupRoleIds);
+      setForm(gf.form as IForm);
+      if (gf.form.versions) {
+        const activeVersion = gf.form.versions.find(fv => fv.active);
+        setVersion(activeVersion as IFormVersion);
+      }
     }
-  }, [editForm]);
+  }, [formRequest]);
 
   useEffect(() => {
     const formClone = deepClone(form);
@@ -67,7 +69,10 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
         });
       });
 
-      setVersion(formClone.version);
+      setVersion(prev => ({
+        ...vers,
+        id: vers.id || prev.id
+      }));
     }
   }, [form]);
 
@@ -170,6 +175,21 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
                 {groupRole.name}
               </MenuItem>
             })}
+          </TextField>
+        </Grid>}
+        {version && !!versionIds.length && <Grid size={6}>
+          <TextField
+            {...targets(`form edit version selection`, `Version`, `select a form version to edit`)}
+            select
+            fullWidth
+            value={version.id || ''}
+            onChange={e => {
+              if (formRequest?.groupForm.form?.versions) {
+                setVersion(formRequest.groupForm.form.versions.find(v => v.id === e.target.value) as IFormVersion);
+              }
+            }}
+          >
+            {versionIds.map((vid, i) => <MenuItem key={`report_field_sel${i}`} value={vid}>Version {versionIds.length - i}</MenuItem>)}
           </TextField>
         </Grid>}
       </Grid>

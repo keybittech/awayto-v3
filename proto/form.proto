@@ -91,14 +91,15 @@ message IProtoFormVersion {
   google.protobuf.Value form = 4 [(google.api.field_behavior) = REQUIRED];
   google.protobuf.Value submission = 5;
   bool hasSubmissions = 6;
+  bool active = 7;
 }
 
 message IProtoForm {
   string id = 1;
   string name = 2;
   string createdOn = 3;
-  IProtoFormVersion version = 4 [(google.api.field_behavior) = REQUIRED];
-  repeated IProtoFormVersion versions = 5 [(google.api.field_behavior) = REQUIRED];
+  IProtoFormVersion version = 4;
+  repeated IProtoFormVersion versions = 5;
 }
 
 message IProtoFormDataPoint {

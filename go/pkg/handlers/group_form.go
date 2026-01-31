@@ -7,6 +7,7 @@ import (
 	"regexp"
 	"sort"
 	"strings"
+	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -42,17 +43,6 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(err)
 	}
 
-	_, err = h.PostFormVersion(info, &types.PostFormVersionRequest{
-		Name: data.GetGroupForm().GetForm().GetName(),
-		Version: &types.IProtoFormVersion{
-			FormId: formResp.Id,
-			Form:   data.GetGroupForm().GetForm().GetVersion().GetForm(),
-		},
-	})
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	var groupFormId string
 	err = info.Tx.QueryRow(info.Ctx, `
 		INSERT INTO dbtable_schema.group_forms (group_id, form_id, created_sub)
@@ -64,33 +54,83 @@ func (h *Handlers) PostGroupForm(info ReqInfo, data *types.PostGroupFormRequest)
 		return nil, util.ErrCheck(err)
 	}
 
+	formJson, err := data.GetGroupForm().GetForm().GetVersion().GetForm().MarshalJSON()
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = info.Tx.Exec(info.Ctx, `
+		INSERT INTO dbtable_schema.form_versions (form_id, form, created_sub)
+		SELECT gf.form_id, $2::jsonb, $3::uuid
+		FROM dbtable_schema.group_forms gf
+		WHERE gf.id = $1::uuid
+	`, groupFormId, formJson, groupSub)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	for _, groupRoleId := range data.GetGroupRoleIds() {
 		_, err = info.Tx.Exec(info.Ctx, `
 			INSERT INTO dbtable_schema.group_form_roles (group_form_id, group_role_id, created_sub)
-			VALUES ($1::uuid, $2::uuid, $3::uuid)
+			SELECT gf.id, $2::uuid, $3::uuid
+			FROM dbtable_schema.group_forms gf
+			WHERE gf.id = $1::uuid
 		`, groupFormId, groupRoleId, groupSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	return &types.PostGroupFormResponse{Id: formResp.Id}, nil
+	return &types.PostGroupFormResponse{Id: formResp.GetId()}, nil
 }
 
 func (h *Handlers) PostGroupFormVersion(info ReqInfo, data *types.PostGroupFormVersionRequest) (*types.PostGroupFormVersionResponse, error) {
-	formVersionResp, err := h.PostFormVersion(info, &types.PostFormVersionRequest{Name: data.GetName(), Version: data.GetGroupFormVersion()})
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
-
 	groupSub := info.Session.GetGroupSub()
 	info.Session.SetUserSub(groupSub)
 
 	groupFormId := data.GetGroupFormId()
 
+	_, err := info.Tx.Exec(info.Ctx, `
+		UPDATE dbtable_schema.form_versions fv
+		SET active = false
+		FROM dbtable_schema.group_forms gf
+		WHERE fv.form_id = gf.form_id AND gf.id = $1::uuid
+	`, groupFormId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	formJson, err := data.GroupFormVersion.GetForm().MarshalJSON()
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	var versionId string
+	err = info.Tx.QueryRow(info.Ctx, `
+		INSERT INTO dbtable_schema.form_versions (form_id, form, created_sub, active)
+		SELECT gf.form_id, $2::jsonb, $3::uuid, true
+		FROM dbtable_schema.group_forms gf
+		WHERE gf.id = $1::uuid
+		RETURNING id
+	`, groupFormId, formJson, groupSub).Scan(&versionId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
 	_, err = info.Tx.Exec(info.Ctx, `
-		DELETE FROM dbtable_schema.group_form_roles
-		WHERE group_form_id = $1::uuid
+		UPDATE dbtable_schema.forms f
+		SET name = $1, updated_on = $2, updated_sub = $3
+		FROM dbtable_schema.group_forms gf
+		WHERE f.id = gf.form_id AND gf.id = $4::uuid
+	`, data.GetName(), time.Now(), groupSub, groupFormId)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = info.Tx.Exec(info.Ctx, `
+		DELETE FROM dbtable_schema.group_form_roles gfr
+		USING dbtable_schema.group_forms gf
+		WHERE gfr.group_form_id = gf.id AND gf.id = $1::uuid
 	`, groupFormId)
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -99,21 +139,29 @@ func (h *Handlers) PostGroupFormVersion(info ReqInfo, data *types.PostGroupFormV
 	for _, groupRoleId := range data.GetGroupRoleIds() {
 		_, err = info.Tx.Exec(info.Ctx, `
 			INSERT INTO dbtable_schema.group_form_roles (group_form_id, group_role_id, created_sub)
-			VALUES ($1::uuid, $2::uuid, $3::uuid)
+			SELECT gf.id, $2::uuid, $3::uuid
+			FROM dbtable_schema.group_forms gf
+			WHERE gf.id = $1::uuid
 		`, groupFormId, groupRoleId, groupSub)
 		if err != nil {
 			return nil, util.ErrCheck(err)
 		}
 	}
 
-	return &types.PostGroupFormVersionResponse{Id: formVersionResp.GetId()}, nil
+	return &types.PostGroupFormVersionResponse{Id: versionId}, nil
 }
 
 func (h *Handlers) PatchGroupForm(info ReqInfo, data *types.PatchGroupFormRequest) (*types.PatchGroupFormResponse, error) {
-	_, err := h.PatchForm(info, &types.PatchFormRequest{Form: data.GetGroupForm().GetForm()})
-	if err != nil {
-		return nil, util.ErrCheck(err)
-	}
+	form := data.GetGroupForm().GetForm()
+
+	util.BatchExec(info.Batch, `
+		UPDATE dbtable_schema.forms f
+		SET name = $1, updated_on = $2, updated_sub = $3
+		FROM dbtable_schema.group_forms gf
+		WHERE f.id = gf.form_id AND f.id = $4::uuid
+	`, form.GetName(), time.Now(), info.Session.GetUserSub(), form.GetId())
+
+	info.Batch.Send(info.Ctx)
 
 	return &types.PatchGroupFormResponse{Success: true}, nil
 }
@@ -146,9 +194,10 @@ func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRe
 	formVersionIds := util.BatchQueryRow[struct {
 		Ids []string `json:"ids"`
 	}](info.Batch, `
-		SELECT ARRAY_AGG(id ORDER BY created_on DESC) AS ids
-		FROM dbtable_schema.form_versions
-		WHERE form_id = $1
+		SELECT ARRAY_AGG(fv.id ORDER BY fv.created_on DESC) AS ids
+		FROM dbtable_schema.form_versions fv
+		JOIN dbtable_schema.group_forms gf ON gf.form_id = fv.form_id
+		WHERE fv.form_id = $1
 	`, data.GetFormId())
 
 	info.Batch.Send(info.Ctx)
@@ -158,9 +207,10 @@ func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRe
 	info.Batch.Reset()
 
 	groupRoleIdsReq := util.BatchQuery[types.ILookup](info.Batch, `
-		SELECT group_role_id as id
-		FROM dbtable_schema.group_form_roles
-		WHERE group_form_id = $1::uuid
+		SELECT gfr.group_role_id as id
+		FROM dbtable_schema.group_form_roles gfr
+		JOIN dbtable_schema.group_forms gf ON gf.id = gfr.group_form_id
+		WHERE gfr.group_form_id = $1::uuid
 	`, groupForm.GetId())
 
 	info.Batch.Send(info.Ctx)
@@ -171,6 +221,18 @@ func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRe
 	}
 
 	return &types.GetGroupFormByIdResponse{GroupForm: groupForm, GroupRoleIds: groupRoleIds, VersionIds: (*formVersionIds).Ids}, nil
+}
+
+func (h *Handlers) GetGroupFormActiveVersion(info ReqInfo, data *types.GetGroupFormActiveVersionRequest) (*types.GetGroupFormActiveVersionResponse, error) {
+	groupFormReq := util.BatchQueryRow[types.IGroupForm](info.Batch, `
+		SELECT id, "formId", "groupId", form
+		FROM dbview_schema.enabled_group_forms_active
+		WHERE "groupId" = $1 AND "formId" = $2
+	`, info.Session.GetGroupId(), data.GetFormId())
+
+	info.Batch.Send(info.Ctx)
+
+	return &types.GetGroupFormActiveVersionResponse{GroupForm: *groupFormReq}, nil
 }
 
 func (h *Handlers) GetGroupFormVersionById(info ReqInfo, data *types.GetGroupFormVersionByIdRequest) (*types.GetGroupFormVersionByIdResponse, error) {
@@ -218,8 +280,9 @@ func (h *Handlers) DeleteGroupForm(info ReqInfo, data *types.DeleteGroupFormRequ
 	}
 
 	_, err = info.Tx.Exec(info.Ctx, `
-		DELETE FROM dbtable_schema.forms
-		WHERE id = ANY($1)
+		DELETE FROM dbtable_schema.forms f
+		USING dbtable_schema.group_forms gf
+		WHERE f.id = gf.form_id AND f.id = ANY($1)
 	`, pq.Array(formIds))
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -344,8 +407,10 @@ func (h *Handlers) GetGroupFormVersionData(info ReqInfo, data *types.GetGroupFor
 
 	query := fmt.Sprintf(`
 		SELECT %s
-		FROM dbtable_schema.form_version_submissions
-		WHERE form_version_id = '%s'
+		FROM dbtable_schema.form_version_submissions fvs
+		JOIN dbtable_schema.form_versions fv ON fv.id = fvs.form_version_id
+		JOIN dbtable_schema.group_forms gf ON gf.form_id = fv.form_id
+		WHERE fvs.form_version_id = '%s'
 	`, strings.Join(dataCols, ", "), data.GetFormVersionId())
 
 	println("the query ", query)
@@ -399,8 +464,10 @@ func (h *Handlers) GetGroupFormVersionReport(info ReqInfo, data *types.GetGroupF
 		}
 		query = fmt.Sprintf(`
 			SELECT %s
-			FROM dbtable_schema.form_version_submissions
-			WHERE form_version_id = '%s'
+			FROM dbtable_schema.form_version_submissions fvs
+			JOIN dbtable_schema.form_versions fv ON fv.id = fvs.form_version_id
+			JOIN dbtable_schema.group_forms gf ON gf.form_id = fv.form_id
+			WHERE fvs.form_version_id = '%s'
 		`, strings.Join(sumStatements, ", "), formVersionId)
 	case "boolean", "single-select", "number":
 		coalesceNullText := "No Data"
@@ -410,8 +477,10 @@ func (h *Handlers) GetGroupFormVersionReport(info ReqInfo, data *types.GetGroupF
 		colSelect := fmt.Sprintf("submission->>'%s'", targetField.GetI())
 		query = fmt.Sprintf(`
 			SELECT COALESCE(%s, '%s') AS label, COUNT(*) AS value
-			FROM dbtable_schema.form_version_submissions
-			WHERE form_version_id = '%s'
+			FROM dbtable_schema.form_version_submissions fvs
+			JOIN dbtable_schema.form_versions fv ON fv.id = fvs.form_version_id
+			JOIN dbtable_schema.group_forms gf ON gf.form_id = fv.form_id
+			WHERE fvs.form_version_id = '%s'
 			GROUP BY 1
 			ORDER BY 2 DESC
 		`, colSelect, coalesceNullText, formVersionId)

@@ -107,19 +107,25 @@ OR REPLACE VIEW dbview_schema.enabled_forms_active AS
 SELECT
   ef.id,
   ef.name,
-  (
-    SELECT
-      efv.id,
-      efv.form
-    FROM
-      dbview_schema.enabled_form_versions efv
-    WHERE
-      efv."formId" = ef.id AND efv.active = true
-    ORDER BY
-      efv."createdOn" DESC
-  ) version
+  efvv.version
 FROM
-  dbview_schema.enabled_forms ef;
+  dbview_schema.enabled_forms ef
+  LEFT JOIN LATERAL (
+    SELECT
+      TO_JSONB(vrs) as version
+    FROM
+      (
+        SELECT
+          efv.id,
+          efv.form
+        FROM
+          dbview_schema.enabled_form_versions efv
+        WHERE
+          efv."formId" = ef.id AND efv.active = true
+        ORDER BY
+          efv."createdOn" DESC
+      ) vrs
+  ) as efvv ON true;
 
 CREATE
 OR REPLACE VIEW dbview_schema.enabled_group_forms_ext AS
