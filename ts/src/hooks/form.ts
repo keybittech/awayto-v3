@@ -52,6 +52,7 @@ export type IFormVersion = {
   form: IFormTemplate;
   submission?: IFormSubmission;
   hasSubmissions?: boolean;
+  active?: boolean;
 };
 
 /**

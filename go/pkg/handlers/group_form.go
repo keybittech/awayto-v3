@@ -223,6 +223,31 @@ func (h *Handlers) GetGroupFormById(info ReqInfo, data *types.GetGroupFormByIdRe
 	return &types.GetGroupFormByIdResponse{GroupForm: groupForm, GroupRoleIds: groupRoleIds, VersionIds: (*formVersionIds).Ids}, nil
 }
 
+func (h *Handlers) PatchGroupFormActiveVersion(info ReqInfo, data *types.PatchGroupFormActiveVersionRequest) (*types.PatchGroupFormActiveVersionResponse, error) {
+
+	_, err := info.Tx.Exec(info.Ctx, `
+		UPDATE dbtable_schema.form_versions fv
+		SET active = false
+		FROM dbtable_schema.group_forms gf
+		WHERE fv.form_id = gf.form_id AND gf.form_id = $1::uuid
+	`, data.GetFormId())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = info.Tx.Exec(info.Ctx, `
+		UPDATE dbtable_schema.form_versions fv
+		SET active = true
+		FROM dbtable_schema.group_forms gf
+		WHERE fv.form_id = gf.form_id AND gf.form_id = $1::uuid AND fv.id = $2::uuid
+	`, data.GetFormId(), data.GetFormVersionId())
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return &types.PatchGroupFormActiveVersionResponse{Success: true}, nil
+}
+
 func (h *Handlers) GetGroupFormActiveVersion(info ReqInfo, data *types.GetGroupFormActiveVersionRequest) (*types.GetGroupFormActiveVersionResponse, error) {
 	groupFormReq := util.BatchQueryRow[types.IGroupForm](info.Batch, `
 		SELECT id, "formId", "groupId", form

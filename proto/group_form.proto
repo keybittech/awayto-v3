@@ -44,6 +44,14 @@ service GroupFormService {
       get: "/v1/group/forms/{formId}"
     };
   };
+  rpc PatchGroupFormActiveVersion(PatchGroupFormActiveVersionRequest) returns (PatchGroupFormActiveVersionResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/forms/active"
+      body: "*"
+    };
+    option (invalidates) = "GetGroupFormById";
+    option (use_tx) = true;
+  };
   rpc GetGroupFormActiveVersion(GetGroupFormActiveVersionRequest) returns (GetGroupFormActiveVersionResponse) {
     option (google.api.http) = {
       get: "/v1/group/forms/active/{formId}"
@@ -57,13 +65,13 @@ service GroupFormService {
   rpc GetGroupFormVersionData(GetGroupFormVersionDataRequest) returns (GetGroupFormVersionDataResponse) {
     option (google.api.http) = {
       get: "/v1/group/forms/version/{formVersionId}/data"
-    }; 
+    };
     option (use_tx) = true;
   }
   rpc GetGroupFormVersionReport(GetGroupFormVersionReportRequest) returns (GetGroupFormVersionReportResponse) {
     option (google.api.http) = {
       get: "/v1/group/forms/version/{formVersionId}/report/{fieldId}"
-    }; 
+    };
     option (use_tx) = true;
   }
   rpc DeleteGroupForm(DeleteGroupFormRequest) returns (DeleteGroupFormResponse) {
@@ -127,6 +135,15 @@ message GetGroupFormByIdResponse {
   IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
   repeated string groupRoleIds = 2 [(google.api.field_behavior) = REQUIRED];
   repeated string versionIds = 3 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFormActiveVersionRequest {
+  string formId = 1 [(google.api.field_behavior) = REQUIRED];
+  string formVersionId = 2 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFormActiveVersionResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetGroupFormActiveVersionRequest {

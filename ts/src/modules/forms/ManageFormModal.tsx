@@ -33,6 +33,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
 
   const [postGroupFormVersion] = siteApi.useGroupFormServicePostGroupFormVersionMutation();
   const [postGroupForm] = siteApi.useGroupFormServicePostGroupFormMutation();
+  const [patchGroupFormActiveVersion] = siteApi.useGroupFormServicePatchGroupFormActiveVersionMutation();
   const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const { data: formRequest } = siteApi.useGroupFormServiceGetGroupFormByIdQuery({ formId: editForm?.id! }, { skip: !editForm });
 
@@ -204,11 +205,21 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
           color="error"
           onClick={closeModal}
         >Cancel</Button>
-        <Button
-          {...targets(`manage form modal submit`, `submit the current form to be saved or edited`)}
-          color="info"
-          onClick={handleSubmit}
-        >Submit</Button>
+        <Grid>
+          {version.id && !version.active && <Button
+            {...targets(`manage form modal set active version`, `set the currently selected version to be active`)}
+            color="info"
+            onClick={() => {
+              const { id: formVersionId, formId } = version;
+              patchGroupFormActiveVersion({ patchGroupFormActiveVersionRequest: { formId, formVersionId } }).unwrap().then(closeModal);
+            }}
+          >Set as Active</Button>}
+          <Button
+            {...targets(`manage form modal submit`, `submit the current form to be saved or edited`)}
+            color="info"
+            onClick={handleSubmit}
+          >Submit</Button>
+        </Grid>
       </Grid>
     </CardActions>
   </Card>
