@@ -260,6 +260,25 @@ func (h *Handlers) GetGroupFormActiveVersion(info ReqInfo, data *types.GetGroupF
 	return &types.GetGroupFormActiveVersionResponse{GroupForm: *groupFormReq}, nil
 }
 
+func (h *Handlers) PatchGroupFormVersion(info ReqInfo, data *types.PatchGroupFormVersionRequest) (*types.PatchGroupFormVersionResponse, error) {
+	formJson, err := data.GetGroupFormVersion().GetForm().MarshalJSON()
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	_, err = info.Tx.Exec(info.Ctx, `
+		UPDATE dbtable_schema.form_versions fv
+		SET form = $2::jsonb
+		FROM dbtable_schema.group_forms gf
+		WHERE fv.form_id = gf.form_id AND gf.form_id = $1::uuid
+	`, data.GetGroupFormVersion().GetFormId(), formJson)
+	if err != nil {
+		return nil, util.ErrCheck(err)
+	}
+
+	return &types.PatchGroupFormVersionResponse{Success: true}, nil
+}
+
 func (h *Handlers) GetGroupFormVersionById(info ReqInfo, data *types.GetGroupFormVersionByIdRequest) (*types.GetGroupFormVersionByIdResponse, error) {
 	version := util.BatchQueryRow[types.IProtoFormVersion](info.Batch, `
 		SELECT fv."formId", fv.form, fv."createdOn"

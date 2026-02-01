@@ -69,17 +69,31 @@ export function Field({ settingsBtn, field, error, disabled, onChange }: FieldPr
       {field.h && <FormHelperText>{field.h}</FormHelperText>}
     </FormControl>
   } else {
+    const isNumber = field.t === 'number';
+
+    const handleTextChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      if (isNumber) {
+        const numericValue = e.target.value.replace(/[^0-9.]/g, '');
+        onChange({ ...e, target: { ...e.target, value: numericValue } });
+      } else {
+        onChange(e);
+      }
+    };
+
     comp = <TextField
       fullWidth
       {...targets(`form field ${field.l}`, field.l)}
       error={error}
       disabled={disabled}
-      type={field.t}
+      type={isNumber ? 'text' : field.t}
       helperText={`${field.r ? 'Required. ' : ''}${field.h || ''}`}
       value={val ?? ''}
       required={field.r}
-      onChange={onChange}
+      onChange={handleTextChange}
       slotProps={{
+        htmlInput: {
+          inputMode: isNumber ? 'decimal' : undefined
+        },
         inputLabel: {
           shrink: true
         }

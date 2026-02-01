@@ -57,6 +57,14 @@ service GroupFormService {
       get: "/v1/group/forms/active/{formId}"
     };
   };
+  rpc PatchGroupFormVersion(PatchGroupFormVersionRequest) returns (PatchGroupFormVersionResponse) {
+    option (google.api.http) = {
+      patch: "/v1/group/forms/version"
+      body: "*"
+    };
+    option (invalidates) = "GetGroupFormById";
+    option (use_tx) = true;
+  };
   rpc GetGroupFormVersionById(GetGroupFormVersionByIdRequest) returns (GetGroupFormVersionByIdResponse) {
     option (google.api.http) = {
       get: "/v1/group/forms/version/{formVersionId}"
@@ -152,6 +160,14 @@ message GetGroupFormActiveVersionRequest {
 
 message GetGroupFormActiveVersionResponse {
   IGroupForm groupForm = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFormVersionRequest {
+  IProtoFormVersion groupFormVersion = 1 [(google.api.field_behavior) = REQUIRED];
+}
+
+message PatchGroupFormVersionResponse {
+  bool success = 1 [(google.api.field_behavior) = REQUIRED];
 }
 
 message GetGroupFormVersionByIdRequest {

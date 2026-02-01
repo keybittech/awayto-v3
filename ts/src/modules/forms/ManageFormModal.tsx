@@ -1,28 +1,24 @@
-import React, { useEffect, useMemo, useState, useCallback } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 
-import Grid from '@mui/material/Grid';
+import Alert from '@mui/material/Alert';
+import Button from '@mui/material/Button';
 import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import CardHeader from '@mui/material/CardHeader';
 import CardActions from '@mui/material/CardActions';
-import Button from '@mui/material/Button';
-import TextField from '@mui/material/TextField';
+import Grid from '@mui/material/Grid';
 import MenuItem from '@mui/material/MenuItem';
+import TextField from '@mui/material/TextField';
+import Typography from '@mui/material/Typography';
 
-import { siteApi, useUtil, IForm, IFormVersion, IField, deepClone, IGroupForm, targets } from 'awayto/hooks';
+import { siteApi, useUtil, IForm, IFormVersion, IField, deepClone, IGroupForm, targets, IFormTemplate } from 'awayto/hooks';
 import FormBuilder from './FormBuilder';
 
 interface ManageFormModalProps extends IComponent {
   editForm?: IForm;
 }
 
-export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormModalProps): React.JSX.Element {
-
-  // TODO add version selection
-  // add help info if hasSubmissions is true
-  // make save behavior switch on hasSubmissions
-  // make patch version endpoint
-
+export function ManageFormModal({ editForm, closeModal }: ManageFormModalProps): React.JSX.Element {
   const { setSnack } = useUtil();
 
   const [version, setVersion] = useState({ form: {} } as IFormVersion);
@@ -33,6 +29,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
 
   const [postGroupFormVersion] = siteApi.useGroupFormServicePostGroupFormVersionMutation();
   const [postGroupForm] = siteApi.useGroupFormServicePostGroupFormMutation();
+  const [patchGroupFormVersion] = siteApi.useGroupFormServicePatchGroupFormVersionMutation();
   const [patchGroupFormActiveVersion] = siteApi.useGroupFormServicePatchGroupFormActiveVersionMutation();
   const { data: groupRolesRequest } = siteApi.useGroupRoleServiceGetGroupRolesQuery();
   const { data: formRequest } = siteApi.useGroupFormServiceGetGroupFormByIdQuery({ formId: editForm?.id! }, { skip: !editForm });
@@ -41,6 +38,34 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
     if (!formRequest?.groupForm.form?.versions) return [];
     return formRequest.groupForm.form.versions.map(v => v.id);
   }, [formRequest]);
+
+  const generateForm = () => {
+    setEditable(false);
+
+    if (!form.name || !Object.keys(version.form).length || Object.values(version.form).some(v => v.some(f => !f.l))) {
+      setSnack({ snackType: 'error', snackOn: 'Forms must have a name, and at least 1 field. All fields must have a label.' });
+      setEditable(true);
+      return;
+    }
+
+    const newForm = Object.keys(version.form).reduce((m, k, i) => {
+      const fields = [...version.form[k]] as IField[];
+      return {
+        ...m,
+        [i]: fields.map(f => {
+          if ('' === f.v) delete f.v;
+          if ('' === f.d) delete f.d;
+          if ('' === f.h) delete f.h;
+          if ('' === f.x) delete f.x;
+          if (false === f.r) delete f.r;
+          if (!f.o?.length) delete f.o;
+          return f;
+        })
+      }
+    }, {});
+
+    return newForm as IFormTemplate;
+  }
 
   useEffect(() => {
     if (!formRequest) return;
@@ -77,69 +102,11 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
     }
   }, [form]);
 
-  const handleSubmit = useCallback(async () => {
-    setEditable(false);
-    const { id: formId, name } = form;
-
-    if (!name || !Object.keys(version.form).length || Object.values(version.form).some(v => v.some(f => !f.l))) {
-      setSnack({ snackType: 'error', snackOn: 'Forms must have a name, and at least 1 field. All fields must have a label.' });
-      setEditable(true);
-      return;
-    }
-
-    const newForm = Object.keys(version.form).reduce((m, k, i) => {
-      const fields = [...version.form[k]] as IField[];
-      return {
-        ...m,
-        [i]: fields.map(f => {
-          if ('' === f.v) delete f.v;
-          if ('' === f.d) delete f.d;
-          if ('' === f.h) delete f.h;
-          if ('' === f.x) delete f.x;
-          if (false === f.r) delete f.r;
-          if (!f.o?.length) delete f.o;
-          return f;
-        })
-      }
-    }, {});
-
-    if (groupFormId && formId) {
-      await postGroupFormVersion({
-        postGroupFormVersionRequest: {
-          name,
-          groupFormId,
-          formId,
-          groupRoleIds,
-          groupFormVersion: {
-            form: newForm,
-            formId
-          } as IFormVersion
-        }
-      }).unwrap();
-    } else {
-      await postGroupForm({
-        postGroupFormRequest: {
-          name,
-          groupRoleIds,
-          groupForm: {
-            form: {
-              name,
-              formId,
-              version: {
-                form: newForm
-              }
-            }
-          } as IGroupForm
-        }
-      }).unwrap();
-    }
-
-    if (closeModal)
-      closeModal();
-  }, [form, version.form, groupFormId, groupRoleIds]);
-
   return <Card sx={{ display: 'flex', flex: 1, flexDirection: 'column' }}>
-    <CardHeader title={`${editForm?.id ? 'Edit' : 'Create'} Form`} />
+    <CardHeader
+      title={`${editForm?.id ? 'Edit' : 'Create'} Form`}
+      subheader="Forms must have a name, and at least 1 field. All fields must have a label. Forms can be updated up until they start receiving submissions. Forms with submissions will generate a new version upon being updated, to preserve data consistency."
+    />
     <CardContent sx={{ display: 'flex', flex: 1, flexDirection: 'column', overflow: 'auto' }}>
       <Grid container spacing={2} mb={4}>
         <Grid size={6}>
@@ -148,11 +115,6 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
             fullWidth
             autoFocus
             value={form.name}
-            onKeyDown={e => {
-              if ('Enter' === e.key) {
-                handleSubmit();
-              }
-            }}
             onChange={e => setForm({ ...form, name: e.target.value })}
           />
         </Grid>
@@ -178,7 +140,7 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
             })}
           </TextField>
         </Grid>}
-        {version && !!versionIds.length && <Grid size={6}>
+        {!!versionIds.length && <Grid size={6}>
           <TextField
             {...targets(`form edit version selection`, `Version`, `select a form version to edit`)}
             select
@@ -193,9 +155,16 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
             {versionIds.map((vid, i) => <MenuItem key={`report_field_sel${i}`} value={vid}>Version {versionIds.length - i}</MenuItem>)}
           </TextField>
         </Grid>}
+        {version.hasSubmissions && <Grid size={6}>
+          <Alert color="warning" variant="outlined">
+            <Typography variant="caption">
+              This version has existing data submissions and cannot be directly modified. A new version will be generated instead.
+            </Typography>
+          </Alert>
+        </Grid>}
       </Grid>
 
-      <FormBuilder {...props} editable={editable} version={version} setVersion={setVersion} />
+      <FormBuilder editable={editable} version={version} setVersion={setVersion} />
 
     </CardContent>
     <CardActions>
@@ -214,11 +183,68 @@ export function ManageFormModal({ editForm, closeModal, ...props }: ManageFormMo
               patchGroupFormActiveVersion({ patchGroupFormActiveVersionRequest: { formId, formVersionId } }).unwrap().then(closeModal);
             }}
           >Set as Active</Button>}
-          <Button
-            {...targets(`manage form modal submit`, `submit the current form to be saved or edited`)}
+          {!groupFormId ? <Button
+            {...targets(`manage form modal submit new form`, `submit the the page to create a new form`)}
             color="info"
-            onClick={handleSubmit}
-          >Submit</Button>
+            onClick={() => {
+              const newForm = generateForm();
+              if (newForm) {
+                postGroupForm({
+                  postGroupFormRequest: {
+                    name: form.name,
+                    groupRoleIds,
+                    groupForm: {
+                      form: {
+                        name: form.name,
+                        version: {
+                          form: newForm
+                        }
+                      }
+                    } as IGroupForm
+                  }
+                }).unwrap().then(closeModal);
+              }
+            }}
+          >Create Form</Button> :
+            version.hasSubmissions ? <Button
+              {...targets(`manage form modal submit new version`, `submit the page to create a new version of an existing form`)}
+              color="info"
+              onClick={() => {
+                const newForm = generateForm();
+                if (newForm) {
+                  postGroupFormVersion({
+                    postGroupFormVersionRequest: {
+                      name: form.name,
+                      groupFormId,
+                      formId: form.id,
+                      groupRoleIds,
+                      groupFormVersion: {
+                        form: newForm,
+                        formId: form.id
+                      } as IFormVersion
+                    }
+                  }).unwrap().then(closeModal);
+                }
+              }}
+            >Create Version</Button> :
+              <Button
+                {...targets(`manage form modal update version`, `submit the page to update this version of an existing form`)}
+                color="info"
+                onClick={() => {
+                  const newForm = generateForm();
+                  if (newForm) {
+                    patchGroupFormVersion({
+                      patchGroupFormVersionRequest: {
+                        groupFormVersion: {
+                          form: newForm,
+                          formId: form.id
+                        }
+                      }
+                    }).unwrap().then(closeModal);
+                  }
+                }}
+              >Update Version</Button>
+          }
         </Grid>
       </Grid>
     </CardActions>

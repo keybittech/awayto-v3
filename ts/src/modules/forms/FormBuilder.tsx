@@ -21,6 +21,7 @@ import Field from './Field';
 const fieldTypes = [
   { variant: 'labelntext', name: 'Label with Text' },
   { variant: 'text', name: 'Textfield' },
+  { variant: 'number', name: 'Number' },
   { variant: 'boolean', name: 'Checkbox (Yes/No)' },
   { variant: 'multi-select', name: 'Checkbox Group (Select Multiple)' },
   { variant: 'single-select', name: 'Radio Group (Select One)' },
@@ -50,11 +51,10 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
   }, [version]);
 
   const updateData = useCallback((newRows: typeof rows) => {
-    const rowSet = { ...rows, ...newRows };
-    setRows(rowSet);
-    setVersion({ ...version, form: rowSet });
+    setRows(newRows);
+    setVersion({ ...version, form: newRows });
 
-  }, [rows, version]);
+  }, [version]);
 
   const rowKeys = useMemo(() => Object.keys(rows), [rows]);
 
@@ -64,11 +64,13 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
 
   const addCol = useCallback((row: string) => updateData({ ...rows, [row]: [...rows[row], makeField()] }), [rows]);
 
-  const delCol = useCallback((row: string, col: number) => {
+  const delCol = useCallback((row: string, fieldId: string) => {
     const newRows = deepClone(rows);
-    newRows[row].splice(col, 1);
+    newRows[row] = newRows[row].filter(f => f.i !== fieldId);
     if (!newRows[row].length) delete newRows[row];
     updateData(newRows);
+    setPosition({ row: '', col: 0 });
+    setCell({} as IField);
   }, [rows]);
 
   const updateCell = (newCell: IField) => {
@@ -342,9 +344,7 @@ export default function FormBuilder({ version, setVersion, editable = true }: Fo
               fullWidth
               color="error"
               onClick={() => {
-                setPosition({ row: '', col: 0 })
-                delCol(position.row, position.col);
-                setCell({} as IField);
+                delCol(position.row, cell.i);
               }}
             >Delete</Button>
           </Grid>
