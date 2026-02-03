@@ -1,5 +1,6 @@
 import React from 'react';
 
+import { DesktopDatePicker } from '@mui/x-date-pickers/DesktopDatePicker';
 import TextField from '@mui/material/TextField';
 import FormControl from '@mui/material/FormControl';
 import FormLabel from '@mui/material/FormLabel';
@@ -14,7 +15,7 @@ import Card from '@mui/material/Card';
 import CardHeader from '@mui/material/CardHeader';
 import CardContent from '@mui/material/CardContent';
 
-import { targets, toSnakeCase, type IField } from 'awayto/hooks';
+import { dayjs, targets, toSnakeCase, type IField } from 'awayto/hooks';
 
 interface FieldProps extends IComponent {
   field: IField;
@@ -68,6 +69,35 @@ export function Field({ settingsBtn, field, error, disabled, onChange }: FieldPr
       </FormGroup>
       {field.h && <FormHelperText>{field.h}</FormHelperText>}
     </FormControl>
+  } else if ('date' === field.t) {
+    const handleDateChange = (date: dayjs.Dayjs | null) => {
+      onChange({
+        target: {
+          name: field.i,
+          value: date ? date.format('YYYY-MM-DD') : null
+        }
+      });
+    };
+    comp = <DesktopDatePicker
+      {...targets(`date picker selection`, `Date`, `select a date`)}
+      value={val ? dayjs(val as string) : null}
+      disabled={disabled}
+      format="MM/DD/YYYY"
+      formatDensity="spacious"
+      onChange={handleDateChange}
+      reduceAnimations
+      slotProps={{
+        openPickerButton: {
+          color: 'secondary'
+        },
+        clearIcon: { sx: { color: 'red' } },
+        field: {
+          clearable: true,
+          onClear: () => handleDateChange(null)
+        },
+        textField: { fullWidth: true }
+      }}
+    />
   } else {
     const isNumber = field.t === 'number';
 

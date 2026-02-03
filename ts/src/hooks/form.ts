@@ -1,10 +1,12 @@
+import dayjs from "dayjs";
+
 export type IFieldOption = {
   i: string; // id
   l: string; // label
   v: string; // value
 }
 
-export type IFieldValue = string | string[] | boolean | number;
+export type IFieldValue = string | string[] | boolean | number | dayjs.Dayjs;
 
 export type IField = {
   i: string; // id
