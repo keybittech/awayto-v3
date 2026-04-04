@@ -6,9 +6,10 @@
     "hugo-bin": "^0.139.0"
   },
   "overrides": {
+    "got": ">=11.8.5",
     "http-cache-semantics": ">=4.1.1",
     "semver-regex": ">=3.1.4",
-    "got": ">=11.8.5"
+    "yauzl": ">=3.2.1"
   },
   "scripts": {
     "start": "./server.sh",
