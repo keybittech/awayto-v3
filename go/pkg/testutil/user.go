@@ -362,19 +362,19 @@ func (tus *TestUsersStruct) PatchGroupAssignments(roleFullName, actionName strin
 	return nil
 }
 
-func (tus *TestUsersStruct) PostSchedule(scheduleRequest *types.PostScheduleRequest) (*types.ISchedule, error) {
+func (tus *TestUsersStruct) PostSchedule(scheduleRequest *types.PostScheduleRequest) (string, error) {
 	scheduleRequestBytes, err := protojson.Marshal(scheduleRequest)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error marshalling schedule request: %v", err))
+		return "", errors.New(fmt.Sprintf("error marshalling schedule request: %v", err))
 	}
 
 	scheduleResponse := &types.PostScheduleResponse{}
 	err = tus.apiRequest(http.MethodPost, "/api/v1/schedules", scheduleRequestBytes, nil, scheduleResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error post schedule request error: %v", err))
+		return "", errors.New(fmt.Sprintf("error post schedule request error: %v", err))
 	}
 
-	return tus.GetScheduleById(scheduleResponse.Id)
+	return scheduleResponse.GetId(), nil
 }
 
 func (tus *TestUsersStruct) PostGroupSchedule(scheduleId string) error {

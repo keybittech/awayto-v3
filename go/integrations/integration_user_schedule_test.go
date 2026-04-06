@@ -8,6 +8,7 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
 func testIntegrationUserSchedule(t *testing.T) {
@@ -60,7 +61,7 @@ func testIntegrationUserSchedule(t *testing.T) {
 	})
 
 	t.Run("user can create a personal schedule using a group schedule id", func(tt *testing.T) {
-		schedule, err := staff1.PostSchedule(&types.PostScheduleRequest{
+		scheduleId, err := staff1.PostSchedule(&types.PostScheduleRequest{
 			Brackets:           brackets,
 			GroupScheduleId:    testutil.IntegrationTest.MasterSchedule.Id,
 			Name:               testutil.IntegrationTest.MasterSchedule.Name,
@@ -74,14 +75,22 @@ func testIntegrationUserSchedule(t *testing.T) {
 		if err != nil {
 			t.Fatalf("staff post schedule err %v", err)
 		}
+		if !util.IsUUID(scheduleId) {
+			t.Fatalf("user schedule id is not uuid")
+		}
 
-		t.Logf("created user schedule with id %s", schedule.Id)
+		t.Logf("created user schedule with id %s", scheduleId)
+
+		schedule, err := staff1.GetScheduleById(scheduleId)
+		if err != nil {
+			t.Fatalf("staff get schedule by id err %v", err)
+		}
 
 		testutil.IntegrationTest.UserSchedule = schedule
 	})
 
 	t.Run("secondary user schedule creation", func(tt *testing.T) {
-		schedule, err := staff2.PostSchedule(&types.PostScheduleRequest{
+		scheduleId, err := staff2.PostSchedule(&types.PostScheduleRequest{
 			Brackets:           brackets,
 			GroupScheduleId:    testutil.IntegrationTest.MasterSchedules[0].Id,
 			Name:               testutil.IntegrationTest.MasterSchedules[0].Name,
@@ -94,6 +103,16 @@ func testIntegrationUserSchedule(t *testing.T) {
 		})
 		if err != nil {
 			t.Fatalf("secondary staff post schedule err %v", err)
+		}
+		if !util.IsUUID(scheduleId) {
+			t.Fatalf("secondary user schedule id is not uuid")
+		}
+
+		t.Logf("created secondary user schedule with id %s", scheduleId)
+
+		schedule, err := staff1.GetScheduleById(scheduleId)
+		if err != nil {
+			t.Fatalf("secondary staff get schedule by id err %v", err)
 		}
 
 		testutil.IntegrationTest.UserSchedules = append(testutil.IntegrationTest.UserSchedules, schedule)

@@ -62,7 +62,7 @@ func testIntegrationSchedule(t *testing.T) {
 	})
 
 	t.Run("master schedule can be created and attached to the group", func(tt *testing.T) {
-		schedule, err := admin.PostSchedule(&types.PostScheduleRequest{
+		scheduleId, err := admin.PostSchedule(&types.PostScheduleRequest{
 			AsGroup:            true,
 			Name:               name + " Master Creation Test",
 			StartDate:          startDate,
@@ -75,16 +75,16 @@ func testIntegrationSchedule(t *testing.T) {
 		if err != nil {
 			t.Fatalf("failed to post master schedule %v", err)
 		}
-		if !util.IsUUID(schedule.Id) {
+		if !util.IsUUID(scheduleId) {
 			t.Fatalf("master schedule id is not uuid")
 		}
 
-		err = admin.PostGroupSchedule(schedule.Id)
+		err = admin.PostGroupSchedule(scheduleId)
 		if err != nil {
 			t.Fatalf("master schedule creation attach group err: %v", err)
 		}
 
-		groupMasterSchedule, err := admin.GetMasterScheduleById(schedule.Id)
+		groupMasterSchedule, err := admin.GetMasterScheduleById(scheduleId)
 		if err != nil {
 			t.Fatalf("master schedule creation err: %v", err)
 		}

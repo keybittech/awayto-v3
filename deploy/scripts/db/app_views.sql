@@ -335,10 +335,10 @@ FROM
     SELECT
       ARRAY_AGG(stf.form_id::TEXT ORDER BY stf.created_on ASC) FILTER (WHERE stf.stage = 'intake') as intakes,
       ARRAY_AGG(stf.form_id::TEXT ORDER BY stf.created_on ASC) FILTER (WHERE stf.stage = 'survey') as surveys
-    FROM dbtable_schema.service_tier_forms stf
-    JOIN dbtable_schema.group_services gs ON gs.service_id = est."serviceId"
-    JOIN dbtable_schema.group_forms gf ON gf.form_id = stf.form_id AND gf.group_id = gs.group_id -- utilize RLS for form roles
-    WHERE stf.service_tier_id = est.id AND stf.enabled = true
+    FROM dbtable_schema.group_services gs
+    LEFT JOIN dbtable_schema.service_tier_forms stf ON stf.service_tier_id = est.id AND stf.enabled = true
+    LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = stf.form_id AND gf.group_id = gs.group_id -- utilize RLS for form roles
+    WHERE gs.service_id = est."serviceId"
   ) f ON true
   LEFT JOIN LATERAL (
     SELECT
@@ -370,10 +370,10 @@ FROM
     SELECT
       ARRAY_AGG(sf.form_id::TEXT ORDER BY sf.created_on ASC) FILTER (WHERE sf.stage = 'intake') as intakes,
       ARRAY_AGG(sf.form_id::TEXT ORDER BY sf.created_on ASC) FILTER (WHERE sf.stage = 'survey') as surveys
-    FROM dbtable_schema.service_forms sf
-    JOIN dbtable_schema.group_services gs ON gs.service_id = es.id
-    JOIN dbtable_schema.group_forms gf ON gf.form_id = sf.form_id AND gf.group_id = gs.group_id -- utilize RLS for form roles
-    WHERE sf.service_id = es.id AND sf.enabled = true
+    FROM dbtable_schema.group_services gs
+    LEFT JOIN dbtable_schema.service_forms sf ON sf.service_id = es.id AND sf.enabled = true
+    LEFT JOIN dbtable_schema.group_forms gf ON gf.form_id = sf.form_id AND gf.group_id = gs.group_id -- utilize RLS for form roles
+    WHERE gs.service_id = es.id
   ) f ON true
   LEFT JOIN LATERAL (
     SELECT
