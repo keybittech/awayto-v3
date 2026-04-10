@@ -38,7 +38,7 @@
     "@vitejs/plugin-react": "^4.4.1",
     "dotenv": "^16.5.0",
     "typescript": "^5.8.3",
-    "vite": "^6.4.1",
+    "vite": "^6.4.2",
     "vite-plugin-circular-dependency": "^0.5.0",
     "vite-plugin-compression": "^0.5.1",
     "vite-plugin-static-copy": "^2.3.2"
