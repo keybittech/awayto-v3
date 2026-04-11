@@ -13,9 +13,9 @@ func testIntegrationUser(t *testing.T) {
 
 	t.Run("user can register and connect", func(tt *testing.T) {
 		userId := fmt.Sprint(time.Now().UnixNano())
-		userEmail := "1@" + userId
+		userEmail := testutil.UserRoles[0] + "@demo.com"
 
-		testUser := testutil.NewTestUser(userId, userEmail, "1")
+		testUser := testutil.NewTestUser(userId, userEmail, "testdemo")
 		testutil.IntegrationTest.TestUsers[0] = testUser
 
 		err := testUser.RegisterKeycloakUserViaForm()

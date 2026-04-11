@@ -31,7 +31,7 @@ func testIntegrationUserSchedule(t *testing.T) {
 
 	slots[slot1Id] = &types.IScheduleBracketSlot{
 		Id:                slot1Id,
-		StartTime:         "P2DT1H",
+		StartTime:         "P2DT10H",
 		ScheduleBracketId: bracketId,
 	}
 
@@ -40,14 +40,14 @@ func testIntegrationUserSchedule(t *testing.T) {
 
 	slots[slot2Id] = &types.IScheduleBracketSlot{
 		Id:                slot2Id,
-		StartTime:         "P3DT4H",
+		StartTime:         "P3DT10H30M",
 		ScheduleBracketId: bracketId,
 	}
 
 	brackets[bracketId] = &types.IScheduleBracket{
 		Id:         bracketId,
 		Automatic:  false,
-		Duration:   15,
+		Duration:   30,
 		Multiplier: 100,
 		Services:   services,
 		Slots:      slots,
@@ -90,6 +90,9 @@ func testIntegrationUserSchedule(t *testing.T) {
 	})
 
 	t.Run("secondary user schedule creation", func(tt *testing.T) {
+		brackets[bracketId].Slots[slot1Id].StartTime = "P4DT10H"
+		brackets[bracketId].Slots[slot2Id].StartTime = "P5DT11H30M"
+
 		scheduleId, err := staff2.PostSchedule(&types.PostScheduleRequest{
 			Brackets:           brackets,
 			GroupScheduleId:    testutil.IntegrationTest.MasterSchedules[0].Id,

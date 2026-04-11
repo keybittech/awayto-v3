@@ -14,7 +14,7 @@ import (
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func doAndRead(client *http.Client, req *http.Request) ([]byte, error) {
+func DoAndRead(client *http.Client, req *http.Request) ([]byte, error) {
 	if client == nil {
 		client = &http.Client{
 			Transport: &http.Transport{
@@ -74,7 +74,7 @@ func CheckServer() error {
 		return fmt.Errorf("%w", err)
 	}
 
-	_, err = doAndRead(nil, req)
+	_, err = DoAndRead(nil, req)
 	if err != nil {
 		return util.ErrCheck(err)
 	}

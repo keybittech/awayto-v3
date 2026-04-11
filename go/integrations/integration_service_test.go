@@ -17,7 +17,7 @@ func testIntegrationService(t *testing.T) {
 
 		admin := testutil.IntegrationTest.TestUsers[0]
 
-		postServiceAddon1Request := &types.PostServiceAddonRequest{Name: "test addon 1"}
+		postServiceAddon1Request := &types.PostServiceAddonRequest{Name: "Detailed Discussion"}
 		postServiceAddon1RequestBytes, err := protojson.Marshal(postServiceAddon1Request)
 		if err != nil {
 			t.Fatalf("error marshalling addon 1 request: %v", err)
@@ -33,7 +33,7 @@ func testIntegrationService(t *testing.T) {
 			t.Fatalf("addon 1 id is not a uuid: %s", postServiceAddon1Response.Id)
 		}
 
-		postServiceAddon2Request := &types.PostServiceAddonRequest{Name: "test addon 2"}
+		postServiceAddon2Request := &types.PostServiceAddonRequest{Name: "Suggestions & Feedback"}
 		postServiceAddon2RequestBytes, err := protojson.Marshal(postServiceAddon2Request)
 		if err != nil {
 			t.Fatalf("error marshalling addon 2 request: %v", err)
@@ -68,13 +68,13 @@ func testIntegrationService(t *testing.T) {
 		tiers[tierId] = &types.IServiceTier{
 			Id:        tierId,
 			CreatedOn: "test",
-			Name:      "test tier",
+			Name:      "General",
 			Addons:    serviceAddons,
 			Order:     1,
 		}
 
 		testutil.IntegrationTest.MasterService = &types.IService{
-			Name:  "test service",
+			Name:  "1-on-1 Tutoring",
 			Tiers: tiers,
 		}
 	})

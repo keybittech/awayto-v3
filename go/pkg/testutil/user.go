@@ -14,6 +14,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/gorilla/websocket"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/keybittech/awayto-v3/go/pkg/crypto"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
@@ -23,7 +24,8 @@ import (
 )
 
 type TestUsersStruct struct {
-	Client         *http.Client
+	Client         *http.Client    `json:"-"`
+	Socket         *websocket.Conn `json:"-"`
 	CookieData     []http.Cookie
 	VaultKey       []byte
 	VaultSessionId string
@@ -185,7 +187,7 @@ func (tus *TestUsersStruct) apiRequest(method, path string, body []byte, queryPa
 	}
 
 	client := tus.getUserClient()
-	resp, err := doAndRead(client, req)
+	resp, err := DoAndRead(client, req)
 	if err != nil {
 		return fmt.Errorf("error sending request: %w", err)
 	}
@@ -201,6 +203,8 @@ func (tus *TestUsersStruct) apiRequest(method, path string, body []byte, queryPa
 			return fmt.Errorf("decrypt response error: %w", err)
 		}
 		resp = decrypted
+
+		// println("RAW RESPONSE for method", method, " path ", path, " ", string(resp))
 	}
 
 	if len(resp) > 0 && responseObj != nil {
@@ -444,6 +448,12 @@ func (tus *TestUsersStruct) PostBooking(bookingRequests []*types.IBooking) ([]*t
 	if len(postBookingResponse.Bookings) == 0 {
 		return nil, errors.New("no bookings were created")
 	}
+
+	if tus.Bookings == nil {
+		tus.Bookings = make([]*types.IBooking, 0)
+	}
+
+	tus.Bookings = append(tus.Bookings, postBookingResponse.Bookings...)
 
 	return postBookingResponse.Bookings, nil
 }

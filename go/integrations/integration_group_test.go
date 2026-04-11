@@ -13,8 +13,8 @@ func testIntegrationGroup(t *testing.T) {
 	t.Run("admin can create a group", func(tt *testing.T) {
 		admin := testutil.IntegrationTest.TestUsers[0]
 		groupRequest := &types.PostGroupRequest{
-			Name:           "the_test_group_" + string(admin.TestUserId),
-			DisplayName:    "The Test Group #" + string(admin.TestUserId),
+			Name:           "the_test_group",
+			DisplayName:    "The Test Group",
 			Ai:             true,
 			Purpose:        "integration testing group",
 			AllowedDomains: "",

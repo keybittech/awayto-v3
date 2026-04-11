@@ -3,7 +3,6 @@ package main_test
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"testing"
 	"time"
 
@@ -23,8 +22,8 @@ func testIntegrationJoinGroup(t *testing.T) {
 			joinViaRegister := c%2 == 0
 
 			userId := fmt.Sprint(time.Now().UnixNano())
-			userEmail := strconv.Itoa(c+1) + "@" + userId
-			testUser := testutil.NewTestUser(userId, userEmail, "1")
+			userEmail := testutil.UserRoles[c] + "@demo.com"
+			testUser := testutil.NewTestUser(userId, userEmail, "testdemo")
 			testutil.IntegrationTest.TestUsers[int32(c)] = testUser
 
 			if joinViaRegister {

@@ -108,6 +108,7 @@ func InitSocket() *Socket {
 			socketMaps.authSubscribers[auth] = cmd.Request.UserSub
 
 			connectionId := uuid.NewString()
+
 			ticket := auth + ":" + connectionId
 
 			subscriber, ok := socketMaps.subscribers[cmd.Request.UserSub]

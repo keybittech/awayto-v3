@@ -15,7 +15,6 @@ func testIntegrationSchedule(t *testing.T) {
 	admin := testutil.IntegrationTest.TestUsers[0]
 
 	var scheduleUnitId, bracketUnitId, slotUnitId string
-	name := "test schedule"
 	timezone := "America/Los_Angeles"
 	slotDuration := int32(30)
 	st := &timestamppb.Timestamp{
@@ -30,7 +29,7 @@ func testIntegrationSchedule(t *testing.T) {
 
 	t.Run("admin can get lookups and generate a schedule", func(tt *testing.T) {
 		testutil.IntegrationTest.MasterSchedule = &types.ISchedule{
-			Name:         name + " Master",
+			Name:         "2026 Reading",
 			Timezone:     timezone,
 			SlotDuration: slotDuration,
 			StartDate:    startDate,
@@ -64,7 +63,7 @@ func testIntegrationSchedule(t *testing.T) {
 	t.Run("master schedule can be created and attached to the group", func(tt *testing.T) {
 		scheduleId, err := admin.PostSchedule(&types.PostScheduleRequest{
 			AsGroup:            true,
-			Name:               name + " Master Creation Test",
+			Name:               "2026 Writing",
 			StartDate:          startDate,
 			EndDate:            endDate,
 			ScheduleTimeUnitId: scheduleUnitId,

@@ -165,7 +165,7 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 	} else {
 
 		req := GetTestReq("GET", util.E_APP_HOST_URL+"/auth/login?tz=America/Los_Angeles", nil)
-		resp, err = doAndRead(client, req)
+		resp, err = DoAndRead(client, req)
 		if err != nil {
 			return nil, fmt.Errorf("failed to call /auth/login: %v", err)
 		}
@@ -219,7 +219,7 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 		for _, c := range sessionCookies {
 			req.AddCookie(c)
 		}
-		_, err = doAndRead(client, req)
+		_, err = DoAndRead(client, req)
 		if err != nil {
 			return nil, fmt.Errorf("failed to post login form %s: %v", formActionURL, err)
 		}
@@ -271,7 +271,7 @@ func (tus *TestUsersStruct) Logout(handler ...*http.ServeMux) error {
 		resp = w.Body.Bytes()
 	} else {
 		client := tus.getUserClient()
-		resp, err = doAndRead(client, req)
+		resp, err = DoAndRead(client, req)
 		if err != nil {
 			return fmt.Errorf("failed to call /auth/logout: %v", err)
 		}

@@ -19,6 +19,7 @@ var (
 	IntegrationTest = &IntegrationTestStruct{
 		IntegrationTest: &types.IntegrationTest{},
 	}
+	UserRoles = []string{"admin", "staff1", "staff2", "staff3", "member1", "member2", "member3"}
 )
 
 func init() {
@@ -34,16 +35,24 @@ func LoadIntegrations() {
 	jsonBytes, err := os.ReadFile(filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json"))
 	if err == nil {
 		err = json.Unmarshal(jsonBytes, IntegrationTest)
-		if err != nil {
+		if err != nil && len(jsonBytes) > 0 {
 			log.Fatal(err)
+		} else if err == nil {
+			println("loaded integration results")
 		}
 	}
 }
 
 func SaveIntegrations() {
-	jsonBytes, _ := json.Marshal(IntegrationTest)
+	jsonBytes, err := json.Marshal(IntegrationTest)
+	if err != nil {
+		log.Fatalf("failed to marshal test results, %v", err)
+	}
 	integrationTestPath := filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json")
-	os.WriteFile(integrationTestPath, jsonBytes, 0600)
+	if err := os.WriteFile(integrationTestPath, jsonBytes, 0600); err != nil {
+		log.Fatalf("failed to write integration results, %v", err)
+	}
+	println("saved integration results")
 }
 
 type IntegrationTestStruct struct {

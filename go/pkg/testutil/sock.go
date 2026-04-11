@@ -1,83 +1,68 @@
 package testutil
 
 import (
-	"bufio"
-	"crypto/rand"
 	"crypto/tls"
-	"encoding/base64"
-	"encoding/json"
 	"fmt"
-	"log"
-	"net"
 	"net/http"
-	"net/url"
 	"strings"
 
+	"github.com/gorilla/websocket"
+	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 )
 
-func GetSocketTicket(client *http.Client, userId string) (string, string) {
-	req, err := http.NewRequest("GET", util.E_APP_HOST_URL+"/api/v1/sock/ticket", nil)
+//		vaultResp := &types.GetVaultKeyResponse{}
+//		// Reuse apiRequest to ensure headers (UA, TZ) match the session
+//		err := tus.apiRequest(http.MethodGet, "/api/v1/vault/key", nil, nil, vaultResp)
+//		if err != nil {
+//			return err
+//		}
+//
+//		keyBytes, err := base64.StdEncoding.DecodeString(vaultResp.Key)
+//		if err != nil {
+//			return err
+//		}
+//
+//		tus.VaultKey = keyBytes
+//		tus.VaultSessionId = vaultResp.Sid
+//		return nil
+//	}
+func (tus *TestUsersStruct) GetSocketTicket() error {
+
+	ticketResponse := &types.GetSocketTicketResponse{}
+	err := tus.apiRequest(http.MethodGet, "/api/v1/sock/ticket", nil, nil, ticketResponse)
 	if err != nil {
-		log.Fatalf("could not make ticket request %v", err)
+		return fmt.Errorf("could not make ticket request: %v", err)
 	}
 
-	body, err := doAndRead(client, req)
-	if err != nil {
-		log.Fatal("failed get socket ticket", err)
-	}
-
-	var result map[string]any
-	if err := json.Unmarshal(body, &result); err != nil {
-		log.Fatal("failed marshal ticket body", err)
-	}
-
-	ticket, ok := result["ticket"].(string)
-	if !ok {
-		log.Fatal("ticket not found in response")
-	}
+	ticket := ticketResponse.GetTicket()
 
 	ticketParts := strings.Split(ticket, ":")
 	_, connId := ticketParts[0], ticketParts[1]
 
-	return ticket, connId
+	tus.TestUser.TestTicket = ticket
+	tus.TestUser.TestConnId = connId
+
+	return nil
 }
 
-func GetClientSocketConnection(ticket string) (net.Conn, error) {
-	u, err := url.Parse("wss://" + util.E_APP_HOST_NAME + "/sock?ticket=" + ticket)
+func (tus *TestUsersStruct) GetSocketConnection() error {
+	dialer := websocket.Dialer{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+	}
+
+	url := "wss://" + util.E_APP_HOST_NAME + "/sock?ticket=" + tus.GetTestTicket()
+
+	sockConn, _, err := dialer.Dial(url, nil)
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("failed to dial socket tcp: %v", err)
 	}
 
-	sockConn, err := tls.Dial("tcp", u.Host, &tls.Config{InsecureSkipVerify: true})
-	if err != nil {
-		return nil, err
-	}
+	tus.Socket = sockConn
 
-	// Generate WebSocket key
-	keyBytes := make([]byte, 16)
-	rand.Read(keyBytes)
-	secWebSocketKey := base64.StdEncoding.EncodeToString(keyBytes)
+	return nil
+}
 
-	// Send HTTP Upgrade request
-	fmt.Fprintf(sockConn, "GET %s HTTP/1.1\r\n", u.RequestURI())
-	fmt.Fprintf(sockConn, "Host: %s\r\n", u.Host)
-	fmt.Fprintf(sockConn, "Upgrade: websocket\r\n")
-	fmt.Fprintf(sockConn, "Connection: Upgrade\r\n")
-	fmt.Fprintf(sockConn, "Sec-WebSocket-Key: %s\r\n", secWebSocketKey)
-	fmt.Fprintf(sockConn, "Sec-WebSocket-Version: 13\r\n")
-	fmt.Fprintf(sockConn, "\r\n")
-
-	reader := bufio.NewReader(sockConn)
-	for {
-		line, err := reader.ReadString('\n')
-		if err != nil {
-			return nil, err
-		}
-		if line == "\r\n" {
-			break
-		}
-	}
-
-	return sockConn, nil
+func (tus *TestUsersStruct) WriteSocketMessage(data []byte) error {
+	return tus.Socket.WriteMessage(websocket.TextMessage, data)
 }

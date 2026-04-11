@@ -24,6 +24,8 @@ func TestMain(m *testing.M) {
 		}()
 	}
 
+	testutil.LoadIntegrations()
+
 	code := m.Run()
 
 	testutil.SaveIntegrations()
@@ -45,5 +47,7 @@ func TestIntegrations(t *testing.T) {
 	testIntegrationUserSchedule(t)
 	testIntegrationQuotes(t)
 	testIntegrationBookings(t)
+	testIntegrationSock(t)
 	testIntegrationLogout(t)
+	println("done with integrations")
 }
