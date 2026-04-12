@@ -69,8 +69,8 @@ func (tus *TestUsersStruct) RegisterKeycloakUserViaForm(code ...string) error {
 	}
 
 	formData.Set("email", tus.GetTestEmail())
-	formData.Set("firstName", "first-name")
-	formData.Set("lastName", "last-name")
+	formData.Set("firstName", tus.GetProfile().GetFirstName())
+	formData.Set("lastName", tus.GetProfile().GetLastName())
 	formData.Set("password", tus.GetTestPass())
 	formData.Set("password-confirm", tus.GetTestPass())
 

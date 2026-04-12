@@ -1,7 +1,6 @@
 package main_test
 
 import (
-	"net/http"
 	"testing"
 	"time"
 
@@ -53,15 +52,11 @@ func testIntegrationQuotes(t *testing.T) {
 	})
 
 	t.Run("APP_GROUP_SCHEDULES is required to disable a quote", func(tt *testing.T) {
-		disableQuoteResponse := &types.DisableQuoteResponse{}
-		err := staff1.DoHandler(http.MethodPatch, "/api/v1/quotes/disable/"+member1.Quotes[0].Id, nil, nil, disableQuoteResponse)
+		err := staff1.DisableQuote(member1.Quotes[0].Id)
 		if err != nil {
 			t.Fatalf("error disabling quote request: %v", err)
 		}
 
-		if !disableQuoteResponse.Success {
-			t.Fatalf("disabling the quote was not successful")
-		}
 		member1.Quotes[0] = nil
 	})
 

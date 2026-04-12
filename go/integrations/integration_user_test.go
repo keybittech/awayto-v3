@@ -12,10 +12,11 @@ func testIntegrationUser(t *testing.T) {
 	testutil.IntegrationTest.TestUsers = make(map[int32]*testutil.TestUsersStruct, 10)
 
 	t.Run("user can register and connect", func(tt *testing.T) {
+		adminRole := testutil.UserRoles[0]
 		userId := fmt.Sprint(time.Now().UnixNano())
-		userEmail := testutil.UserRoles[0] + "@demo.com"
+		userEmail := adminRole + "@demo.com"
 
-		testUser := testutil.NewTestUser(userId, userEmail, "testdemo")
+		testUser := testutil.NewTestUser(adminRole, userId, userEmail, "testdemo")
 		testutil.IntegrationTest.TestUsers[0] = testUser
 
 		err := testUser.RegisterKeycloakUserViaForm()

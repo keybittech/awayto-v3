@@ -32,7 +32,7 @@ type TestUsersStruct struct {
 	*types.TestUser
 }
 
-func NewTestUser(userId, email, pass string) *TestUsersStruct {
+func NewTestUser(roleName, userId, email, pass string) *TestUsersStruct {
 	return &TestUsersStruct{
 		CookieData: make([]http.Cookie, 0, 1),
 		TestUser: &types.TestUser{
@@ -40,7 +40,9 @@ func NewTestUser(userId, email, pass string) *TestUsersStruct {
 			TestPass:   pass,
 			TestUserId: userId,
 			Profile: &types.IUserProfile{
-				Email: email,
+				Email:     email,
+				FirstName: roleName,
+				LastName:  "last-name",
 			},
 		},
 	}
@@ -456,4 +458,18 @@ func (tus *TestUsersStruct) PostBooking(bookingRequests []*types.IBooking) ([]*t
 	tus.Bookings = append(tus.Bookings, postBookingResponse.Bookings...)
 
 	return postBookingResponse.Bookings, nil
+}
+
+func (tus *TestUsersStruct) DisableQuote(quoteId string) error {
+	disableQuoteResponse := &types.DisableQuoteResponse{}
+	err := tus.apiRequest(http.MethodPatch, "/api/v1/quotes/disable/"+quoteId, nil, nil, disableQuoteResponse)
+	if err != nil {
+		return errors.New(fmt.Sprintf("error disable quote request error: %v", err))
+	}
+
+	if !disableQuoteResponse.Success {
+		return errors.New("disabling the quote was not successful")
+	}
+
+	return nil
 }

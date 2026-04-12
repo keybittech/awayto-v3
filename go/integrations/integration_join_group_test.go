@@ -21,9 +21,10 @@ func testIntegrationJoinGroup(t *testing.T) {
 		for c := existingUsers; c < existingUsers+6; c++ {
 			joinViaRegister := c%2 == 0
 
+			roleName := testutil.UserRoles[c]
 			userId := fmt.Sprint(time.Now().UnixNano())
-			userEmail := testutil.UserRoles[c] + "@demo.com"
-			testUser := testutil.NewTestUser(userId, userEmail, "testdemo")
+			userEmail := roleName + "@demo.com"
+			testUser := testutil.NewTestUser(roleName, userId, userEmail, "testdemo")
 			testutil.IntegrationTest.TestUsers[int32(c)] = testUser
 
 			if joinViaRegister {
