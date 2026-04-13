@@ -1,6 +1,6 @@
 SHELL := /bin/bash
 
-GO_VERSION=go1.25.1.linux-amd64
+GO_VERSION=go1.26.2.linux-amd64
 NODE_VERSION=v22.13.1
 
 # manually manage path for makefile use

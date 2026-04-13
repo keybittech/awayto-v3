@@ -1,6 +1,6 @@
 module github.com/keybittech/awayto-v3/go
 
-go 1.25.1
+go 1.26.2
 
 require (
 	github.com/gorilla/websocket v1.5.3
