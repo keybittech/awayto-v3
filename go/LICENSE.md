@@ -4,7 +4,7 @@ This project incorporates material from the projects listed below. Each project 
 
 ## Apache-2.0 Licensed Dependencies
 
-### github.com/bufbuild/protovalidate, github.com/bufbuild/protovalidate-go
+### buf.build/go/protovalidate
 Copyright 2023-2025 Buf Technologies, Inc.
 
 ### cel.dev/expr

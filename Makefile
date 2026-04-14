@@ -334,6 +334,10 @@ go_dev_ts:
 go_tidy:
 	cd $(GO_SRC) && go mod tidy
 
+.PHONY: go_vuln
+go_vuln:
+	cd $(GO_SRC) && govulncheck -mode=binary ${BINARY_NAME}
+
 .PHONY: go_sec
 go_sec:
 	cd $(GO_SRC) && gosec -exclude-dir=types -exclude-dir=buf.build ./...
