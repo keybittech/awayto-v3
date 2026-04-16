@@ -109,6 +109,7 @@ CRON_SCRIPTS=$(DEPLOY_SCRIPTS)/cron
 DOCKER_COMPOSE_SCRIPT=$(DEPLOY_SCRIPTS)/docker/docker-compose.yml
 AUTH_SCRIPTS=$(DEPLOY_SCRIPTS)/auth
 AUTH_INSTALL_SCRIPT=$(AUTH_SCRIPTS)/install.sh
+AUTH_DEMO_RESET_SCRIPT=$(AUTH_SCRIPTS)/demo-reset.sh
 
 H_ETC_DIR=/etc/${PROJECT_PREFIX}
 
@@ -824,3 +825,13 @@ host_db_restore: host_service_stop host_db_restore_op host_service_start
 check_logs:
 	exec $(CRON_SCRIPTS)/check-logs
 
+#################################
+#             DEMO              #
+#################################
+
+.PHONY: demo_reset
+demo_reset:
+	$(DOCKER_DB_CMD) $(DOCKER_DB_CID) psql -U postgres -d ${PG_DB} -c "delete from dbtable_schema.groups where name = 'the_test_group';delete from dbtable_schema.users where username = 'the_test_group';delete from dbtable_schema.users where email like '%demo.com';"
+	chmod +x $(AUTH_DEMO_RESET_SCRIPT) && exec $(AUTH_DEMO_RESET_SCRIPT)
+	-rm $(GO_INTEGRATIONS_DIR)/integration_results.json
+	$(MAKE) go_test_integration
