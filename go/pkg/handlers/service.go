@@ -19,7 +19,7 @@ func (h *Handlers) PostService(info ReqInfo, data *types.PostServiceRequest) (*t
 		ON CONFLICT (name, created_sub) DO UPDATE
 		SET enabled = true, cost = $2::integer
 		RETURNING id
-	`, service.GetName(), service.GetCost(), info.Session.GetUserSub()).Scan(&service.Id)
+	`, service.GetName(), service.GetCost(), info.Session.GetGroupSub()).Scan(&service.Id)
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}

@@ -108,7 +108,7 @@ CREATE TABLE dbtable_schema.services (
   name VARCHAR (50) NOT NULL,
   cost INTEGER,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
   updated_on TIMESTAMP,
   updated_sub uuid REFERENCES dbtable_schema.users (sub),
   enabled BOOLEAN NOT NULL DEFAULT true,
@@ -378,7 +378,7 @@ CREATE TABLE dbtable_schema.quotes (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   slot_date DATE NOT NULL,
-  schedule_bracket_slot_id uuid NOT NULL REFERENCES dbtable_schema.schedule_bracket_slots (id),
+  schedule_bracket_slot_id uuid NOT NULL REFERENCES dbtable_schema.schedule_bracket_slots (id) ON DELETE CASCADE,
   service_tier_id uuid NOT NULL REFERENCES dbtable_schema.service_tiers (id),
   service_form_version_submission_id uuid REFERENCES dbtable_schema.form_version_submissions (id),
   tier_form_version_submission_id uuid REFERENCES dbtable_schema.form_version_submissions (id),
@@ -460,9 +460,9 @@ CREATE POLICY table_insert ON dbtable_schema.quote_files FOR INSERT TO $PG_WORKE
 
 CREATE TABLE dbtable_schema.bookings (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-  quote_id uuid NOT NULL REFERENCES dbtable_schema.quotes (id),
+  quote_id uuid NOT NULL REFERENCES dbtable_schema.quotes (id) ON DELETE CASCADE,
   slot_date DATE NOT NULL,
-  schedule_bracket_slot_id uuid NOT NULL REFERENCES dbtable_schema.schedule_bracket_slots (id),
+  schedule_bracket_slot_id uuid NOT NULL REFERENCES dbtable_schema.schedule_bracket_slots (id) ON DELETE CASCADE,
   service_survey_version_submission_id uuid REFERENCES dbtable_schema.form_version_submissions (id),
   tier_survey_version_submission_id uuid REFERENCES dbtable_schema.form_version_submissions (id),
   rating SMALLINT,
@@ -533,7 +533,7 @@ CREATE TABLE dbtable_schema.topic_messages (
   topic TEXT NOT NULL,
   message TEXT NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
   updated_on TIMESTAMP,
   updated_sub uuid REFERENCES dbtable_schema.users (sub),
   enabled BOOLEAN NOT NULL DEFAULT true
@@ -550,7 +550,7 @@ CREATE TABLE dbtable_schema.topic_canvas_elements (
   element_type TEXT NOT NULL DEFAULT 'box',
   properties JSONB NOT NULL,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
   updated_on TIMESTAMP,
   updated_sub uuid REFERENCES dbtable_schema.users (sub),
   enabled BOOLEAN NOT NULL DEFAULT true,
@@ -578,9 +578,9 @@ CREATE TABLE dbtable_schema.feedback (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   message TEXT,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  created_sub uuid NOT NULL,
   updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  updated_sub uuid,
   enabled BOOLEAN NOT NULL DEFAULT true
 );
 
@@ -589,9 +589,9 @@ CREATE TABLE dbtable_schema.group_feedback (
   group_id uuid NOT NULL REFERENCES dbtable_schema.groups (id) ON DELETE CASCADE,
   message TEXT,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  created_sub uuid NOT NULL,
   updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  updated_sub uuid,
   enabled BOOLEAN NOT NULL DEFAULT true
 );
 ALTER TABLE dbtable_schema.group_feedback ENABLE ROW LEVEL SECURITY;
@@ -612,9 +612,9 @@ CREATE TABLE dbtable_schema.seat_payments (
   paid_on TIMESTAMP,
   check_no TEXT,
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
-  created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub),
+  created_sub uuid NOT NULL,
   updated_on TIMESTAMP,
-  updated_sub uuid REFERENCES dbtable_schema.users (sub),
+  updated_sub uuid,
   enabled BOOLEAN NOT NULL DEFAULT true
 );
 ALTER TABLE dbtable_schema.seat_payments ENABLE ROW LEVEL SECURITY;

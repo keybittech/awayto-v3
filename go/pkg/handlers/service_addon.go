@@ -21,7 +21,7 @@ func (h *Handlers) PostServiceAddon(info ReqInfo, data *types.PostServiceAddonRe
 		SELECT sa.id, sa.name
 		FROM input_rows
 		JOIN dbtable_schema.service_addons sa USING (name);
-	`, data.GetName(), info.Session.GetUserSub())
+	`, data.GetName(), h.Database.AdminSub())
 
 	info.Batch.Send(info.Ctx)
 
