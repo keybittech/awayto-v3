@@ -32,7 +32,7 @@ func setupStaticBuildOrProxy(a *API) {
 			if strings.Contains(req.Header.Get("Accept"), "text/html") {
 				nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
 				if !ok {
-					http.Error(w, "no csp nonce", http.StatusInternalServerError)
+					http.Error(w, "static proxy no csp nonce", http.StatusInternalServerError)
 					return
 				}
 				replacements := map[string]string{

@@ -65,7 +65,7 @@ func setupStaticBuildOrProxy(a *API) {
 
 				nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
 				if !ok {
-					http.Error(w, "no csp nonce", http.StatusInternalServerError)
+					http.Error(w, "index api no csp nonce", http.StatusInternalServerError)
 					return
 				}
 

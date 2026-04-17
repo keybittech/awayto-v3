@@ -61,7 +61,7 @@ func (a *API) InitStatic() {
 			if req.URL.Path == "" {
 				nonce, ok := req.Context().Value("CSP-Nonce").([]byte)
 				if !ok {
-					http.Error(w, "no csp nonce", http.StatusInternalServerError)
+					http.Error(w, "init static no csp nonce", http.StatusInternalServerError)
 					return
 				}
 				replacements := map[string]string{

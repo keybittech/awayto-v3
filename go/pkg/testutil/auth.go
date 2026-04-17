@@ -11,6 +11,7 @@ import (
 	"net/http/httptest"
 	"net/url"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -99,7 +100,19 @@ func (tus *TestUsersStruct) RegisterKeycloakUserViaForm(code ...string) error {
 func handlerFollowRedirects(handler *http.ServeMux, w *httptest.ResponseRecorder, req *http.Request, cookies []*http.Cookie) (*httptest.ResponseRecorder, []*http.Cookie, error) {
 	currentW := w
 	currentReq := req
-	for currentW.Code >= 300 && currentW.Code < 400 {
+	jar := make(map[string]*http.Cookie)
+	for _, c := range cookies {
+		jar[c.Name] = c
+	}
+	for {
+		for _, c := range currentW.Result().Cookies() {
+			jar[c.Name] = c
+		}
+
+		if currentW.Code < 300 || currentW.Code >= 400 {
+			break
+		}
+
 		location := currentW.Header().Get("Location")
 		if location == "" {
 			break
@@ -113,16 +126,23 @@ func handlerFollowRedirects(handler *http.ServeMux, w *httptest.ResponseRecorder
 
 		// Create new request with the resolved URL
 		currentReq = GetTestReq("GET", redirectURL.String(), nil)
-		for _, cookie := range cookies {
-			currentReq.AddCookie(cookie)
+		currentReq.TLS = &tls.ConnectionState{HandshakeComplete: true}
+		currentReq.Host = redirectURL.Host
+
+		for _, c := range jar {
+			currentReq.AddCookie(c)
 		}
+
 		currentW = httptest.NewRecorder()
 		handler.ServeHTTP(currentW, currentReq)
-		if cookies != nil {
-			cookies = append(cookies, currentW.Result().Cookies()...)
-		}
 	}
-	return currentW, cookies, nil
+
+	resultCookies := make([]*http.Cookie, 0, len(jar))
+	for _, c := range jar {
+		resultCookies = append(resultCookies, c)
+	}
+
+	return currentW, resultCookies, nil
 }
 
 func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, error) {
@@ -149,6 +169,7 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 		h := handler[0]
 		w := httptest.NewRecorder()
 		req := GetTestReq("GET", util.E_APP_HOST_URL+"/auth/login?tz=America/Los_Angeles", nil)
+		req.TLS = &tls.ConnectionState{HandshakeComplete: true}
 		h.ServeHTTP(w, req)
 
 		w, sessionCookies, err = handlerFollowRedirects(h, w, req, sessionCookies)
@@ -196,8 +217,12 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 	if handler != nil {
 		h := handler[0]
 		w := httptest.NewRecorder()
-		req := GetTestReq("POST", formActionURL, strings.NewReader(formData.Encode()))
+		bodyStr := formData.Encode()
+		req := GetTestReq("POST", formActionURL, strings.NewReader(bodyStr))
+		req.Host = req.URL.Host
+		req.TLS = &tls.ConnectionState{HandshakeComplete: true}
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
+		req.Header.Set("Content-Length", strconv.Itoa(len(bodyStr)))
 
 		for _, c := range sessionCookies {
 			req.AddCookie(c)
@@ -210,7 +235,7 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 		}
 
 		if w.Code != 200 {
-			return nil, fmt.Errorf("POST form action login returned status %d, path: %s", w.Code, req.URL.String())
+			return nil, fmt.Errorf("POST form action login returned status %d, body: %s, path: %s", w.Code, w.Body.String(), req.URL.String())
 		}
 	} else {
 		req := GetTestReq("POST", formActionURL, strings.NewReader(formData.Encode()))

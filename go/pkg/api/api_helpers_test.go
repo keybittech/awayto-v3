@@ -2,6 +2,7 @@ package api
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"log"
@@ -38,7 +39,9 @@ func getTestApi(limit rate.Limit, burst int) *API {
 
 	finalHandler := http.NewServeMux()
 	finalHandler.Handle("/", http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		wrappedHandler.ServeHTTP(w, req)
+		nonce := []byte("test-nonce")
+		ctx := context.WithValue(req.Context(), "CSP-Nonce", nonce)
+		wrappedHandler.ServeHTTP(w, req.WithContext(ctx))
 	}))
 
 	api.Server.Handler = finalHandler

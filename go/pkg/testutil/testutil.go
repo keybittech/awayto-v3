@@ -33,9 +33,9 @@ func ResetB(b *testing.B) {
 
 func LoadIntegrations() {
 	integrationResultsFilePath := filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json")
-	if err := os.Remove(integrationResultsFilePath); err != nil {
-		log.Print("no previous results to delete")
-	}
+	// if err := os.Remove(integrationResultsFilePath); err != nil {
+	// 	log.Print("no previous results to delete")
+	// }
 	jsonBytes, err := os.ReadFile(integrationResultsFilePath)
 	if err == nil {
 		err = json.Unmarshal(jsonBytes, IntegrationTest)
