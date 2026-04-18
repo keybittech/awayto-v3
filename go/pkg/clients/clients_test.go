@@ -24,6 +24,19 @@ var (
 
 func TestMain(m *testing.M) {
 	util.ParseEnv()
+
+	cmd, err := testutil.StartTestServer()
+	if err != nil {
+		panic(err)
+	}
+	if cmd != nil {
+		defer func() {
+			if err := cmd.Process.Kill(); err != nil {
+				fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
+			}
+		}()
+	}
+
 	testutil.LoadIntegrations()
 
 	testSocket = InitSocket()

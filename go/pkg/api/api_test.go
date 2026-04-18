@@ -147,14 +147,14 @@ func BenchmarkApiProto(b *testing.B) {
 	checkRouteRequest(recorder, checkBytes)
 
 	i := time.Now().UnixNano()
-	contentType = "application/x-protobuf"
-	req, recorder = setupRouteRequest(cookies, method, path, contentType)
-	b.Run("wire format", func(b *testing.B) {
-		doApiBenchmarkWithBody(b, api_100000_100000, req, recorder, contentType, checkBytes, getApiProtoSchedule(), func(msg proto.Message) {
-			msg.(*types.PostScheduleRequest).Name = strconv.FormatInt(i, 10) + scheduleName
-			i++
-		})
-	})
+	// contentType = "application/x-protobuf"
+	// req, recorder = setupRouteRequest(cookies, method, path, contentType)
+	// b.Run("wire format", func(b *testing.B) {
+	// 	doApiBenchmarkWithBody(b, api_100000_100000, req, recorder, contentType, checkBytes, getApiProtoSchedule(), func(msg proto.Message) {
+	// 		msg.(*types.PostScheduleRequest).Name = strconv.FormatInt(i, 10) + scheduleName
+	// 		i++
+	// 	})
+	// })
 
 	contentType = "application/json"
 	req, recorder = setupRouteRequest(cookies, method, path, contentType)

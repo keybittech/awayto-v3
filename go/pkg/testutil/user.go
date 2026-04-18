@@ -106,7 +106,7 @@ func (tus *TestUsersStruct) getUserClient() *http.Client {
 	if tus.Client != nil {
 		return tus.Client
 	}
-	if tus.CookieData == nil || len(tus.CookieData) == 0 {
+	if tus.CookieData == nil {
 		log.Fatal("no cookie data to getUserClient with, did the user login?")
 	}
 
@@ -129,6 +129,8 @@ func (tus *TestUsersStruct) getUserClient() *http.Client {
 
 func (tus *TestUsersStruct) apiRequest(method, path string, body []byte, queryParams map[string]string, responseObj proto.Message) error {
 	reqURL := util.E_APP_HOST_URL + path
+
+	// println("Test api request for ", reqURL)
 
 	if len(queryParams) > 0 {
 		values := url.Values{}
@@ -244,7 +246,7 @@ func (tus *TestUsersStruct) GetProfileDetails() (*types.IUserProfile, error) {
 	getProfileDetailsResponse := &types.GetUserProfileDetailsResponse{}
 	err := tus.apiRequest(http.MethodGet, "/api/v1/profile/details", nil, nil, getProfileDetailsResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error get user profile details error: %v", err))
+		return nil, fmt.Errorf("error get user profile details error: %v", err)
 	}
 
 	return getProfileDetailsResponse.GetUserProfile(), nil
@@ -254,7 +256,7 @@ func (tus *TestUsersStruct) GetServiceById(serviceId string) (*types.IService, e
 	getServiceByIdResponse := &types.GetServiceByIdResponse{}
 	err := tus.apiRequest(http.MethodGet, "/api/v1/services/"+serviceId, nil, nil, getServiceByIdResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error get service by id error: %v", err))
+		return nil, fmt.Errorf("error get service by id error: %v", err)
 	}
 	if getServiceByIdResponse.Service.Id == "" {
 		return nil, errors.New("get service by id response has no id")
@@ -267,7 +269,7 @@ func (tus *TestUsersStruct) GetScheduleById(scheduleId string) (*types.ISchedule
 	getScheduleByIdResponse := &types.GetScheduleByIdResponse{}
 	err := tus.apiRequest(http.MethodGet, "/api/v1/schedules/"+scheduleId, nil, nil, getScheduleByIdResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error get schedule by id error: %v", err))
+		return nil, fmt.Errorf("error get schedule by id error: %v", err)
 	}
 	if getScheduleByIdResponse.Schedule.Id == "" {
 		return nil, errors.New("get schedule by id response has no id")
@@ -280,7 +282,7 @@ func (tus *TestUsersStruct) GetMasterScheduleById(groupScheduleId string) (*type
 	getMasterScheduleByIdResponse := &types.GetGroupScheduleMasterByIdResponse{}
 	err := tus.apiRequest(http.MethodGet, "/api/v1/group/schedules/master/"+groupScheduleId, nil, nil, getMasterScheduleByIdResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error get master schedule by id error: %v", err))
+		return nil, fmt.Errorf("error get master schedule by id error: %v", err)
 	}
 	if getMasterScheduleByIdResponse.GroupSchedule.ScheduleId == "" {
 		return nil, errors.New("get master schedule by id response has no schedule id")
@@ -296,11 +298,11 @@ func (tus *TestUsersStruct) GetDateSlots(masterScheduleId string) ([]*types.IGro
 	dateSlotsResponse := &types.GetGroupScheduleByDateResponse{}
 	err := tus.apiRequest(http.MethodGet, dateSlotsUrl, nil, nil, dateSlotsResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error get group date slots request, error: %v", err))
+		return nil, fmt.Errorf("error get group date slots request, error: %v", err)
 	}
 
 	if len(dateSlotsResponse.GroupScheduleDateSlots) == 0 {
-		return nil, errors.New(fmt.Sprintf("no date slots available to schedule %v", dateSlotsResponse))
+		return nil, fmt.Errorf("no date slots available to schedule %v", dateSlotsResponse)
 	}
 
 	return dateSlotsResponse.GroupScheduleDateSlots, nil
@@ -310,7 +312,7 @@ func (tus *TestUsersStruct) GetQuoteById(quoteId string) (*types.IQuote, error) 
 	getQuoteByIdResponse := &types.GetQuoteByIdResponse{}
 	err := tus.apiRequest(http.MethodGet, "/api/v1/quotes/"+quoteId, nil, nil, getQuoteByIdResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error get quote by id error: %v", err))
+		return nil, fmt.Errorf("error get quote by id error: %v", err)
 	}
 	if getQuoteByIdResponse.Quote.Id == "" {
 		return nil, errors.New("get quote by id response has no id")
@@ -325,13 +327,13 @@ func (tus *TestUsersStruct) PatchGroupUser(userSub, roleId string) error {
 		RoleId:  roleId,
 	})
 	if err != nil {
-		return errors.New(fmt.Sprintf("error marshalling patch group user %s %s %v", userSub, roleId, err))
+		return fmt.Errorf("error marshalling patch group user %s %s %v", userSub, roleId, err)
 	}
 
 	patchGroupUserResponse := &types.PatchGroupUserResponse{}
 	err = tus.apiRequest(http.MethodPatch, "/api/v1/group/users", patchGroupUserRequestBytes, nil, patchGroupUserResponse)
 	if err != nil {
-		return errors.New(fmt.Sprintf("error patch group user request, sub: %s error: %v", userSub, err))
+		return fmt.Errorf("error patch group user request, sub: %s error: %v", userSub, err)
 	}
 	if !patchGroupUserResponse.Success {
 		return errors.New("attach user internal was unsuccessful")
@@ -354,15 +356,15 @@ func (tus *TestUsersStruct) PatchGroupAssignments(roleFullName, actionName strin
 		Assignments: assignmentActions,
 	})
 	if err != nil {
-		return errors.New(fmt.Sprintf("error marshalling patch group assignments %v %v", err, assignmentActions))
+		return fmt.Errorf("error marshalling patch group assignments %v %v", err, assignmentActions)
 	}
 	patchGroupAssignmentsResponse := &types.PatchGroupAssignmentsResponse{}
 	err = tus.apiRequest(http.MethodPatch, "/api/v1/group/assignments", patchGroupAssignmentsBytes, nil, patchGroupAssignmentsResponse)
 	if err != nil {
-		return errors.New(fmt.Sprintf("error patch group assignments request: %v", err))
+		return fmt.Errorf("error patch group assignments request: %v", err)
 	}
 	if !patchGroupAssignmentsResponse.Success {
-		return errors.New(fmt.Sprintf("patch group assignments  was unsuccessful %v", patchGroupAssignmentsResponse))
+		return fmt.Errorf("patch group assignments  was unsuccessful %v", patchGroupAssignmentsResponse)
 	}
 
 	return nil
@@ -371,13 +373,13 @@ func (tus *TestUsersStruct) PatchGroupAssignments(roleFullName, actionName strin
 func (tus *TestUsersStruct) PostSchedule(scheduleRequest *types.PostScheduleRequest) (string, error) {
 	scheduleRequestBytes, err := protojson.Marshal(scheduleRequest)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("error marshalling schedule request: %v", err))
+		return "", fmt.Errorf("error marshalling schedule request: %v", err)
 	}
 
 	scheduleResponse := &types.PostScheduleResponse{}
 	err = tus.apiRequest(http.MethodPost, "/api/v1/schedules", scheduleRequestBytes, nil, scheduleResponse)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("error post schedule request error: %v", err))
+		return "", fmt.Errorf("error post schedule request error: %v", err)
 	}
 
 	return scheduleResponse.GetId(), nil
@@ -388,12 +390,12 @@ func (tus *TestUsersStruct) PostGroupSchedule(scheduleId string) error {
 		ScheduleId: scheduleId,
 	})
 	if err != nil {
-		return errors.New(fmt.Sprintf("error marshalling group schedule request: %v", err))
+		return fmt.Errorf("error marshalling group schedule request: %v", err)
 	}
 
 	err = tus.apiRequest(http.MethodPost, "/api/v1/group/schedules", scheduleRequestBytes, nil, nil)
 	if err != nil {
-		return errors.New(fmt.Sprintf("error post group schedule request error: %v", err))
+		return fmt.Errorf("error post group schedule request error: %v", err)
 	}
 
 	return nil
@@ -417,13 +419,13 @@ func (tus *TestUsersStruct) PostQuote(serviceTierId string, slot *types.IGroupSc
 
 	postQuoteBytes, err := protojson.Marshal(postQuoteRequest)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error marshalling post quote request %v", err))
+		return nil, fmt.Errorf("error marshalling post quote request %v", err)
 	}
 
 	postQuoteResponse := &types.PostQuoteResponse{}
 	err = tus.apiRequest(http.MethodPost, "/api/v1/quotes", postQuoteBytes, nil, postQuoteResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error post quote request error: %v", err))
+		return nil, fmt.Errorf("error post quote request error: %v", err)
 	}
 	if postQuoteResponse.Quote.Id == "" {
 		return nil, errors.New("no post quote id")
@@ -439,13 +441,13 @@ func (tus *TestUsersStruct) PostBooking(bookingRequests []*types.IBooking) ([]*t
 
 	postBookingBytes, err := protojson.Marshal(postBookingRequest)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error marshalling post booking request %v", err))
+		return nil, fmt.Errorf("error marshalling post booking request %v", err)
 	}
 
 	postBookingResponse := &types.PostBookingResponse{}
 	err = tus.apiRequest(http.MethodPost, "/api/v1/bookings", postBookingBytes, nil, postBookingResponse)
 	if err != nil {
-		return nil, errors.New(fmt.Sprintf("error post booking request error: %v", err))
+		return nil, fmt.Errorf("error post booking request error: %v", err)
 	}
 	if len(postBookingResponse.Bookings) == 0 {
 		return nil, errors.New("no bookings were created")
@@ -464,7 +466,7 @@ func (tus *TestUsersStruct) DisableQuote(quoteId string) error {
 	disableQuoteResponse := &types.DisableQuoteResponse{}
 	err := tus.apiRequest(http.MethodPatch, "/api/v1/quotes/disable/"+quoteId, nil, nil, disableQuoteResponse)
 	if err != nil {
-		return errors.New(fmt.Sprintf("error disable quote request error: %v", err))
+		return fmt.Errorf("error disable quote request error: %v", err)
 	}
 
 	if !disableQuoteResponse.Success {

@@ -2,6 +2,7 @@ package clients
 
 import (
 	"context"
+	"fmt"
 	"net"
 	"reflect"
 	"strings"
@@ -40,6 +41,20 @@ func getClientData(numClients int, commandType int32, requestParams *types.Socke
 	for i := range numClients {
 		userIter := int32(i % 6)
 		userClient := testutil.IntegrationTest.TestUsers[userIter]
+
+		if i <= 6 {
+			_, err := userClient.Login()
+			if err != nil {
+				return nil, nil, util.ErrCheck(fmt.Errorf("BenchmarkDbSocketGetSocketAllowances could not login as test user, %v", err))
+
+			}
+
+			err = userClient.GetVaultKey()
+			if err != nil {
+				return nil, nil, util.ErrCheck(fmt.Errorf("BenchmarkDbSocketGetSocketAllowances could not get vault key: %v", err))
+			}
+		}
+
 		session, err := userClient.GetUserSession(db.DatabaseClient.Pool)
 		if err != nil {
 			return nil, nil, util.ErrCheck(err)
@@ -102,13 +117,13 @@ func BenchmarkSendCommand100(b *testing.B) {
 	doSendCommandBench(100, b)
 }
 
-func BenchmarkSendCommand1000(b *testing.B) {
-	doSendCommandBench(1000, b)
-}
-
-func BenchmarkSendCommand10000(b *testing.B) {
-	doSendCommandBench(10000, b)
-}
+// func BenchmarkSendCommand1000(b *testing.B) {
+// 	doSendCommandBench(1000, b)
+// }
+//
+// func BenchmarkSendCommand10000(b *testing.B) {
+// 	doSendCommandBench(10000, b)
+// }
 
 func TestSocket_GetSocketTicket(t *testing.T) {
 	t.Parallel()

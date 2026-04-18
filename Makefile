@@ -498,6 +498,7 @@ docker_down:
 	docker $(DOCKER_COMPOSE) down -v
 	docker volume remove $(PG_DATA) || true
 	docker volume remove $(REDIS_DATA) || true
+	-rm $(GO_INTEGRATIONS_DIR)/integration_results.json
 
 .PHONY: docker_cycle
 docker_cycle: docker_down docker_up docker_db_backup

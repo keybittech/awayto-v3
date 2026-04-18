@@ -2,12 +2,15 @@ package handlers
 
 import (
 	"context"
+	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 	"time"
 
 	"buf.build/go/protovalidate"
+	"github.com/keybittech/awayto-v3/go/pkg/clients"
 	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -16,6 +19,19 @@ import (
 
 func TestMain(m *testing.M) {
 	util.ParseEnv()
+
+	cmd, err := testutil.StartTestServer()
+	if err != nil {
+		panic(err)
+	}
+	if cmd != nil {
+		defer func() {
+			if err := cmd.Process.Kill(); err != nil {
+				fmt.Printf("Failed to close server: %v", util.ErrCheck(err))
+			}
+		}()
+	}
+
 	testutil.LoadIntegrations()
 
 	m.Run()
@@ -27,12 +43,50 @@ func setupTestEnv(useTx bool) (*Handlers, ReqInfo, func(), error) {
 	w := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/test", nil)
 
-	session, err := testutil.IntegrationTest.TestUsers[0].GetUserSession(h.Database.DatabaseClient.Pool)
+	testUser := testutil.IntegrationTest.TestUsers[0]
+
+	_, err := testUser.Login()
+	if err != nil {
+		return nil, ReqInfo{}, nil, util.ErrCheck(fmt.Errorf("handlers test could not login as test user, %v", err))
+	}
+
+	err = testUser.GetVaultKey()
+	if err != nil {
+		return nil, ReqInfo{}, nil, util.ErrCheck(fmt.Errorf("handlers test could not get vault key: %v", err))
+	}
+
+	ctx := req.Context()
+
+	workerDbSession := &clients.DbSession{
+		Pool: h.Database.Client().Pool,
+		ConcurrentUserSession: types.NewConcurrentUserSession(&types.UserSession{
+			UserSub: "worker",
+		}),
+	}
+
+	row, done, err := workerDbSession.SessionBatchQueryRow(ctx, `
+		SELECT sub 
+		FROM dbtable_schema.users 
+		WHERE email = $1
+	`, testUser.GetProfile().GetEmail())
+	if err != nil {
+		log.Fatal(util.ErrCheck(err))
+	}
+
+	var userSub string
+	err = row.Scan(&userSub)
+	if err != nil {
+		done()
+		log.Fatal(util.ErrCheck(err))
+	}
+	done()
+
+	session, err := testUser.GetUserSession(h.Database.DatabaseClient.Pool)
 	if err != nil {
 		return nil, ReqInfo{}, nil, util.ErrCheck(err)
 	}
 
-	ctx := req.Context()
+	session.SetUserSub(userSub)
 
 	reqInfo := ReqInfo{
 		Ctx:     ctx,

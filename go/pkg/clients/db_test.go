@@ -93,21 +93,23 @@ func BenchmarkDbPgxBatchNoCommit(b *testing.B) {
 	}
 }
 
-// func BenchmarkDbSocketGetTopicMessageParticipants(b *testing.B) {
-// 	db := InitDatabase()
-// 	defer db.DatabaseClient.Close()
-//
-// 	reset(b)
-// 	for c := 0; c < b.N; c++ {
-//
-// 	}
-// }
-
 func BenchmarkDbSocketGetSocketAllowances(b *testing.B) {
 	db := InitDatabase()
 	defer db.DatabaseClient.Close()
 	bookingId := testutil.IntegrationTest.Bookings[1].Id
-	session, err := testutil.IntegrationTest.TestUsers[0].GetUserSession(db.DatabaseClient.Pool)
+	testUser := testutil.IntegrationTest.TestUsers[0]
+
+	_, err := testUser.Login()
+	if err != nil {
+		b.Fatalf("BenchmarkDbSocketGetSocketAllowances could not login as test user, %v", err)
+	}
+
+	err = testUser.GetVaultKey()
+	if err != nil {
+		b.Fatalf("BenchmarkDbSocketGetSocketAllowances could not get vault key: %v", err)
+	}
+
+	session, err := testUser.GetUserSession(db.DatabaseClient.Pool)
 	if err != nil {
 		b.Fatalf("could not get user session for socket allowance bench, err: %v", err)
 	}
