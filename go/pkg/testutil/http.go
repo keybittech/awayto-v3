@@ -2,13 +2,11 @@ package testutil
 
 import (
 	"context"
-	"crypto/tls"
 	"fmt"
 	"io"
 	"log"
 	"net/http"
-	"net/http/httptest"
-	"strings"
+	"net/url"
 	"time"
 
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -18,12 +16,12 @@ func DoAndRead(client *http.Client, req *http.Request) ([]byte, error) {
 	if client == nil {
 		client = &http.Client{
 			Transport: &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig: TestTLS,
 			},
 		}
 	}
 
-	resp, err := client.Do(req)
+	resp, err := client.Do(req) // #nosec G704
 	if err != nil {
 		return nil, err
 	}
@@ -45,15 +43,22 @@ func GetTestReq(method, target string, body io.Reader) *http.Request {
 	var testReq *http.Request
 	var err error
 
-	if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
-		testReq, err = http.NewRequest(method, target, body)
-	} else {
-		testReq = httptest.NewRequest(method, target, body)
+	parsedTarget, err := url.Parse(target)
+	if err != nil || parsedTarget.Scheme == "" {
+		log.Fatalf("invalid url: %s", err)
 	}
 
-	if err != nil {
-		log.Fatal(err)
+	if parsedTarget.Hostname() != "localhost" {
+		log.Fatalf("test hostname is not localhost")
 	}
+
+	testReq, err = http.NewRequest(method, "http://localhost", body)
+	if err != nil {
+		log.Fatalf("get test req failed, %s", err)
+	}
+
+	testReq.URL = parsedTarget
+	testReq.Host = parsedTarget.Host
 
 	testReq.RemoteAddr = "127.0.0.1:9999"
 	testReq.Header.Set("Accept", "application/json")

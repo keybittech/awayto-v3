@@ -82,6 +82,14 @@ func I64to32(i int64) (int32, error) {
 	return int32(i), nil
 }
 
+func Ui64to64(u uint64) (int64, error) {
+	if u > math.MaxInt64 {
+		return 0, ErrCheck(errors.New("uint64 conversion overflowed"))
+	}
+
+	return int64(u), nil
+}
+
 type ConvertibleFromStringBytes interface {
 	string | int | int8 | uint8 | int16 | uint16 | int32 | uint32 | int64 | uint64
 }

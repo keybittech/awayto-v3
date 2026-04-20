@@ -15,7 +15,7 @@ import (
 func StartTestServer() (*exec.Cmd, error) {
 	_, err := net.DialTimeout("tcp", fmt.Sprintf("[::]:%d", util.E_GO_HTTPS_PORT), 2*time.Second)
 	if err != nil {
-		cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME), "-rateLimit=500", "-rateLimitBurst=500")
+		cmd := exec.Command(filepath.Join(util.E_PROJECT_DIR, "go", util.E_BINARY_NAME), "-rateLimit=500", "-rateLimitBurst=500") // #nosec G204
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
 		}

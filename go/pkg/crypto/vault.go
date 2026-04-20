@@ -15,6 +15,7 @@ import (
 	"log"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"golang.org/x/crypto/hkdf"
 )
 
@@ -73,7 +74,10 @@ func unpackAndVerifyTimestamp(data []byte) ([]byte, error) {
 		return nil, errors.New("verifytimestamp: payload too short")
 	}
 
-	tsVal := int64(binary.BigEndian.Uint64(data[:8]))
+	tsVal, err := util.Ui64to64(binary.BigEndian.Uint64(data[:8]))
+	if err != nil {
+		return nil, fmt.Errorf("verifytimestamp: bad uint convert, err %s", err)
+	}
 	ts := time.Unix(0, tsVal)
 
 	if time.Since(ts) > replayWindow {

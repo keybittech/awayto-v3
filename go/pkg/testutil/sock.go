@@ -1,7 +1,6 @@
 package testutil
 
 import (
-	"crypto/tls"
 	"fmt"
 	"net/http"
 	"strings"
@@ -48,7 +47,7 @@ func (tus *TestUsersStruct) GetSocketTicket() error {
 
 func (tus *TestUsersStruct) GetSocketConnection() error {
 	dialer := websocket.Dialer{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		TLSClientConfig: TestTLS,
 	}
 
 	url := "wss://" + util.E_APP_HOST_NAME + "/sock?ticket=" + tus.GetTestTicket()

@@ -56,9 +56,11 @@ package main
 //
 // 			req, _ := http.NewRequest("GET", "https://localhost:7443/api/v1/profile/details", nil)
 //
+//      tlsCfg := &tls.Config{}
+//      tlsCfg.InsecureSkipVerify = true
 // 			req.Header.Add("Authorization", "Bearer "+token)
 // 			tr := &http.Transport{
-// 				TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+// 				TLSClientConfig: tlsCfg,
 // 			}
 // 			client := &http.Client{Transport: tr}
 //

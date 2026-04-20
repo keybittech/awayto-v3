@@ -71,7 +71,10 @@ func (a *API) InitSockServer() {
 
 		// Set limits on reading
 		conn.SetReadLimit(1 << 11) // 2kb limit
-		conn.SetReadDeadline(time.Time{})
+		if err := conn.SetReadDeadline(time.Time{}); err != nil {
+			util.ErrorLog.Println(util.ErrCheck(err))
+			return
+		}
 
 		if req.URL.Query().Get("ticket") == "" {
 			return

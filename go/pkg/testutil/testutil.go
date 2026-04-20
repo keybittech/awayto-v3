@@ -1,6 +1,7 @@
 package testutil
 
 import (
+	"crypto/tls"
 	"encoding/json"
 	"io"
 	"log"
@@ -20,10 +21,12 @@ var (
 		IntegrationTest: &types.IntegrationTest{},
 	}
 	UserRoles = []string{"admin", "staff1", "staff2", "staff3", "member1", "member2", "member3"}
+	TestTLS   = &tls.Config{}
 )
 
 func init() {
 	HandlerOptions = util.GenerateOptions()
+	TestTLS.InsecureSkipVerify = true
 }
 
 func ResetB(b *testing.B) {
@@ -32,11 +35,12 @@ func ResetB(b *testing.B) {
 }
 
 func LoadIntegrations() {
-	integrationResultsFilePath := filepath.Join(util.E_PROJECT_DIR, "go", "integrations", "integration_results.json")
-	// if err := os.Remove(integrationResultsFilePath); err != nil {
-	// 	log.Print("no previous results to delete")
-	// }
-	jsonBytes, err := os.ReadFile(integrationResultsFilePath)
+	root, err := os.OpenRoot(util.E_PROJECT_DIR)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	jsonBytes, err := root.ReadFile("go/integrations/integration_results.json")
 	if err == nil {
 		err = json.Unmarshal(jsonBytes, IntegrationTest)
 		if err != nil && len(jsonBytes) > 0 {

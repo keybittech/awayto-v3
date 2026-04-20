@@ -79,9 +79,9 @@ func GenerateSessionId() string {
 	return base64.RawURLEncoding.EncodeToString(b)
 }
 
-func FetchPublicKey() (*rsa.PublicKey, error) {
+func FetchPublicKey() {
 	if E_KC_PUBLIC_KEY != nil {
-		return E_KC_PUBLIC_KEY, nil
+		return
 	}
 
 	resp, err := Get(E_KC_URL, nil)
@@ -106,11 +106,9 @@ func FetchPublicKey() (*rsa.PublicKey, error) {
 
 	if parsed, ok := pubKey.(*rsa.PublicKey); ok {
 		E_KC_PUBLIC_KEY = parsed
-		return parsed, nil
+	} else {
+		log.Fatal("Failed to parse kc pub key")
 	}
-
-	log.Fatal(ErrCheck(errors.New("key could not be parsed")))
-	return nil, nil
 }
 
 func GetValidTokenChallenge(req *http.Request, code, codeVerifier, ua, tz, ip string) (*types.UserSession, error) {

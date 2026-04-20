@@ -6,7 +6,6 @@ import (
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"runtime"
 	"strconv"
 	"strings"
@@ -47,19 +46,13 @@ func makeLogger(prop string) *CustomLogger {
 		log.Fatalf("Empty file path for log file %s", prop)
 	}
 
-	cleanLoc := filepath.Clean(loc)
-
-	if strings.Contains(cleanLoc, "..") {
-		log.Fatal("invalid file path: path traversal attempt detected")
+	root, err := os.OpenRoot(E_LOG_DIR)
+	if err != nil {
+		log.Fatalf("Failed to open log dir %s, %v", E_LOG_DIR, err)
 	}
+	defer root.Close()
 
-	logFilePath := filepath.Join(E_LOG_DIR, loc)
-
-	if !strings.HasPrefix(filepath.Clean(logFilePath), filepath.Clean(E_LOG_DIR)) {
-		log.Fatalf("invalid file path: path is outside of log directory, %s", logFilePath)
-	}
-
-	logFile, err := os.OpenFile(logFilePath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
+	logFile, err := root.OpenFile(loc, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0660)
 	if err != nil {
 		log.Fatalf("Failed to open %s log %v", prop, err)
 	}

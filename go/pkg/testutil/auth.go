@@ -22,7 +22,7 @@ func (tus *TestUsersStruct) RegisterKeycloakUserViaForm(code ...string) error {
 	client := &http.Client{
 		Jar: jar,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: TestTLS,
 		},
 	}
 
@@ -153,9 +153,7 @@ func (tus *TestUsersStruct) Login(handler ...*http.ServeMux) ([]*http.Cookie, er
 
 	client := &http.Client{
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{
-				InsecureSkipVerify: true,
-			},
+			TLSClientConfig: TestTLS,
 		},
 		Jar: jar,
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -287,7 +285,7 @@ func (tus *TestUsersStruct) Logout(handler ...*http.ServeMux) error {
 		w := httptest.NewRecorder()
 		h.ServeHTTP(w, req)
 
-		handlerFollowRedirects(h, w, req, nil)
+		handlerFollowRedirects(h, w, req, nil) // #nosec G104
 
 		if w.Code != 200 {
 			return fmt.Errorf("GET /auth/logout returned status %d", w.Code)

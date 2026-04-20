@@ -66,9 +66,9 @@ func (a *API) InitUnixServer(unixPath string) {
 		log.Fatal(err)
 	}
 
-	if err := os.Chmod(unixPath, 0777); err != nil {
-		log.Fatal(err)
-	}
+	// if err := os.Chmod(unixPath, 0660); err != nil {
+	// 	log.Fatal(err)
+	// }
 
 	util.DebugLog.Println("Listening on", unixPath)
 

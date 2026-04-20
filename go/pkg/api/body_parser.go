@@ -18,7 +18,7 @@ import (
 type BodyParser func(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message
 
 func ProtoBodyParser(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message {
-	pb := msgType.New().Interface().(proto.Message)
+	pb := msgType.New().Interface()
 
 	if req.Body != nil && req.Body != http.NoBody {
 		req.Body = http.MaxBytesReader(w, req.Body, 1<<20) // 1MB limit
@@ -46,14 +46,21 @@ func ProtoBodyParser(w http.ResponseWriter, req *http.Request, msgType protorefl
 func MultipartBodyParser(w http.ResponseWriter, req *http.Request, msgType protoreflect.MessageType) proto.Message {
 	req.Body = http.MaxBytesReader(w, req.Body, 1<<25)
 
-	err := req.ParseMultipartForm(1 << 25) // 32MB payload max
+	reader, err := req.MultipartReader()
+	if err != nil {
+		panic(util.ErrCheck(util.UserError("Invalid multipart request.")))
+	}
+
+	form, err := reader.ReadForm(1 << 25)
 	if err != nil {
 		panic(util.ErrCheck(util.UserError("Attached files may not exceed 32MB.")))
 	}
 
+	defer form.RemoveAll()
+
 	pbFiles := &types.PostFileContentsRequest{}
 
-	uploadIdValue, ok := req.MultipartForm.Value["uploadId"]
+	uploadIdValue, ok := form.Value["uploadId"]
 	if !ok {
 		panic(util.ErrCheck(errors.New("invalid multipart request: no uploadId object")))
 	}
@@ -64,7 +71,7 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, msgType proto
 		panic(util.ErrCheck(errors.New("invalid multipart request: uploadId is empty")))
 	}
 
-	existingIdsValue, ok := req.MultipartForm.Value["existingIds"]
+	existingIdsValue, ok := form.Value["existingIds"]
 	if !ok {
 		panic(util.ErrCheck(errors.New("invalid multipart request: no existingIds object")))
 	}
@@ -73,7 +80,7 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, msgType proto
 		pbFiles.ExistingIds = strings.Split(existingIdsValue[0], ",")
 	}
 
-	overwriteIdsValue, ok := req.MultipartForm.Value["overwriteIds"]
+	overwriteIdsValue, ok := form.Value["overwriteIds"]
 	if !ok {
 		panic(util.ErrCheck(errors.New("invalid multipart request: no overwriteIds object")))
 	}
@@ -82,7 +89,7 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, msgType proto
 		pbFiles.OverwriteIds = strings.Split(overwriteIdsValue[0], ",")
 	}
 
-	files, ok := req.MultipartForm.File["contents"]
+	files, ok := form.File["contents"]
 	if !ok {
 		panic(util.ErrCheck(errors.New("invalid multipart request: no contents object")))
 	}
@@ -92,11 +99,16 @@ func MultipartBodyParser(w http.ResponseWriter, req *http.Request, msgType proto
 	}
 
 	for _, f := range files {
-		fileBuf := make([]byte, f.Size)
-
-		fileData, _ := f.Open()
-		_, err := fileData.Read(fileBuf)
+		fileData, err := f.Open()
 		if err != nil {
+			panic(util.ErrCheck(err))
+		}
+
+		fileBuf, err := io.ReadAll(fileData)
+		if err != nil {
+			if ferr := fileData.Close(); ferr != nil {
+				panic(util.ErrCheck(ferr))
+			}
 			panic(util.ErrCheck(err))
 		}
 

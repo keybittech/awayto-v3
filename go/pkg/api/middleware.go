@@ -3,7 +3,7 @@ package api
 import (
 	"bytes"
 	"context"
-	"crypto/md5"
+	"crypto/sha256"
 	"encoding/base64"
 	"encoding/hex"
 	"io"
@@ -139,8 +139,10 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 		// If content type is vault, handle body
 		if ct == "application/x-awayto-vault" && !strings.HasPrefix(ct, "multipart/form-data") {
 			reqBytes, readErr := io.ReadAll(req.Body)
-			req.Body.Close()
-			if readErr == nil && len(reqBytes) > 0 {
+			closeErr := req.Body.Close()
+			if closeErr != nil {
+				err = util.ErrCheck(closeErr)
+			} else if readErr == nil && len(reqBytes) > 0 {
 				var plaintext []byte
 				plaintext, sharedSecret, err = crypto.ServerDecrypt(crypto.VaultKey, reqBytes, sessionId)
 
@@ -211,7 +213,11 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 		w.Header().Set("Content-Length", strconv.Itoa(len(b64Resp)))
 
 		w.WriteHeader(vrw.statusCode)
-		w.Write(b64Resp)
+
+		_, err = io.Copy(w, bytes.NewReader(b64Resp))
+		if err != nil {
+			util.ErrorLog.Printf("failed to write vault bytes, %s", err)
+		}
 	})
 }
 
@@ -289,7 +295,7 @@ func (a *API) SiteRoleCheckMiddleware(opts *util.HandlerOptions) func(SessionHan
 }
 
 func genETag(data []byte) string {
-	hash := md5.Sum(data)
+	hash := sha256.Sum256(data)
 	return hex.EncodeToString(hash[:])
 }
 
@@ -362,11 +368,17 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 					return
 				}
 
+				w.Header().Set("Content-Type", "application/json; charset=utf-8")
+				w.Header().Set("X-Content-Type-Options", "nosniff")
+
 				w.Header().Set("ETag", etag)
 				w.Header().Set("Content-Length", strconv.Itoa(len(cachedBytes)))
 
 				w.WriteHeader(http.StatusOK)
-				w.Write(cachedBytes)
+				_, err = io.Copy(w, bytes.NewReader(cachedBytes))
+				if err != nil {
+					util.ErrorLog.Printf("failed to copy cached bytes, %s", err)
+				}
 				return
 			}
 
@@ -398,7 +410,10 @@ func (a *API) CacheMiddleware(opts *util.HandlerOptions) func(SessionHandler) Se
 				return
 			} else {
 				w.WriteHeader(bufWriter.StatusCode)
-				w.Write(responseBytes)
+				_, err := io.Copy(w, bytes.NewReader(responseBytes))
+				if err != nil {
+					util.ErrorLog.Printf("failed to write etag checked bytes, %v", err)
+				}
 			}
 
 			// Store in cache

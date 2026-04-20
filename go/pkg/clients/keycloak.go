@@ -92,7 +92,7 @@ func InitKeycloak() *Keycloak {
 
 		defer func(replyChan chan AuthResponse) {
 			if r := recover(); r != nil {
-				err := errors.New(fmt.Sprintf("Did recover from %+v", r))
+				err := fmt.Errorf("Did recover from %+v", r)
 				replyChan <- AuthResponse{
 					Error: err,
 				}

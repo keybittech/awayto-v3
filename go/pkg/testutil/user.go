@@ -3,7 +3,6 @@ package testutil
 import (
 	"bytes"
 	"context"
-	"crypto/tls"
 	"encoding/base64"
 	"errors"
 	"fmt"
@@ -122,7 +121,7 @@ func (tus *TestUsersStruct) getUserClient() *http.Client {
 	return &http.Client{
 		Jar: jar,
 		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+			TLSClientConfig: TestTLS,
 		},
 	}
 }

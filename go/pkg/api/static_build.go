@@ -17,8 +17,7 @@ import (
 var wasmIntegrity string
 
 func initWasmHash() {
-	path := fmt.Sprintf("%s/ts/build/lib.wasm", util.E_PROJECT_DIR)
-	hash, err := util.CalcFileIntegrity(path)
+	hash, err := util.CalcFileIntegrity("ts/build/lib.wasm")
 	if err != nil {
 		util.ErrorLog.Printf("CRITICAL: could not calc wasm integrity, %v", err)
 		wasmIntegrity = ""

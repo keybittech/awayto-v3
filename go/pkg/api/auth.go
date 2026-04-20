@@ -36,7 +36,11 @@ func (a *API) InitAuthProxy() {
 			if err != nil {
 				return err
 			}
-			resp.Body.Close()
+
+			err = resp.Body.Close()
+			if err != nil {
+				return err
+			}
 
 			if nonce, ok := resp.Request.Context().Value("CSP-Nonce").([]byte); ok {
 				body = addNonceToHTML(body, nonce)
@@ -117,9 +121,15 @@ func (a *API) InitAuthProxy() {
 		util.SetSessionCookie(w, int64(time.Until(time.Unix(0, checkedSession.GetRefreshExpiresAt())).Seconds()), signedSessionId)
 
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		err = json.NewEncoder(w).Encode(map[string]any{
 			"authenticated": true,
 		})
+		if err != nil {
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			util.ErrorLog.Printf("error responding to status check, %v", err)
+			return
+		}
+
 	}))
 
 	// After logging in the user's code is verified and token validated
@@ -143,10 +153,16 @@ func (a *API) InitAuthProxy() {
 			return
 		}
 
-		a.Handlers.StoreSession(req.Context(), session)
+		_, err = a.Handlers.StoreSession(req.Context(), session)
+		if err != nil {
+			util.ErrorLog.Printf("failed to store session during auth callback: %v", err)
+			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			return
+		}
 
 		signedSessionId, err := util.WriteSigned("session_id", session.Id)
 		if err != nil {
+			util.ErrorLog.Printf("failed to write session id during auth callback: %v", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}

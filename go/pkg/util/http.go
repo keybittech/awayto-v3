@@ -166,8 +166,11 @@ func PostFormData(ctx context.Context, url string, headers http.Header, data io.
 
 	if !successStatus(resp.StatusCode) {
 		errBytes := make([]byte, 1024)
-		resp.Body.Read(errBytes)
-		err := fmt.Errorf("bad status %d, err: %s", resp.StatusCode, errBytes)
+		_, err := resp.Body.Read(errBytes)
+		if err != nil {
+			return nil, ErrCheck(err)
+		}
+		err = fmt.Errorf("bad status %d, err: %s", resp.StatusCode, errBytes)
 		return nil, ErrCheck(err)
 	}
 
@@ -180,7 +183,12 @@ func PostFormData(ctx context.Context, url string, headers http.Header, data io.
 }
 
 func CalcFileIntegrity(filePath string) (string, error) {
-	f, err := os.Open(filePath)
+	root, err := os.OpenRoot(E_PROJECT_DIR)
+	if err != nil {
+		return "", err
+	}
+
+	f, err := root.Open(filePath)
 	if err != nil {
 		return "", err
 	}

@@ -21,10 +21,13 @@ func setupStaticBuildOrProxy(a *API) {
 		fmt.Printf("please set TS_DEV_SERVER_URL %s", err.Error())
 	}
 
+	tlsCfg := &tls.Config{}
+	tlsCfg.InsecureSkipVerify = true
+
 	var proxy *httputil.ReverseProxy
 	proxy = httputil.NewSingleHostReverseProxy(devServerUrl)
 	proxy.Transport = &http.Transport{
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, // #nosec G402
+		TLSClientConfig: tlsCfg,
 	}
 
 	a.Server.Handler.(*http.ServeMux).Handle("GET /app/", http.StripPrefix("/app/",

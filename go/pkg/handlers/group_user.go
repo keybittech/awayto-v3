@@ -54,7 +54,9 @@ func (h *Handlers) PatchGroupUser(info ReqInfo, data *types.PatchGroupUserReques
 
 	userSession, _ := h.GetSession(info.Req, data.GetUserSub())
 	if userSession != nil {
-		h.RefreshSession(info.Req, userSession)
+		if _, err = h.RefreshSession(info.Req, userSession); err != nil {
+			return nil, util.ErrCheck(err)
+		}
 	}
 
 	_ = h.Socket.RoleCall(data.UserSub)
