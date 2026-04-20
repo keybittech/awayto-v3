@@ -41,12 +41,12 @@ func SetSessionCookie(w http.ResponseWriter, duration int64, value string) {
 func GetSessionIdFromCookie(r *http.Request) (string, error) {
 	cookie, err := r.Cookie("session_id")
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("could not get session_id cookie, %v", err))
+		return "", fmt.Errorf("could not get session_id cookie, %v", err)
 	}
 
 	sessionId, err := VerifySigned("session_id", cookie.Value)
 	if err != nil {
-		return "", errors.New(fmt.Sprintf("could not verify session id signature: %v", err))
+		return "", fmt.Errorf("could not verify session id signature: %v", err)
 	}
 	return sessionId, nil
 }
