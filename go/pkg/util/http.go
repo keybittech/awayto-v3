@@ -185,18 +185,18 @@ func PostFormData(ctx context.Context, url string, headers http.Header, data io.
 func CalcFileIntegrity(filePath string) (string, error) {
 	root, err := os.OpenRoot(E_PROJECT_DIR)
 	if err != nil {
-		return "", err
+		return "", ErrCheck(err)
 	}
 
 	f, err := root.Open(filePath)
 	if err != nil {
-		return "", err
+		return "", ErrCheck(err)
 	}
 	defer f.Close()
 
 	h := sha512.New384()
 	if _, err := io.Copy(h, f); err != nil {
-		return "", err
+		return "", ErrCheck(err)
 	}
 
 	hashBytes := h.Sum(nil)

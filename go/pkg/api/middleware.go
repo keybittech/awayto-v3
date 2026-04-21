@@ -139,10 +139,12 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 		// If content type is vault, handle body
 		if ct == "application/x-awayto-vault" && !strings.HasPrefix(ct, "multipart/form-data") {
 			reqBytes, readErr := io.ReadAll(req.Body)
-			closeErr := req.Body.Close()
-			if closeErr != nil {
-				err = util.ErrCheck(closeErr)
-			} else if readErr == nil && len(reqBytes) > 0 {
+			if closeErr := req.Body.Close(); closeErr != nil {
+				util.ErrorLog.Printf("bad vault body close, %s", closeErr)
+				http.Error(w, http.StatusText(http.StatusBadRequest), http.StatusBadRequest)
+				return
+			}
+			if readErr == nil && len(reqBytes) > 0 {
 				var plaintext []byte
 				plaintext, sharedSecret, err = crypto.ServerDecrypt(crypto.VaultKey, reqBytes, sessionId)
 

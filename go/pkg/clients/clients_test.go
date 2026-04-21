@@ -47,11 +47,11 @@ func TestMain(m *testing.M) {
 	})
 	testTicket, err := testSocket.GetSocketTicket(context.Background(), testSocketUserSession)
 	if err != nil || testTicket == "" {
-		log.Fatal(err)
+		log.Fatal(util.ErrCheck(err))
 	}
 	_, testConnId, err = util.SplitColonJoined(testTicket)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(util.ErrCheck(err))
 	}
 	testSocketMessage = &types.SocketMessage{
 		Action:     44,

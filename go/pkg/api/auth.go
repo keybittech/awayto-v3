@@ -34,12 +34,12 @@ func (a *API) InitAuthProxy() {
 
 			body, err := io.ReadAll(resp.Body)
 			if err != nil {
-				return err
+				return util.ErrCheck(err)
 			}
 
 			err = resp.Body.Close()
 			if err != nil {
-				return err
+				return util.ErrCheck(err)
 			}
 
 			if nonce, ok := resp.Request.Context().Value("CSP-Nonce").([]byte); ok {

@@ -360,7 +360,7 @@ func (h *Handlers) StoreSession(ctx context.Context, session *types.UserSession)
 		params[0] = session.GetUserSub()
 		dbSessionInsert := util.BatchQueryRow[types.ILookup](batch, `
 			INSERT INTO dbtable_schema.user_sessions (sub, id_token, access_token, access_expires_at, refresh_token, refresh_expires_at, ip_address, timezone, user_agent, group_id)
-			VALUES ($1::uuid, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 			RETURNING id
 		`, params...)
 		batch.Send(ctx)

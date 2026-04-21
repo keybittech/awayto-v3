@@ -34,7 +34,7 @@ func loadSigningToken() {
 	signToken, err := GetEnvFilePath("SIGNING_TOKEN_FILE", 128)
 	if err != nil {
 		println("Failed to get signing token")
-		log.Fatal(err)
+		log.Fatal(ErrCheck(err))
 	}
 
 	signingToken = []byte(signToken)

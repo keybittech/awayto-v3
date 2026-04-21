@@ -57,17 +57,17 @@ func (a *API) InitUnixServer(unixPath string) {
 	if err == nil {
 		err = os.Remove(unixPath)
 		if err != nil {
-			log.Fatal(err)
+			log.Fatal(util.ErrCheck(err))
 		}
 	}
 
 	a.Unix, err = net.Listen("unix", unixPath)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(util.ErrCheck(err))
 	}
 
 	// if err := os.Chmod(unixPath, 0660); err != nil {
-	// 	log.Fatal(err)
+	// 	log.Fatal(util.ErrCheck(err))
 	// }
 
 	util.DebugLog.Println("Listening on", unixPath)

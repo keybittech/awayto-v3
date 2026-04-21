@@ -12,6 +12,7 @@ import (
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
@@ -26,8 +27,8 @@ const (
 )
 
 type Database struct {
-	DatabaseAdminSub    string
-	DatabaseAdminRoleId string
+	DatabaseAdminSub    pgtype.UUID
+	DatabaseAdminRoleId pgtype.UUID
 	DatabaseClient      *DatabaseClient
 }
 
@@ -36,11 +37,11 @@ func (db *Database) Client() *DatabaseClient {
 }
 
 func (db *Database) AdminSub() string {
-	return db.DatabaseAdminSub
+	return db.DatabaseAdminSub.String()
 }
 
 func (db *Database) AdminRoleId() string {
-	return db.DatabaseAdminRoleId
+	return db.DatabaseAdminRoleId.String()
 }
 
 func InitDatabase() *Database {
@@ -59,6 +60,7 @@ func InitDatabase() *Database {
 	}
 
 	config.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
+		util.RegisterUUID(c.TypeMap())
 		util.RegisterTimestamp(c.TypeMap())
 		util.RegisterDate(c.TypeMap())
 		util.RegisterInterval(c.TypeMap())

@@ -37,14 +37,14 @@ func ResetB(b *testing.B) {
 func LoadIntegrations() {
 	root, err := os.OpenRoot(util.E_PROJECT_DIR)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(util.ErrCheck(err))
 	}
 
 	jsonBytes, err := root.ReadFile("go/integrations/integration_results.json")
 	if err == nil {
 		err = json.Unmarshal(jsonBytes, IntegrationTest)
 		if err != nil && len(jsonBytes) > 0 {
-			log.Fatal(err)
+			log.Fatal(util.ErrCheck(err))
 		} else if err == nil {
 			println("loaded integration results")
 		}

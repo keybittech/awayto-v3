@@ -98,6 +98,8 @@ func (a *API) HandleRequest(handlerOpts *util.HandlerOptions) SessionHandler {
 		queryParser(requestBody, req)
 		pathParser(requestBody, req)
 
+		// println(req.URL.Path, " ", protojson.Format(requestBody))
+
 		ctx := req.Context()
 
 		executor, done = requestExecutor(ctx, w, req, session, a.Handlers.Database.DatabaseClient)

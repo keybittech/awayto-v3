@@ -215,11 +215,11 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 
 	fieldsLen, err := Itoi32(md.Input().Fields().Len())
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal(ErrCheck(err))
 	}
 
 	if md.Input().Fields().Len() > 0 {
-		for i := int32(0); i < fieldsLen; i++ {
+		for i := range fieldsLen {
 			field := md.Input().Fields().ByNumber(protowire.Number(i + 1))
 
 			if proto.HasExtension(field.Options(), types.E_Nolog) {
