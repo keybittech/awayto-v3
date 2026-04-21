@@ -60,7 +60,7 @@ func InitDatabase() *Database {
 	}
 
 	config.AfterConnect = func(ctx context.Context, c *pgx.Conn) error {
-		util.RegisterUUID(c.TypeMap())
+		// util.RegisterUUID(c.TypeMap())
 		util.RegisterTimestamp(c.TypeMap())
 		util.RegisterDate(c.TypeMap())
 		util.RegisterInterval(c.TypeMap())
