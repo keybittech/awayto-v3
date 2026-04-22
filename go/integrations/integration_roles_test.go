@@ -81,8 +81,22 @@ func testIntegrationRoles(t *testing.T) {
 			t.Fatalf("error patching group roles request: %v", err)
 		}
 
-		testutil.IntegrationTest.Roles = roles
-		testutil.IntegrationTest.StaffRole = roles[staffGroupRoleId]
-		testutil.IntegrationTest.MemberRole = roles[memberGroupRoleId]
+		// get new ids
+		getRolesResp := &types.GetGroupRolesResponse{}
+		err = admin.DoHandler(http.MethodGet, "/api/v1/group/roles", nil, nil, getRolesResp)
+		if err != nil {
+			t.Fatalf("error getting group roles: %v", err)
+		}
+
+		freshRoles := make(map[string]*types.IGroupRole)
+		for _, r := range getRolesResp.GroupRoles {
+			freshRoles[r.Id] = r
+			if r.Name == "Staff" {
+				testutil.IntegrationTest.StaffRole = r
+			} else if r.Name == "Member" {
+				testutil.IntegrationTest.MemberRole = r
+			}
+		}
+		testutil.IntegrationTest.Roles = freshRoles
 	})
 }

@@ -1,6 +1,7 @@
 package main_test
 
 import (
+	"encoding/json"
 	"net/http"
 	"strconv"
 	"testing"
@@ -13,6 +14,79 @@ import (
 )
 
 func testIntegrationService(t *testing.T) {
+	var formId string
+	t.Run("admin can create a form and add it to a service", func(tt *testing.T) {
+		admin := testutil.IntegrationTest.TestUsers[0]
+
+		groupRoleId := testutil.IntegrationTest.StaffRole.GetId()
+
+		formPayload := map[string]any{
+			"name": "test",
+			"groupForm": map[string]any{
+				"form": map[string]any{
+					"name": "test",
+					"version": map[string]any{
+						"form": map[string]any{
+							"0": []map[string]any{
+								{
+									"i": "37cd98f7-95cc-4c92-b405-309e866afbef",
+									"l": "ffffffff",
+									"t": "text",
+								},
+								{
+									"i": "78593dae-e8c6-4eef-8b26-abb788dcbb0c",
+									"l": "nnnnnnnnnnnn",
+									"t": "text",
+								},
+								{
+									"i": "8c56712a-b2a7-4791-80aa-56531bb31107",
+									"l": "bnbbbbbbbbbbbbbbbb",
+									"t": "multi-select",
+									"r": true,
+									"v": []any{},
+									"o": []map[string]any{
+										{
+											"i": "ba668bb4-2c7c-4897-bec8-06d1617da55f",
+											"l": "aaaaaa",
+											"v": "aaaaaa",
+										},
+										{
+											"i": "d2e887fe-c034-4635-b1a9-68a70714f16c",
+											"l": "vvvvvvvvv",
+											"v": "vvvvvvvvv",
+										},
+										{
+											"i": "6c2640d3-9592-425c-8fb0-6e2268dc0ff2",
+											"l": "cccccc",
+											"v": "cccccc",
+										},
+									},
+								},
+							},
+						},
+					},
+				},
+			},
+			"groupRoleIds": []string{groupRoleId},
+		}
+
+		formRequestBytes, err := json.Marshal(formPayload)
+		if err != nil {
+			t.Fatalf("error marshalling form request: %v", err)
+		}
+
+		postGroupFormResponse := &types.PostGroupFormResponse{}
+		err = admin.DoHandler(http.MethodPost, "/api/v1/group/forms", formRequestBytes, nil, postGroupFormResponse)
+		if err != nil {
+			t.Fatalf("error posting form request: %v", err)
+		}
+
+		formId = postGroupFormResponse.Id
+		if !util.IsUUID(formId) {
+			t.Fatalf("formId is not a uuid: %s", formId)
+		}
+	})
+
 	t.Run("admin can create service addons and generate a schedule", func(tt *testing.T) {
 
 		admin := testutil.IntegrationTest.TestUsers[0]
@@ -74,8 +148,10 @@ func testIntegrationService(t *testing.T) {
 		}
 
 		testutil.IntegrationTest.MasterService = &types.IService{
-			Name:  "1-on-1 Tutoring",
-			Tiers: tiers,
+			Name:      "1-on-1 Tutoring",
+			Tiers:     tiers,
+			IntakeIds: []string{formId},
+			SurveyIds: []string{formId},
 		}
 	})
 }
