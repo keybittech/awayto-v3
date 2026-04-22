@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/lib/pq"
@@ -254,6 +255,8 @@ func (h *Handlers) GetGroupFormActiveVersion(info ReqInfo, data *types.GetGroupF
 		FROM dbview_schema.enabled_group_forms_active
 		WHERE "groupId" = $1 AND "formId" = $2
 	`, info.Session.GetGroupId(), data.GetFormId())
+
+	info.Batch.IgnoreErr(pgx.ErrNoRows)
 
 	info.Batch.Send(info.Ctx)
 

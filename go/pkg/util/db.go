@@ -2,6 +2,7 @@ package util
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"reflect"
 	"strconv"
@@ -104,6 +105,7 @@ type BatchOp struct {
 }
 
 type Batchable struct {
+	ignoredErrs  []error
 	ops          []*BatchOp
 	outerSlice   []any
 	Sub, GroupId string
@@ -123,6 +125,10 @@ func NewBatchable(pool *pgxpool.Pool, sub, groupId string, roleBits int32) *Batc
 	}
 	b.Reset()
 	return b
+}
+
+func (b *Batchable) IgnoreErr(errs ...error) {
+	b.ignoredErrs = append(b.ignoredErrs, errs...)
 }
 
 // Use a default of defaultMaxOps (4) batch ops because we have first and last op as set session ops and
@@ -211,9 +217,21 @@ func (b *Batchable) Send(ctx context.Context) {
 	for i, op := range b.ops {
 		res, err := op.op(br)
 		if err != nil {
-			currentOpLoc = op.loc
-			opErr = err
-			break
+			onIgnore := false
+			for _, ignored := range b.ignoredErrs {
+				if errors.Is(err, ignored) {
+					onIgnore = true
+					break
+				}
+			}
+
+			if onIgnore {
+				err = nil
+			} else {
+				currentOpLoc = op.loc
+				opErr = err
+				break
+			}
 		}
 
 		if i > 0 && i < len(b.ops)-1 {
