@@ -200,6 +200,11 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 
 		next.ServeHTTP(vrw, req)
 
+		if vrw.statusCode == http.StatusNotModified {
+			w.WriteHeader(vrw.statusCode)
+			return
+		}
+
 		respPlaintext := vrw.buf.Bytes()
 
 		encryptedResp, encryptErr := crypto.ServerEncrypt(sharedSecret, respPlaintext, sessionId)
@@ -218,7 +223,7 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 
 		_, err = io.Copy(w, bytes.NewReader(b64Resp))
 		if err != nil {
-			util.ErrorLog.Printf("failed to write vault bytes, %s", err)
+			util.ErrorLog.Printf("failed to write vault bytes for %d, %s", vrw.statusCode, err)
 		}
 	})
 }
