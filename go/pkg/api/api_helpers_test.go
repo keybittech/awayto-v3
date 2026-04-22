@@ -70,7 +70,8 @@ func checkResponseFor(buf []byte, items []byte) bool {
 }
 
 func setupRouteRequest(cookies []*http.Cookie, method, path, contentType string) (*http.Request, *httptest.ResponseRecorder) {
-	req := testutil.GetTestReq(method, path, nil)
+	fullPath := util.E_APP_HOST_URL + path
+	req := testutil.GetTestReq(method, fullPath, nil)
 	for _, c := range cookies {
 		req.AddCookie(c)
 	}
