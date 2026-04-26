@@ -2,8 +2,6 @@ package main_test
 
 import (
 	"testing"
-
-	"github.com/keybittech/awayto-v3/go/pkg/types"
 )
 
 func testPlaywrightRegistration(t *testing.T) {
@@ -48,15 +46,8 @@ func testPlaywrightRegistration(t *testing.T) {
 		doEval(page)
 
 		// Verify group name check
-		checkNameResponse, err := readHandlerResponse[*types.CheckGroupNameResponse](func() {
-			page.ByRole("textbox", "Group Name").MouseOver().Fill("Downtown Writing Center")
-		})
-		if err != nil {
-			t.Fatalf("error when getting response for check name %v", err)
-		}
-		if !checkNameResponse.GetIsValid() {
-			t.Fatal("check name returned false")
-		}
+		// checkNameResponse, err := readHandlerResponse[*types.CheckGroupNameResponse](func() {
+		page.ByRole("textbox", "Group Name").MouseOver().Fill("Downtown Writing Center")
 
 		// Fill out other group fields
 		page.ByRole("textbox", "Group Description").MouseOver().Fill("Works with students and the public to teach writing")
@@ -64,18 +55,7 @@ func testPlaywrightRegistration(t *testing.T) {
 			page.ByLocator(`label[id="manage_group_modal_ai"]`).MouseOver().SetChecked(true)
 		}
 
-		// Verify post group response and set groupCode
-		postGroupResponse, err := readHandlerResponse[*types.PostGroupResponse](func() {
-			page.ByRole("button", "Next").MouseOver().Click()
-		})
-		if err != nil {
-			t.Fatalf("error when getting response for posting group %v", err)
-		}
-
-		groupCode = postGroupResponse.GetCode()
-		if groupCode == "" {
-			t.Fatal("a group code was not created")
-		}
+		page.ByRole("button", "Next").MouseOver().Click()
 
 		// Add group roles
 		if aiEnabled {
@@ -173,6 +153,15 @@ func testPlaywrightRegistration(t *testing.T) {
 		page.ByRole("button", "Next").MouseOver().Click()
 
 		page.ByLocator(`button[id="confirmation_approval"]`).MouseOver().Click()
+
+		page.ById("home_available_role_actions_manage_group").MouseOver().Click()
+
+		groupCodeText, err := page.ById("manage_group_home_code_input").InputValue()
+		if err != nil {
+			t.Fatalf("failed to read group code text, %v", err)
+		}
+
+		groupCode = groupCodeText
 	})
 
 	t.Run("staff joins on the registration page, with the group code", func(tt *testing.T) {

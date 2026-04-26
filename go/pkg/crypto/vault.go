@@ -210,7 +210,7 @@ func ClientEncrypt(serverPubKeyBytes, plaintext []byte, sid string) ([]byte, []b
 }
 
 // ServerDecrypt (Server Side)
-func ServerDecrypt(dk *HybridPrivateKey, blob []byte, sid string) ([]byte, []byte, error) {
+func ServerDecrypt(blob []byte, sid string) ([]byte, []byte, error) {
 	minSize := KEMCiphertextSize + X25519PubKeySize + NonceSize
 	if len(blob) < minSize {
 		return nil, nil, errors.New("server dec: payload too short")
@@ -223,7 +223,7 @@ func ServerDecrypt(dk *HybridPrivateKey, blob []byte, sid string) ([]byte, []byt
 	aesCT := blob[KEMCiphertextSize+X25519PubKeySize:]
 
 	// 2. ML-KEM Decapsulation
-	sharedSecretKEM, err := dk.MLKEM.Decapsulate(kemCT)
+	sharedSecretKEM, err := VaultKey.MLKEM.Decapsulate(kemCT)
 	if err != nil {
 		return nil, nil, fmt.Errorf("server dec: mlkem decap bad, %v", err)
 	}
@@ -234,7 +234,7 @@ func ServerDecrypt(dk *HybridPrivateKey, blob []byte, sid string) ([]byte, []byt
 		return nil, nil, fmt.Errorf("server dec: x25519 pub key bad creation, %v", err)
 	}
 
-	sharedSecretX25519, err := dk.X25519.ECDH(clientPub)
+	sharedSecretX25519, err := VaultKey.X25519.ECDH(clientPub)
 	if err != nil {
 		return nil, nil, fmt.Errorf("server dec: ecdh bad, %v", err)
 	}

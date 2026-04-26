@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"math/rand/v2"
 	"path/filepath"
-	"reflect"
-	"regexp"
 	"runtime/debug"
 	"strconv"
 	"strings"
@@ -15,12 +13,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/playwright-community/playwright-go"
-	"google.golang.org/protobuf/encoding/protojson"
-	"google.golang.org/protobuf/proto"
 )
 
 var (
@@ -207,7 +202,7 @@ func getBrowserPage(t *testing.T, userId string) *Page {
 	user := &UserWithPass{
 		UserId: userId,
 		Profile: &types.IUserProfile{
-			Email:     fmt.Sprintf("jsmith%s@myschool.edu", userId),
+			Email:     fmt.Sprintf("video%s@demo.com", userId),
 			FirstName: "John",
 			LastName:  "Smith",
 		},
@@ -245,113 +240,6 @@ func clearResponses() {
 	responseMu.Unlock()
 }
 
-func readResponse[T proto.Message](method, path string, action func()) (T, error) {
-	var empty T
-	clearResponses()
-
-	action()
-
-	time.Sleep(1 * time.Second)
-
-	defer clearResponses()
-
-	responseMu.Lock()
-	defer responseMu.Unlock()
-
-	checked := make([]string, 0)
-	for _, r := range responses {
-		if method != r.method {
-			checked = append(checked, "\n"+r.method+" "+r.url)
-			continue
-		}
-
-		matched, err := regexp.MatchString(path, r.url)
-		if err != nil {
-			return empty, fmt.Errorf("failed to match path %s to url %s", path, r.url)
-		}
-
-		if matched {
-			pb := reflect.New(reflect.TypeOf(empty).Elem()).Interface().(T)
-			err := protojson.Unmarshal(r.body, pb)
-			if err != nil {
-				return empty, fmt.Errorf("failed to unmarshal during %s parsing, %v", path, err)
-			}
-			return pb, nil
-		}
-	}
-
-	return empty, fmt.Errorf("did not find any responses for path %s, checked %v", path, checked)
-}
-
-func readHandlerResponse[T proto.Message](action func()) (T, error) {
-	var empty T
-	emptyT := reflect.TypeOf(empty)
-	emptyTName := emptyT.Elem().Name()
-	var msg proto.Message
-	var matched, ok bool
-	var err error
-
-	// T must be a pointer to a proto type
-	msg, ok = reflect.Zero(emptyT).Interface().(proto.Message)
-	if !ok {
-		return empty, nil
-	}
-
-	var hops *util.HandlerOptions
-
-	descriptorT := msg.ProtoReflect().Descriptor()
-	for _, h := range testutil.HandlerOptions {
-		if descriptorT == h.ServiceMethod.Output() {
-			hops = h
-			break
-		}
-	}
-	if hops == nil {
-		return empty, fmt.Errorf("type did not resolve to a service output message %s", emptyTName)
-	}
-
-	clearResponses()
-
-	action()
-
-	time.Sleep(1 * time.Second)
-
-	defer clearResponses()
-
-	responseMu.Lock()
-	defer responseMu.Unlock()
-
-	checked := make([]string, 0)
-	for _, r := range responses {
-		// verify the right method
-		if !strings.HasPrefix(hops.Pattern, r.method) {
-			checked = append(checked, r.method+" "+r.url)
-			continue
-		}
-
-		// verify a matching invalidation path
-		for _, invalidation := range hops.Invalidations {
-			matched, err = regexp.MatchString(invalidation, r.url)
-			if err != nil {
-				return empty, fmt.Errorf("failed to match invalidation %s to url %s", invalidation, r.url)
-			}
-			if matched {
-				pb := reflect.New(reflect.TypeOf(empty).Elem()).Interface().(T)
-
-				err = protojson.Unmarshal(r.body, pb)
-				if err != nil {
-					return empty, fmt.Errorf("failed to unmarshal into message: %s, data: %s, %v", emptyTName, r.body, err)
-				}
-
-				return pb, nil
-			}
-		}
-		checked = append(checked, r.method+" "+r.url)
-	}
-
-	return empty, fmt.Errorf("did not find any responses for output message %s (%s), checked %s", emptyTName, hops.Pattern, checked)
-}
-
 func login(t *testing.T, userId string) *Page {
 	page := getBrowserPage(t, userId)
 
@@ -365,7 +253,6 @@ func login(t *testing.T, userId string) *Page {
 		t.Fatalf("error cleaning local storage on delete login %v", err)
 	}
 
-	time.Sleep(1 * time.Hour)
 	onSignInPage, err := page.GetByText("Welcome!").IsVisible()
 	if err != nil {
 		t.Fatalf("sign in error %v", err)

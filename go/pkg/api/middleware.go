@@ -146,7 +146,7 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 			}
 			if readErr == nil && len(reqBytes) > 0 {
 				var plaintext []byte
-				plaintext, sharedSecret, err = crypto.ServerDecrypt(crypto.VaultKey, reqBytes, sessionId)
+				plaintext, sharedSecret, err = crypto.ServerDecrypt(reqBytes, sessionId)
 
 				if err == nil {
 					req.Body = io.NopCloser(bytes.NewBuffer(plaintext))
@@ -168,7 +168,7 @@ func (a *API) VaultMiddleware(next http.Handler) http.Handler {
 			if vaultHeader := req.Header.Get("X-Awayto-Vault"); vaultHeader != "" {
 				blob, b64Err := base64.StdEncoding.DecodeString(vaultHeader)
 				if b64Err == nil {
-					_, ss, dErr := crypto.ServerDecrypt(crypto.VaultKey, blob, sessionId)
+					_, ss, dErr := crypto.ServerDecrypt(blob, sessionId)
 					if dErr == nil {
 						sharedSecret = ss
 					} else {

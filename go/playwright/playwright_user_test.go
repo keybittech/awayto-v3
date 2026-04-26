@@ -10,7 +10,7 @@ func testPlaywrightUser(t *testing.T) {
 
 		page.ById("home_available_role_actions_edit_group_users").MouseOver().Click()
 
-		staffMemberRow := page.ByText("jsmithstaff@myschool.edu").Locator.Locator("xpath=..").Locator(`[type="checkbox"]`)
+		staffMemberRow := page.ByText("videostaff@demo.com").Locator.Locator("xpath=..").Locator(`[type="checkbox"]`)
 		staffMemberRow.Hover()
 		staffMemberRow.Click()
 
