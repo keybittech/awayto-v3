@@ -3,7 +3,7 @@ package main_test
 import "testing"
 
 func testPlaywrightCreateQuote(t *testing.T) {
-	page := login(t, "user")
+	page := login(t, "member2")
 
 	page.ByTestId("CalendarIcon").MouseOver().Click()
 	page.ByRole("gridCell", "23").MouseOver().Click()

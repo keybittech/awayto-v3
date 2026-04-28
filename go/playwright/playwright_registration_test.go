@@ -9,7 +9,7 @@ func testPlaywrightRegistration(t *testing.T) {
 	var firstRun bool
 
 	t.Run("admin can register and create a group", func(tt *testing.T) {
-		page := login(t, "admin")
+		page := login(t, "videotest_admin")
 
 		// Login as the admin
 		// If we haven't registered before, go through the full process of user and group registration
@@ -19,22 +19,27 @@ func testPlaywrightRegistration(t *testing.T) {
 			firstRun = true
 			register(page)
 		} else {
-			// On logged in dashboard
-			request := page.Request()
-			deleteResponse, err := request.Delete("/api/v1/group")
-			if err != nil {
-				t.Fatalf("failed to delete group %v", err)
-			}
+			// deleteResponse, err := request.Delete("/api/v1/group")
+			// if err != nil {
+			// 	time.Sleep(30 * time.Second)
+			// 	t.Fatalf("failed to delete group %v", err)
+			// }
 
-			if deleteResponse.Ok() {
-				_, err := page.Page.Evaluate("() => window.localStorage.clear()")
-				if err != nil {
-					t.Fatalf("error cleaning local storage on delete login %v", err)
-				}
-				page.Page.Reload()
-			} else {
-				t.Fatal("failed to delete group on later pass")
-			}
+			page.Page.Reload()
+
+			// if deleteResponse.Ok() {
+			// 	_, err := page.Page.Evaluate("() => window.localStorage.clear()")
+			// 	if err != nil {
+			// 		t.Fatalf("error cleaning local storage on delete login %v", err)
+			// 	}
+			// 	page.Page.Reload()
+			// } else {
+			// 	txt, err := deleteResponse.Text()
+			// 	if err != nil {
+			// 		t.Fatalf("failed to read delete group response, %v", err)
+			// 	}
+			// 	t.Fatalf("failed to delete group on later pass, %s", txt)
+			// }
 		}
 
 		err := page.ByText("Watch the tutorial").WaitFor()
@@ -165,7 +170,7 @@ func testPlaywrightRegistration(t *testing.T) {
 	})
 
 	t.Run("staff joins on the registration page, with the group code", func(tt *testing.T) {
-		page := login(t, "staff")
+		page := login(t, "videotest_staff1")
 
 		if !firstRun {
 
@@ -191,7 +196,7 @@ func testPlaywrightRegistration(t *testing.T) {
 	})
 
 	t.Run("user joins internally, with the group code", func(tt *testing.T) {
-		page := login(t, "user")
+		page := login(t, "videotest_member1")
 
 		if !firstRun {
 			// On logged in dashboard

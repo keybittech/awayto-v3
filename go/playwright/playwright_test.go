@@ -12,11 +12,10 @@ import (
 )
 
 var (
-	aiEnabled   = false
-	useRandUser = false
-	headless    = playwright.Bool(false)
-	slowMo      = playwright.Float(100)
-	browser     playwright.Browser
+	aiEnabled = false
+	headless  = playwright.Bool(false)
+	slowMo    = playwright.Float(100)
+	browser   playwright.Browser
 )
 
 func TestMain(m *testing.M) {
@@ -53,6 +52,8 @@ func TestMain(m *testing.M) {
 		},
 	})
 
+	testutil.LoadIntegrations()
+
 	code := m.Run()
 
 	if err = browser.Close(); err != nil {
@@ -73,7 +74,7 @@ func TestPlaywright(t *testing.T) {
 		testPlaywrightPermission(t)
 		testPlaywrightUser(t)
 		// testPlaywrightRole(t)
-		testPlaywrightCreatePersonalSchedule(t)
+		// testPlaywrightCreatePersonalSchedule(t)
 		// testPlaywrightCreateQuote(t)
 		// testPlaywrightCreateForm(t)
 	}

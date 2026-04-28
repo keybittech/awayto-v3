@@ -4,15 +4,14 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math/rand/v2"
 	"path/filepath"
 	"runtime/debug"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
+	"github.com/keybittech/awayto-v3/go/pkg/testutil"
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 	"github.com/keybittech/awayto-v3/go/pkg/util"
 	"github.com/playwright-community/playwright-go"
@@ -195,20 +194,33 @@ func getBrowserPage(t *testing.T, userId string) *Page {
 		}()
 	})
 
-	if useRandUser {
-		userId += strconv.Itoa(rand.IntN(1000000) + 1)
+	var testUser *testutil.TestUsersStruct
+	for _, tu := range testutil.IntegrationTest.TestUsers {
+		if tu.GetProfile().GetFirstName() == userId {
+			testUser = tu
+		}
+	}
+
+	if testUser == nil {
+		testEmail := fmt.Sprintf("%s@demo.com", userId)
+		testUser = &testutil.TestUsersStruct{
+			TestUser: &types.TestUser{
+				TestEmail: testEmail,
+				TestPass:  "testdemo",
+				Profile: &types.IUserProfile{
+					FirstName: userId,
+					LastName:  "last-name",
+					Email:     testEmail,
+				},
+			},
+		}
 	}
 
 	user := &UserWithPass{
-		UserId: userId,
-		Profile: &types.IUserProfile{
-			Email:     fmt.Sprintf("video%s@demo.com", userId),
-			FirstName: "John",
-			LastName:  "Smith",
-		},
+		UserId:   userId,
+		Password: testUser.GetTestPass(),
+		Profile:  testUser.Profile,
 	}
-
-	user.Password = user.Profile.FirstName + user.Profile.LastName
 
 	println("Testing with user:", user.Profile.GetEmail(), "pass:", user.Password)
 

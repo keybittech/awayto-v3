@@ -15,7 +15,11 @@ done
 
 GROUP_ID=$(kcadm get groups?search=the_test_group -r $KC_REALM | jq -r '.[] | .id')
 kcadm delete groups/$GROUP_ID -r $KC_REALM
-echo "Deleted demo group"
+echo "Deleted test group"
+
+VIDEO_GROUP_ID=$(kcadm get groups?search=downtown_writing_center -r $KC_REALM | jq -r '.[] | .id')
+kcadm delete groups/$VIDEO_GROUP_ID -r $KC_REALM
+echo "Deleted video group"
 
 for USER_ID in $(kcadm get users -r $KC_REALM | jq -r '.[] | .id' | xargs echo); do
   echo "Deleting demo user $USER_ID"

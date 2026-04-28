@@ -6,7 +6,7 @@ import (
 )
 
 func testPlaywrightCreatePersonalSchedule(t *testing.T) {
-	page := login(t, "staff")
+	page := login(t, "staff2")
 
 	page.ById("topbar_open_menu").WaitFor()
 
