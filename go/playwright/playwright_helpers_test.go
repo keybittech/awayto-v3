@@ -165,6 +165,7 @@ func getBrowserPage(t *testing.T, userId string) *Page {
 	defaultOptions := playwright.BrowserNewPageOptions{
 		BaseURL:           playwright.String(fmt.Sprintf("https://localhost:%d", util.E_GO_HTTPS_PORT)),
 		IgnoreHttpsErrors: playwright.Bool(true),
+		BypassCSP:         playwright.Bool(true),
 		ColorScheme:       playwright.ColorSchemeDark,
 		NoViewport:        playwright.Bool(true),
 		RecordVideo: &playwright.RecordVideo{

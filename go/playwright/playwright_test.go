@@ -70,12 +70,12 @@ func TestPlaywright(t *testing.T) {
 	defer testutil.TestPanic(t)
 
 	for range 1 { // Create -> Delete/Create
-		testPlaywrightRegistration(t)
-		testPlaywrightPermission(t)
-		testPlaywrightUser(t)
+		// testPlaywrightRegistration(t)
+		// testPlaywrightPermission(t)
+		// testPlaywrightUser(t)
 		// testPlaywrightRole(t)
 		// testPlaywrightCreatePersonalSchedule(t)
-		// testPlaywrightCreateQuote(t)
-		// testPlaywrightCreateForm(t)
+		testPlaywrightCreateQuote(t)
+		testPlaywrightCreateForm(t)
 	}
 }
