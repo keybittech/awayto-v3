@@ -337,6 +337,45 @@ export function WSCallProvider({ children, topicId, setTopicMessages }: WSCallPr
             }
           }
 
+          // const trackStream = (mediaStream: MediaStream) => {
+          //
+          //   const mediaRecorder = new MediaRecorder(mediaStream, { mimeType: 'audio/webm' });
+          //   const chunks: BlobPart[] = [];
+          //
+          //   // Listen for dataavailable event to obtain the recorded data
+          //   mediaRecorder.addEventListener('dataavailable', (event: BlobEvent) => {
+          //     chunks.push(event.data);
+          //   });
+          //
+          //   // Set the recording duration to 10 seconds
+          //   const RECORDING_DURATION_MS = 10000;
+          //   mediaRecorder.start(RECORDING_DURATION_MS);
+          //
+          //   // Speech recognition setup
+          //   speechRecognizer.current = new window.webkitSpeechRecognition();
+          //   speechRecognizer.current.maxAlternatives = 5;
+          //   speechRecognizer.current.continuous = true;
+          //   speechRecognizer.current.interimResults = true;
+          //   speechRecognizer.current.lang = 'en-US';
+          //
+          //   // const isSpeaking = false;
+          //   // const silenceStartTime = 0;
+          //
+          //   // Handle speech recognition results
+          //   speechRecognizer.current.addEventListener('result', (event: SpeechRecognitionEvent) => {
+          //     const lastResult = event.results[event.results.length - 1];
+          //     const transcript = lastResult[0].transcript;
+          //
+          //     const isFinal = lastResult.isFinal;
+          //
+          //     // Check if the user is speaking or not
+          //     if (isFinal) {
+          //       sendMessage('text', { style: 'utterance', message: transcript });
+          //     }
+          //   });
+          //
+          //   speechRecognizer.current.start();
+          // };
           // trackStream(mediaStream); -- TODO: Check support for this in browsers some day
 
           sendMessage(SocketActions.STREAM_INQUIRY);

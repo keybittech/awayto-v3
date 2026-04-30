@@ -75,7 +75,9 @@ func TestPlaywright(t *testing.T) {
 		// testPlaywrightUser(t)
 		// testPlaywrightRole(t)
 		// testPlaywrightCreatePersonalSchedule(t)
-		testPlaywrightCreateQuote(t)
+		// testPlaywrightCreateQuote(t)
 		testPlaywrightCreateForm(t)
 	}
 }
+
+// ffmpeg respeed ffmpeg -i input.webm  -vf "setpts=PTS/0.5" -af "atempo=0.5" output.webm
