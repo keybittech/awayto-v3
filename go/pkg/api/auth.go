@@ -108,12 +108,14 @@ func (a *API) InitAuthProxy() {
 
 		checkedSession := a.Handlers.CheckSessionExpiry(req, session)
 		if checkedSession == nil {
+			util.ErrorLog.Printf("auth status check expiry error, %v", err)
 			http.Error(w, http.StatusText(http.StatusUnauthorized), http.StatusUnauthorized)
 			return
 		}
 
 		signedSessionId, err := util.WriteSigned("session_id", checkedSession.GetId())
 		if err != nil {
+			util.ErrorLog.Printf("auth status write signed error, %v", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 			return
 		}
@@ -125,8 +127,8 @@ func (a *API) InitAuthProxy() {
 			"authenticated": true,
 		})
 		if err != nil {
+			util.ErrorLog.Printf("auth status response error, %v", err)
 			http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
-			util.ErrorLog.Printf("error responding to status check, %v", err)
 			return
 		}
 

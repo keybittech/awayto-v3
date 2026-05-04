@@ -85,12 +85,11 @@ async function loadExternal() {
         return;
       }
 
-      const response = await fetch(`/auth/status`, {
-        credentials: 'include'
-      });
-
       const loginUrl = `/auth/login?${tzParam}`;
-      if (response.ok) {
+
+      fetch(`/auth/status`, {
+        credentials: 'include'
+      }).then(async response => {
         const authResponse = (await response.json()) as { authenticated: boolean };
         if (authResponse.authenticated) {
           await loadInternal();
@@ -98,10 +97,11 @@ async function loadExternal() {
           sessionStorage.clear();
           window.location.href = loginUrl;
         }
-      } else {
+      }).catch(err => {
+        console.error(err);
         sessionStorage.clear();
         window.location.href = loginUrl;
-      }
+      });
     }
   } catch (error) {
     console.error('Application initialization error:', error);
