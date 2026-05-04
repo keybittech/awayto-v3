@@ -247,6 +247,7 @@ SELECT
   bracket_time_unit_id as "bracketTimeUnitId",
   slot_time_unit_id as "slotTimeUnitId",
   slot_duration as "slotDuration",
+  approval_mode as "approvalMode",
   created_sub as "createdSub",
   created_on as "createdOn"
 FROM

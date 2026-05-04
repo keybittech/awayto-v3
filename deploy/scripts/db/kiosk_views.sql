@@ -21,6 +21,7 @@ LEFT JOIN LATERAL (
   SELECT 
     s.name,
     s.slot_duration as "slotDuration",
+    s.approval_mode as "approvalMode",
     scheduleTimeUnit.name as "scheduleTimeUnitName",
     bracketTimeUnit.name as "bracketTimeUnitName",
     slotTimeUnit.name as "slotTimeUnitName",
@@ -51,7 +52,7 @@ LEFT JOIN LATERAL (
       dss.group_schedule_id = egs."scheduleId"
   ) as dcsc ON true
   WHERE egs."groupId" = g.id AND dcsc.slots IS NOT NULL
-  GROUP BY s.name, s.slot_duration, sbss.services, scheduleTimeUnit.name, bracketTimeUnit.name, slotTimeUnit.name
+  GROUP BY s.name, s.slot_duration, s.approval_mode, sbss.services, scheduleTimeUnit.name, bracketTimeUnit.name, slotTimeUnit.name
 ) as schedules ON true
 WHERE schedules.name IS NOT NULL
 GROUP BY g.name, g.code;

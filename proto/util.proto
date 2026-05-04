@@ -45,6 +45,7 @@ enum SiteRoles {
   APP_GROUP_ROLES = 64;
   APP_GROUP_USERS = 128;
   APP_GROUP_PERMISSIONS = 256;
+  APP_GROUP_APPROVALS = 512;
 }
 
 enum EndpointType {

@@ -96,61 +96,62 @@ message IScheduleBracketSlot {
 }
 
 message IScheduleBracket {
-  string id = 1 [
+  map<string, IService> services = 1;
+  map<string, IScheduleBracketSlot> slots = 2;
+  map<string, IQuote> quotes = 3;
+  string id = 4 [
     (buf.validate.field).cel = {
       id: "IScheduleBracket.id"
       message: "value must be a UUID or timestamp"
       expression: "this.matches('^[0-9]{13}$') || this.matches('^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$')"
     }
   ];
-  bool automatic = 2;
-  string scheduleId = 3 [
+  string color = 5;
+  string scheduleId = 6 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  int32 duration = 4 [
+  string createdOn = 7;
+  int32 duration = 8 [
     (buf.validate.field).int32.gt = 0
   ];
-  int32 multiplier = 5 [
+  int32 multiplier = 9 [
     (buf.validate.field).int32.gt = 0
   ];
-  map<string, IService> services = 6;
-  map<string, IScheduleBracketSlot> slots = 7;
-  map<string, IQuote> quotes = 8;
-  string createdOn = 9;
-  string color = 10;
+  bool automatic = 10;
 }
 
 message ISchedule {
-  string id = 1;
-  string name = 2 [(buf.validate.field).string.min_len = 1];
-  string startDate = 3 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
-  string endDate = 4 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
-  string timezone = 5 [
+  map<string, IScheduleBracket> brackets = 1;
+  string id = 2;
+  string name = 3 [(buf.validate.field).string.min_len = 1];
+  string startDate = 4 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
+  string endDate = 5 [(buf.validate.field).ignore = IGNORE_IF_UNPOPULATED];
+  string timezone = 6 [
     (buf.validate.field).string.min_len = 1,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string scheduleTimeUnitId = 6 [
+  string scheduleTimeUnitId = 7 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string scheduleTimeUnitName = 7;
-  string bracketTimeUnitId = 8 [
+  string scheduleTimeUnitName = 8;
+  string bracketTimeUnitId = 9 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string bracketTimeUnitName = 9;
-  string slotTimeUnitId = 10 [
+  string bracketTimeUnitName = 10;
+  string slotTimeUnitId = 11 [
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string slotTimeUnitName = 11;
-  int32 slotDuration = 12 [
+  string slotTimeUnitName = 12;
+  string createdOn = 13;
+  string approvalMode = 14;
+  int32 slotDuration = 15 [
     (buf.validate.field).int32.gt = 0,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  map<string, IScheduleBracket> brackets = 13;
-  string createdOn = 14;
 
   // option (buf.validate.message).cel = {
   //   id: "ISchedule.endDate",
@@ -174,8 +175,9 @@ message PostScheduleRequest {
     (buf.validate.field).string.uuid = true,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  int32 slotDuration = 9 [(buf.validate.field).int32.gt = 0];
-  bool asGroup = 10;
+  string approvalMode = 9;
+  int32 slotDuration = 10 [(buf.validate.field).int32.gt = 0];
+  bool asGroup = 11;
 
   // option (buf.validate.message).cel = {
   //   id: "PostScheduleRequest.endDate",
@@ -189,15 +191,15 @@ message PostScheduleResponse {
 }
 
 message PostScheduleBracketsRequest {
-  string userScheduleId = 1 [
+  map<string, IScheduleBracket> brackets = 1 [(google.api.field_behavior) = REQUIRED];
+  string userScheduleId = 2 [
     (google.api.field_behavior) = REQUIRED,
     (buf.validate.field).string.uuid = true
   ];
-  string groupScheduleId = 2 [
+  string groupScheduleId = 3 [
     (google.api.field_behavior) = REQUIRED,
     (buf.validate.field).string.uuid = true
   ]; 
-  map<string, IScheduleBracket> brackets = 3 [(google.api.field_behavior) = REQUIRED];
 }
 
 message PostScheduleBracketsResponse {

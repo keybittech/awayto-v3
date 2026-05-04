@@ -19,8 +19,11 @@ service BookingService {
       post: "/v1/bookings"
       body: "*"
     };
-    // schedule users confirm quotes into bookings
-    option (site_role) = APP_GROUP_SCHEDULES;
+    // schedule approval_mode allows various roles to do approvals:
+    // auto (appointments are automatically approved)
+    option (site_role) = APP_GROUP_ADMIN; // role (admin and approvals role approves)
+    option (site_role) = APP_GROUP_APPROVALS; // role
+    option (site_role) = APP_GROUP_SCHEDULES; // owner (staff who created schedule approves)
     option (use_tx) = true;
   }
   rpc PatchBooking(PatchBookingRequest) returns (PatchBookingResponse) {

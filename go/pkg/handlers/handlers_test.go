@@ -191,6 +191,7 @@ func FuzzPostSchedule(f *testing.F) {
 			SlotTimeUnitId:     slotTimeUnitId,
 			GroupScheduleId:    groupScheuleId,
 			SlotDuration:       slotDuration,
+			// ApprovalMode
 		}
 
 		err = protovalidate.Validate(pb)

@@ -150,6 +150,7 @@ func (h *Handlers) PostQuote(info ReqInfo, data *types.PostQuoteRequest) (*types
 
 	// Ping staff if they're online
 
+	// TODO: maybe approval modes here
 	var staffSub string
 	err = info.Tx.QueryRow(info.Ctx, `
 		SELECT created_sub

@@ -22,7 +22,6 @@ func testIntegrationOnboarding(t *testing.T) {
 		if err != nil {
 			t.Fatalf("error marshalling onboarding request: %v", err)
 		}
-
 		onboardingResponse := &types.CompleteOnboardingResponse{}
 		err = admin.DoHandler(http.MethodPost, "/api/v1/group/onboard", onboardingRequestBytes, nil, onboardingResponse)
 		if err != nil {

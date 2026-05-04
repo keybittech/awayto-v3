@@ -128,7 +128,7 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 	}
 
 	postGroupServiceReq := &types.PostGroupServiceRequest{
-		ServiceId: postServiceRes.Id,
+		ServiceId: postServiceRes.GetId(),
 	}
 	postGroupServiceRes, err := h.PostGroupService(info, postGroupServiceReq)
 	if err != nil {
@@ -137,13 +137,14 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 
 	postScheduleReq := &types.PostScheduleRequest{
 		AsGroup:            true,
-		Name:               schedule.Name,
-		StartDate:          schedule.StartDate,
-		EndDate:            schedule.EndDate,
-		ScheduleTimeUnitId: schedule.ScheduleTimeUnitId,
-		BracketTimeUnitId:  schedule.BracketTimeUnitId,
-		SlotTimeUnitId:     schedule.SlotTimeUnitId,
-		SlotDuration:       schedule.SlotDuration,
+		Name:               schedule.GetName(),
+		StartDate:          schedule.GetStartDate(),
+		EndDate:            schedule.GetEndDate(),
+		ScheduleTimeUnitId: schedule.GetScheduleTimeUnitId(),
+		BracketTimeUnitId:  schedule.GetBracketTimeUnitId(),
+		SlotTimeUnitId:     schedule.GetSlotTimeUnitId(),
+		SlotDuration:       schedule.GetSlotDuration(),
+		ApprovalMode:       schedule.GetApprovalMode(),
 		Brackets:           map[string]*types.IScheduleBracket{},
 	}
 	postScheduleRes, err := h.PostSchedule(info, postScheduleReq)
@@ -152,7 +153,7 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 	}
 
 	postGroupScheduleRes, err := h.PostGroupSchedule(info, &types.PostGroupScheduleRequest{
-		ScheduleId: postScheduleRes.Id,
+		ScheduleId: postScheduleRes.GetId(),
 	})
 	if err != nil {
 		return nil, util.ErrCheck(err)
@@ -164,10 +165,10 @@ func (h *Handlers) CompleteOnboarding(info ReqInfo, data *types.CompleteOnboardi
 	}
 
 	onboardingResponse := &types.CompleteOnboardingResponse{
-		ServiceId:       postServiceRes.Id,
-		GroupServiceId:  postGroupServiceRes.Id,
-		ScheduleId:      postScheduleRes.Id,
-		GroupScheduleId: postGroupScheduleRes.Id,
+		ServiceId:       postServiceRes.GetId(),
+		GroupServiceId:  postGroupServiceRes.GetId(),
+		ScheduleId:      postScheduleRes.GetId(),
+		GroupScheduleId: postGroupScheduleRes.GetId(),
 	}
 
 	return onboardingResponse, nil

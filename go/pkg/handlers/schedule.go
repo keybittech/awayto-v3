@@ -90,8 +90,8 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 	var scheduleId string
 
 	var insertScheduleQuery = `
-		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_date, end_date, timezone)
-		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9)
+		INSERT INTO dbtable_schema.schedules (name, created_sub, slot_duration, schedule_time_unit_id, bracket_time_unit_id, slot_time_unit_id, start_date, end_date, timezone, approval_mode)
+		VALUES ($1, $2::uuid, $3::integer, $4::uuid, $5::uuid, $6::uuid, $7, $8, $9, $10)
 		RETURNING id
 	`
 
@@ -101,15 +101,16 @@ func (h *Handlers) PostSchedule(info ReqInfo, data *types.PostScheduleRequest) (
 	}
 
 	var insertScheduleParams = []any{
-		data.Name,
+		data.GetName(),
 		info.Session.GetUserSub(),
-		data.SlotDuration,
-		data.ScheduleTimeUnitId,
-		data.BracketTimeUnitId,
-		data.SlotTimeUnitId,
+		data.GetSlotDuration(),
+		data.GetScheduleTimeUnitId(),
+		data.GetBracketTimeUnitId(),
+		data.GetSlotTimeUnitId(),
 		startDate,
 		endDate,
 		info.Session.GetTimezone(),
+		data.GetApprovalMode(),
 	}
 
 	var row pgx.Row
@@ -194,16 +195,16 @@ func (h *Handlers) PostScheduleBrackets(info ReqInfo, data *types.PostScheduleBr
 }
 
 func (h *Handlers) PatchSchedule(info ReqInfo, data *types.PatchScheduleRequest) (*types.PatchScheduleResponse, error) {
-	startDate, endDate, err := parseScheduleDateRange(data.Schedule.StartDate, data.Schedule.EndDate)
+	startDate, endDate, err := parseScheduleDateRange(data.Schedule.GetStartDate(), data.Schedule.GetEndDate())
 	if err != nil {
 		return nil, util.ErrCheck(err)
 	}
 
 	util.BatchExec(info.Batch, `
 		UPDATE dbtable_schema.schedules
-		SET name = $2, start_date= $3, end_date = $4, updated_sub = $5, updated_on = $6
+		SET name = $2, start_date= $3, end_date = $4, updated_sub = $5, updated_on = $6, approval_mode = $7
 		WHERE id = $1
-	`, data.Schedule.Id, data.Schedule.Name, startDate, endDate, info.Session.GetUserSub(), time.Now())
+	`, data.Schedule.GetId(), data.Schedule.GetName(), startDate, endDate, info.Session.GetUserSub(), time.Now(), data.Schedule.GetApprovalMode())
 
 	info.Batch.Send(info.Ctx)
 
@@ -224,7 +225,7 @@ func (h *Handlers) GetSchedules(info ReqInfo, data *types.GetSchedulesRequest) (
 
 func (h *Handlers) GetScheduleById(info ReqInfo, data *types.GetScheduleByIdRequest) (*types.GetScheduleByIdResponse, error) {
 	schedule := util.BatchQueryRow[types.ISchedule](info.Batch, `
-		SELECT id, name, timezone, "startDate", "endDate", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", brackets
+		SELECT id, name, timezone, "startDate", "endDate", "scheduleTimeUnitId", "bracketTimeUnitId", "slotTimeUnitId", "slotDuration", "createdOn", "approvalMode", brackets
 		FROM dbview_schema.enabled_schedules_ext
 		WHERE id = $1
 	`, data.Id)

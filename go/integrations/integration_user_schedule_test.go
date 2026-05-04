@@ -23,7 +23,7 @@ func testIntegrationUserSchedule(t *testing.T) {
 	bracketId := strconv.Itoa(int(time.Now().UnixMilli()))
 	time.Sleep(time.Millisecond)
 
-	serviceId := testutil.IntegrationTest.MasterService.Id
+	serviceId := testutil.IntegrationTest.MasterService.GetId()
 	services[serviceId] = testutil.IntegrationTest.MasterService
 
 	slot1Id := strconv.Itoa(int(time.Now().UnixMilli()))
@@ -63,14 +63,15 @@ func testIntegrationUserSchedule(t *testing.T) {
 	t.Run("user can create a personal schedule using a group schedule id", func(tt *testing.T) {
 		scheduleId, err := staff1.PostSchedule(&types.PostScheduleRequest{
 			Brackets:           brackets,
-			GroupScheduleId:    testutil.IntegrationTest.MasterSchedule.Id,
-			Name:               testutil.IntegrationTest.MasterSchedule.Name,
-			StartDate:          testutil.IntegrationTest.MasterSchedule.StartDate,
-			EndDate:            testutil.IntegrationTest.MasterSchedule.EndDate,
-			ScheduleTimeUnitId: testutil.IntegrationTest.MasterSchedule.ScheduleTimeUnitId,
-			BracketTimeUnitId:  testutil.IntegrationTest.MasterSchedule.BracketTimeUnitId,
-			SlotTimeUnitId:     testutil.IntegrationTest.MasterSchedule.SlotTimeUnitId,
-			SlotDuration:       testutil.IntegrationTest.MasterSchedule.SlotDuration,
+			GroupScheduleId:    testutil.IntegrationTest.MasterSchedule.GetId(),
+			Name:               testutil.IntegrationTest.MasterSchedule.GetName(),
+			StartDate:          testutil.IntegrationTest.MasterSchedule.GetStartDate(),
+			EndDate:            testutil.IntegrationTest.MasterSchedule.GetEndDate(),
+			ScheduleTimeUnitId: testutil.IntegrationTest.MasterSchedule.GetScheduleTimeUnitId(),
+			BracketTimeUnitId:  testutil.IntegrationTest.MasterSchedule.GetBracketTimeUnitId(),
+			SlotTimeUnitId:     testutil.IntegrationTest.MasterSchedule.GetSlotTimeUnitId(),
+			SlotDuration:       testutil.IntegrationTest.MasterSchedule.GetSlotDuration(),
+			ApprovalMode:       testutil.IntegrationTest.MasterSchedule.GetApprovalMode(),
 		})
 		if err != nil {
 			t.Fatalf("staff post schedule err %v", err)
@@ -95,14 +96,15 @@ func testIntegrationUserSchedule(t *testing.T) {
 
 		scheduleId, err := staff2.PostSchedule(&types.PostScheduleRequest{
 			Brackets:           brackets,
-			GroupScheduleId:    testutil.IntegrationTest.MasterSchedules[0].Id,
-			Name:               testutil.IntegrationTest.MasterSchedules[0].Name,
-			StartDate:          testutil.IntegrationTest.MasterSchedules[0].StartDate,
-			EndDate:            testutil.IntegrationTest.MasterSchedules[0].EndDate,
-			ScheduleTimeUnitId: testutil.IntegrationTest.MasterSchedules[0].ScheduleTimeUnitId,
-			BracketTimeUnitId:  testutil.IntegrationTest.MasterSchedules[0].BracketTimeUnitId,
-			SlotTimeUnitId:     testutil.IntegrationTest.MasterSchedules[0].SlotTimeUnitId,
-			SlotDuration:       testutil.IntegrationTest.MasterSchedules[0].SlotDuration,
+			GroupScheduleId:    testutil.IntegrationTest.MasterSchedules[0].GetId(),
+			Name:               testutil.IntegrationTest.MasterSchedules[0].GetName(),
+			StartDate:          testutil.IntegrationTest.MasterSchedules[0].GetStartDate(),
+			EndDate:            testutil.IntegrationTest.MasterSchedules[0].GetEndDate(),
+			ScheduleTimeUnitId: testutil.IntegrationTest.MasterSchedules[0].GetScheduleTimeUnitId(),
+			BracketTimeUnitId:  testutil.IntegrationTest.MasterSchedules[0].GetBracketTimeUnitId(),
+			SlotTimeUnitId:     testutil.IntegrationTest.MasterSchedules[0].GetSlotTimeUnitId(),
+			SlotDuration:       testutil.IntegrationTest.MasterSchedules[0].GetSlotDuration(),
+			ApprovalMode:       testutil.IntegrationTest.MasterSchedules[0].GetApprovalMode(),
 		})
 		if err != nil {
 			t.Fatalf("secondary staff post schedule err %v", err)

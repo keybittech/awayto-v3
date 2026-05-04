@@ -34,6 +34,7 @@ func testIntegrationSchedule(t *testing.T) {
 			SlotDuration: slotDuration,
 			StartDate:    startDate,
 			EndDate:      endDate,
+			ApprovalMode: "auto",
 		}
 
 		lookupsResponse := &types.GetLookupsResponse{}
@@ -70,6 +71,7 @@ func testIntegrationSchedule(t *testing.T) {
 			BracketTimeUnitId:  bracketUnitId,
 			SlotTimeUnitId:     slotUnitId,
 			SlotDuration:       slotDuration,
+			ApprovalMode:       "auto",
 		})
 		if err != nil {
 			t.Fatalf("failed to post master schedule %v", err)

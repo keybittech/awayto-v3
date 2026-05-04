@@ -11,6 +11,7 @@ import CardActions from '@mui/material/CardActions';
 import Slider from '@mui/material/Slider';
 import Button from '@mui/material/Button';
 import TextField from '@mui/material/TextField';
+import MenuItem from '@mui/material/MenuItem';
 
 import { DesktopDatePicker } from '@mui/x-date-pickers/DesktopDatePicker';
 
@@ -29,7 +30,8 @@ export const scheduleSchema = {
   bracketTimeUnitId: '',
   bracketTimeUnitName: '',
   slotTimeUnitId: '',
-  slotTimeUnitName: ''
+  slotTimeUnitName: '',
+  approvalMode: 'auto',
 } as ISchedule;
 
 interface ManageSchedulesModalProps extends IComponent {
@@ -86,7 +88,8 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
           bracketTimeUnitId: hour.id,
           slotTimeUnitName: minute.name,
           slotTimeUnitId: minute.id,
-          slotDuration: 30
+          slotDuration: 30,
+          approvalMode: 'auto',
         }
       });
     } else if ('dailybookingpermonth' == scheduleType) {
@@ -99,7 +102,8 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
           bracketTimeUnitId: week.id,
           slotTimeUnitName: day.name,
           slotTimeUnitId: day.id,
-          slotDuration: 1
+          slotDuration: 1,
+          approvalMode: 'auto',
         }
       });
     }
@@ -132,7 +136,8 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
         const newSchedule = {
           name: s.name,
           startDate: s.startDate,
-          endDate: s.endDate
+          endDate: s.endDate,
+          approvalMode: s.approvalMode,
         } as ISchedule;
 
         if (s.id) {
@@ -150,6 +155,7 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
           newSchedule.slotTimeUnitId = s.slotTimeUnitId
           newSchedule.slotDuration = s.slotDuration
 
+          // TODO: unify these multiple requests
           const { id: scheduleId } = await postSchedule({
             postScheduleRequest: {
               ...newSchedule,
@@ -283,6 +289,21 @@ export function ManageSchedulesModal({ children, editGroupSchedule, validArea, s
                       }
                     }}
                   />
+                </Grid>
+
+                <Grid size="grow">
+                  <TextField
+                    {...targets(`manage schedule modal approval mode selection`, `Approval Mode`, `select how appointment approvals are handled for this schedule`)}
+                    select
+                    fullWidth
+                    value={schedule.approvalMode}
+                    variant="standard"
+                    onChange={e => setGroupSchedule({ schedule: { ...schedule, approvalMode: e.target.value } })}
+                  >
+                    <MenuItem key={`approval-mode-auto`} value={'auto'}>Auto</MenuItem>
+                    <MenuItem key={`approval-mode-role`} value={'role'}>Role</MenuItem>
+                    <MenuItem key={`approval-mode-owner`} value={'owner'}>Owner</MenuItem>
+                  </TextField>
                 </Grid>
               </Grid>
             </Box>

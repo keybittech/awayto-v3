@@ -234,6 +234,7 @@ CREATE TABLE dbtable_schema.schedules (
   bracket_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),
   slot_time_unit_id uuid NOT NULL REFERENCES dbtable_schema.time_units (id),
   slot_duration INTEGER NOT NULL,
+  approval_mode VARCHAR(8) NOT NULL CHECK (approval_mode IN ('auto', 'role', 'owner')),
   created_on TIMESTAMP NOT NULL DEFAULT TIMEZONE('utc', NOW()),
   created_sub uuid NOT NULL REFERENCES dbtable_schema.users (sub) ON DELETE CASCADE,
   updated_on TIMESTAMP,

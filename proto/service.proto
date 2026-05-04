@@ -58,23 +58,23 @@ service ServiceService {
 }
 
 message IService {
-  string id = 1;
-  string name = 2 [(buf.validate.field).string.min_len = 1];
-  optional int32 cost = 3 [
-    (buf.validate.field).int32.gt = 0,
-    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
-  ];
-  map<string, IServiceTier> tiers = 4 [
+  map<string, IServiceTier> tiers = 1 [
     (buf.validate.field).map.min_pairs = 1,
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  repeated string intakeIds = 5 [
+  repeated string intakeIds = 2 [
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  repeated string surveyIds = 6 [
+  repeated string surveyIds = 3 [
     (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
   ];
-  string createdOn = 7;
+  string id = 4;
+  string name = 5 [(buf.validate.field).string.min_len = 1];
+  string createdOn = 6;
+  optional int32 cost = 7 [
+    (buf.validate.field).int32.gt = 0,
+    (buf.validate.field).ignore = IGNORE_IF_UNPOPULATED
+  ];
 }
 
 message PostServiceRequest {
