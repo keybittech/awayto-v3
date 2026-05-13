@@ -10,12 +10,12 @@ import (
 
 	"github.com/keybittech/awayto-v3/go/pkg/types"
 
-	"github.com/golang/protobuf/protoc-gen-go/descriptor"
 	"google.golang.org/genproto/googleapis/api/annotations"
 	"google.golang.org/protobuf/encoding/protowire"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/reflect/protoreflect"
 	"google.golang.org/protobuf/reflect/protoregistry"
+	"google.golang.org/protobuf/types/descriptorpb"
 )
 
 type HandlerOptionsConfig struct {
@@ -230,7 +230,7 @@ func ParseHandlerOptions(md protoreflect.MethodDescriptor) *HandlerOptions {
 
 	parsedOptions.NoLogFields = append(parsedOptions.NoLogFields, DEFAULT_IGNORED_PROTO_FIELDS...)
 
-	inputOpts := md.Options().(*descriptor.MethodOptions)
+	inputOpts := md.Options().(*descriptorpb.MethodOptions)
 
 	httpRule, ok := proto.GetExtension(inputOpts, annotations.E_Http).(*annotations.HttpRule)
 	if !ok {
@@ -355,7 +355,7 @@ func ParseInvalidations(handlerOptions map[string]*HandlerOptions) {
 			opts.Invalidations = append(opts.Invalidations, serviceMethodWildcard(opts.ServiceMethodURL))
 		}
 
-		inputOpts := opts.ServiceMethod.Options().(*descriptor.MethodOptions)
+		inputOpts := opts.ServiceMethod.Options().(*descriptorpb.MethodOptions)
 
 		if invalidates, ok := proto.GetExtension(inputOpts, types.E_Invalidates).([]string); ok {
 			for _, invalidation := range invalidates {

@@ -1,4 +1,4 @@
-FROM postgres:17.0-alpine
+FROM postgres:18.3-alpine
 EXPOSE 5432
 
 ENV USER_SUB="dbfunc_schema.uuid_or_nil(current_setting('app_session.user_sub'))"

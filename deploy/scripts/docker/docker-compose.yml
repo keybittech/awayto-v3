@@ -17,7 +17,7 @@ services:
       - ../../../${UNIX_SOCK_DIR}/db:/tmp/db_socket
       - ../../../secrets/pg_pass:/etc/secrets/pg_pass
       - ../../../secrets/pg_worker_pass:/etc/secrets/pg_worker_pass
-      - pg_data:/var/lib/postgresql/data
+      - pg_data:/var/lib/postgresql
 
   redis: # 6379 redis
     image: ${REDIS_IMAGE}
